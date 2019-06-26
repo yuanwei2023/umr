@@ -53,7 +53,7 @@ static void wave_read_regs_via_mmio(struct umr_asic *asic, uint32_t simd,
 /**
  * umr_read_sgprs - Read SGPR registers for a specific wave
  */
-int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
+static int umr_read_sgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
 {
 	uint64_t addr, shift;
 	int r;
@@ -98,10 +98,75 @@ int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *
 	}
 }
 
-/**
- * umr_read_vgprs - Read VGPR registers for a specific wave and thread
- */
-int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
+static void wave_read_regs_via_mmio_nv(struct umr_asic *asic,
+			   uint32_t wave, uint32_t thread,
+			   uint32_t regno, uint32_t num, uint32_t *out)
+{
+	struct umr_reg *ind_index, *ind_data;
+	uint32_t data;
+
+	ind_index = umr_find_reg_data(asic, "mmSQ_IND_INDEX");
+	ind_data  = umr_find_reg_data(asic, "mmSQ_IND_DATA");
+
+	if (ind_index && ind_data) {
+		data = umr_bitslice_compose_value(asic, ind_index, "WAVE_ID", wave);
+		data |= umr_bitslice_compose_value(asic, ind_index, "INDEX", regno);
+		data |= umr_bitslice_compose_value(asic, ind_index, "WORKITEM_ID", thread);
+		data |= umr_bitslice_compose_value(asic, ind_index, "AUTO_INCR", 1);
+		umr_write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
+		while (num--)
+			*(out++) = umr_read_reg(asic, ind_data->addr * 4, REG_MMIO);
+	} else {
+		fprintf(stderr, "[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
+		return;
+	}
+}
+
+static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
+{
+	uint64_t addr;
+	int r;
+
+	if (!asic->options.no_kernel) {
+		addr =
+			(1ULL << 60)                             | // reading SGPRs
+			((uint64_t)0)                            | // starting address to read from
+			((uint64_t)ws->hw_id1.se_id << 12)       |
+			((uint64_t)ws->hw_id1.sa_id << 20)       |
+			((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
+			((uint64_t)ws->hw_id1.wave_id << 36)     |
+			(0ULL << 52); // thread_id
+
+		lseek(asic->fd.gpr, addr, SEEK_SET);
+		r = read(asic->fd.gpr, dst, 4 * 112);
+		if (r < 0)
+			return r;
+
+		// read trap if any
+		if (ws->wave_status.trap_en || ws->wave_status.priv) {
+			addr += 0x6C;
+			lseek(asic->fd.gpr, addr, SEEK_SET);
+			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
+		}
+		return r;
+	} else {
+		umr_grbm_select_index(asic, ws->hw_id1.se_id, ws->hw_id1.sa_id, ((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id));
+		wave_read_regs_via_mmio_nv(asic, ws->hw_id1.wave_id, 0, 0x200, 112, dst);
+		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+		return 0;
+	}
+}
+
+int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
+{
+	if (asic->family == FAMILY_NV)
+		return umr_read_sgprs_nv(asic, ws, dst);
+	else
+		return umr_read_sgprs_si_ai(asic, ws, dst);
+}
+
+
+static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
 {
 	uint64_t addr;
 
@@ -129,4 +194,40 @@ int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t t
 		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 		return 0;
 	}
+}
+
+static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
+{
+	uint64_t addr;
+
+	if (!asic->options.no_kernel) {
+		addr =
+			(0ULL << 60)                             | // reading VGPRs
+			((uint64_t)0)                            | // starting address to read from
+			((uint64_t)ws->hw_id1.se_id << 12)        |
+			((uint64_t)ws->hw_id1.sa_id << 20)        |
+			((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
+			((uint64_t)ws->hw_id1.wave_id << 36)      |
+			((uint64_t)thread << 52);
+
+		lseek(asic->fd.gpr, addr, SEEK_SET);
+		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << 2));
+	} else {
+		umr_grbm_select_index(asic, ws->hw_id1.se_id, ws->hw_id1.sa_id, ((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id));
+		wave_read_regs_via_mmio_nv(asic, ws->hw_id1.wave_id, thread, 0x400,
+					(ws->gpr_alloc.vgpr_size + 1) << 2, dst);
+		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+		return 0;
+	}
+}
+
+/**
+ * umr_read_vgprs - Read VGPR registers for a specific wave and thread
+ */
+int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
+{
+	if (asic->family == FAMILY_NV)
+		return umr_read_vgprs_nv(asic, ws, thread, dst);
+	else
+		return umr_read_vgprs_si_ai(asic, ws, thread, dst);
 }

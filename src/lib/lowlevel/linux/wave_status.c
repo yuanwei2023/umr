@@ -44,6 +44,11 @@ static int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned 
 
 	umr_write_reg(asic, index|bank, 8 << 16, REG_MMIO);
 	value = umr_read_reg(asic, data|bank, REG_MMIO);
+
+	/* Did we try to query a non-existing SQ instance? */
+	if (value == 0xbebebeef)
+		value = 0;
+
 	ws->sq_info.busy = value & 1;
 	ws->sq_info.wave_level = (value >> 4) & 0x3F;
 	return 0;
@@ -310,6 +315,175 @@ static int umr_get_wave_status_ai(struct umr_asic *asic, unsigned se, unsigned s
 	return 0;
 }
 
+static uint32_t wave_read_ind_nv(struct umr_asic *asic, uint32_t wave, uint32_t address)
+{
+	struct umr_reg *ind_index, *ind_data;
+	uint32_t data;
+
+	ind_index = umr_find_reg_data(asic, "mmSQ_IND_INDEX");
+	ind_data  = umr_find_reg_data(asic, "mmSQ_IND_DATA");
+
+	if (ind_index && ind_data) {
+		data = umr_bitslice_compose_value(asic, ind_index, "WAVE_ID", wave);
+		data |= umr_bitslice_compose_value(asic, ind_index, "INDEX", address);
+		umr_write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
+		return umr_read_reg(asic, ind_data->addr * 4, REG_MMIO);
+	} else {
+		fprintf(stderr, "[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
+		return -1;
+	}
+}
+
+
+static int read_wave_status_via_mmio_nv(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields)
+{
+	/* type 2 wave data */
+	dst[(*no_fields)++] = 2;
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_STATUS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID1")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID2")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_INST_DW0")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS2")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_DBG1")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_M0")->addr);
+
+	return 0;
+}
+
+static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
+{
+	uint32_t x, value, buf[32];
+
+	if (simd)
+		fprintf(stderr, "[BUG]: simd should be zero in umr_get_wave_status_nv()\n");
+
+	memset(buf, 0, sizeof buf);
+
+	if (!asic->options.no_kernel) {
+		lseek(asic->fd.wave,
+			0 |
+			((uint64_t)se << 7) |
+			((uint64_t)sh << 15) |
+			((uint64_t)cu << 23) |
+			((uint64_t)wave << 31) |
+			((uint64_t)simd << 37), SEEK_SET);
+		if (read(asic->fd.wave, &buf, 32*4) < 0)
+			return -1;
+	} else {
+		int n = 0;
+		umr_grbm_select_index(asic, se, sh, cu);
+		read_wave_status_via_mmio_nv(asic, wave, &buf[0], &n);
+		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+	}
+
+	if (buf[0] != 2) {
+		fprintf(stderr, "[ERROR]: Was expecting type 2 wave data on a FAMILY_NV part!\n");
+		return -1;
+	}
+
+	memset(ws, 0, sizeof *ws);
+
+	x = 1;
+	ws->wave_status.value = value = buf[x++];
+		ws->wave_status.scc           = (value & 1);
+		ws->wave_status.spi_prio      = (value >> 1) & 3;
+		ws->wave_status.wave_prio     = (value >> 3) & 3;
+		ws->wave_status.priv          = (value >> 5) & 1;
+		ws->wave_status.trap_en       = (value >> 6) & 1;
+		ws->wave_status.ttrace_en     = (value >> 7) & 1;
+		ws->wave_status.export_rdy    = (value >> 8) & 1;
+		ws->wave_status.execz         = (value >> 9) & 1;
+		ws->wave_status.vccz          = (value >> 10) & 1;
+		ws->wave_status.in_tg         = (value >> 11) & 1;
+		ws->wave_status.in_barrier    = (value >> 12) & 1;
+		ws->wave_status.halt          = (value >> 13) & 1;
+		ws->wave_status.trap          = (value >> 14) & 1;
+		ws->wave_status.valid         = (value >> 16) & 1;
+		ws->wave_status.ecc_err       = (value >> 17) & 1;
+		ws->wave_status.skip_export   = (value >> 18) & 1;
+		ws->wave_status.perf_en       = (value >> 19) & 1;
+		ws->wave_status.cond_dbg_user = (value >> 20) & 1;
+		ws->wave_status.cond_dbg_sys  = (value >> 21) & 1;
+		ws->wave_status.fatal_halt    = (value >> 23) & 1;
+		ws->wave_status.must_export   = (value >> 27) & 1;
+
+	ws->pc_lo = buf[x++];
+	ws->pc_hi = buf[x++];
+	ws->exec_lo = buf[x++];
+	ws->exec_hi = buf[x++];
+
+	ws->hw_id1.value = value = buf[x++];
+		ws->hw_id1.wave_id = (value & 0x1f);
+		ws->hw_id1.simd_id = (value >> 8) & 3;
+		ws->hw_id1.wgp_id  = (value >> 10) & 0xF;
+		ws->hw_id1.sa_id   = (value >> 16) & 1;
+		ws->hw_id1.se_id   = (value >> 18) & 3;
+
+	ws->hw_id2.value = value = buf[x++];
+		ws->hw_id2.queue_id     = (value & 0xf);
+		ws->hw_id2.pipe_id      = (value >> 4) & 3;
+		ws->hw_id2.me_id        = (value >> 8) & 3;
+		ws->hw_id2.state_id     = (value >> 12) & 7;
+		ws->hw_id2.wg_id        = (value >> 16) & 31;
+		ws->hw_id2.vm_id        = (value >> 24) & 15;
+		ws->hw_id2.compat_level = (value >> 29) & 3;
+
+	ws->wave_inst_dw0 = buf[x++];
+
+	ws->gpr_alloc.value = value = buf[x++];
+		ws->gpr_alloc.vgpr_base = (value & 0xff);
+		ws->gpr_alloc.vgpr_size = (value >> 8) & 0xff;
+		ws->gpr_alloc.sgpr_base = (value >> 16) & 0xff;
+		ws->gpr_alloc.sgpr_size = (value >> 24) & 0xf;
+
+	ws->lds_alloc.value = value = buf[x++];
+		ws->lds_alloc.lds_base = (value >> 0) & 0xFF;
+		ws->lds_alloc.lds_size = (value >> 12) & 0x1FF;
+		ws->lds_alloc.vgpr_shared_size = (value >> 24) & 15;
+
+	ws->trapsts.value = value = buf[x++];
+		ws->trapsts.excp          = ((value >> 0) & 0x1ff) | (((value >> 12) & 7) << 9);
+		ws->trapsts.savectx       = (value >> 10) & 1;
+		ws->trapsts.illegal_inst  = (value >> 11) & 1;
+		ws->trapsts.excp_hi       = (value >> 12) & 7;
+		ws->trapsts.buffer_oob    = (value >> 15) & 1;
+		ws->trapsts.excp_cycle    = (value >> 16) & 0xf;
+		ws->trapsts.excp_wave64hi = (value >> 24) & 1;
+		ws->trapsts.xnack_error   = (value >> 28) & 1;
+		ws->trapsts.dp_rate       = (value >> 29) & 0x3;
+
+	ws->ib_sts.value = value = buf[x++];
+		ws->ib_sts.vm_cnt   = ((value >> 0) & 0xF) | (((value >> 22) & 3) << 4); // VM_CNT_HI
+		ws->ib_sts.exp_cnt  = (value >> 4) & 0x7;
+		ws->ib_sts.lgkm_cnt = ((value >> 8) & 0xF) | (((value >> 7) & 1) << 4) | (((value >> 24) & 1) << 5); // LGKM_CNT_BIT4/5 added on
+		ws->ib_sts.valu_cnt = (value >> 12) & 0x7;
+		ws->ib_sts.replay_w64h = (value >> 25) & 1;
+		ws->ib_sts.vs_cnt   = (value >> 26) & 63;
+
+	ws->ib_sts2.value = value = buf[x++];
+		ws->ib_sts2.inst_prefetch     = value & 3;
+		ws->ib_sts2.resource_override = (value >> 7) & 1;
+		ws->ib_sts2.mem_order         = (value >> 8) & 3;
+		ws->ib_sts2.fwd_progress      = (value >> 10) & 1;
+		ws->ib_sts2.wave64            = (value >> 11) & 1;
+		ws->ib_sts2.wave64hi          = (value >> 12) & 1;
+		ws->ib_sts2.subv_loop         = (value >> 13) & 1;
+
+
+	ws->ib_dbg1 = buf[x++];
+	ws->m0 = buf[x++];
+
+	return 0;
+}
+
 /**
  * umr_get_wave_status - Read the SQ wave status (et al.) data
  *
@@ -319,7 +493,9 @@ static int umr_get_wave_status_ai(struct umr_asic *asic, unsigned se, unsigned s
  */
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
-	if (asic->family == FAMILY_AI || asic->family == FAMILY_RV)
+	if (asic->family == FAMILY_NV)
+		return umr_get_wave_status_nv(asic, se, sh, cu, simd, wave, ws);
+	else if (asic->family == FAMILY_AI || asic->family == FAMILY_RV)
 		return umr_get_wave_status_ai(asic, se, sh, cu, simd, wave, ws);
 	else if (asic->family <= FAMILY_VI)
 		return umr_get_wave_status_vi(asic, se, sh, cu, simd, wave, ws);
@@ -328,7 +504,7 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 
 int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws)
 {
-	if (asic->family <= FAMILY_RV)
+	if (asic->family <= FAMILY_NV)
 		return umr_get_wave_sq_info_vi(asic, se, sh, cu, ws);
 	return -1;
 }

@@ -205,10 +205,18 @@ int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint3
 		} else {
 			data |= umr_bitslice_compose_value(asic, grbm_idx, "SE_INDEX", se);
 		}
-		if (sh >= 0x3FF) {
-			data |= umr_bitslice_compose_value(asic, grbm_idx, "SH_BROADCAST_WRITES", 1);
+		if (asic->family < FAMILY_NV) {
+			if (sh == 0x3FF) {
+				data |= umr_bitslice_compose_value(asic, grbm_idx, "SH_BROADCAST_WRITES", 1);
+			} else {
+				data |= umr_bitslice_compose_value(asic, grbm_idx, "SH_INDEX", sh);
+			}
 		} else {
-			data |= umr_bitslice_compose_value(asic, grbm_idx, "SH_INDEX", sh);
+			if (sh == 0x3FF) {
+				data |= umr_bitslice_compose_value(asic, grbm_idx, "SA_BROADCAST_WRITES", 1);
+			} else {
+				data |= umr_bitslice_compose_value(asic, grbm_idx, "SA_INDEX", sh);
+			}
 		}
 		return umr_write_reg(asic, grbm_idx->addr * 4, data, REG_MMIO);
 	} else {

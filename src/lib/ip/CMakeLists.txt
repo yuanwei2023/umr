@@ -1,10 +1,12 @@
 # Copyright 2017 Edward O'Callaghan <funfunctor@folklore1984.net>
 
 add_library(ip OBJECT
+  athub200.c
   bif30.c
   bif41.c
   bif50.c
   bif51.c
+  clk1100.c
   dce100.c
   dce110.c
   dce112.c
@@ -12,6 +14,7 @@ add_library(ip OBJECT
   dce60.c
   dce80.c
   dcn10.c
+  dcn200.c
   gfx60.c
   gfx70.c
   gfx72.c
@@ -20,24 +23,30 @@ add_library(ip OBJECT
   gfx90.c
   gfx91.c
   gfx921.c
+  gfx1010.c
   gmc60.c
   gmc70.c
   gmc71.c
   gmc81.c
   gmc82.c
   hdp40.c
+  hdp500.c
   mmhub10.c
+  mmhub200.c
   mmhub91.c
   mmhub930.c
   mp90.c
   mp100.c
+  mp1100.c
   nbio61.c
   nbio70.c
+  nbio230.c
   oss10.c
   oss20.c
   oss30.c
   oss40.c
   oss401.c
+  oss50.c
   sdma040.c
   sdma041.c
   sdma042.c
@@ -51,7 +60,9 @@ add_library(ip OBJECT
   smu712.c
   smu713.c
   smu80.c
+  smu1100.c
   thm90.c
+  thm1102.c
   umc60.c
   uvd40.c
   uvd42.c
@@ -63,6 +74,7 @@ add_library(ip OBJECT
   vce3.c
   vce40.c
   vcn10.c
+  vcn200.c
 )
 
 if(MSVC)

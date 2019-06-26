@@ -83,6 +83,7 @@ enum chipfamily {
 	FAMILY_VI,
 	FAMILY_AI,
 	FAMILY_RV,
+	FAMILY_NV, // NAVI10 and up
 
 	FAMILY_NPI, // reserves for new devices that are not public yet
 };
@@ -221,7 +222,8 @@ struct umr_options {
 	    disasm_early_term,
 	    use_xgmi,
 	    disasm_anyways,
-	    skip_gprs;
+	    skip_gprs,
+	    wave64;
 
 	union {
 		struct {
@@ -419,6 +421,7 @@ struct umr_wave_status {
 		tma_lo,
 		tma_hi,
 		ib_dbg0,
+		ib_dbg1,
 		m0;
 
 	struct {
@@ -437,6 +440,27 @@ struct umr_wave_status {
 			me_id;
 	} hw_id;
 
+	struct {
+			uint32_t
+					value,
+					wave_id,
+					simd_id,
+					wgp_id,
+					sa_id,
+					se_id;
+	} hw_id1;
+
+	struct {
+			uint32_t
+					value,
+					queue_id,
+					pipe_id,
+					me_id,
+					state_id,
+					wg_id,
+					vm_id,
+					compat_level;
+	} hw_id2;
 
 	struct {
 		uint32_t
@@ -451,7 +475,8 @@ struct umr_wave_status {
 		uint32_t
 			value,
 			lds_base,
-			lds_size;
+			lds_size,
+			vgpr_shared_size;
 	} lds_alloc;
 
 	struct {
@@ -460,20 +485,40 @@ struct umr_wave_status {
 			vm_cnt,
 			exp_cnt,
 			lgkm_cnt,
-			valu_cnt;
+			valu_cnt,
+			vs_cnt,
+			replay_w64h;
 	} ib_sts;
+
+	struct {
+			uint32_t
+					value,
+					inst_prefetch,
+					resource_override,
+					mem_order,
+					fwd_progress,
+					wave64,
+					wave64hi,
+					subv_loop;
+	} ib_sts2;
 
 	struct {
 		uint32_t
 			value,
 			excp,
 			excp_cycle,
-			dp_rate;
+			dp_rate,
+			savectx,
+			illegal_inst,
+			excp_hi,
+			excp_wave64hi,
+			xnack_error,
+			buffer_oob;
 	} trapsts;
 };
 
 struct umr_wave_data {
-	uint32_t vgprs[64 * 256], sgprs[1024];
+	uint32_t vgprs[64 * 256], sgprs[1024], num_threads;
 	int se, sh, cu, simd, wave, have_vgprs;
 	struct umr_wave_status ws;
 	struct umr_wave_thread *threads;
@@ -616,6 +661,20 @@ struct umr_ip_block *umr_create_thm90(struct umr_ip_offsets_soc15 *soc15_offsets
 struct umr_ip_block *umr_create_vcn10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 
+// navi10
+struct umr_ip_block *umr_create_athub200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_clk1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_smu1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_dcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_gfx1010(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_hdp500(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_mmhub200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_mp1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_nbio230(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_oss50(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_thm1102(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_vcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+
 /* ip block constructors */
 struct umr_ip_block *umr_create_uvd40(struct umr_options *options);
 struct umr_ip_block *umr_create_uvd42(struct umr_options *options);
@@ -669,6 +728,7 @@ struct umr_asic *umr_create_hawaii(struct umr_options *options);
 struct umr_asic *umr_create_kabini(struct umr_options *options);
 struct umr_asic *umr_create_kaveri(struct umr_options *options);
 struct umr_asic *umr_create_mullins(struct umr_options *options);
+struct umr_asic *umr_create_navi10(struct umr_options *options);
 struct umr_asic *umr_create_oland(struct umr_options *options);
 struct umr_asic *umr_create_pitcairn(struct umr_options *options);
 struct umr_asic *umr_create_polaris10(struct umr_options *options);

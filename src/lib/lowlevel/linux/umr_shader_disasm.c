@@ -45,7 +45,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 	LLVMDisasmContextRef disasm_ref;
 	unsigned x, z, i;
 	size_t n;
-	char tmp[256], *cpuname;
+	char tmp[256], *cpuname, *features;
 
 	*disasm_text = calloc(inst_bytes/4, sizeof(**disasm_text));
 
@@ -63,7 +63,9 @@ int umr_shader_disasm(struct umr_asic *asic,
 
 	// cpuname based on mesa usage
 	cpuname = asic->asicname;
-	if (asic->family == FAMILY_RV)
+	if (asic->family == FAMILY_NV)
+		cpuname = "gfx1010";
+	else if (asic->family == FAMILY_RV)
 		cpuname = "gfx902";
 	else if (asic->family > FAMILY_VI)
 		cpuname = "gfx900";
@@ -72,9 +74,14 @@ int umr_shader_disasm(struct umr_asic *asic,
 	else if (!strcmp(cpuname, "vega12"))
 		cpuname = "gfx902";
 
-	disasm_ref = LLVMCreateDisasmCPU(
-			"amdgcn-mesa-mesa3d", cpuname,
-			NULL, 0, NULL, NULL);
+	// compute features
+	features = "";
+	if (asic->family > FAMILY_RV && asic->options.wave64)
+		features = "+wavefrontsize64";
+
+	disasm_ref = LLVMCreateDisasmCPUFeatures(
+			"amdgcn-mesa-mesa3d", cpuname, features, NULL, 0,
+			NULL, NULL);
 
 	if (!disasm_ref) {
 		fprintf(stderr, "[ERROR]:  Could not create disassembler context\n");

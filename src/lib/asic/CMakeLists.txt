@@ -10,6 +10,7 @@ add_library(asic OBJECT
   kabini.c
   kaveri.c
   mullins.c
+  navi10.c
   oland.c
   pitcairn.c
   polaris10.c

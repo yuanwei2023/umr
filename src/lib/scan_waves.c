@@ -26,21 +26,26 @@
 
 #include <stdbool.h>
 
+#define MANY_TO_INSTANCE(wgp, simd) (((simd) & 3) | ((wgp) << 2))
+
 /**
  * Scan the given wave slot. Return true and fill in \p pwd if a wave is present.
  * Otherwise, return false.
  *
- * \param cu the CU on <=gfx9
+ * \param cu the CU on <=gfx9, the WGP on >=gfx10
  */
 static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
 			       uint32_t simd, uint32_t wave, struct umr_wave_data *pwd)
 {
 	unsigned thread, num_threads;
 
-	umr_get_wave_status(asic, se, sh, cu, simd, wave, &pwd->ws);
+	if (asic->family <= FAMILY_AI)
+		umr_get_wave_status(asic, se, sh, cu, simd, wave, &pwd->ws);
+	else
+		umr_get_wave_status(asic, se, sh, MANY_TO_INSTANCE(cu, simd), 0, wave, &pwd->ws);
 
 	if (!pwd->ws.wave_status.valid &&
-	    (!pwd->ws.wave_status.halt))
+	    (!pwd->ws.wave_status.halt || pwd->ws.wave_status.value == 0xbebebeef))
 		return false;
 
 	pwd->se = se;
@@ -52,9 +57,13 @@ static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, 
 	if (!asic->options.skip_gprs) {
 		umr_read_sgprs(asic, &pwd->ws, &pwd->sgprs[0]);
 
-		num_threads = 64;
+		if (asic->family <= FAMILY_AI)
+			num_threads = 64;
+		else
+			num_threads = pwd->ws.ib_sts2.wave64 ? 64 : 32;
 
 		pwd->have_vgprs = 1;
+		pwd->num_threads = num_threads;
 		for (thread = 0; thread < num_threads; ++thread) {
 			if (umr_read_vgprs(asic, &pwd->ws, thread,
 					   &pwd->vgprs[256 * thread]) < 0) {
@@ -72,8 +81,8 @@ static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, 
 /**
  * Scan for waves within a single SIMD.
  *
- * \param cu the CU instance on <=gfx9
- * \param simd the SIMD within the CU
+ * \param cu the CU instance on <=gfx9, the WGP index on >=gfx10
+ * \param simd the SIMD within the CU / WGP
  * \param pppwd points to the pointer-to-pointer-to the last element of a linked
  *              list of wave data structures, with the last element yet to be filled in.
  *              The pointer-to-pointer-to is updated by this function.
@@ -83,7 +92,7 @@ static void umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, 
 {
 	uint32_t wave, wave_limit;
 
-	wave_limit = 10;
+	wave_limit = asic->family <= FAMILY_AI ? 10 : 20;
 
 	for (wave = 0; wave < wave_limit; wave++) {
 		struct umr_wave_data *pwd = **pppwd;
@@ -118,10 +127,18 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 	for (se = 0; se < asic->config.gfx.max_shader_engines; se++)
 	for (sh = 0; sh < asic->config.gfx.max_sh_per_se; sh++)
 	for (cu = 0; cu < asic->config.gfx.max_cu_per_sh; cu++) {
-		umr_get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
-		if ((*ptail)->ws.sq_info.busy) {
-			for (simd = 0; simd < 4; simd++)
-				umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+		if (asic->family <= FAMILY_AI) {
+			umr_get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
+			if ((*ptail)->ws.sq_info.busy) {
+				for (simd = 0; simd < 4; simd++)
+					umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+			}
+		} else {
+			for (simd = 0; simd < 4; simd++) {
+				umr_get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(cu, simd), &(*ptail)->ws);
+				if ((*ptail)->ws.sq_info.busy)
+					umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+			}
 		}
 	}
 

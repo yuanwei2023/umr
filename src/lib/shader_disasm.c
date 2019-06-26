@@ -32,13 +32,18 @@
  *
  * Returns a wave data pointer if found or NULL if not.
  */
-static struct umr_wave_data *find_wave(struct umr_wave_data *wd, unsigned vmid, uint64_t addr)
+static struct umr_wave_data *find_wave(struct umr_asic *asic, struct umr_wave_data *wd, unsigned vmid, uint64_t addr)
 {
 	while (wd) {
 		uint64_t PC;
 		PC = ((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo;
-		if (wd->ws.hw_id.vm_id == vmid && addr == PC)
-			break;
+		if (asic->family < FAMILY_NV) {
+			if (wd->ws.hw_id.vm_id == vmid && addr == PC)
+				break;
+		} else {
+			if (wd->ws.hw_id2.vm_id == vmid && addr == PC)
+				break;
+		}
 		wd = wd->next;
 	}
 	return wd;
@@ -138,7 +143,7 @@ int umr_vm_disasm(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t 
 		// PC and then print out the stats for it
 		if (wd) {
 			unsigned n;
-			pwd = find_wave(wd, vmid, addr + x * 4);
+			pwd = find_wave(asic, wd, vmid, addr + x * 4);
 			n = 0;
 
 			// repeatedly search for waves at this PC and tally them
@@ -149,7 +154,7 @@ int umr_vm_disasm(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t 
 				if (asic->options.bitfields)
 					printf("[se%u.sh%u.cu%u.simd%u.wave%u] ",
 						(unsigned)pwd->se, (unsigned)pwd->sh, (unsigned)pwd->cu, (unsigned)pwd->ws.hw_id.simd_id, (unsigned)pwd->ws.hw_id.wave_id);
-				pwd = find_wave(pwd->next, vmid, addr + x * 4);
+				pwd = find_wave(asic, pwd->next, vmid, addr + x * 4);
 			}
 			if (n)
 				printf("[%3u waves (%3u %%)]", n, (n * 100) / nwave);

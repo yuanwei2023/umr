@@ -138,6 +138,8 @@ static void parse_options(char *str)
 			options.verbose = 1;
 		} else if (!strcmp(option, "halt_waves")) {
 			options.halt_waves = 1;
+		} else if (!strcmp(option, "wave64")) {
+			options.wave64 = 1;
 		} else if (!strcmp(option, "disasm_early_term")) {
 			options.disasm_early_term = 1;
 		} else if (!strcmp(option, "no_kernel")) {
@@ -648,7 +650,7 @@ int main(int argc, char **argv)
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s), Copyright (c) 2019, AMD Inc.\n"
 "\n*** Device Selection ***\n"
 "\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags: bits, bitsfull, empty_log, follow, no_follow_ib, named, many,"
-	"\n\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves, disasm_early_term, no_disasm, disasm_anyways"
+	"\n\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves, disasm_early_term, no_disasm, disasm_anyways, wave64"
 "\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"
 	"\n\t\tThe instance is the directory name under /sys/kernel/debug/dri/"
 	"\n\t\tof the card you want to work with.\n"
