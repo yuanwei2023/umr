@@ -299,8 +299,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 {
 	uint64_t start_addr, page_table_start_addr, page_table_base_addr,
 		 page_table_size, pte_idx, pde_idx, pte_entry, pde_entry,
-		 pde_address, vga_base_address, vm_fb_offset, vm_fb_base,
-		 va_mask, offset_mask, system_aperture_low, system_aperture_high;
+		 pde_address, vga_base_address, vm_fb_offset,
+		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
+		 fb_top, fb_bottom;
 	uint32_t chunk_size, tmp;
 	int pde_cnt, current_depth, page_table_depth, first;
 	struct {
@@ -315,7 +316,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			mmMC_VM_FB_OFFSET,
 			mmMC_VM_MX_L1_TLB_CNTL,
 			mmMC_VM_SYSTEM_APERTURE_LOW_ADDR,
-			mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR;
+			mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR,
+			mmMC_VM_FB_LOCATION_BASE,
+			mmMC_VM_FB_LOCATION_TOP;
 	} registers;
 	struct {
 		uint64_t
@@ -341,6 +344,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	unsigned hubid;
 	static const char *indentation = "            \\->";
 
+	fb_bottom = fb_top = 0;
 	memset(&registers, 0, sizeof registers);
 	memset(&pde_array, 0xff, sizeof pde_array);
 
@@ -397,6 +401,14 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip(asic, hub, buf);
 		system_aperture_low = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << 18;
 		system_aperture_high = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR) << 18;
+
+		sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", regprefix);
+			registers.mmMC_VM_FB_LOCATION_BASE = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			fb_bottom = ((uint64_t)registers.mmMC_VM_FB_LOCATION_BASE) << 24;
+		sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", regprefix);
+			registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			fb_top = ((uint64_t)registers.mmMC_VM_FB_LOCATION_TOP) << 24;
+
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", regprefix);
 			registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip(asic, hub, buf);
 	}
@@ -434,9 +446,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		vm_fb_offset = 0;
 	}
 
-	sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", regprefix);
-	vm_fb_base = (uint64_t)umr_read_reg_by_name(asic, buf) << 24;
-
 	if (asic->options.verbose)
 		asic->mem_funcs.vm_message(
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32=0x%" PRIx32 "\n"
@@ -447,10 +456,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				"mmVGA_MEMORY_BASE_ADDRESS=0x%" PRIx32 "\n"
 				"mmVGA_MEMORY_BASE_ADDRESS_HIGH=0x%" PRIx32 "\n"
 				"mmMC_VM_FB_OFFSET=0x%" PRIx32 "\n"
-				"mmMC_VM_FB_LOCATION_BASE=0x%" PRIx64 "\n"
 				"mmMC_VM_MX_L1_TLB_CNTL=0x%" PRIx32 "\n"
-				"mmMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x%" PRIx32 "\n"
-				"mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x%" PRIx32 "\n",
+				"mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x%" PRIx32 "\n"
+				"mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x%" PRIx32 "\n"
+				"mm%sMC_VM_FB_LOCATION_BASE=0x%" PRIx32 "\n"
+				"mm%sMC_VM_FB_LOCATION_TOP=0x%" PRIx32 "\n",
 			regprefix, vmid, registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32,
 			regprefix, vmid, registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32,
 			regprefix, vmid, registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32,
@@ -459,10 +469,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			registers.mmVGA_MEMORY_BASE_ADDRESS,
 			registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH,
 			registers.mmMC_VM_FB_OFFSET,
-			vm_fb_base,
 			registers.mmMC_VM_MX_L1_TLB_CNTL,
-			registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR,
-			registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR
+			regprefix, registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR,
+			regprefix, registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR,
+			regprefix, registers.mmMC_VM_FB_LOCATION_BASE,
+			regprefix, registers.mmMC_VM_FB_LOCATION_TOP
 			);
 
 	// transform page_table_base
@@ -473,19 +484,38 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", regprefix);
 		sam = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "SYSTEM_ACCESS_MODE", registers.mmMC_VM_MX_L1_TLB_CNTL);
+
+#if 0
+		if (asic->options.verbose)
+			asic->mem_funcs.vm_message("SYSTEM_ACCESS_MODE == %" PRIu32 "\n", sam);
+
+		if (asic->options.verbose)
+			asic->mem_funcs.vm_message("%" PRIx64 ", %" PRIx64 ", %" PRIx64 ", %" PRIx64 ", %" PRIx64 ", %" PRIx64 "\n", system_aperture_low, address, system_aperture_high, fb_bottom, fb_top, vm_fb_offset);
+#endif
+
 		// addresses in VMID0 need special handling w.r.t. PAGE_TABLE_START_ADDR
 		switch (sam) {
 			case 0: // physical access
-				return umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en);
+				return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
 			case 1: // always VM access
 				break;
 			case 2: // inside system aperture is mapped, otherwise unmapped
-				if (!(address >= system_aperture_low && address < system_aperture_high))
-					return umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en);
+				if (!(address >= system_aperture_low && address < system_aperture_high)) {
+					if (address >= fb_bottom && address < fb_top)
+						//return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
+						return (dst) ? asic->mem_funcs.access_sram(asic, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
+					else
+						return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+				}
 				break;
 			case 3: // inside system aperture is unmapped, otherwise mapped
-				if (address >= system_aperture_low && address < system_aperture_high)
-					return umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en);
+				if (address >= system_aperture_low && address < system_aperture_high) {
+					if (address >= fb_bottom && address < fb_top)
+						//return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
+						return (dst) ? asic->mem_funcs.access_sram(asic, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
+					else
+						return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+				}
 				break;
 			default:
 				asic->mem_funcs.vm_message("[WARNING]: Unhandled SYSTEM_ACCESS_MODE mode [%" PRIu32 "]\n", sam);

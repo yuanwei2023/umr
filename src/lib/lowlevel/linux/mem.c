@@ -67,6 +67,7 @@ int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void
 	if (asic->fd.iomem >= 0) {
 		fd = asic->fd.iomem;
 	} else {
+retry:
 		// if not try to read system memory directly
 		need_close = 1;
 
@@ -85,6 +86,8 @@ int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void
 				fprintf(stderr, "[ERROR]: Accessing system memory returned: %d\n", r);
 				if (need_close)
 					close(fd);
+				if (fd == asic->fd.iomem)
+					goto retry;
 				return -1;
 			}
 		} else {
@@ -93,6 +96,8 @@ int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void
 				fprintf(stderr, "[ERROR]: Accessing system memory returned: %d\n", r);
 				if (need_close)
 					close(fd);
+				if (fd == asic->fd.iomem)
+					goto retry;
 				return -1;
 			}
 		}
