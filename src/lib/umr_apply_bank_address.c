@@ -41,7 +41,8 @@ uint64_t umr_apply_bank_selection_address(struct umr_asic *asic)
 		return 	(1ULL << 61) |
 				(((uint64_t)asic->options.bank.srbm.me) << 24) |
 				(((uint64_t)asic->options.bank.srbm.pipe) << 34) |
-				(((uint64_t)asic->options.bank.srbm.queue) << 44);
+				(((uint64_t)asic->options.bank.srbm.queue) << 44) |
+				(((uint64_t)asic->options.bank.srbm.vmid) << 54);
 	} else {
 		return 0;
 	}

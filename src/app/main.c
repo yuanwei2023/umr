@@ -210,6 +210,10 @@ int main(int argc, char **argv)
 				options.bank.srbm.me = atoi(argv[i+1]);
 				options.bank.srbm.pipe = atoi(argv[i+2]);
 				options.bank.srbm.queue = atoi(argv[i+3]);
+				if (i + 4 < argc && sscanf(argv[i+4], "%u", &options.bank.srbm.vmid) == 1)
+					++i;
+				else
+					options.bank.srbm.vmid = 0;  // default
 				options.use_bank = 2;
 				i += 3;
 				asic->options = options;
@@ -666,7 +670,7 @@ int main(int argc, char **argv)
 	"\n\t\tthe content under demo/update/ for an example.\n"
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
-"\n\t--sbank, -sb <me> <pipe> <queue>\n\t\tSelect a SRBM me/pipe/queue bank in decimal.\n"
+"\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"
 "\n*** Device Information ***\n"
 "\n\t--config, -c\n\t\tPrint out configuation data read from kernel driver.\n"
 "\n\t--enumerate, -e\n\t\tEnumerate all AMDGPU devices detected.\n"

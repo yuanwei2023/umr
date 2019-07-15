@@ -99,8 +99,8 @@ separated strings.  Options should be specified before --update or --force comma
 .SH Bank Selection
 .IP "--bank, -b <se> <sh> <instance>"
 Select a GRBM se/sh/instance bank in decimal.  Can use 'x' to denote a broadcast selection.
-.IP "--sbank, -sb <me> <pipe> <queue>"
-Select a SRBM me/pipe/queue bank in decimal.
+.IP "--sbank, -sb <me> <pipe> <queue> [vmid]"
+Select a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0).
 .SH Device Information
 .IP "--config, -c"
 Print out configuation data read from kernel driver.

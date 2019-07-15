@@ -236,7 +236,8 @@ struct umr_options {
 			unsigned
 				me,
 				queue,
-				pipe;
+				pipe,
+				vmid;
 		} srbm;
 	} bank;
 
