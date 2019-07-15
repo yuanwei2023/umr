@@ -223,3 +223,24 @@ int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint3
 		return -1;
 	}
 }
+
+int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uint32_t queue, uint32_t vmid)
+{
+	struct umr_reg *srbm_idx;
+	uint32_t data = 0;
+
+	if (asic->family >= FAMILY_AI)
+		srbm_idx = umr_find_reg_data(asic, "mmGRBM_GFX_CNTL");
+	else
+		srbm_idx = umr_find_reg_data(asic, "mmSRBM_GFX_CNTL");
+
+	if (srbm_idx) {
+		data |= umr_bitslice_compose_value(asic, srbm_idx, "PIPEID", pipe);
+		data |= umr_bitslice_compose_value(asic, srbm_idx, "MEID", me);
+		data |= umr_bitslice_compose_value(asic, srbm_idx, "VMID", vmid);
+		data |= umr_bitslice_compose_value(asic, srbm_idx, "QUEUEID", queue);
+		return umr_write_reg(asic, srbm_idx->addr * 4, data, REG_MMIO);
+	} else {
+		return -1;
+	}
+}

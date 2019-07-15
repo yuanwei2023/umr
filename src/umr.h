@@ -814,6 +814,7 @@ uint64_t umr_apply_bank_selection_address(struct umr_asic *asic);
 
 // select a GRBM_GFX_IDX
 int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t instance);
+int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uint32_t queue, uint32_t vmid);
 
 // halt/resume SQ waves
 int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mode);

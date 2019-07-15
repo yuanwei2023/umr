@@ -93,14 +93,18 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 										}
 									}
 								} else if (asic->blocks[i]->regs[j].type == REG_MMIO) {
-									// TODO: Add nokernel version of srbm_select
-									if (asic->options.use_bank == 1 && asic->options.no_kernel)
+									// using pci mapping implies no_kernel
+									if (asic->options.use_bank == 1)
 										umr_grbm_select_index(asic, asic->options.bank.grbm.se, asic->options.bank.grbm.sh, asic->options.bank.grbm.instance);
+									if (asic->options.use_bank == 2)
+										umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
 									copy = asic->pci.mem[asic->blocks[i]->regs[j].addr] & ~mask;
 									copy |= (value << asic->blocks[i]->regs[j].bits[k].start) & mask;
 									asic->pci.mem[asic->blocks[i]->regs[j].addr] = copy;
-									if (asic->options.use_bank && asic->options.no_kernel)
+									if (asic->options.use_bank == 1)
 										umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+									if (asic->options.use_bank == 2)
+										umr_srbm_select_index(asic, 0, 0, 0, 0);
 									if (!asic->options.quiet) printf("%s <= 0x%08lx\n", regpath, (unsigned long)copy);
 								}
 								return 0;
