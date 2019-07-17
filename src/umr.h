@@ -48,6 +48,8 @@ enum umr_sq_cmd_halt_resume {
 enum umr_hub_space {
 	UMR_GFX_HUB = 0 << 8,        // default on everything before AI
 	UMR_MM_HUB = 1 << 8,         // available on AI and later
+	UMR_MM_VC0 = 2 << 8,         // Arcturus VC0
+	UMR_MM_VC1 = 3 << 8,         // Arcturus VC1
 
 	UMR_PROCESS_HUB = 0xFD << 8, // process space, allows the use of umr functions on memory buffers inside the process
 	UMR_USER_HUB = 0xFE << 8,    // for user supplied HUB names (npi work...)
@@ -662,6 +664,18 @@ struct umr_ip_block *umr_create_thm90(struct umr_ip_offsets_soc15 *soc15_offsets
 struct umr_ip_block *umr_create_vcn10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 
+// arcturus
+struct umr_ip_block *umr_create_mmhub941(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_vcn250(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma0422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma1422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma2422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma3422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma4422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma5422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma6422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_sdma7422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+
 // navi10
 struct umr_ip_block *umr_create_athub200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_clk1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
@@ -721,6 +735,7 @@ struct umr_ip_block *umr_create_bif51(struct umr_options *options);
 /* asic constructors */
 struct umr_asic *umr_create_asic_helper(char *name, int family, ...);
 struct umr_asic *umr_create_asic_from_script(struct umr_options *options, char *name);
+struct umr_asic *umr_create_arcturus(struct umr_options *options);
 struct umr_asic *umr_create_bonaire(struct umr_options *options);
 struct umr_asic *umr_create_carrizo(struct umr_options *options);
 struct umr_asic *umr_create_fiji(struct umr_options *options);

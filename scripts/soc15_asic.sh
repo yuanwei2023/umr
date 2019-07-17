@@ -48,6 +48,7 @@ parse_offsets() {
 	)
 }
 
+parse_offsets ${pk}/arct_ip_offset.h src/lib/asic/arct.i
 parse_offsets ${pk}/navi10_ip_offset.h src/lib/asic/navi10.i
 parse_offsets ${pk}/vega10_ip_offset.h src/lib/asic/vega10.i
 parse_offsets ${pk}/vega20_ip_offset.h src/lib/asic/vega20.i

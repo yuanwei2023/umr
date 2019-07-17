@@ -72,6 +72,19 @@ ENDCB
 ) > /tmp/countbits.c
 gcc /tmp/countbits.c -o /tmp/countbits
 
+
+#arcturus
+parse_bits ${pk}/mmhub/mmhub_9_4_1 src/lib/ip/mmhub941
+parse_bits ${pk}/sdma0/sdma0_4_2_2 src/lib/ip/sdma0422
+parse_bits ${pk}/sdma1/sdma1_4_2_2 src/lib/ip/sdma1422
+parse_bits ${pk}/sdma2/sdma2_4_2_2 src/lib/ip/sdma2422
+parse_bits ${pk}/sdma3/sdma3_4_2_2 src/lib/ip/sdma3422
+parse_bits ${pk}/sdma4/sdma4_4_2_2 src/lib/ip/sdma4422
+parse_bits ${pk}/sdma5/sdma5_4_2_2 src/lib/ip/sdma5422
+parse_bits ${pk}/sdma6/sdma6_4_2_2 src/lib/ip/sdma6422
+parse_bits ${pk}/sdma7/sdma7_4_2_2 src/lib/ip/sdma7422
+parse_bits ${pk}/vcn/vcn_2_5 src/lib/ip/vcn250
+
 #navi 10
 parse_bits ${pk}/athub/athub_2_0_0 src/lib/ip/athub200
 parse_bits ${pk}/clk/clk_11_0_0 src/lib/ip/clk1100

@@ -374,6 +374,16 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 	regprefix = "";
 	switch (hubid) {
+		case UMR_MM_VC0:
+			hub = "mmhub";
+			if (asic->family == FAMILY_AI)
+				regprefix = "VML2VC0";
+			break;
+		case UMR_MM_VC1:
+			hub = "mmhub";
+			if (asic->family == FAMILY_AI)
+				regprefix = "VML2VC1";
+			break;
 		case UMR_MM_HUB:
 			hub = "mmhub";
 			if (asic->family == FAMILY_NV)

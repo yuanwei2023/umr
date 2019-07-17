@@ -2,6 +2,7 @@
 
 #library objects (ASICs blocks)
 add_library(asic OBJECT
+  arcturus.c
   bonaire.c
   carrizo.c
   fiji.c

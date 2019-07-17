@@ -35,6 +35,7 @@ add_library(ip OBJECT
   mmhub200.c
   mmhub91.c
   mmhub930.c
+  mmhub941.c
   mp90.c
   mp100.c
   mp1100.c
@@ -52,6 +53,14 @@ add_library(ip OBJECT
   sdma042.c
   sdma140.c
   sdma142.c
+  sdma0422.c
+  sdma1422.c
+  sdma2422.c
+  sdma3422.c
+  sdma4422.c
+  sdma5422.c
+  sdma6422.c
+  sdma7422.c
   smu60.c
   smu700.c
   smu701.c
@@ -75,6 +84,7 @@ add_library(ip OBJECT
   vce40.c
   vcn10.c
   vcn200.c
+  vcn250.c
 )
 
 if(MSVC)

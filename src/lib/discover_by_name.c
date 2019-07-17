@@ -28,6 +28,7 @@ static const struct {
 	char *name;
 	struct umr_asic *(*create)(struct umr_options *option);
 } devices[] = {
+	{ "arcturus", &umr_create_arcturus },
 	{ "kabini", &umr_create_kabini },
 	{ "kaveri", &umr_create_kaveri },
 	{ "mullins", &umr_create_mullins },
