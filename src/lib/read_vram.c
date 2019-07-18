@@ -654,12 +654,12 @@ pte_further:
 
 			// decode PTE values
 pde_is_pte:
-			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL;
 			pte_fields.fragment       = (pte_entry >> 7)  & 0x1F;
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.valid          = pte_entry & 1;
 			pte_fields.prt            = (pte_entry >> 61) & 1;
 			pte_fields.further        = (pte_entry >> 56) & 1;
+			pte_fields.page_base_addr = pte_entry & (pte_fields.further ? 0xFFFFFFFFFFC0ULL : 0xFFFFFFFFF000ULL);
 			if (asic->options.verbose)
 				asic->mem_funcs.vm_message("%s %s==0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", P=%" PRIu64 "\n",
 					&indentation[12-pde_cnt*3],
