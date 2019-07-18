@@ -88,9 +88,9 @@ parse_bits ${pk}/vcn/vcn_2_5 src/lib/ip/vcn250
 #navi 10
 parse_bits ${pk}/athub/athub_2_0_0 src/lib/ip/athub200
 parse_bits ${pk}/clk/clk_11_0_0 src/lib/ip/clk1100
-parse_bits ${pk}/dcn/dcn_2_0_0 src/lib/ip/dcn20
+parse_bits ${pk}/dcn/dcn_2_0_0 src/lib/ip/dcn200
 parse_bits ${pk}/gc/gc_10_1_0 src/lib/ip/gfx1010
-parse_bits ${pk}/hdp/hdp_5_0_0 src/lib/ip/hdp50
+parse_bits ${pk}/hdp/hdp_5_0_0 src/lib/ip/hdp500
 parse_bits ${pk}/mmhub/mmhub_2_0_0 src/lib/ip/mmhub200
 parse_bits ${pk}/mp/mp_11_0 src/lib/ip/mp1100
 parse_bits ${pk}/nbio/nbio_2_3 src/lib/ip/nbio230

@@ -170,6 +170,9 @@ static struct umr_bitfield mmSYSHUB_INDEX[] = {
 static struct umr_bitfield mmSYSHUB_DATA[] = {
 	 { "DATA", 0, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmRCC_BIF_STRAP0[] = {
+	 { "STRAP_PX_CAPABLE", 7, 7, &umr_bitfield_default },
+};
 static struct umr_bitfield mmRCC_DEV0_EPF0_STRAP0[] = {
 	 { "STRAP_DEVICE_ID_DEV0_F0", 0, 15, &umr_bitfield_default },
 	 { "STRAP_MAJOR_REV_ID_DEV0_F0", 16, 19, &umr_bitfield_default },
