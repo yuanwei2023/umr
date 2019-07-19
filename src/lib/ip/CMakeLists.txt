@@ -26,9 +26,7 @@ add_library(ip OBJECT
   gfx1010.c
   gmc60.c
   gmc70.c
-  gmc71.c
   gmc81.c
-  gmc82.c
   hdp40.c
   hdp500.c
   mmhub10.c
@@ -64,7 +62,6 @@ add_library(ip OBJECT
   smu60.c
   smu700.c
   smu701.c
-  smu710.c
   smu711.c
   smu712.c
   smu713.c
