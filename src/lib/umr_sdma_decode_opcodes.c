@@ -337,7 +337,7 @@ static void start_opcode(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr,
 	printf("Opcode 0x%lx [%s] at %lu@[0x%llx + 0x%llx] (%lu words)\n", (unsigned long)opcode, opcode_name, (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], (unsigned long)nwords);
 	fflush(stdout);
 }
-static void add_field(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix)
+static void add_field(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix)
 {
 	struct demo_ui_data *data = ui->data;
 	printf("\t[%lu@0x%llx + 0x%llx] -- %s == ", (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], field_name);

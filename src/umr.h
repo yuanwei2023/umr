@@ -887,7 +887,7 @@ struct umr_pm4_stream_decode_ui {
 	 * value:  Value of the field
 	 * ideal_radix: (10 decimal, 16 hex)
 	 */
-	void (*add_field)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix);
+	void (*add_field)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix);
 
 	/** add_shader -- Add a reference to a shader found in the IB stream
 	 * ib_addr/ib_vmid:  Address of where reference comes from
@@ -958,7 +958,7 @@ struct umr_sdma_stream_decode_ui {
 	 * value:  Value of the field
 	 * ideal_radix: (10 decimal, 16 hex)
 	 */
-	void (*add_field)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix);
+	void (*add_field)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix);
 
 	/** unhandled -- Decoder for unhandled (private) opcodes
 	 * asic: The ASIC the IB stream is bound to
