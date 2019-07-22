@@ -10,7 +10,7 @@ The source code can be cloned from the git repository upstream with the git clon
 
 ::
 
-	$ git clone git://anongit.freedesktop.org/amd/umr
+	$ git clone https://gitlab.freedesktop.org/tomstdenis/umr.git
 	Cloning into 'umr'...
 	remote: Counting objects: 1208, done.
 	remote: Compressing objects: 100% (1082/1082), done.

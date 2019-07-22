@@ -713,6 +713,8 @@ printf(
 "\n\tindicate the hardware VMID and the upper 8 bits indicate the which VM space to use."
 "\n\n\t\t0 - GFX hub"
 "\n\t\t1 - MM hub"
+"\n\t\t2 - VC0 hub"
+"\n\t\t3 - VC1 hub"
 "\n\n\tFor instance, 0x107 would specify the 7'th VMID on the MM hub.\n"
 "\n\t--vm-decode, -vm vmid@<address> <num_of_pages>"
 	"\n\t\tDecode page mappings at a specified address (in hex) from the VMID specified."

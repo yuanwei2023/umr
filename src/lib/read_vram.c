@@ -441,6 +441,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
 		page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
 
+	if (page_table_base_addr == 0xFFFFFFFFFFFFFFFFULL)
+		asic->mem_funcs.vm_message("PAGE_TABLE_BASE_ADDRESS read as all F's likely indicates that the ASIC is powered off\n");
+
 	// update addresses for APUs
 	if (asic->config.gfx.family == 142) {
 		DEBUG("Reading vram config...\n");

@@ -79,6 +79,10 @@ VMID field.  In umr, the bits 8:15 of the VMID indicate the hub:
 +-----------+-------------------------+
 | 0x100     | MM memory hub           |
 +-----------+-------------------------+
+| 0x200     | VC0 MM memory hub       |
++-----------+-------------------------+
+| 0x300     | VC1 MM memory hub       |
++-----------+-------------------------+
 
 For instance the command:
 
