@@ -969,6 +969,16 @@ struct umr_sdma_stream_decode_ui {
 	 */
 	void (*unhandled)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
 
+	/** unhandled_subop -- Decoder for unhandled (private) sub-opcodes
+	 * asic: The ASIC the IB stream is bound to
+	 * ib_addr:ib_vmid: The address where the sdma opcode comes from
+	 * stream:  The pointer to the current stream opcode being handled
+	 *
+	 * Can be NULL to drop support for unhandled opcodes.
+	 */
+	void (*unhandled_subop)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
+
+
 	void (*done)(struct umr_sdma_stream_decode_ui *ui);
 
 	/** data -- opaque pointer that can be used to track state information */

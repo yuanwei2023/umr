@@ -173,6 +173,10 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 56, ib_vmid, "DST_SW", (stream->words[13] >> 16) & 0x3, NULL, 10);
 						ui->add_field(ui, ib_addr + 56, ib_vmid, "SRC_SW", (stream->words[13] >> 22) & 0x3, NULL, 10);
 						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
+						break;
 				}
 				break;
 			case 2: // WRITE
@@ -194,6 +198,10 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 20, ib_vmid, "DW5", stream->words[4], NULL, 16);
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "DW6", stream->words[5], NULL, 16);
 						ui->add_field(ui, ib_addr + 28, ib_vmid, "DW7", stream->words[6], NULL, 16);
+						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
 						break;
 				}
 				break;
@@ -248,6 +256,10 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR", stream->words[0], NULL, 16);
 						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_LO", stream->words[1], NULL, 16);
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_HI", stream->words[2], NULL, 16);
+						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
 						break;
 				}
 				break;
