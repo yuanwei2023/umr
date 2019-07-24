@@ -236,9 +236,16 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 		else
 			ps->opcode = (*stream >> 8) & 0xFF;
 
-		// grab rest of words
-		ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
-		memcpy(ps->words, &stream[1], ps->n_words * sizeof(stream[0]));
+		if (nwords < 1 + ps->n_words) {
+			// grab the available words and leave the rest as zeros
+			ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
+			memcpy(ps->words, &stream[1], nwords * sizeof(stream[0]));
+			return ops;
+		} else {
+			// grab rest of words
+			ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
+			memcpy(ps->words, &stream[1], ps->n_words * sizeof(stream[0]));
+		}
 
 		// decode specific packets
 		if (ps->pkttype == 3) {

@@ -198,13 +198,13 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, 
 		}
 
 		ps->words = calloc(ps->nwords, sizeof(ps->words[0]));
-		memcpy(ps->words, stream, ps->nwords * sizeof(ps->words[0]));
-
-		stream += ps->nwords;
-		if (nwords <= 1 + ps->nwords) {
-			fprintf(stderr, "[WARNING]: Ran out of stream words in SDMA stream decode\n");
+		if (nwords < 1 + ps->nwords) {
+			memcpy(ps->words, stream, (nwords - 1) * sizeof(ps->words[0]));
 			return ops;
 		}
+		memcpy(ps->words, stream, ps->nwords * sizeof(ps->words[0]));
+		stream += ps->nwords;
+
 		nwords -= 1 + ps->nwords;
 
 		ps->next = calloc(1, sizeof(ps->next[0]));
