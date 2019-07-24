@@ -225,7 +225,8 @@ struct umr_options {
 	    use_xgmi,
 	    disasm_anyways,
 	    skip_gprs,
-	    wave64;
+	    wave64,
+	    full_shader;
 
 	union {
 		struct {

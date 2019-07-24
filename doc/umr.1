@@ -96,6 +96,13 @@ separated strings.  Options should be specified before --update or --force comma
 .B disasm_anyways
      Enable shader disassembly in --waves even if the rings aren't halted.
 
+.B wave64
+     Enable full 64 wave disassembly
+
+.B full_shader
+     Enable full shader disassembly in --waves when '-O bits' is used and the shader is found in
+     a gfx or compute ring.
+
 .SH Bank Selection
 .IP "--bank, -b <se> <sh> <instance>"
 Select a GRBM se/sh/instance bank in decimal.  Can use 'x' to denote a broadcast selection.
