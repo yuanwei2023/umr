@@ -80,7 +80,7 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
  */
 struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords)
 {
-	struct umr_sdma_stream *ops, *ps;
+	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
 
 (void)vmid;
 
@@ -197,18 +197,30 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, 
 				break;
 		}
 
-		ps->words = calloc(ps->nwords, sizeof(ps->words[0]));
 		if (nwords < 1 + ps->nwords) {
-			memcpy(ps->words, stream, (nwords - 1) * sizeof(ps->words[0]));
+			// if not enough words to fill packet, stop and set current packet to null
+			free(ps);
+			if (prev_ps) {
+				prev_ps->next = NULL;
+			} else {
+				ops = NULL;
+			}
 			return ops;
-		}
+		} 
+		
+		// grab rest of words
+		ps->words = calloc(ps->nwords, sizeof(ps->words[0]));
 		memcpy(ps->words, stream, ps->nwords * sizeof(ps->words[0]));
+		
+		// advance stream
 		stream += ps->nwords;
-
 		nwords -= 1 + ps->nwords;
-
-		ps->next = calloc(1, sizeof(ps->next[0]));
-		ps = ps->next;
+		
+		if (nwords) {
+			ps->next = calloc(1, sizeof(*ps));
+			prev_ps = ps;
+			ps = ps->next;
+		}
 	}
 	return ops;
 }

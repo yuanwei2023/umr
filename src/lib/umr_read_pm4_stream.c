@@ -207,7 +207,7 @@ void umr_free_pm4_stream(struct umr_pm4_stream *stream)
  */
 struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords)
 {
-	struct umr_pm4_stream *ops, *ps;
+	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	struct {
 		int n;
 		uint32_t
@@ -237,15 +237,19 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 			ps->opcode = (*stream >> 8) & 0xFF;
 
 		if (nwords < 1 + ps->n_words) {
-			// grab the available words and leave the rest as zeros
-			ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
-			memcpy(ps->words, &stream[1], nwords * sizeof(stream[0]));
+			// if not enough words to fill packet, stop and set current packet to null
+			free(ps);
+			if (prev_ps) {
+				prev_ps->next = NULL;
+			} else {
+				ops = NULL;
+			}
 			return ops;
-		} else {
-			// grab rest of words
-			ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
-			memcpy(ps->words, &stream[1], ps->n_words * sizeof(stream[0]));
-		}
+		} 
+
+		// grab rest of words
+		ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
+		memcpy(ps->words, &stream[1], ps->n_words * sizeof(stream[0]));
 
 		// decode specific packets
 		if (ps->pkttype == 3) {
@@ -296,6 +300,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 		stream += 1 + ps->n_words;
 		if (nwords) {
 			ps->next = calloc(1, sizeof(*ps));
+			prev_ps = ps;
 			ps = ps->next;
 		}
 	}
