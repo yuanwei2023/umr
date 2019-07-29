@@ -25,6 +25,8 @@
 #include "umr.h"
 #include <inttypes.h>
 
+#define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
+
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, struct umr_sdma_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {
@@ -242,8 +244,13 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				switch (stream->sub_opcode) {
 					case 0: // WAIT_REG_MEM
 						if (!(stream->header_dw & (1UL << 31))) {
-							ui->add_field(ui, ib_addr + 4, ib_vmid, "POLL_REGMEM_ADDR_LO", 0, umr_reg_name(asic, stream->words[0]), 0);
-							ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_REGMEM_ADDR_HI", 0, umr_reg_name(asic, stream->words[1]), 0);
+							ui->add_field(ui, ib_addr + 4, ib_vmid, "REGISTER", BITS(stream->words[0], 2, 20), umr_reg_name(asic, BITS(stream->words[0], 2, 20)), 16);
+							if ((stream->header_dw >> 26) & 1) { // if HDP_FLUSH, the write register is provided
+								ui->add_field(ui, ib_addr + 8, ib_vmid, "REGISTER", BITS(stream->words[1], 2, 20), umr_reg_name(asic, BITS(stream->words[1], 2, 20)), 16);
+							}
+							else {
+								ui->add_field(ui, ib_addr + 8, ib_vmid, NULL, stream->words[1], NULL, 16);
+							}
 						} else {
 							ui->add_field(ui, ib_addr + 4, ib_vmid, "POLL_REGMEM_ADDR_LO", stream->words[0], NULL, 16);
 							ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_REGMEM_ADDR_HI", stream->words[1], NULL, 16);
@@ -305,9 +312,9 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "SRBM_WRITE");
 				ui->add_field(ui, ib_addr + 0, ib_vmid, "BYTE_ENABLE", (stream->header_dw >> 28), NULL, 10);
 				if (asic->family <= FAMILY_VI)
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", 0, umr_reg_name(asic, stream->words[0] & 0xFFFF), 0);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", stream->words[0] & 0xFFFF, umr_reg_name(asic, stream->words[0] & 0xFFFF), 16);
 				else
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", 0, umr_reg_name(asic, stream->words[0] & 0x3FFFF), 0);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", stream->words[0] & 0x3FFFF, umr_reg_name(asic, stream->words[0] & 0x3FFFF), 16);
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "SRBM_WRITE_DATA", stream->words[1], NULL, 16);
 				break;
 			case 15: // PRE_EXE
