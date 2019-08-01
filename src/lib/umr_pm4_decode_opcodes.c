@@ -284,6 +284,61 @@ static char *pm4_pkt3_opcode_names[] = {
 	"UNK", // ff
 };
 
+static const struct {
+	char *name;
+	unsigned event_no;
+} vgt_event_tags[] = {
+	{ "SAMPLE_STREAMOUTSTATS1", 1 },
+	{ "SAMPLE_STREAMOUTSTATS2", 2 },
+	{ "SAMPLE_STREAMOUTSTATS3", 3 },
+	{ "CACHE_FLUSH_TS", 4 },
+	{ "CACHE_FLUSH", 6 },
+	{ "CS_PARTIAL_FLUSH", 7 },
+	{ "VGT_STREAMOUT_RESET", 10 },
+	{ "END_OF_PIPE_INCR_DE", 11 },
+	{ "END_OF_PIPE_IB_END", 12 },
+	{ "RST_PIX_CNT", 13 },
+	{ "VS_PARTIAL_FLUSH", 15 },
+	{ "PS_PARTIAL_FLUSH", 16 },
+	{ "CACHE_FLUSH_AND_INV_TS_EVENT", 20 },
+	{ "ZPASS_DONE", 21 },
+	{ "CACHE_FLUSH_AND_INV_EVENT", 22 },
+	{ "PERFCOUNTER_START", 23 },
+	{ "PERFCOUNTER_STOP", 24 },
+	{ "PIPELINESTAT_START", 25 },
+	{ "PIPELINESTAT_STOP", 26 },
+	{ "PERFCOUNTER_SAMPLE", 27 },
+	{ "SAMPLE_PIPELINESTAT", 30 },
+	{ "SAMPLE_STREAMOUTSTATS", 32 },
+	{ "RESET_VTX_CNT", 33 },
+	{ "VGT_FLUSH", 36 },
+	{ "BOTTOM_OF_PIPE_TS", 40 },
+	{ "DB_CACHE_FLUSH_AND_INV", 42 },
+	{ "FLUSH_AND_INV_DB_DATA_TS", 43 },
+	{ "FLUSH_AND_INV_DB_META", 44 },
+	{ "FLUSH_AND_INV_CB_DATA_TS", 45 },
+	{ "FLUSH_AND_INV_CB_META", 46 },
+	{ "CS_DONE", 47 },
+	{ "PS_DONE", 48 },
+	{ "FLUSH_AND_INV_CB_PIXEL_DATA", 49 },
+	{ "THREAD_TRACE_START", 51 },
+	{ "THREAD_TRACE_STOP", 52 },
+	{ "THREAD_TRACE_FLUSH", 54 },
+	{ "THREAD_TRACE_FINISH", 55 },
+	{ NULL, 0 },
+};
+
+static char *vgt_event_decode(unsigned tag)
+{
+	unsigned x;
+	for (x = 0; vgt_event_tags[x].name; x++) {
+		if (vgt_event_tags[x].event_no == tag)
+			return vgt_event_tags[x].name;
+	}
+	return "<unknown event>";
+}
+
+
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
 
 static void decode_pkt0(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
@@ -449,7 +504,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_HI", stream->words[4], NULL, 16);
 			break;
 		case 0x49: // RELEASE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(stream->words[0], 0, 6), NULL, 10);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(stream->words[0], 0, 6), vgt_event_decode(BITS(stream->words[0], 0, 6)), 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(stream->words[0], 8, 12), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TCL1_VOL_ACTION_ENA", BITS(stream->words[0], 12, 13), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TC_VOL_ACTION_ENA", BITS(stream->words[0], 13, 14), NULL, 10);
