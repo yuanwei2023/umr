@@ -108,6 +108,7 @@ static int umr_get_wave_status_vi(struct umr_asic *asic, unsigned se, unsigned s
 {
 	uint32_t x, value, buf[32];
 	int r;
+	struct umr_reg *reg;
 
 	memset(buf, 0, sizeof buf);
 
@@ -136,29 +137,30 @@ static int umr_get_wave_status_vi(struct umr_asic *asic, unsigned se, unsigned s
 
 	x = 1;
 	ws->wave_status.value = value = buf[x++];
-		ws->wave_status.scc = (value & 1);
-		ws->wave_status.priv = (value >> 5) & 1;
-		ws->wave_status.execz = (value >> 9) & 1;
-		ws->wave_status.vccz  = (value >> 10) & 1;
-		ws->wave_status.in_tg = (value >> 11) & 1;
-		ws->wave_status.halt = (value >> 13) & 1;
-		ws->wave_status.valid = (value >> 16) & 1;
-		ws->wave_status.spi_prio = (value >> 1) & 3;
-		ws->wave_status.wave_prio = (value >> 3) & 3;
-		ws->wave_status.trap_en = (value >> 6) & 1;
-		ws->wave_status.ttrace_en = (value >> 7) & 1;
-		ws->wave_status.export_rdy = (value >> 8) & 1;
-		ws->wave_status.in_barrier = (value >> 0xc) & 1;
-		ws->wave_status.trap = (value >> 0xe) & 1;
-		ws->wave_status.ecc_err = (value >> 0x11) & 1;
-		ws->wave_status.skip_export = (value >> 0x12) & 1;
-		ws->wave_status.perf_en = (value >> 0x13) & 1;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_STATUS");
+		ws->wave_status.scc = umr_bitslice_reg(asic, reg, "SCC", value);
+		ws->wave_status.priv = umr_bitslice_reg(asic, reg, "PRIV", value);
+		ws->wave_status.execz = umr_bitslice_reg(asic, reg, "EXECZ", value);
+		ws->wave_status.vccz  = umr_bitslice_reg(asic, reg, "VCCZ", value);
+		ws->wave_status.in_tg = umr_bitslice_reg(asic, reg, "IN_TG", value);
+		ws->wave_status.halt = umr_bitslice_reg(asic, reg, "HALT", value);
+		ws->wave_status.valid = umr_bitslice_reg(asic, reg, "VALID", value);
+		ws->wave_status.spi_prio = umr_bitslice_reg(asic, reg, "SPI_PRIO", value);
+		ws->wave_status.wave_prio = umr_bitslice_reg(asic, reg, "USER_PRIO", value);
+		ws->wave_status.trap_en = umr_bitslice_reg(asic, reg, "TRAP_EN", value);
+		ws->wave_status.ttrace_en = umr_bitslice_reg(asic, reg, "TTRACE_EN", value);
+		ws->wave_status.export_rdy = umr_bitslice_reg(asic, reg, "EXPORT_RDY", value);
+		ws->wave_status.in_barrier = umr_bitslice_reg(asic, reg, "IN_BARRIER", value);
+		ws->wave_status.trap = umr_bitslice_reg(asic, reg, "TRAP", value);
+		ws->wave_status.ecc_err = umr_bitslice_reg(asic, reg, "ECC_ERR", value);
+		ws->wave_status.skip_export = umr_bitslice_reg(asic, reg, "SKIP_EXPORT", value);
+		ws->wave_status.perf_en = umr_bitslice_reg(asic, reg, "PERF_EN", value);
 		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
 		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
 		ws->wave_status.data_atc = (value >> 0x16) & 1;
 		ws->wave_status.inst_atc = (value >> 0x17) & 1;
 		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
-		ws->wave_status.must_export = (value >> 0x1b) & 1;
+		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
 
 	ws->pc_lo = buf[x++];
 	ws->pc_hi = buf[x++];
@@ -166,41 +168,46 @@ static int umr_get_wave_status_vi(struct umr_asic *asic, unsigned se, unsigned s
 	ws->exec_hi = buf[x++];
 
 	ws->hw_id.value = value = buf[x++];
-		ws->hw_id.wave_id = (value & 0xf);
-		ws->hw_id.simd_id = (value >> 4) & 3;
-		ws->hw_id.pipe_id = (value >> 6) & 3;
-		ws->hw_id.cu_id   = (value >> 8) & 0xF;
-		ws->hw_id.sh_id   = (value >> 12) & 1;
-		ws->hw_id.se_id   = (value >> 13) & 3;
-		ws->hw_id.tg_id   = (value >> 16) & 0xf;
-		ws->hw_id.vm_id   = (value >> 20) & 0xF;
-		ws->hw_id.queue_id = (value >> 24) & 7;
-		ws->hw_id.state_id = (value >> 27) & 7;
-		ws->hw_id.me_id    = (value >> 30) & 3;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID");
+		ws->hw_id.wave_id = umr_bitslice_reg(asic, reg, "WAVE_ID", value);
+		ws->hw_id.simd_id = umr_bitslice_reg(asic, reg, "SIMD_ID", value);
+		ws->hw_id.pipe_id = umr_bitslice_reg(asic, reg, "PIPE_ID", value);
+		ws->hw_id.cu_id   = umr_bitslice_reg(asic, reg, "CU_ID", value);
+		ws->hw_id.sh_id   = umr_bitslice_reg(asic, reg, "SH_ID", value);
+		ws->hw_id.se_id   = umr_bitslice_reg(asic, reg, "SE_ID", value);
+		ws->hw_id.tg_id   = umr_bitslice_reg(asic, reg, "TG_ID", value);
+		ws->hw_id.vm_id   = umr_bitslice_reg(asic, reg, "VM_ID", value);
+		ws->hw_id.queue_id = umr_bitslice_reg(asic, reg, "QUEUE_ID", value);
+		ws->hw_id.state_id = umr_bitslice_reg(asic, reg, "STATE_ID", value);
+		ws->hw_id.me_id    = umr_bitslice_reg(asic, reg, "ME_ID", value);
 
 	ws->wave_inst_dw0 = buf[x++];
 	ws->wave_inst_dw1 = buf[x++];
 
 	ws->gpr_alloc.value = value = buf[x++];
-		ws->gpr_alloc.vgpr_base = (value & 0x3f);
-		ws->gpr_alloc.vgpr_size = (value >> 8) & 0x3f;
-		ws->gpr_alloc.sgpr_base = (value >> 0x10) & 0x3f;
-		ws->gpr_alloc.sgpr_size = (value >> 0x18) & 0xf;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC");
+		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
+		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
+		ws->gpr_alloc.sgpr_base = umr_bitslice_reg(asic, reg, "SGPR_BASE", value);
+		ws->gpr_alloc.sgpr_size = umr_bitslice_reg(asic, reg, "SGPR_SIZE", value);
 
 	ws->lds_alloc.value = value = buf[x++];
-		ws->lds_alloc.lds_base = (value >> 0) & 0xFF;
-		ws->lds_alloc.lds_size = (value >> 0xc) & 0x1FF;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC");
+		ws->lds_alloc.lds_base = umr_bitslice_reg(asic, reg, "LDS_BASE", value);
+		ws->lds_alloc.lds_size = umr_bitslice_reg(asic, reg, "LDS_SIZE", value);
 
 	ws->trapsts.value = value = buf[x++];
-		ws->trapsts.excp = (value >> 0) & 0x1ff;
-		ws->trapsts.excp_cycle = (value >> 0x10) & 0x3f;
-		ws->trapsts.dp_rate = (value >> 0x1d) & 0xe;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS");
+		ws->trapsts.excp = umr_bitslice_reg(asic, reg, "EXCP", value);
+		ws->trapsts.excp_cycle = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
+		ws->trapsts.dp_rate = umr_bitslice_reg(asic, reg, "DP_RATE", value);
 		
 	ws->ib_sts.value = value = buf[x++];
-		ws->ib_sts.vm_cnt = (value >> 0) & 0xF;
-		ws->ib_sts.exp_cnt = (value >> 4) & 0x7;
-		ws->ib_sts.lgkm_cnt = (value >> 8) & 0xF;
-		ws->ib_sts.valu_cnt = (value >> 0xc) & 0x7;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS");
+		ws->ib_sts.vm_cnt = umr_bitslice_reg(asic, reg, "VM_CNT", value);
+		ws->ib_sts.exp_cnt = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
+		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value);
+		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
 
 	ws->tba_lo = buf[x++];
 	ws->tba_hi = buf[x++];
@@ -216,6 +223,7 @@ static int umr_get_wave_status_ai(struct umr_asic *asic, unsigned se, unsigned s
 {
 	uint32_t x, value, buf[32];
 	int r;
+	struct umr_reg *reg;
 
 	memset(buf, 0, sizeof buf);
 
@@ -244,28 +252,30 @@ static int umr_get_wave_status_ai(struct umr_asic *asic, unsigned se, unsigned s
 
 	x = 1;
 	ws->wave_status.value = value = buf[x++];
-		ws->wave_status.scc = (value & 1);
-		ws->wave_status.priv = (value >> 5) & 1;
-		ws->wave_status.execz = (value >> 9) & 1;
-		ws->wave_status.vccz  = (value >> 10) & 1;
-		ws->wave_status.in_tg = (value >> 11) & 1;
-		ws->wave_status.halt = (value >> 13) & 1;
-		ws->wave_status.valid = (value >> 16) & 1;
-		ws->wave_status.spi_prio = (value >> 1) & 3;
-		ws->wave_status.wave_prio = (value >> 3) & 3;
-		ws->wave_status.trap_en = (value >> 6) & 1;
-		ws->wave_status.ttrace_en = (value >> 7) & 1;
-		ws->wave_status.export_rdy = (value >> 8) & 1;
-		ws->wave_status.in_barrier = (value >> 0xc) & 1;
-		ws->wave_status.trap = (value >> 0xe) & 1;
-		ws->wave_status.ecc_err = (value >> 0x11) & 1;
-		ws->wave_status.skip_export = (value >> 0x12) & 1;
-		ws->wave_status.perf_en = (value >> 0x13) & 1;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_STATUS");
+		ws->wave_status.scc = umr_bitslice_reg(asic, reg, "SCC", value);
+		ws->wave_status.priv = umr_bitslice_reg(asic, reg, "PRIV", value);
+		ws->wave_status.execz = umr_bitslice_reg(asic, reg, "EXECZ", value);
+		ws->wave_status.vccz  = umr_bitslice_reg(asic, reg, "VCCZ", value);
+		ws->wave_status.in_tg = umr_bitslice_reg(asic, reg, "IN_TG", value);
+		ws->wave_status.halt = umr_bitslice_reg(asic, reg, "HALT", value);
+		ws->wave_status.valid = umr_bitslice_reg(asic, reg, "VALID", value);
+		ws->wave_status.spi_prio = umr_bitslice_reg(asic, reg, "SPI_PRIO", value);
+		ws->wave_status.wave_prio = umr_bitslice_reg(asic, reg, "USER_PRIO", value);
+		ws->wave_status.trap_en = umr_bitslice_reg(asic, reg, "TRAP_EN", value);
+		ws->wave_status.ttrace_en = umr_bitslice_reg(asic, reg, "TTRACE_EN", value);
+		ws->wave_status.export_rdy = umr_bitslice_reg(asic, reg, "EXPORT_RDY", value);
+		ws->wave_status.in_barrier = umr_bitslice_reg(asic, reg, "IN_BARRIER", value);
+		ws->wave_status.trap = umr_bitslice_reg(asic, reg, "TRAP", value);
+		ws->wave_status.ecc_err = umr_bitslice_reg(asic, reg, "ECC_ERR", value);
+		ws->wave_status.skip_export = umr_bitslice_reg(asic, reg, "SKIP_EXPORT", value);
+		ws->wave_status.perf_en = umr_bitslice_reg(asic, reg, "PERF_EN", value);
 		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
 		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
-		ws->wave_status.allow_replay = (value >> 0x16) & 1;
-		ws->wave_status.fatal_halt = (value >> 0x17) & 1;
-		ws->wave_status.must_export = (value >> 0x1b) & 1;
+		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
+		ws->wave_status.allow_replay = umr_bitslice_reg(asic, reg, "ALLOW_REPLAY", value);
+		ws->wave_status.fatal_halt = umr_bitslice_reg(asic, reg, "FATAL_HALT", value);
+		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
 
 	ws->pc_lo = buf[x++];
 	ws->pc_hi = buf[x++];
@@ -273,41 +283,46 @@ static int umr_get_wave_status_ai(struct umr_asic *asic, unsigned se, unsigned s
 	ws->exec_hi = buf[x++];
 
 	ws->hw_id.value = value = buf[x++];
-		ws->hw_id.wave_id = (value & 0xf);
-		ws->hw_id.simd_id = (value >> 4) & 3;
-		ws->hw_id.pipe_id = (value >> 6) & 3;
-		ws->hw_id.cu_id   = (value >> 8) & 0xF;
-		ws->hw_id.sh_id   = (value >> 12) & 1;
-		ws->hw_id.se_id   = (value >> 13) & 3;
-		ws->hw_id.tg_id   = (value >> 16) & 0xf;
-		ws->hw_id.vm_id   = (value >> 20) & 0xF;
-		ws->hw_id.queue_id = (value >> 24) & 7;
-		ws->hw_id.state_id = (value >> 27) & 7;
-		ws->hw_id.me_id    = (value >> 30) & 3;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID");
+		ws->hw_id.wave_id = umr_bitslice_reg(asic, reg, "WAVE_ID", value);
+		ws->hw_id.simd_id = umr_bitslice_reg(asic, reg, "SIMD_ID", value);
+		ws->hw_id.pipe_id = umr_bitslice_reg(asic, reg, "PIPE_ID", value);
+		ws->hw_id.cu_id   = umr_bitslice_reg(asic, reg, "CU_ID", value);
+		ws->hw_id.sh_id   = umr_bitslice_reg(asic, reg, "SH_ID", value);
+		ws->hw_id.se_id   = umr_bitslice_reg(asic, reg, "SE_ID", value);
+		ws->hw_id.tg_id   = umr_bitslice_reg(asic, reg, "TG_ID", value);
+		ws->hw_id.vm_id   = umr_bitslice_reg(asic, reg, "VM_ID", value);
+		ws->hw_id.queue_id = umr_bitslice_reg(asic, reg, "QUEUE_ID", value);
+		ws->hw_id.state_id = umr_bitslice_reg(asic, reg, "STATE_ID", value);
+		ws->hw_id.me_id    = umr_bitslice_reg(asic, reg, "ME_ID", value);
 
 	ws->wave_inst_dw0 = buf[x++];
 	ws->wave_inst_dw1 = buf[x++];
 
 	ws->gpr_alloc.value = value = buf[x++];
-		ws->gpr_alloc.vgpr_base = (value & 0x3f);
-		ws->gpr_alloc.vgpr_size = (value >> 8) & 0x3f;
-		ws->gpr_alloc.sgpr_base = (value >> 0x10) & 0x3f;
-		ws->gpr_alloc.sgpr_size = (value >> 0x18) & 0xf;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC");
+		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
+		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
+		ws->gpr_alloc.sgpr_base = umr_bitslice_reg(asic, reg, "SGPR_BASE", value);
+		ws->gpr_alloc.sgpr_size = umr_bitslice_reg(asic, reg, "SGPR_SIZE", value);
 
 	ws->lds_alloc.value = value = buf[x++];
-		ws->lds_alloc.lds_base = (value >> 0) & 0xFF;
-		ws->lds_alloc.lds_size = (value >> 0xc) & 0x1FF;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC");
+		ws->lds_alloc.lds_base = umr_bitslice_reg(asic, reg, "LDS_BASE", value);
+		ws->lds_alloc.lds_size = umr_bitslice_reg(asic, reg, "LDS_SIZE", value);
 
 	ws->trapsts.value = value = buf[x++];
-		ws->trapsts.excp = (value >> 0) & 0x1ff;
-		ws->trapsts.excp_cycle = (value >> 0x10) & 0x3f;
-		ws->trapsts.dp_rate = (value >> 0x1d) & 0xe;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS");
+		ws->trapsts.excp = umr_bitslice_reg(asic, reg, "EXCP", value);
+		ws->trapsts.excp_cycle = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
+		ws->trapsts.dp_rate = umr_bitslice_reg(asic, reg, "DP_RATE", value);
 
 	ws->ib_sts.value = value = buf[x++];
-		ws->ib_sts.vm_cnt = (value >> 0) & 0xF;
-		ws->ib_sts.exp_cnt = (value >> 4) & 0x7;
-		ws->ib_sts.lgkm_cnt = (value >> 8) & 0xF;
-		ws->ib_sts.valu_cnt = (value >> 0xc) & 0x7;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS");
+		ws->ib_sts.vm_cnt = umr_bitslice_reg(asic, reg, "VM_CNT", value);
+		ws->ib_sts.exp_cnt = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
+		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value);
+		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
 
 	ws->ib_dbg0 = buf[x++];
 	ws->m0 = buf[x++];
@@ -361,6 +376,7 @@ static int read_wave_status_via_mmio_nv(struct umr_asic *asic, uint32_t wave, ui
 static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
 	uint32_t x, value, buf[32];
+	struct umr_reg *reg;
 
 	if (simd)
 		fprintf(stderr, "[BUG]: simd should be zero in umr_get_wave_status_nv()\n");
@@ -393,27 +409,30 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 
 	x = 1;
 	ws->wave_status.value = value = buf[x++];
-		ws->wave_status.scc           = (value & 1);
-		ws->wave_status.spi_prio      = (value >> 1) & 3;
-		ws->wave_status.wave_prio     = (value >> 3) & 3;
-		ws->wave_status.priv          = (value >> 5) & 1;
-		ws->wave_status.trap_en       = (value >> 6) & 1;
-		ws->wave_status.ttrace_en     = (value >> 7) & 1;
-		ws->wave_status.export_rdy    = (value >> 8) & 1;
-		ws->wave_status.execz         = (value >> 9) & 1;
-		ws->wave_status.vccz          = (value >> 10) & 1;
-		ws->wave_status.in_tg         = (value >> 11) & 1;
-		ws->wave_status.in_barrier    = (value >> 12) & 1;
-		ws->wave_status.halt          = (value >> 13) & 1;
-		ws->wave_status.trap          = (value >> 14) & 1;
-		ws->wave_status.valid         = (value >> 16) & 1;
-		ws->wave_status.ecc_err       = (value >> 17) & 1;
-		ws->wave_status.skip_export   = (value >> 18) & 1;
-		ws->wave_status.perf_en       = (value >> 19) & 1;
-		ws->wave_status.cond_dbg_user = (value >> 20) & 1;
-		ws->wave_status.cond_dbg_sys  = (value >> 21) & 1;
-		ws->wave_status.fatal_halt    = (value >> 23) & 1;
-		ws->wave_status.must_export   = (value >> 27) & 1;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_STATUS");
+		ws->wave_status.scc = umr_bitslice_reg(asic, reg, "SCC", value);
+		ws->wave_status.priv = umr_bitslice_reg(asic, reg, "PRIV", value);
+		ws->wave_status.execz = umr_bitslice_reg(asic, reg, "EXECZ", value);
+		ws->wave_status.vccz  = umr_bitslice_reg(asic, reg, "VCCZ", value);
+		ws->wave_status.in_tg = umr_bitslice_reg(asic, reg, "IN_TG", value);
+		ws->wave_status.halt = umr_bitslice_reg(asic, reg, "HALT", value);
+		ws->wave_status.valid = umr_bitslice_reg(asic, reg, "VALID", value);
+		ws->wave_status.spi_prio = umr_bitslice_reg(asic, reg, "SPI_PRIO", value);
+		ws->wave_status.wave_prio = umr_bitslice_reg(asic, reg, "USER_PRIO", value);
+		ws->wave_status.trap_en = umr_bitslice_reg(asic, reg, "TRAP_EN", value);
+		ws->wave_status.ttrace_en = umr_bitslice_reg(asic, reg, "TTRACE_EN", value);
+		ws->wave_status.export_rdy = umr_bitslice_reg(asic, reg, "EXPORT_RDY", value);
+		ws->wave_status.in_barrier = umr_bitslice_reg(asic, reg, "IN_BARRIER", value);
+		ws->wave_status.trap = umr_bitslice_reg(asic, reg, "TRAP", value);
+		ws->wave_status.ecc_err = umr_bitslice_reg(asic, reg, "ECC_ERR", value);
+		ws->wave_status.skip_export = umr_bitslice_reg(asic, reg, "SKIP_EXPORT", value);
+		ws->wave_status.perf_en = umr_bitslice_reg(asic, reg, "PERF_EN", value);
+		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
+		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
+		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
+		ws->wave_status.allow_replay = umr_bitslice_reg(asic, reg, "ALLOW_REPLAY", value);
+		ws->wave_status.fatal_halt = umr_bitslice_reg(asic, reg, "FATAL_HALT", value);
+		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
 
 	ws->pc_lo = buf[x++];
 	ws->pc_hi = buf[x++];
@@ -421,62 +440,72 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 	ws->exec_hi = buf[x++];
 
 	ws->hw_id1.value = value = buf[x++];
-		ws->hw_id1.wave_id = (value & 0x1f);
-		ws->hw_id1.simd_id = (value >> 8) & 3;
-		ws->hw_id1.wgp_id  = (value >> 10) & 0xF;
-		ws->hw_id1.sa_id   = (value >> 16) & 1;
-		ws->hw_id1.se_id   = (value >> 18) & 3;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID1");
+		ws->hw_id1.wave_id = umr_bitslice_reg(asic, reg, "WAVE_ID", value);
+		ws->hw_id1.simd_id = umr_bitslice_reg(asic, reg, "SIMD_ID", value);
+		ws->hw_id1.wgp_id  = umr_bitslice_reg(asic, reg, "WGP_ID", value);
+		ws->hw_id1.sa_id   = umr_bitslice_reg(asic, reg, "SA_ID", value);
+		ws->hw_id1.se_id   = umr_bitslice_reg(asic, reg, "SE_ID", value);
 
 	ws->hw_id2.value = value = buf[x++];
-		ws->hw_id2.queue_id     = (value & 0xf);
-		ws->hw_id2.pipe_id      = (value >> 4) & 3;
-		ws->hw_id2.me_id        = (value >> 8) & 3;
-		ws->hw_id2.state_id     = (value >> 12) & 7;
-		ws->hw_id2.wg_id        = (value >> 16) & 31;
-		ws->hw_id2.vm_id        = (value >> 24) & 15;
-		ws->hw_id2.compat_level = (value >> 29) & 3;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID2");
+		ws->hw_id2.queue_id     = umr_bitslice_reg(asic, reg, "QUEUE_ID", value);
+		ws->hw_id2.pipe_id      = umr_bitslice_reg(asic, reg, "PIPE_ID", value);
+		ws->hw_id2.me_id        = umr_bitslice_reg(asic, reg, "ME_ID", value);
+		ws->hw_id2.state_id     = umr_bitslice_reg(asic, reg, "STATE_ID", value);
+		ws->hw_id2.wg_id        = umr_bitslice_reg(asic, reg, "WG_ID", value);
+		ws->hw_id2.vm_id        = umr_bitslice_reg(asic, reg, "VM_ID", value);
+		ws->hw_id2.compat_level = umr_bitslice_reg(asic, reg, "COMPAT_LEVEL", value);
 
 	ws->wave_inst_dw0 = buf[x++];
 
 	ws->gpr_alloc.value = value = buf[x++];
-		ws->gpr_alloc.vgpr_base = (value & 0xff);
-		ws->gpr_alloc.vgpr_size = (value >> 8) & 0xff;
-		ws->gpr_alloc.sgpr_base = (value >> 16) & 0xff;
-		ws->gpr_alloc.sgpr_size = (value >> 24) & 0xf;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC");
+		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
+		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
+		ws->gpr_alloc.sgpr_base = umr_bitslice_reg(asic, reg, "SGPR_BASE", value);
+		ws->gpr_alloc.sgpr_size = umr_bitslice_reg(asic, reg, "SGPR_SIZE", value);
 
 	ws->lds_alloc.value = value = buf[x++];
-		ws->lds_alloc.lds_base = (value >> 0) & 0xFF;
-		ws->lds_alloc.lds_size = (value >> 12) & 0x1FF;
-		ws->lds_alloc.vgpr_shared_size = (value >> 24) & 15;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC");
+		ws->lds_alloc.lds_base = umr_bitslice_reg(asic, reg, "LDS_BASE", value);
+		ws->lds_alloc.lds_size = umr_bitslice_reg(asic, reg, "LDS_SIZE", value);
+		ws->lds_alloc.vgpr_shared_size = umr_bitslice_reg(asic, reg, "VGPR_SHARED_SIZE", value);
 
 	ws->trapsts.value = value = buf[x++];
-		ws->trapsts.excp          = ((value >> 0) & 0x1ff) | (((value >> 12) & 7) << 9);
-		ws->trapsts.savectx       = (value >> 10) & 1;
-		ws->trapsts.illegal_inst  = (value >> 11) & 1;
-		ws->trapsts.excp_hi       = (value >> 12) & 7;
-		ws->trapsts.buffer_oob    = (value >> 15) & 1;
-		ws->trapsts.excp_cycle    = (value >> 16) & 0xf;
-		ws->trapsts.excp_wave64hi = (value >> 24) & 1;
-		ws->trapsts.xnack_error   = (value >> 28) & 1;
-		ws->trapsts.dp_rate       = (value >> 29) & 0x3;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS");
+		ws->trapsts.excp          = umr_bitslice_reg(asic, reg, "EXCP", value) |
+								    (umr_bitslice_reg(asic, reg, "EXCP_HI", value) << 9);
+		ws->trapsts.savectx       = umr_bitslice_reg(asic, reg, "SAVECTX", value);
+		ws->trapsts.illegal_inst  = umr_bitslice_reg(asic, reg, "ILLEGAL_INST", value);
+		ws->trapsts.excp_hi       = umr_bitslice_reg(asic, reg, "EXCP_HI", value);
+		ws->trapsts.buffer_oob    = umr_bitslice_reg(asic, reg, "BUFFER_OOB", value);
+		ws->trapsts.excp_cycle    = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
+		ws->trapsts.excp_wave64hi = umr_bitslice_reg(asic, reg, "EXCP_WAVE64HI", value);
+		ws->trapsts.xnack_error   = umr_bitslice_reg(asic, reg, "XNACK_ERROR", value);
+		ws->trapsts.dp_rate       = umr_bitslice_reg(asic, reg, "DP_RATE", value);
 
 	ws->ib_sts.value = value = buf[x++];
-		ws->ib_sts.vm_cnt   = ((value >> 0) & 0xF) | (((value >> 22) & 3) << 4); // VM_CNT_HI
-		ws->ib_sts.exp_cnt  = (value >> 4) & 0x7;
-		ws->ib_sts.lgkm_cnt = ((value >> 8) & 0xF) | (((value >> 7) & 1) << 4) | (((value >> 24) & 1) << 5); // LGKM_CNT_BIT4/5 added on
-		ws->ib_sts.valu_cnt = (value >> 12) & 0x7;
-		ws->ib_sts.replay_w64h = (value >> 25) & 1;
-		ws->ib_sts.vs_cnt   = (value >> 26) & 63;
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS");
+		ws->ib_sts.vm_cnt   = umr_bitslice_reg(asic, reg, "VM_CNT", value) |
+							  (umr_bitslice_reg(asic, reg, "VM_CNT_HI", value) << 4);
+		ws->ib_sts.exp_cnt  = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
+		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value) |
+							  (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT4", value) << 4) |
+							  (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT5", value) << 5);
+		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
+		ws->ib_sts.replay_w64h = umr_bitslice_reg(asic, reg, "REPLAY_W64H", value);
+		ws->ib_sts.vs_cnt   = umr_bitslice_reg(asic, reg, "VS_CNT", value);
 
 	ws->ib_sts2.value = value = buf[x++];
-		ws->ib_sts2.inst_prefetch     = value & 3;
-		ws->ib_sts2.resource_override = (value >> 7) & 1;
-		ws->ib_sts2.mem_order         = (value >> 8) & 3;
-		ws->ib_sts2.fwd_progress      = (value >> 10) & 1;
-		ws->ib_sts2.wave64            = (value >> 11) & 1;
-		ws->ib_sts2.wave64hi          = (value >> 12) & 1;
-		ws->ib_sts2.subv_loop         = (value >> 13) & 1;
-
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS2");
+		ws->ib_sts2.inst_prefetch     = umr_bitslice_reg(asic, reg, "INST_PREFETCH", value);
+		ws->ib_sts2.resource_override = umr_bitslice_reg(asic, reg, "RESOURCE_OVERRIDE", value);
+		ws->ib_sts2.mem_order         = umr_bitslice_reg(asic, reg, "MEM_ORDER", value);
+		ws->ib_sts2.fwd_progress      = umr_bitslice_reg(asic, reg, "FWD_PROGRESS", value);
+		ws->ib_sts2.wave64            = umr_bitslice_reg(asic, reg, "WAVE64", value);
+		ws->ib_sts2.wave64hi          = umr_bitslice_reg(asic, reg, "WAVE64HI", value);
+		ws->ib_sts2.subv_loop         = umr_bitslice_reg(asic, reg, "SUBV_LOOP", value);
 
 	ws->ib_dbg1 = buf[x++];
 	ws->m0 = buf[x++];
