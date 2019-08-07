@@ -430,7 +430,6 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
 		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
 		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
-		ws->wave_status.allow_replay = umr_bitslice_reg(asic, reg, "ALLOW_REPLAY", value);
 		ws->wave_status.fatal_halt = umr_bitslice_reg(asic, reg, "FATAL_HALT", value);
 		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
 
