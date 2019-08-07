@@ -25,6 +25,81 @@
 #include "umrapp.h"
 #include <inttypes.h>
 
+//#define PM4_STREAM
+
+#ifdef PM4_STREAM
+// example opaque data to keep track of offsets
+struct demo_ui_data {
+	uint64_t off[16]; // address of start of IB so we can compute offsets when printing opcodes/fields
+	int i;
+};
+
+static void start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type)
+{
+	struct demo_ui_data *data = ui->data;
+	data->off[data->i++] = ib_addr;
+	printf("Decoding IB at %lu@0x%llx from %lu@0x%llx of %lu words (type %d)\n", (unsigned long)ib_vmid, (unsigned long long)ib_addr, (unsigned long)from_vmid, (unsigned long long)from_addr, (unsigned long)size, type);
+}
+static void start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, char *opcode_name)
+{
+	struct demo_ui_data *data = ui->data;
+	printf("Opcode 0x%lx [%s] at %lu@[0x%llx + 0x%llx] (%lu words, type: %d)\n", (unsigned long)opcode, opcode_name, (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], (unsigned long)nwords, pkttype);
+}
+static void add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix)
+{
+	struct demo_ui_data *data = ui->data;
+	printf("\t[%lu@0x%llx + 0x%llx] -- %s == ", (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], field_name);
+
+	if (str) {
+		printf("[%s]", str);
+	} else {
+		switch (ideal_radix) {
+			case 10: printf("%llu", (unsigned long long)value); break;
+			case 16: printf("0x%llx", (unsigned long long)value); break;
+		}
+	}
+	printf("\n");
+}
+
+static	void add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader)
+{
+	struct demo_ui_data *data = ui->data;
+	printf("Shader from %lu@[0x%llx + 0x%llx] at %lu@0x%llx, type %d, size %lu\n", (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], (unsigned long)shader->vmid, (unsigned long long)shader->addr, shader->type, (unsigned long)shader->size);
+}
+
+static void unhandled(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream)
+{
+}
+
+static void done(struct umr_pm4_stream_decode_ui *ui)
+{
+	struct demo_ui_data *data = ui->data;
+	data->i--;
+
+	printf("Done decoding IB\n");
+}
+
+static struct  umr_pm4_stream_decode_ui demo_ui = { start_ib, start_opcode, add_field, add_shader, unhandled, done, NULL };
+
+static void foo(struct umr_asic *asic, uint32_t *data, uint32_t x)
+{
+	struct umr_pm4_stream *stream, *sstream;
+	struct umr_pm4_stream_decode_ui myui;
+	myui = demo_ui;
+
+	// assign our opaque structure
+	myui.data = calloc(1, sizeof(struct demo_ui_data));
+
+	stream = umr_pm4_decode_stream(asic, UMR_PROCESS_HUB, data, x);
+	sstream = umr_pm4_decode_stream_opcodes(asic, &myui, stream, 0, 0, 0, 0, 3, 1); // ~0UL);
+	printf("\nand now the rest...\n");
+	umr_pm4_decode_stream_opcodes(asic, &myui, sstream, 0, 0, 0, 0, ~0UL, 1);
+
+	free(myui.data);
+}
+
+#endif
+
 void umr_ib_read_file(struct umr_asic *asic, char *filename, int pm)
 {
 	struct umr_ring_decoder decoder;
@@ -68,13 +143,17 @@ void umr_ib_read_file(struct umr_asic *asic, char *filename, int pm)
 	}
 	fclose(infile);
 
+	follow_ib = asic->options.follow_ib;
+	asic->options.follow_ib = 0;
+#ifdef PM4_STREAM
+	foo(asic, data, x);
+#else
 	decoder.next_ib_info.vmid = UMR_PROCESS_HUB;
 	decoder.next_ib_info.ib_addr = (uintptr_t)data;
 	decoder.next_ib_info.size = x * sizeof(*data);
 	decoder.pm = pm;
-	follow_ib = asic->options.follow_ib;
-	asic->options.follow_ib = 0;
 	umr_dump_ib(asic, &decoder);
+#endif
 	asic->options.follow_ib = follow_ib;
 	free(data);
 }

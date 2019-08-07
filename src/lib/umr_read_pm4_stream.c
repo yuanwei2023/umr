@@ -80,7 +80,10 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 				ps->shader = calloc(1, sizeof(ps->shader[0]));
 				ps->shader->vmid = vmid;
 				ps->shader->addr = shader_addr;
-				ps->shader->size = umr_compute_shader_size(asic, ps->shader);
+				if (asic->options.follow_ib)
+					ps->shader->size = umr_compute_shader_size(asic, ps->shader);
+				else
+					ps->shader->size = 1;
 				ps->shader->type = type;
 				ps->shader->rsrc1 = rsrc1;
 				ps->shader->rsrc2 = rsrc2;
@@ -89,25 +92,27 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 		}
 		case 0x3f: // INDIRECT_BUFFER_CIK
 		case 0x33: // INDIRECT_BUFFER_CONST
-			addr = (ps->words[0] & ~3ULL) | ((uint64_t)(ps->words[1] & 0xFFFF) << 32);
+			if (asic->options.follow_ib) {
+				addr = (ps->words[0] & ~3ULL) | ((uint64_t)(ps->words[1] & 0xFFFF) << 32);
 
-			// abort if the IB is >8 MB in size which is very likely just garbage data
-			size = (ps->words[2] & ((1UL << 20) - 1)) * 4;
-			if (size > (1024UL * 1024UL * 8UL))
-				break;
+				// abort if the IB is >8 MB in size which is very likely just garbage data
+				size = (ps->words[2] & ((1UL << 20) - 1)) * 4;
+				if (size > (1024UL * 1024UL * 8UL))
+					break;
 
-			tvmid = ps->words[2] >> 24;
-			if (!tvmid)
-				tvmid = vmid;
-			buf = calloc(1, size);
-			if (umr_read_vram(asic, tvmid, addr, size, buf) < 0) {
-				fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
-			} else {
-				ps->ib = umr_pm4_decode_stream(asic, tvmid, buf, size / 4);
-				ps->ib_source.addr = addr;
-				ps->ib_source.vmid = tvmid;
+				tvmid = ps->words[2] >> 24;
+				if (!tvmid)
+					tvmid = vmid;
+				buf = calloc(1, size);
+				if (umr_read_vram(asic, tvmid, addr, size, buf) < 0) {
+					fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
+				} else {
+					ps->ib = umr_pm4_decode_stream(asic, tvmid, buf, size / 4);
+					ps->ib_source.addr = addr;
+					ps->ib_source.vmid = tvmid;
+				}
+				free(buf);
 			}
-			free(buf);
 			break;
 	}
 }
@@ -340,7 +345,7 @@ int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname)
  */
 struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt)
 {
-	void *ps;
+	void *ps = NULL;
 	uint32_t *ringdata, ringsize;
 
 	if (!no_halt && asic->options.halt_waves)
@@ -349,30 +354,31 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 	// read ring data and reduce indeices modulo ring size
 	// since the kernel returned values might be unwrapped.
 	ringdata = umr_read_ring_data(asic, ringname, &ringsize);
-	ringsize /= 4;
-	ringdata[0] %= ringsize;
-	ringdata[1] %= ringsize;
 
-	// only proceed if there is data to read
-	// and then linearize it so that the stream
-	// decoder can do it's thing
-	if (ringdata[0] != ringdata[1]) { // rptr != wptr
-		uint32_t *lineardata, linearsize;
+	if (ringdata) {
+		ringsize /= 4;
+		ringdata[0] %= ringsize;
+		ringdata[1] %= ringsize;
 
-		// copy ring data into linear array
-		lineardata = calloc(ringsize, sizeof(*lineardata));
-		linearsize = 0;
-		while (ringdata[0] != ringdata[1]) {
-			lineardata[linearsize++] = ringdata[3 + ringdata[0]];  // first 3 words are rptr/wptr/dwptr
-			ringdata[0] = (ringdata[0] + 1) % ringsize;
+		// only proceed if there is data to read
+		// and then linearize it so that the stream
+		// decoder can do it's thing
+		if (ringdata[0] != ringdata[1]) { // rptr != wptr
+			uint32_t *lineardata, linearsize;
+
+			// copy ring data into linear array
+			lineardata = calloc(ringsize, sizeof(*lineardata));
+			linearsize = 0;
+			while (ringdata[0] != ringdata[1]) {
+				lineardata[linearsize++] = ringdata[3 + ringdata[0]];  // first 3 words are rptr/wptr/dwptr
+				ringdata[0] = (ringdata[0] + 1) % ringsize;
+			}
+
+			ps = umr_pm4_decode_stream(asic, 0, lineardata, linearsize);
+			free(lineardata);
 		}
-
-		ps = umr_pm4_decode_stream(asic, 0, lineardata, linearsize);
-		free(lineardata);
-		free(ringdata);
-	} else {
-		ps = NULL;
 	}
+	free(ringdata);
 
 	if (!no_halt && asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
