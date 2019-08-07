@@ -432,6 +432,7 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
 		ws->wave_status.fatal_halt = umr_bitslice_reg(asic, reg, "FATAL_HALT", value);
 		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
+		ws->wave_status.ttrace_simd_en = umr_bitslice_reg(asic, reg, "TTRACE_SIMD_EN", value);
 
 	ws->pc_lo = buf[x++];
 	ws->pc_hi = buf[x++];

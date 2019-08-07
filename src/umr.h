@@ -410,7 +410,8 @@ struct umr_wave_status {
 			data_atc,
 			inst_atc,
 			dispatch_cache_ctrl,
-			must_export;
+			must_export,
+			ttrace_simd_en;
 	} wave_status;
 
 	uint32_t

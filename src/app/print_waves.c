@@ -441,6 +441,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			PP(wave_status, dispatch_cache_ctrl);
 			PP(wave_status, must_export);
 			PP(wave_status, fatal_halt);
+			PP(wave_status, ttrace_simd_en);
 
 			Hv("HW_ID1", wd->ws.hw_id1.value);
 			PP(hw_id1, wave_id);
