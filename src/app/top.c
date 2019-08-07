@@ -293,6 +293,13 @@ static struct umr_bitfield stat_ai_sensor_bits[] = {
 	{ NULL, 0, 0, NULL },
 };
 
+static struct umr_bitfield stat_nv_sensor_bits[] = {
+	{ "GFX_SCLK", AMDGPU_PP_SENSOR_GFX_SCLK, SENSOR_D100|(SENSOR_MHZ<<4), &umr_bitfield_default },
+	{ "GFX_MCLK", AMDGPU_PP_SENSOR_GFX_MCLK, SENSOR_D100|(SENSOR_MHZ<<4), &umr_bitfield_default },
+	{ NULL, 0, 0, NULL },
+};
+
+
 
 #define AMDGPU_INFO_NUM_BYTES_MOVED		0x0f
 #define AMDGPU_INFO_VRAM_USAGE			0x10
@@ -334,6 +341,10 @@ static void *gpu_sensor_thread(void *data)
 
 	ts.tv_sec = 0;
 	ts.tv_nsec = 1000000000UL / 50; // limit to 50Hz
+
+	if (sensor_bits == NULL) {
+		return NULL;
+	}
 
 	snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_sensors", asic.instance);
 	asic.fd.sensors = open(fname, O_RDWR);
@@ -972,7 +983,9 @@ static void top_build_vi_program(struct umr_asic *asic)
 		ENTRY(i++, "mmRLC_GPM_STAT", &stat_rlc_gpm_bits[0], &top_options.vi.gfxpwr, "GFX PWR");
 
 	// sensors
-	if (asic->config.gfx.family == 141 || asic->config.gfx.family == 142) {
+	if (strstr(asic->asicname, "navi")) {
+		ENTRY_SENSOR(i++, "GFX_SCLK", &stat_nv_sensor_bits[0], &top_options.vi.sensors, "Sensors");
+	} else if (asic->config.gfx.family == 141 || asic->config.gfx.family == 142) {
 		// Arctic Island Family/Raven
 		ENTRY_SENSOR(i++, "GFX_SCLK", &stat_ai_sensor_bits[0], &top_options.vi.sensors, "Sensors");
 	} else if (asic->config.gfx.family == 135) {
@@ -1140,8 +1153,7 @@ void umr_top(struct umr_asic *asic)
 	load_options();
 
 	// select an architecture ...
-	if (asic->family <= FAMILY_RV)
-		top_build_vi_program(asic);
+	top_build_vi_program(asic);
 
 	// add DRM info
 	for (i = 0; stat_counters[i].name; i++);
