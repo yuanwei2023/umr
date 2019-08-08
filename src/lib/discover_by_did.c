@@ -201,6 +201,7 @@ static const struct {
 	{ 0x731A, &umr_create_navi10 },
 	{ 0x731B, &umr_create_navi10 },
 	{ 0x731F, &umr_create_navi10 },
+	{ 0x7340, &umr_create_navi14 },
 	{ 0x7388, &umr_create_arcturus },
 	{ 0x738C, &umr_create_arcturus },
 	{ 0x738E, &umr_create_arcturus },
