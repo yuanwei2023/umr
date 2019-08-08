@@ -26199,6 +26199,27 @@ static struct umr_bitfield mmCGTT_WD_CLK_CTRL[] = {
 	 { "RBIU_INPUT_OVERRIDE", 30, 30, &umr_bitfield_default },
 	 { "REG_OVERRIDE", 31, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmCGTT_GS_NGG_CLK_CTRL[] = {
+	 { "ON_DELAY", 0, 3, &umr_bitfield_default },
+	 { "OFF_HYSTERESIS", 4, 11, &umr_bitfield_default },
+	 { "PERF_ENABLE", 15, 15, &umr_bitfield_default },
+	 { "DBG_ENABLE", 16, 16, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE6", 17, 17, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE5", 18, 18, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE4", 19, 19, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE3", 20, 20, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE2", 21, 21, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE1", 22, 22, &umr_bitfield_default },
+	 { "SOFT_STALL_OVERRIDE0", 23, 23, &umr_bitfield_default },
+	 { "SOFT_OVERRIDE7", 24, 24, &umr_bitfield_default },
+	 { "SOFT_OVERRIDE6", 25, 25, &umr_bitfield_default },
+	 { "SOFT_OVERRIDE5", 26, 26, &umr_bitfield_default },
+	 { "PRIMGEN_OVERRIDE", 27, 27, &umr_bitfield_default },
+	 { "GS1_OVERRIDE", 28, 28, &umr_bitfield_default },
+	 { "GS0_OVERRIDE", 29, 29, &umr_bitfield_default },
+	 { "RBIU_INPUT_OVERRIDE", 30, 30, &umr_bitfield_default },
+	 { "REG_OVERRIDE", 31, 31, &umr_bitfield_default },
+};
 static struct umr_bitfield mmCGTT_PA_CLK_CTRL[] = {
 	 { "ON_DELAY", 0, 3, &umr_bitfield_default },
 	 { "OFF_HYSTERESIS", 4, 11, &umr_bitfield_default },

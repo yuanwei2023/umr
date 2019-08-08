@@ -2806,6 +2806,13 @@ static struct umr_bitfield mmTD_CNTL[] = {
 static struct umr_bitfield mmTD_STATUS[] = {
 	 { "BUSY", 31, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmTD_EDC_CNT[] = {
+	 { "SS_FIFO_LO_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "SS_FIFO_LO_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "SS_FIFO_HI_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "SS_FIFO_HI_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "CS_FIFO_SED_COUNT", 8, 9, &umr_bitfield_default },
+};
 static struct umr_bitfield mmTD_DSM_CNTL[] = {
 	 { "TD_SS_FIFO_LO_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
 	 { "TD_SS_FIFO_LO_ENABLE_SINGLE_WRITE", 2, 2, &umr_bitfield_default },
@@ -2885,6 +2892,14 @@ static struct umr_bitfield mmTA_STATUS[] = {
 };
 static struct umr_bitfield mmTA_SCRATCH[] = {
 	 { "SCRATCH", 0, 31, &umr_bitfield_default },
+};
+static struct umr_bitfield mmTA_EDC_CNT[] = {
+	 { "TA_FS_DFIFO_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "TA_FS_DFIFO_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "TA_FS_AFIFO_SED_COUNT", 4, 5, &umr_bitfield_default },
+	 { "TA_FL_LFIFO_SED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "TA_FX_LFIFO_SED_COUNT", 8, 9, &umr_bitfield_default },
+	 { "TA_FS_CFIFO_SED_COUNT", 10, 11, &umr_bitfield_default },
 };
 static struct umr_bitfield mmGDS_CONFIG[] = {
 	 { "SH0_GPR_PHASE_SEL", 1, 2, &umr_bitfield_default },
@@ -3716,6 +3731,37 @@ static struct umr_bitfield mmGC_USER_RB_REDUNDANCY[] = {
 };
 static struct umr_bitfield mmGC_USER_RB_BACKEND_DISABLE[] = {
 	 { "BACKEND_DISABLE", 16, 23, &umr_bitfield_default },
+};
+static struct umr_bitfield mmGCEA_EDC_CNT[] = {
+	 { "DRAMRD_CMDMEM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "DRAMRD_CMDMEM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "DRAMWR_CMDMEM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "DRAMWR_CMDMEM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "DRAMWR_DATAMEM_SEC_COUNT", 8, 9, &umr_bitfield_default },
+	 { "DRAMWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "RRET_TAGMEM_SEC_COUNT", 12, 13, &umr_bitfield_default },
+	 { "RRET_TAGMEM_DED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "WRET_TAGMEM_SEC_COUNT", 16, 17, &umr_bitfield_default },
+	 { "WRET_TAGMEM_DED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "DRAMRD_PAGEMEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "DRAMWR_PAGEMEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "IORD_CMDMEM_SED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "IOWR_CMDMEM_SED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "IOWR_DATAMEM_SED_COUNT", 28, 29, &umr_bitfield_default },
+};
+static struct umr_bitfield mmGCEA_EDC_CNT2[] = {
+	 { "GMIRD_CMDMEM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "GMIRD_CMDMEM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "GMIWR_CMDMEM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "GMIWR_CMDMEM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "GMIWR_DATAMEM_SEC_COUNT", 8, 9, &umr_bitfield_default },
+	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
+	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
 };
 static struct umr_bitfield mmRMI_GENERAL_CNTL[] = {
 	 { "BURST_DISABLE", 0, 0, &umr_bitfield_default },
@@ -5496,6 +5542,20 @@ static struct umr_bitfield mmTCP_EDC_CNT[] = {
 	 { "LFIFO_SED_COUNT", 8, 15, &umr_bitfield_default },
 	 { "DED_COUNT", 16, 23, &umr_bitfield_default },
 };
+static struct umr_bitfield mmTCP_EDC_CNT_NEW[] = {
+	 { "CACHE_RAM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "CACHE_RAM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "LFIFO_RAM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "LFIFO_RAM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "CMD_FIFO_SED_COUNT", 8, 9, &umr_bitfield_default },
+	 { "VM_FIFO_SEC_COUNT", 10, 11, &umr_bitfield_default },
+	 { "VM_FIFO_DED_COUNT", 12, 13, &umr_bitfield_default },
+	 { "DB_RAM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "UTCL1_LFIFO0_SEC_COUNT", 16, 17, &umr_bitfield_default },
+	 { "UTCL1_LFIFO0_DED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "UTCL1_LFIFO1_SEC_COUNT", 20, 21, &umr_bitfield_default },
+	 { "UTCL1_LFIFO1_DED_COUNT", 22, 23, &umr_bitfield_default },
+};
 static struct umr_bitfield mmTC_CFG_L1_LOAD_POLICY0[] = {
 	 { "POLICY_0", 0, 1, &umr_bitfield_default },
 	 { "POLICY_1", 2, 3, &umr_bitfield_default },
@@ -5662,6 +5722,9 @@ static struct umr_bitfield mmTC_CFG_L1_VOLATILE[] = {
 static struct umr_bitfield mmTC_CFG_L2_VOLATILE[] = {
 	 { "VOL", 0, 3, &umr_bitfield_default },
 };
+static struct umr_bitfield mmTCI_EDC_CNT[] = {
+	 { "WRITE_RAM_SED_COUNT", 0, 1, &umr_bitfield_default },
+};
 static struct umr_bitfield mmTCI_STATUS[] = {
 	 { "TCI_BUSY", 0, 0, &umr_bitfield_default },
 };
@@ -5713,6 +5776,8 @@ static struct umr_bitfield mmTCC_EDC_CNT2[] = {
 	 { "SRC_FIFO_NEXT_RAM_SED_COUNT", 4, 5, &umr_bitfield_default },
 	 { "LATENCY_FIFO_NEXT_RAM_SED_COUNT", 6, 7, &umr_bitfield_default },
 	 { "CACHE_TAG_PROBE_FIFO_SED_COUNT", 8, 9, &umr_bitfield_default },
+	 { "WRRET_TAG_WRITE_RETURN_SED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "ATOMIC_RETURN_BUFFER_SED_COUNT", 12, 13, &umr_bitfield_default },
 };
 static struct umr_bitfield mmTCC_REDUNDANCY[] = {
 	 { "MC_SEL0", 0, 0, &umr_bitfield_default },
@@ -7811,6 +7876,40 @@ static struct umr_bitfield mmCP_RB_DOORBELL_CLEAR[] = {
 	 { "MASTER_DOORBELL_HIT_CLEAR", 11, 11, &umr_bitfield_default },
 	 { "QUEUES_DOORBELL_EN_CLEAR", 12, 12, &umr_bitfield_default },
 	 { "QUEUES_DOORBELL_HIT_CLEAR", 13, 13, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCPF_EDC_TAG_CNT[] = {
+	 { "DED_COUNT", 0, 1, &umr_bitfield_default },
+	 { "SEC_COUNT", 2, 3, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCPF_EDC_ROQ_CNT[] = {
+	 { "COUNT_ME1", 0, 1, &umr_bitfield_default },
+	 { "COUNT_ME2", 2, 3, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCPG_EDC_TAG_CNT[] = {
+	 { "DED_COUNT", 0, 1, &umr_bitfield_default },
+	 { "SEC_COUNT", 2, 3, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCPG_EDC_DMA_CNT[] = {
+	 { "ROQ_COUNT", 0, 1, &umr_bitfield_default },
+	 { "TAG_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "TAG_SEC_COUNT", 4, 5, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCPC_EDC_SCRATCH_CNT[] = {
+	 { "DED_COUNT", 0, 1, &umr_bitfield_default },
+	 { "SEC_COUNT", 2, 3, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCPC_EDC_UCODE_CNT[] = {
+	 { "DED_COUNT", 0, 1, &umr_bitfield_default },
+	 { "SEC_COUNT", 2, 3, &umr_bitfield_default },
+};
+static struct umr_bitfield mmDC_EDC_STATE_CNT[] = {
+	 { "COUNT_ME1", 0, 1, &umr_bitfield_default },
+};
+static struct umr_bitfield mmDC_EDC_CSINVOC_CNT[] = {
+	 { "COUNT_ME1", 0, 1, &umr_bitfield_default },
+};
+static struct umr_bitfield mmDC_EDC_RESTORE_CNT[] = {
+	 { "COUNT_ME1", 0, 1, &umr_bitfield_default },
 };
 static struct umr_bitfield mmCP_GFX_MQD_CONTROL[] = {
 	 { "VMID", 0, 3, &umr_bitfield_default },
