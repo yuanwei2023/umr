@@ -73,6 +73,9 @@ ENDCB
 gcc /tmp/countbits.c -o /tmp/countbits
 
 
+#renoir
+parse_bits ${pk}/mp/mp_12_0_0 src/lib/ip/mp1200
+
 #arcturus
 parse_bits ${pk}/mmhub/mmhub_9_4_1 src/lib/ip/mmhub941
 parse_bits ${pk}/sdma0/sdma0_4_2_2 src/lib/ip/sdma0422

@@ -38,6 +38,7 @@ add_library(ip OBJECT
   mp90.c
   mp100.c
   mp1100.c
+  mp1200.c
   nbio61.c
   nbio70.c
   nbio230.c

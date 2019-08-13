@@ -52,6 +52,7 @@ static const struct {
 	{ "vega20", &umr_create_vega20 },
 	{ "vegam", &umr_create_vegam },
 	{ "raven1", &umr_create_raven1 },
+	{ "renoir", &umr_create_renoir },
 	{ "navi10", &umr_create_navi10 },
 	{ "navi14", &umr_create_navi14 },
 };
