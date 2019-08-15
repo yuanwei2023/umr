@@ -223,6 +223,16 @@ int main(int argc, char **argv)
 				printf("--sbank requires three parameters\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--cbank") || !strcmp(argv[i], "-cb")) {
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				options.context_reg_bank = atoi(argv[i+1]);
+				asic->options = options;
+			} else {
+				printf("--cbank requires one parameters\n");
+				return EXIT_FAILURE;
+			}
 		} else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "-f")) {
 			if (i + 1 < argc) {
 				unsigned long did;
@@ -673,6 +683,7 @@ int main(int argc, char **argv)
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"
+"\n\t--cbank, -cb <context_reg_bank>\n\t\tSelect a context register bank (value is multiplied by 0x1000). \n"
 "\n*** Device Information ***\n"
 "\n\t--config, -c\n\t\tPrint out configuation data read from kernel driver.\n"
 "\n\t--enumerate, -e\n\t\tEnumerate all AMDGPU devices detected.\n"

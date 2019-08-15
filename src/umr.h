@@ -226,7 +226,8 @@ struct umr_options {
 	    disasm_anyways,
 	    skip_gprs,
 	    wave64,
-	    full_shader;
+	    full_shader,
+	    context_reg_bank;
 
 	union {
 		struct {
