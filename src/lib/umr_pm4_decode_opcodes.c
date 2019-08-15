@@ -592,7 +592,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			else
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "MEM_ADDR_HI", stream->words[1], NULL, 16);
 			if (!BITS(stream->words[2], 31, 32))
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "REG", 0, umr_reg_name(asic, 0x2C00 + BITS(stream->words[2], 0, 16)), 0);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "REG", 0x2C00 + BITS(stream->words[2], 0, 16), umr_reg_name(asic, 0x2C00 + BITS(stream->words[2], 0, 16)), 16);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "NUM_DWORDS", stream->words[3], NULL, 0);
 			break;
 		case 0x68: // SET_CONFIG_REG
