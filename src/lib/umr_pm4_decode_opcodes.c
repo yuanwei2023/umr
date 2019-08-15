@@ -576,6 +576,12 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", stream->words[4], NULL, 16);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", stream->words[5], NULL, 10);
 			break;
+		case 0x5F: // LOAD_SH_REG
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_ADDRESS_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_ADDRESS_HI", stream->words[1], NULL, 16);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "REG_OFFSET", 0x2C00 + BITS(stream->words[2], 0, 16), umr_reg_name(asic, 0x2C00 + BITS(stream->words[2], 0, 16)), 16);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "NUM_DWORD", BITS(stream->words[3], 0, 14), NULL, 10);
+			break;
 		case 0x63: // LOAD_SH_REG_INDEX
 			if (BITS(stream->words[0], 0, 1))
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", 1, NULL, 10);
@@ -586,7 +592,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			else
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "MEM_ADDR_HI", stream->words[1], NULL, 16);
 			if (!BITS(stream->words[2], 31, 32))
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "REG", 0, umr_reg_name(asic, BITS(stream->words[2], 0, 16)), 0);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "REG", 0, umr_reg_name(asic, 0x2C00 + BITS(stream->words[2], 0, 16)), 0);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "NUM_DWORDS", stream->words[3], NULL, 0);
 			break;
 		case 0x68: // SET_CONFIG_REG

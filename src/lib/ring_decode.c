@@ -902,6 +902,18 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				case 5: printf("POLL_INTERVAL: %s0x%08lx%s", BLUE, (unsigned long)ib, RST); break;
 			}
 			break;
+		case 0x5F: // LOAD_SH_REG
+			switch(decoder->pm4.cur_word) {
+				case 0: decoder->pm4.next_write_mem.addr_lo = ib << 2;
+						printf("BASE_ADDRESS_LO: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 2, 32) << 2, RST);
+						break;
+				case 1: decoder->pm4.next_write_mem.addr_hi = ib;
+						printf("BASE_ADDRESS_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+						break;
+				case 2:	printf("REG_OFFSET: %s%s%s (%s0x%lx%s)", RED, umr_reg_name(asic, 0x2c00 + BITS(ib, 0, 16)), RST, BLUE, BITS(ib, 0, 16), RST); break;
+				case 3: printf("NUM_DWORD: %s%lu%s", BLUE, (unsigned long)BITS(ib, 0, 14), RST); break;
+			}
+			break;
 		case 0x63: // LOAD_SH_REG_INDEX
 			switch(decoder->pm4.cur_word) {
 				case 0: decoder->pm4.next_write_mem.addr_lo = BITS(ib, 0, 31) & ~0x3UL;
