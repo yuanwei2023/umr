@@ -34,7 +34,7 @@ struct umr_asic *umr_create_renoir(struct umr_options *options)
 	return
 		umr_create_asic_helper("renoir", FAMILY_RV,
 			umr_create_gfx91(vega10_offs, options),
-			umr_create_vcn10(vega10_offs, options),
+			umr_create_vcn200(vega10_offs, options),
 			umr_create_dcn10(vega10_offs, options),
 			umr_create_nbio70(vega10_offs, options),
 			umr_create_sdma041(vega10_offs, options),
