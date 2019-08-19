@@ -62,7 +62,7 @@ static void add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uin
 		}
 	}
 
-	// if we there is radix and str chances are it's a register
+	// if there is radix and str chances are it's a register
 	if (ideal_radix && str) {
 		struct umr_reg *reg;
 		int k;
@@ -85,11 +85,17 @@ static void add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uin
 static	void add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader)
 {
 	struct demo_ui_data *data = ui->data;
+	(void)asic;
 	printf("Shader from %lu@[0x%llx + 0x%llx] at %lu@0x%llx, type %d, size %lu\n", (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], (unsigned long)shader->vmid, (unsigned long long)shader->addr, shader->type, (unsigned long)shader->size);
 }
 
 static void unhandled(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream)
 {
+	(void)ui;
+	(void)asic;
+	(void)ib_addr;
+	(void)ib_vmid;
+	(void)stream;
 }
 
 static void done(struct umr_pm4_stream_decode_ui *ui)
