@@ -28,10 +28,13 @@
 //#define PM4_STREAM
 
 #ifdef PM4_STREAM
+//#include <umr.h>
+
 // example opaque data to keep track of offsets
 struct demo_ui_data {
 	uint64_t off[16]; // address of start of IB so we can compute offsets when printing opcodes/fields
 	int i;
+	struct umr_asic *asic;
 };
 
 static void start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type)
@@ -58,6 +61,24 @@ static void add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uin
 			case 16: printf("0x%llx", (unsigned long long)value); break;
 		}
 	}
+
+	// if we there is radix and str chances are it's a register
+	if (ideal_radix && str) {
+		struct umr_reg *reg;
+		int k;
+		char *p = strstr(str, ".");
+		if (p)
+			reg = umr_find_reg_data(data->asic, p + 1);
+		else
+			reg = umr_find_reg_data(data->asic, str);
+		if (reg) {
+			printf("\n");
+			for (k = 0; k < reg->no_bits; k++) {
+				printf("\t\t0x%08lx == %s.%s\n", (unsigned long)umr_bitslice_reg(data->asic, reg, reg->bits[k].regname, value), str, reg->bits[k].regname);
+			}
+		}
+	}
+
 	printf("\n");
 }
 
@@ -89,6 +110,7 @@ static void foo(struct umr_asic *asic, uint32_t *data, uint32_t x)
 
 	// assign our opaque structure
 	myui.data = calloc(1, sizeof(struct demo_ui_data));
+	((struct demo_ui_data*)(myui.data))->asic = asic;
 
 	stream = umr_pm4_decode_stream(asic, UMR_PROCESS_HUB, data, x);
 	sstream = umr_pm4_decode_stream_opcodes(asic, &myui, stream, 0, 0, 0, 0, 3, 1); // ~0UL);
