@@ -72,6 +72,9 @@ static struct umr_asic *get_asic(void)
 	asic->reg_funcs.read_reg = umr_read_reg;
 	asic->reg_funcs.write_reg = umr_write_reg;
 
+	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
+	asic->wave_funcs.get_wave_status = umr_get_wave_status;
+
 	return asic;
 }
 

@@ -321,6 +321,26 @@ struct umr_register_access_funcs {
 	void *data;
 };
 
+struct umr_wave_status;
+struct umr_wave_access_funcs {
+	/** get_wave_status -- Populate the umr_wave_status structure
+	 * @asic: The device the SQ_WAVE data should come from
+	 * @se, @sh, @cu, @simd, @wave: The specific wave to read data from
+	 * @ws: where to store the SQ_WAVE_* decoded data (see src/lib/lowlevel/linux/wave_status.c for an example)
+	 */
+	int (*get_wave_status)(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws);
+
+	/** get_wave_sq_info -- Populate the sq_info sub-structure of the umr_wave_status structure
+	 * @asic: The device to get SQ information from
+	 * @se, @sh, @cu: Which engine to read
+	 * @ws: Where to store the sq information.
+	 */
+	int (*get_wave_sq_info)(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);
+
+	/** data -- opaque pointer the callbacks can use for state tracking */
+	void *data;
+};
+
 struct umr_asic {
 	char *asicname;
 	int no_blocks;
@@ -375,6 +395,7 @@ struct umr_asic {
 	struct umr_dma_maps *maps;
 	struct umr_memory_access_funcs mem_funcs;
 	struct umr_register_access_funcs reg_funcs;
+	struct umr_wave_access_funcs wave_funcs;
 };
 
 struct umr_wave_status {

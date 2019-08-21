@@ -40,9 +40,9 @@ static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, 
 	unsigned thread, num_threads;
 
 	if (asic->family <= FAMILY_AI)
-		umr_get_wave_status(asic, se, sh, cu, simd, wave, &pwd->ws);
+		asic->wave_funcs.get_wave_status(asic, se, sh, cu, simd, wave, &pwd->ws);
 	else
-		umr_get_wave_status(asic, se, sh, MANY_TO_INSTANCE(cu, simd), 0, wave, &pwd->ws);
+		asic->wave_funcs.get_wave_status(asic, se, sh, MANY_TO_INSTANCE(cu, simd), 0, wave, &pwd->ws);
 
 	if (!pwd->ws.wave_status.valid &&
 	    (!pwd->ws.wave_status.halt || pwd->ws.wave_status.value == 0xbebebeef))
@@ -128,14 +128,14 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 	for (sh = 0; sh < asic->config.gfx.max_sh_per_se; sh++)
 	for (cu = 0; cu < asic->config.gfx.max_cu_per_sh; cu++) {
 		if (asic->family <= FAMILY_AI) {
-			umr_get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
+			asic->wave_funcs.get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
 			if ((*ptail)->ws.sq_info.busy) {
 				for (simd = 0; simd < 4; simd++)
 					umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
 			}
 		} else {
 			for (simd = 0; simd < 4; simd++) {
-				umr_get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(cu, simd), &(*ptail)->ws);
+				asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(cu, simd), &(*ptail)->ws);
 				if ((*ptail)->ws.sq_info.busy)
 					umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
 			}
