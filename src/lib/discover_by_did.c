@@ -206,6 +206,7 @@ static const struct {
 	{ 0x7388, &umr_create_arcturus },
 	{ 0x738C, &umr_create_arcturus },
 	{ 0x738E, &umr_create_arcturus },
+	{ 0x7390, &umr_create_arcturus },
 	{ 0x9830, &umr_create_kabini },
 	{ 0x9831, &umr_create_kabini },
 	{ 0x9832, &umr_create_kabini },
