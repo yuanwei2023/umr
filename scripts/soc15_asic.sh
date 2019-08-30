@@ -48,6 +48,7 @@ parse_offsets() {
 	)
 }
 
+parse_offsets ${pk}/renoir_ip_offset.h src/lib/asic/renoir.i
 parse_offsets ${pk}/arct_ip_offset.h src/lib/asic/arct.i
 parse_offsets ${pk}/navi10_ip_offset.h src/lib/asic/navi10.i
 parse_offsets ${pk}/navi14_ip_offset.h src/lib/asic/navi14.i

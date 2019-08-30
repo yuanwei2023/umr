@@ -690,6 +690,9 @@ struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets
 
 // renoir
 struct umr_ip_block *umr_create_mp1200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_clk1002(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_dcn210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_dpcs210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 
 // arcturus
 struct umr_ip_block *umr_create_mmhub941(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
@@ -716,11 +719,6 @@ struct umr_ip_block *umr_create_nbio230(struct umr_ip_offsets_soc15 *soc15_offse
 struct umr_ip_block *umr_create_oss50(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_thm1102(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_vcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-
-// navi14
-struct umr_ip_block *umr_create_dcn200_nv14(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_vcn200_nv14(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_nbio230_nv14(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 
 /* ip block constructors */
 struct umr_ip_block *umr_create_uvd40(struct umr_options *options);

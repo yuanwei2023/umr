@@ -24,6 +24,43 @@
  */
 #include "umr.h"
 
+static const struct {
+	char *aka[8];
+} common_names[] = {
+	{ { "DCN", "DCE", "DMU", NULL } },
+	{ { "UVD", "UVD0", "VCN", NULL } },
+	{ { "NBIF", "NBIO", "NBIF0", "NBIO0", NULL } },
+	{ { NULL } },
+};
+
+/** try_substitutes - Try different IP block names
+ *
+ * Over various ASIC generations IP block names change even if they
+ * use the same IP block.
+ */
+static int try_substitutes(struct umr_ip_offsets_soc15 *ip, char *ipname)
+{
+	int x, y, z;
+
+	// find ipname in aka list
+	for (x = 0; common_names[x].aka[0]; x++)
+		for (y = 0; common_names[x].aka[y]; y++)
+			if (!strcmp(ipname, common_names[x].aka[y]))
+				goto out;
+out:
+	if (common_names[x].aka[y] == NULL)
+		return -1;
+
+	// now try to find one of common_names[x].aka[...] in the ip offsets
+	for (y = 0; common_names[x].aka[y]; y++)
+		for (z = 0; ip[z].name; z++)
+			if (!strcmp(common_names[x].aka[y], ip[z].name)) {
+//				fprintf(stderr, "[NOTE]: Substituting %s for %s\n", common_names[x].aka[y], ipname);
+				return z;
+			}
+	return -1;
+}
+
 /**
  * umr_transfer_soc15_to_reg - Compute register offset
  *
@@ -36,11 +73,20 @@ int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets
 {
 	int x, y;
 
-	// find IP in offset table
-	for (x = 0; ip[x].name; x++)
-		if (!strcmp(ip[x].name, ipname))
+	// Try to find exact match for IP block in offset table
+	for (y = -1, x = 0; ip[x].name; x++)
+		if (!strcmp(ip[x].name, ipname)) {
+			y = x;
 			break;
-	if (!ip[x].name) {
+		}
+
+	// sometimes they are renamed for newer ASICs so try to find
+	// an "also known as" substitute
+	if (y == -1)
+		y = try_substitutes(ip, ipname);
+	x = y;
+
+	if (x == -1) {
 		fprintf(stderr, "[BUG]: IP '%s' not found in offset table\n", ipname);
 		return -1;
 	}

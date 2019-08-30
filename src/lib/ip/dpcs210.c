@@ -24,13 +24,13 @@
  */
 #include "umr.h"
 
-#include "dcn200_bits.i"
+#include "dpcs210_bits.i"
 
-static const struct umr_reg_soc15 dcn20_registers[] = {
-#include "dcn200_regs.i"
+static const struct umr_reg_soc15 dpcs210_registers[] = {
+#include "dpcs210_regs.i"
 };
 
-struct umr_ip_block *umr_create_dcn200_nv14(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
+struct umr_ip_block *umr_create_dpcs210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
 {
 	struct umr_ip_block *ip;
 
@@ -38,15 +38,15 @@ struct umr_ip_block *umr_create_dcn200_nv14(struct umr_ip_offsets_soc15 *soc15_o
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "dcn20";
-	ip->no_regs = sizeof(dcn20_registers)/sizeof(dcn20_registers[0]);
+	ip->ipname = "dpcs210";
+	ip->no_regs = sizeof(dpcs210_registers)/sizeof(dpcs210_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
 		free(ip);
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "DMU", dcn20_registers, ip)) {
+	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "DPCS", dpcs210_registers, ip)) {
 		free(ip);
 		return NULL;
 	}

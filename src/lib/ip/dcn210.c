@@ -24,13 +24,13 @@
  */
 #include "umr.h"
 
-#include "nbio230_bits.i"
+#include "dcn210_bits.i"
 
-static const struct umr_reg_soc15 nbio230_registers[] = {
-#include "nbio230_regs.i"
+static const struct umr_reg_soc15 dcn210_registers[] = {
+#include "dcn210_regs.i"
 };
 
-struct umr_ip_block *umr_create_nbio230_nv14(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
+struct umr_ip_block *umr_create_dcn210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
 {
 	struct umr_ip_block *ip;
 
@@ -38,15 +38,15 @@ struct umr_ip_block *umr_create_nbio230_nv14(struct umr_ip_offsets_soc15 *soc15_
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "nbio230";
-	ip->no_regs = sizeof(nbio230_registers)/sizeof(nbio230_registers[0]);
+	ip->ipname = "dcn210";
+	ip->no_regs = sizeof(dcn210_registers)/sizeof(dcn210_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
 		free(ip);
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "NBIF0", nbio230_registers, ip)) {
+	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "DCN", dcn210_registers, ip)) {
 		free(ip);
 		return NULL;
 	}

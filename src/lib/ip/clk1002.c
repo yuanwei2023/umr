@@ -24,13 +24,13 @@
  */
 #include "umr.h"
 
-#include "vcn200_bits.i"
+#include "clk1002_bits.i"
 
-static const struct umr_reg_soc15 vcn200_registers[] = {
-#include "vcn200_regs.i"
+static const struct umr_reg_soc15 clk1002_registers[] = {
+#include "clk1002_regs.i"
 };
 
-struct umr_ip_block *umr_create_vcn200_nv14(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
+struct umr_ip_block *umr_create_clk1002(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
 {
 	struct umr_ip_block *ip;
 
@@ -38,15 +38,15 @@ struct umr_ip_block *umr_create_vcn200_nv14(struct umr_ip_offsets_soc15 *soc15_o
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "vcn200";
-	ip->no_regs = sizeof(vcn200_registers)/sizeof(vcn200_registers[0]);
+	ip->ipname = "clk1002";
+	ip->no_regs = sizeof(clk1002_registers)/sizeof(clk1002_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
 		free(ip);
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "UVD0", vcn200_registers, ip)) {
+	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "CLK", clk1002_registers, ip)) {
 		free(ip);
 		return NULL;
 	}
