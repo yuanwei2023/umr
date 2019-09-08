@@ -231,9 +231,22 @@ int main(int argc, char **argv)
 				asic = get_asic();
 			if (i + 1 < argc) {
 				options.context_reg_bank = atoi(argv[i+1]);
+				++i;
 				asic->options = options;
 			} else {
 				printf("--cbank requires one parameters\n");
+				return EXIT_FAILURE;
+			}
+		} else if (!strcmp(argv[i], "--hw-inst") || !strcmp(argv[i], "-hw")) {
+			if (asic) {
+				fprintf(stderr, "[ERROR]: --hw-inst must be the first option on the command line\n");
+				return EXIT_FAILURE;
+			}
+			if (i + 1 < argc) {
+				options.hw_inst = atoi(argv[i+1]);
+				++i;
+			} else {
+				printf("--hw-inst requires one parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "-f")) {
@@ -687,6 +700,7 @@ int main(int argc, char **argv)
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"
 "\n\t--cbank, -cb <context_reg_bank>\n\t\tSelect a context register bank (value is multiplied by 0x1000). \n"
+"\n\t--hw-inst, -hw <instance>\n\t\tSelect the SOC15 IP block instance. (default: 0)\n"
 "\n*** Device Information ***\n"
 "\n\t--config, -c\n\t\tPrint out configuation data read from kernel driver.\n"
 "\n\t--enumerate, -e\n\t\tEnumerate all AMDGPU devices detected.\n"
@@ -716,14 +730,14 @@ int main(int argc, char **argv)
 	"\n\t\tto see decoding of various wave fields.  Can use the '-O halt_waves' option"
 	"\n\t\tto halt the SQ while reading registers.  An optional ring name can be specified"
 	"\n\t\twhich will then search a given ring for pointers to active shaders.  It will"
-	"\n\t\tdefault to the 'gfx' ring if nothing is specified.\n"
-"\n\t--profiler, -prof [pixel= | vertex= | compute=]<nsamples> [ring]"
-	"\n\t\tCapture 'nsamples' samples of wave data. Optionally specify a ring to search"
-	"\n\t\tfor IBs that point to shaders.  Defaults to 'gfx'.  Additionally, the type"
-	"\n\t\tof shader can be selected for as well to only profile a given type.\n",
+	"\n\t\tdefault to the 'gfx' ring if nothing is specified.\n",
 	UMR_BUILD_VER, UMR_BUILD_REV);
 
 printf(
+"\n\t--profiler, -prof [pixel= | vertex= | compute=]<nsamples> [ring]"
+	"\n\t\tCapture 'nsamples' samples of wave data. Optionally specify a ring to search"
+	"\n\t\tfor IBs that point to shaders.  Defaults to 'gfx'.  Additionally, the type"
+	"\n\t\tof shader can be selected for as well to only profile a given type.\n"
 "\n*** Virtual Memory Access ***\n"
 "\n\tVMIDs are specified in umr as 16 bit numbers where the lower 8 bits"
 "\n\tindicate the hardware VMID and the upper 8 bits indicate the which VM space to use."
