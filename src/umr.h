@@ -201,8 +201,7 @@ struct umr_fw_config {
 #define UMR_MAX_XGMI_DEVICES 32
 
 struct umr_options {
-	int hw_inst,
-	    instance,
+	int instance,
 	    need_scan,
 	    print,
 	    bitfields,
@@ -662,6 +661,7 @@ struct umr_ring_decoder {
 
 /* ip block constructors for soc15 */
 int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst);
+int umr_transfer_soc15_to_reg_ex(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst, int inst);
 struct umr_ip_block *umr_create_gfx90(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_gfx91(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_gfx921(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
@@ -686,7 +686,7 @@ struct umr_ip_block *umr_create_mp90(struct umr_ip_offsets_soc15 *soc15_offsets,
 struct umr_ip_block *umr_create_mp100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_thm90(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_vcn10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_ex_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
 
 // renoir
 struct umr_ip_block *umr_create_mp1200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
@@ -696,7 +696,7 @@ struct umr_ip_block *umr_create_dpcs210(struct umr_ip_offsets_soc15 *soc15_offse
 
 // arcturus
 struct umr_ip_block *umr_create_mmhub941(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_vcn250(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_ex_vcn250(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
 struct umr_ip_block *umr_create_sdma0422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_sdma1422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_sdma2422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);

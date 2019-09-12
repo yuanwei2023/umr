@@ -30,7 +30,7 @@ static const struct umr_reg_soc15 umc60_registers[] = {
 #include "umc60_regs.i"
 };
 
-struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
+struct umr_ip_block *umr_create_ex_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst)
 {
 	struct umr_ip_block *ip;
 
@@ -38,7 +38,13 @@ struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "umc60";
+	switch (inst) {
+		case 0:  ip->ipname = "umc60{0}"; break;
+		case 1:  ip->ipname = "umc60{1}"; break;
+		case 2:  ip->ipname = "umc60{2}"; break;
+		case 3:  ip->ipname = "umc60{3}"; break;
+		case 4:  ip->ipname = "umc60{4}"; break;
+	}
 	ip->no_regs = sizeof(umc60_registers)/sizeof(umc60_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
@@ -46,7 +52,7 @@ struct umr_ip_block *umr_create_umc60(struct umr_ip_offsets_soc15 *soc15_offsets
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "UMC", umc60_registers, ip)) {
+	if (umr_transfer_soc15_to_reg_ex(options, soc15_offsets, "UMC", umc60_registers, ip, inst)) {
 		free(ip);
 		return NULL;
 	}

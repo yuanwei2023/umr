@@ -35,12 +35,9 @@ struct umr_asic *umr_create_arcturus(struct umr_options *options)
 		umr_create_asic_helper("arcturus", FAMILY_AI,
 			umr_create_gfx90(arct_offs, options),
 			umr_create_hdp40(arct_offs, options),
-//			umr_create_nbio61(arct_offs, options),
 			umr_create_oss40(arct_offs, options),
 			umr_create_thm90(arct_offs, options),
 			umr_create_mp90(arct_offs, options),
-			umr_create_umc60(arct_offs, options),
-
 			umr_create_mmhub941(arct_offs, options),
 			umr_create_sdma0422(arct_offs, options),
 			umr_create_sdma1422(arct_offs, options),
@@ -50,7 +47,13 @@ struct umr_asic *umr_create_arcturus(struct umr_options *options)
 			umr_create_sdma5422(arct_offs, options),
 			umr_create_sdma6422(arct_offs, options),
 			umr_create_sdma7422(arct_offs, options),
-			umr_create_vcn250(arct_offs, options),
+			umr_create_ex_umc60(arct_offs, options, 0),
+			umr_create_ex_umc60(arct_offs, options, 1),
+			umr_create_ex_umc60(arct_offs, options, 2),
+			umr_create_ex_umc60(arct_offs, options, 3),
+			umr_create_ex_umc60(arct_offs, options, 4),
+			umr_create_ex_vcn250(arct_offs, options, 0),
+			umr_create_ex_vcn250(arct_offs, options, 1),
 			NULL);
 }
 

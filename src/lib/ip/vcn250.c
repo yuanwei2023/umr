@@ -30,7 +30,7 @@ static const struct umr_reg_soc15 vcn250_registers[] = {
 #include "vcn250_regs.i"
 };
 
-struct umr_ip_block *umr_create_vcn250(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
+struct umr_ip_block *umr_create_ex_vcn250(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst)
 {
 	struct umr_ip_block *ip;
 
@@ -38,7 +38,7 @@ struct umr_ip_block *umr_create_vcn250(struct umr_ip_offsets_soc15 *soc15_offset
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "vcn250";
+	ip->ipname = inst ? "vcn250{1}" : "vcn250{0}" ;
 	ip->no_regs = sizeof(vcn250_registers)/sizeof(vcn250_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
@@ -46,7 +46,7 @@ struct umr_ip_block *umr_create_vcn250(struct umr_ip_offsets_soc15 *soc15_offset
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "UVD", vcn250_registers, ip)) {
+	if (umr_transfer_soc15_to_reg_ex(options, soc15_offsets, "UVD", vcn250_registers, ip, inst)) {
 		free(ip);
 		return NULL;
 	}

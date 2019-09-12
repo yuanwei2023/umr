@@ -45,7 +45,7 @@ struct umr_asic *umr_create_vega20(struct umr_options *options)
 			umr_create_thm90(vega20_offs, options),
 			umr_create_mmhub10(vega20_offs, options),
 			umr_create_mp90(vega20_offs, options),
-			umr_create_umc60(vega20_offs, options),
+			umr_create_ex_umc60(vega20_offs, options, 0),
 			NULL);
 }
 

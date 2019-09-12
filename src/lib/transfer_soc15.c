@@ -61,17 +61,24 @@ out:
 	return -1;
 }
 
+int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst)
+{
+	return umr_transfer_soc15_to_reg_ex(options, ip, ipname, regs, dst, 0);
+}
+
 /**
- * umr_transfer_soc15_to_reg - Compute register offset
+ * umr_transfer_soc15_to_reg_ex - Compute register offset
  *
  * For AI+ hardware the SOC15 interface offsets registers by
  * potentially relocating IP blocks in the address map.  This will
  * apply an offset table to an array of registers and assign them to an
  * IP block.
  */
-int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst)
+int umr_transfer_soc15_to_reg_ex(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst, int inst)
 {
 	int x, y;
+
+	(void)options;
 
 	// Try to find exact match for IP block in offset table
 	for (y = -1, x = 0; ip[x].name; x++)
@@ -94,7 +101,7 @@ int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets
 	// start copying them
 	for (y = 0; y < dst->no_regs; y++) {
 		if (regs[y].type == REG_MMIO)
-			dst->regs[y].addr = regs[y].addr + ip[x].offset[regs[y].idx][options->hw_inst];
+			dst->regs[y].addr = regs[y].addr + ip[x].offset[regs[y].idx][inst];
 		else
 			dst->regs[y].addr = regs[y].addr;
 		dst->regs[y].bits = regs[y].bits;
