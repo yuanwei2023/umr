@@ -54,6 +54,7 @@ static const struct {
 	{ "raven1", &umr_create_raven1 },
 	{ "renoir", &umr_create_renoir },
 	{ "navi10", &umr_create_navi10 },
+	{ "navi12", &umr_create_navi12 },
 	{ "navi14", &umr_create_navi14 },
 };
 

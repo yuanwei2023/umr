@@ -775,6 +775,7 @@ struct umr_asic *umr_create_kabini(struct umr_options *options);
 struct umr_asic *umr_create_kaveri(struct umr_options *options);
 struct umr_asic *umr_create_mullins(struct umr_options *options);
 struct umr_asic *umr_create_navi10(struct umr_options *options);
+struct umr_asic *umr_create_navi12(struct umr_options *options);
 struct umr_asic *umr_create_navi14(struct umr_options *options);
 struct umr_asic *umr_create_oland(struct umr_options *options);
 struct umr_asic *umr_create_pitcairn(struct umr_options *options);
