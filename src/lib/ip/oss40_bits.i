@@ -734,6 +734,8 @@ static struct umr_bitfield mmIH_CID_REMAP_DATA[] = {
 };
 static struct umr_bitfield mmIH_CHICKEN[] = {
 	 { "ACTIVE_FCN_ID_PROT_ENABLE", 0, 0, &umr_bitfield_default },
+	 { "MC_SPACE_FBPA_ENABLE", 3, 3, &umr_bitfield_default },
+	 { "MC_SPACE_GPA_ENABLE", 4, 4, &umr_bitfield_default },
 };
 static struct umr_bitfield mmIH_MMHUB_CNTL[] = {
 	 { "UNITID", 0, 5, &umr_bitfield_default },

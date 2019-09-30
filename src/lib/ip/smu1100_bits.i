@@ -154,6 +154,112 @@ static struct umr_bitfield mmCKSVII2C_IC_COMP_VERSION[] = {
 static struct umr_bitfield mmCKSVII2C_IC_COMP_TYPE[] = {
 	 { "COMP_TYPE", 0, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmCKSVII2C1_IC_CON[] = {
+	 { "IC1_MASTER_MODE", 0, 0, &umr_bitfield_default },
+	 { "IC1_MAX_SPEED_MODE", 1, 2, &umr_bitfield_default },
+	 { "IC1_10BITADDR_SLAVE", 3, 3, &umr_bitfield_default },
+	 { "IC1_10BITADDR_MASTER", 4, 4, &umr_bitfield_default },
+	 { "IC1_RESTART_EN", 5, 5, &umr_bitfield_default },
+	 { "IC1_SLAVE_DISABLE", 6, 6, &umr_bitfield_default },
+	 { "STOP1_DET_IFADDRESSED", 7, 7, &umr_bitfield_default },
+	 { "TX1_EMPTY_CTRL", 8, 8, &umr_bitfield_default },
+	 { "RX1_FIFO_FULL_HLD_CTRL", 9, 9, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_TAR[] = {
+	 { "IC1_TAR", 0, 9, &umr_bitfield_default },
+	 { "GC1_OR_START", 10, 10, &umr_bitfield_default },
+	 { "SPECIAL1", 11, 11, &umr_bitfield_default },
+	 { "IC1_10BITADDR_MASTER", 12, 12, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_SAR[] = {
+	 { "IC1_SAR", 0, 9, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_HS_MADDR[] = {
+	 { "IC1_HS_MADDR", 0, 2, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_DATA_CMD[] = {
+	 { "DAT1", 0, 7, &umr_bitfield_default },
+	 { "CMD1", 8, 8, &umr_bitfield_default },
+	 { "STOP1", 9, 9, &umr_bitfield_default },
+	 { "RESTART1", 10, 10, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_SS_SCL_HCNT[] = {
+	 { "IC1_SS_SCL_HCNT", 0, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_SS_SCL_LCNT[] = {
+	 { "IC1_SS_SCL_LCNT", 0, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_FS_SCL_HCNT[] = {
+	 { "IC1_FS_SCL_HCNT", 0, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_FS_SCL_LCNT[] = {
+	 { "IC1_FS_SCL_LCNT", 0, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_HS_SCL_HCNT[] = {
+	 { "IC1_HS_SCL_HCNT", 0, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_HS_SCL_LCNT[] = {
+	 { "IC1_HS_SCL_LCNT", 0, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_INTR_STAT[] = {
+	 { "R1_RX_UNDER", 0, 0, &umr_bitfield_default },
+	 { "R1_RX_OVER", 1, 1, &umr_bitfield_default },
+	 { "R1_RX_FULL", 2, 2, &umr_bitfield_default },
+	 { "R1_TX_OVER", 3, 3, &umr_bitfield_default },
+	 { "R1_TX_EMPTY", 4, 4, &umr_bitfield_default },
+	 { "R1_RD_REQ", 5, 5, &umr_bitfield_default },
+	 { "R1_TX_ABRT", 6, 6, &umr_bitfield_default },
+	 { "R1_RX_DONE", 7, 7, &umr_bitfield_default },
+	 { "R1_ACTIVITY", 8, 8, &umr_bitfield_default },
+	 { "R1_STOP_DET", 9, 9, &umr_bitfield_default },
+	 { "R1_START_DET", 10, 10, &umr_bitfield_default },
+	 { "R1_GEN_CALL", 11, 11, &umr_bitfield_default },
+	 { "R1_RESTART_DET", 12, 12, &umr_bitfield_default },
+	 { "R1_MST_ON_HOLD", 13, 13, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_INTR_MASK[] = {
+	 { "M1_RX_UNDER", 0, 0, &umr_bitfield_default },
+	 { "M1_RX_OVER", 1, 1, &umr_bitfield_default },
+	 { "M1_RX_FULL", 2, 2, &umr_bitfield_default },
+	 { "M1_TX_OVER", 3, 3, &umr_bitfield_default },
+	 { "M1_TX_EMPTY", 4, 4, &umr_bitfield_default },
+	 { "M1_RD_REQ", 5, 5, &umr_bitfield_default },
+	 { "M1_TX_ABRT", 6, 6, &umr_bitfield_default },
+	 { "M1_RX_DONE", 7, 7, &umr_bitfield_default },
+	 { "M1_ACTIVITY", 8, 8, &umr_bitfield_default },
+	 { "M1_STOP_DET", 9, 9, &umr_bitfield_default },
+	 { "M1_START_DET", 10, 10, &umr_bitfield_default },
+	 { "M1_GEN_CALL", 11, 11, &umr_bitfield_default },
+	 { "M1_RESTART_DET", 12, 12, &umr_bitfield_default },
+	 { "M1_MST_ON_HOLD", 13, 13, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_ENABLE[] = {
+	 { "ENABLE1", 0, 0, &umr_bitfield_default },
+	 { "ABORT1", 1, 1, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_STATUS[] = {
+	 { "ACTIVITY1", 0, 0, &umr_bitfield_default },
+	 { "TFNF1", 1, 1, &umr_bitfield_default },
+	 { "TFE1", 2, 2, &umr_bitfield_default },
+	 { "RFNE1", 3, 3, &umr_bitfield_default },
+	 { "RFF1", 4, 4, &umr_bitfield_default },
+	 { "MST1_ACTIVITY", 5, 5, &umr_bitfield_default },
+	 { "SLV1_ACTIVITY", 6, 6, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_SDA_HOLD[] = {
+	 { "IC1_SDA_HOLD", 0, 23, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_SDA_SETUP[] = {
+	 { "SDA1_SETUP", 0, 7, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_ACK_GENERAL_CALL[] = {
+	 { "ACK1_GENERAL_CALL", 0, 0, &umr_bitfield_default },
+};
+static struct umr_bitfield mmCKSVII2C1_IC_ENABLE_STATUS[] = {
+	 { "IC1_EN", 0, 0, &umr_bitfield_default },
+	 { "SLV1_RX_ABORTED", 1, 1, &umr_bitfield_default },
+	 { "SLV1_FIFO_FILLED_AND_FLUSHED", 2, 2, &umr_bitfield_default },
+};
 static struct umr_bitfield mmSMUIO_MP_RESET_INTR[] = {
 	 { "SMUIO_MP_RESET_INTR", 0, 0, &umr_bitfield_default },
 };
