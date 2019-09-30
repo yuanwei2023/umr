@@ -554,13 +554,19 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_ADDR_HI", stream->words[2], NULL, 16);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_LO", stream->words[3], NULL, 16);
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", stream->words[4], NULL, 16);
-			ui->add_field(ui, ib_addr + 24, ib_vmid, "BYTE_COUNT", BITS(stream->words[5], 0, 26), NULL, 10);
+			if (asic->family <= FAMILY_VI) {
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "BYTE_COUNT", BITS(stream->words[5], 0, 26), NULL, 10);
+			} else {
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "BYTE_COUNT", BITS(stream->words[5], 0, 21), NULL, 10);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(stream->words[5], 21, 22), NULL, 10);
+			}
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "SAS", BITS(stream->words[5], 26, 27), NULL, 10);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "DAS", BITS(stream->words[5], 27, 28), NULL, 10);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "SAIC", BITS(stream->words[5], 28, 29), NULL, 10);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "DAIC", BITS(stream->words[5], 29, 30), NULL, 10);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "RAW_WAIT", BITS(stream->words[5], 30, 31), NULL, 10);
-			ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(stream->words[5], 31, 32), NULL, 10);
+			if (asic->family <= FAMILY_VI)
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(stream->words[5], 31, 32), NULL, 10);
 			break;
 		case 0x51: // CONTEXT_REG_RMW
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "REG", 0, umr_reg_name(asic, stream->words[0]), 0);

@@ -853,14 +853,27 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				case 2: printf("SRC_ADDR_HI: %s0x%08lx%s", YELLOW, (unsigned long)BITS(ib, 0, 32), RST); break;
 				case 3: printf("DST_ADDR_LO: %s0x%08lx%s", YELLOW, (unsigned long)BITS(ib, 0, 32), RST); break;
 				case 4: printf("DST_ADDR_HI: %s0x%08lx%s", YELLOW, (unsigned long)BITS(ib, 0, 32), RST); break;
-				case 5: printf("BYTE COUNT: %s%lu%s, SAS: %s%d%s, DAS: %s%d%s, SAIC: %s%d%s, DAIC: %s%d%s, RAW_WAIT: %s%d%s, DIS_WC: %s%d%s",
-						BLUE, (unsigned long)BITS(ib, 0, 26), RST,
-						BLUE, (int)BITS(ib, 26, 26+1), RST,
-						BLUE, (int)BITS(ib, 26+1, 26+1+1), RST,
-						BLUE, (int)BITS(ib, 26+1+1, 26+1+1+1), RST,
-						BLUE, (int)BITS(ib, 26+1+1+1, 26+1+1+1+1), RST,
-						BLUE, (int)BITS(ib, 26+1+1+1+1, 26+1+1+1+1+1), RST,
-						BLUE, (int)BITS(ib, 26+1+1+1+1+1, 26+1+1+1+1+1+1), RST);
+				case 5:
+						if (asic->family <= FAMILY_VI) {
+							printf("BYTE COUNT: %s%lu%s, SAS: %s%d%s, DAS: %s%d%s, SAIC: %s%d%s, DAIC: %s%d%s, RAW_WAIT: %s%d%s, DIS_WC: %s%d%s",
+							BLUE, (unsigned long)BITS(ib, 0, 26), RST,
+							BLUE, (int)BITS(ib, 26, 26+1), RST,
+							BLUE, (int)BITS(ib, 26+1, 26+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1, 26+1+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1+1, 26+1+1+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1+1+1, 26+1+1+1+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1+1+1+1, 26+1+1+1+1+1+1), RST);
+						} else {
+							// .. AI or above
+							printf("BYTE COUNT: %s%lu%s, DIS_WC: %s%d%s, SAS: %s%d%s, DAS: %s%d%s, SAIC: %s%d%s, DAIC: %s%d%s, RAW_WAIT: %s%d%s",
+							BLUE, (unsigned long)BITS(ib, 0, 21), RST,
+							BLUE, (int)BITS(ib, 21, 21+1), RST,
+							BLUE, (int)BITS(ib, 26, 26+1), RST,
+							BLUE, (int)BITS(ib, 26+1, 26+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1, 26+1+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1+1, 26+1+1+1+1), RST,
+							BLUE, (int)BITS(ib, 26+1+1+1+1, 26+1+1+1+1+1), RST);
+						}
 					break;
 				default: printf("Invalid word for opcode 0x%02lx", (unsigned long)decoder->pm4.cur_opcode);
 			}
