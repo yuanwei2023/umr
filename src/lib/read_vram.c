@@ -882,7 +882,6 @@ int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint
 		case FAMILY_CIK:
 		case FAMILY_VI:
 			return umr_access_vram_vi(asic, vmid, address, size, data, write_en);
-		case FAMILY_RV:
 		case FAMILY_AI:
 		case FAMILY_NV:
 			return umr_access_vram_ai(asic, vmid, address, size, data, write_en);

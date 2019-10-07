@@ -130,7 +130,7 @@ available families are:
 		FAMILY_CIK,
 		FAMILY_VI,
 		FAMILY_AI,
-		FAMILY_RV,
+		FAMILY_NV,
 
 		FAMILY_NPI, // reserves for new devices that are not public yet
 	};

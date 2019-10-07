@@ -84,7 +84,6 @@ enum chipfamily {
 	FAMILY_CIK,
 	FAMILY_VI,
 	FAMILY_AI,
-	FAMILY_RV,
 	FAMILY_NV, // NAVI10 and up
 
 	FAMILY_NPI, // reserves for new devices that are not public yet
@@ -783,6 +782,7 @@ struct umr_asic *umr_create_polaris10(struct umr_options *options);
 struct umr_asic *umr_create_polaris11(struct umr_options *options);
 struct umr_asic *umr_create_polaris12(struct umr_options *options);
 struct umr_asic *umr_create_raven1(struct umr_options *options);
+struct umr_asic *umr_create_picasso(struct umr_options *options);
 struct umr_asic *umr_create_renoir(struct umr_options *options);
 struct umr_asic *umr_create_stoney(struct umr_options *options);
 struct umr_asic *umr_create_tahiti(struct umr_options *options);

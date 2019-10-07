@@ -32,7 +32,7 @@ static struct umr_ip_offsets_soc15 vega10_offs[] = {
 struct umr_asic *umr_create_raven1(struct umr_options *options)
 {
 	return
-		umr_create_asic_helper("raven1", FAMILY_RV,
+		umr_create_asic_helper("raven1", FAMILY_AI,
 			umr_create_gfx91(vega10_offs, options),
 			umr_create_vcn10(vega10_offs, options),
 			umr_create_dcn10(vega10_offs, options),

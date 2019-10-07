@@ -24,26 +24,24 @@
  */
 #include "umr.h"
 
-static struct umr_ip_offsets_soc15 renoir_offs[] = {
-#include "renoir.i"
+static struct umr_ip_offsets_soc15 vega10_offs[] = {
+#include "vega10.i"
 	{ NULL },
 };
 
-struct umr_asic *umr_create_renoir(struct umr_options *options)
+struct umr_asic *umr_create_picasso(struct umr_options *options)
 {
 	return
-		umr_create_asic_helper("renoir", FAMILY_AI,
-			umr_create_clk1002(renoir_offs, options),
-			umr_create_gfx91(renoir_offs, options),
-			umr_create_vcn200(renoir_offs, options),
-			umr_create_dcn210(renoir_offs, options),
-			umr_create_dpcs210(renoir_offs, options),
-			umr_create_nbio70(renoir_offs, options),
-			umr_create_sdma041(renoir_offs, options),
-			umr_create_hdp40(renoir_offs, options),
-			umr_create_oss40(renoir_offs, options),
-			umr_create_mmhub91(renoir_offs, options),
-			umr_create_mp1200(renoir_offs, options),
+		umr_create_asic_helper("picasso", FAMILY_AI,
+			umr_create_gfx91(vega10_offs, options),
+			umr_create_vcn10(vega10_offs, options),
+			umr_create_dcn10(vega10_offs, options),
+			umr_create_nbio70(vega10_offs, options),
+			umr_create_sdma041(vega10_offs, options),
+			umr_create_hdp40(vega10_offs, options),
+			umr_create_oss40(vega10_offs, options),
+			umr_create_mmhub91(vega10_offs, options),
+			umr_create_mp100(vega10_offs, options),
 			NULL);
 }
 

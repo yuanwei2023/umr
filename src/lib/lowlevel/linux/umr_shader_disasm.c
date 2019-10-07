@@ -65,7 +65,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 	cpuname = asic->asicname;
 	if (asic->family == FAMILY_NV)
 		cpuname = "gfx1010";
-	else if (asic->family == FAMILY_RV)
+	else if (!strcmp(cpuname, "renoir") || !strcmp(cpuname, "raven1") || !strcmp(cpuname, "picasso"))
 		cpuname = "gfx902";
 	else if (asic->family > FAMILY_VI)
 		cpuname = "gfx900";
@@ -76,7 +76,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 
 	// compute features
 	features = "";
-	if (asic->family > FAMILY_RV && asic->options.wave64)
+	if (asic->family >= FAMILY_NV && asic->options.wave64)
 		features = "+wavefrontsize64";
 
 	disasm_ref = LLVMCreateDisasmCPUFeatures(

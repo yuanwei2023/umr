@@ -603,6 +603,6 @@ void umr_print_waves(struct umr_asic *asic)
 {
 	if (asic->family == FAMILY_NV)
 		umr_print_waves_nv(asic);
-	else if (asic->family <= FAMILY_RV)
+	else if (asic->family <= FAMILY_AI)
 		umr_print_waves_si_ai(asic);
 }

@@ -50,7 +50,7 @@ static const struct {
 	{ 0x131B, &umr_create_kaveri },
 	{ 0x131C, &umr_create_kaveri },
 	{ 0x131D, &umr_create_kaveri },
-	{ 0x15D8, &umr_create_raven1 },
+	{ 0x15D8, &umr_create_picasso },
 	{ 0x15DD, &umr_create_raven1 },
 	{ 0x1636, &umr_create_renoir },
 	{ 0x6600, &umr_create_oland },

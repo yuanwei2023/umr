@@ -524,7 +524,7 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 {
 	if (asic->family == FAMILY_NV)
 		return umr_get_wave_status_nv(asic, se, sh, cu, simd, wave, ws);
-	else if (asic->family == FAMILY_AI || asic->family == FAMILY_RV)
+	else if (asic->family == FAMILY_AI)
 		return umr_get_wave_status_ai(asic, se, sh, cu, simd, wave, ws);
 	else if (asic->family <= FAMILY_VI)
 		return umr_get_wave_status_vi(asic, se, sh, cu, simd, wave, ws);

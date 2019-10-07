@@ -15,6 +15,7 @@ add_library(asic OBJECT
   navi12.c
   navi14.c
   oland.c
+  picasso.c
   pitcairn.c
   polaris10.c
   polaris11.c
