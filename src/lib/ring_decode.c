@@ -923,8 +923,13 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				case 1: decoder->pm4.next_write_mem.addr_hi = ib;
 						printf("BASE_ADDRESS_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
 						break;
-				case 2:	printf("REG_OFFSET: %s%s%s (%s0x%lx%s)", RED, umr_reg_name(asic, 0x2c00 + BITS(ib, 0, 16)), RST, BLUE, BITS(ib, 0, 16), RST); break;
-				case 3: printf("NUM_DWORD: %s%lu%s", BLUE, (unsigned long)BITS(ib, 0, 14), RST); break;
+				default:
+					if (!(decoder->pm4.cur_word & 1)) {
+						printf("REG_OFFSET: %s%s%s (%s0x%lx%s)", RED, umr_reg_name(asic, 0x2c00 + BITS(ib, 0, 16)), RST, BLUE, BITS(ib, 0, 16), RST);
+					} else {
+						printf("NUM_DWORD: %s%lu%s", BLUE, (unsigned long)BITS(ib, 0, 14), RST);
+					}
+					break;
 			}
 			break;
 		case 0x63: // LOAD_SH_REG_INDEX

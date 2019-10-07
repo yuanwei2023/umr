@@ -385,6 +385,12 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "DIM_Z", stream->words[2], NULL, 10);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "INITIATOR", stream->words[3], NULL, 10);
 			break;
+		case 0x1d: // ATOMIC_GDS
+			// TODO: fill in
+			break;
+		case 0x1e: // ATOMIC_MEM
+			// TODO: fill in
+			break;
 		case 0x22: // COND_EXEC
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "GPU_ADDR_LO32", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "GPU_ADDR_HI32", stream->words[1], NULL, 16);
@@ -575,18 +581,23 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			break;
 		case 0x58: // ACQUIRE_MEM
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", 0, BITS(stream->words[0], 31, 32) ? "ME" : "PFP", 0);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(stream->words[0], 0, 29), NULL, 10);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(stream->words[0], 0, 30), NULL, 10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "CP_COHER_SIZE", stream->words[1], NULL, 16);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", stream->words[2], NULL, 16);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", BITS(stream->words[2], 0, 8), NULL, 16);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "CP_COHER_BASE", stream->words[3], NULL, 16);
-			ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", stream->words[4], NULL, 16);
-			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", stream->words[5], NULL, 10);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", BITS(stream->words[4], 0, 8), NULL, 16);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", BITS(stream->words[5], 0, 16), NULL, 10);
 			break;
 		case 0x5F: // LOAD_SH_REG
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_ADDRESS_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_ADDRESS_HI", stream->words[1], NULL, 16);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "REG_OFFSET", 0x2C00 + BITS(stream->words[2], 0, 16), umr_reg_name(asic, 0x2C00 + BITS(stream->words[2], 0, 16)), 16);
-			ui->add_field(ui, ib_addr + 16, ib_vmid, "NUM_DWORD", BITS(stream->words[3], 0, 14), NULL, 10);
+			{
+				uint32_t n;
+				for (n = 2; n < stream->n_words; n += 2) {
+					ui->add_field(ui, ib_addr + 12 + ((n - 2) * 4), ib_vmid, "REG_OFFSET", 0x2C00 + BITS(stream->words[n], 0, 16), umr_reg_name(asic, 0x2C00 + BITS(stream->words[n], 0, 16)), 16);
+					ui->add_field(ui, ib_addr + 16 + ((n - 2) * 4), ib_vmid, "NUM_DWORD", BITS(stream->words[n + 1], 0, 14), NULL, 10);
+				}
+			}
 			break;
 		case 0x63: // LOAD_SH_REG_INDEX
 			if (BITS(stream->words[0], 0, 1))
