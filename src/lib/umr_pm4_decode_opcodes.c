@@ -749,6 +749,36 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				}
 			}
 			break;
+		case 0xA2: // PKT3_MAP_QUEUES
+			if (asic->family <= FAMILY_VI) {
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(stream->words[0], 4, 6), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(stream->words[0], 8, 12), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "VIDMEM", BITS(stream->words[0], 16, 18), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ALLOC_FORMAT", BITS(stream->words[0], 24, 26), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(stream->words[0], 26, 29), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", BITS(stream->words[0], 29, 32), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(stream->words[1], 2, 23), NULL, 16);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "QUEUE", BITS(stream->words[1], 26, 32), NULL, 10);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "MQD_ADDR_LO", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "MQD_ADDR_HI", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "WPTR_ADDR_LO", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "WPTR_ADDR_HI", stream->words[4], NULL, 16);
+			} else if (asic->family <= FAMILY_NV) {
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(stream->words[0], 4, 6), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(stream->words[0], 8, 12), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE", BITS(stream->words[0], 13, 21), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_TYPE", BITS(stream->words[0], 21, 24), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "STATIC_QUEUE_GROUP", BITS(stream->words[0], 24, 26), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(stream->words[0], 26, 29), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", BITS(stream->words[0], 29, 32), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "CHECK_DISABLE", BITS(stream->words[1], 1, 2), NULL, 16);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(stream->words[1], 2, 28), NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "MQD_ADDR_LO", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "MQD_ADDR_HI", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "WPTR_ADDR_LO", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "WPTR_ADDR_HI", stream->words[4], NULL, 16);
+			}
+			break;
 		case 0xA3: // PKT3_UNMAP_QUEUES
 			{
 				uint32_t action, queue_sel, num_queues, engine_sel;

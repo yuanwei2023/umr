@@ -1183,6 +1183,52 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 					break;
 			}
 			break;
+		case 0xA2: // MAP_QUEUES
+			if (asic->family <= FAMILY_VI) {
+				switch(decoder->pm4.cur_word) {
+					case 0:
+						printf("QUEUE_SEL: %s%u%s, VMID: %s%u%s, VIDMEM: %s%u%s, ALLOC_FORMAT: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 4, 6), RST,
+							BLUE, (unsigned)BITS(ib, 8, 12), RST,
+							BLUE, (unsigned)BITS(ib, 16, 18), RST,
+							BLUE, (unsigned)BITS(ib, 24, 26), RST,
+							BLUE, (unsigned)BITS(ib, 26, 29), RST,
+							BLUE, (unsigned)BITS(ib, 29, 32), RST);
+						break;
+					case 1:
+						printf("DOORBELL_OFFSET: %s0x%lx%s, QUEUE: %s%u%s\n",
+							YELLOW, (unsigned long)BITS(ib, 2, 23), RST,
+							BLUE, (unsigned)BITS(ib, 26, 32), RST);
+						break;
+					case 2: printf("MQD_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("MQD_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				}
+			} else if (asic->family <= FAMILY_NV) {
+				switch(decoder->pm4.cur_word) {
+					case 0:
+						printf("QUEUE_SEL: %s%u%s, VMID: %s%u%s, QUEUE: %s%u%s, QUEUE_TYPE: %s%u%s, STATIC_QUEUE_GROUP: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 4, 6), RST,
+							BLUE, (unsigned)BITS(ib, 8, 12), RST,
+							BLUE, (unsigned)BITS(ib, 13, 21), RST,
+							BLUE, (unsigned)BITS(ib, 21, 24), RST,
+							BLUE, (unsigned)BITS(ib, 24, 26), RST,
+							BLUE, (unsigned)BITS(ib, 26, 29), RST,
+							BLUE, (unsigned)BITS(ib, 29, 32), RST);
+						break;
+					case 1:
+						printf("CHECK_DISABLE: %s%u%s, DOORBELL_OFFSET: %s0x%lx%s\n",
+							BLUE, (unsigned)BITS(ib, 1, 2), RST,
+							YELLOW, (unsigned long)BITS(ib, 2, 28), RST);
+						break;
+					case 2: printf("MQD_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("MQD_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				}
+			}
+			break;
 		case 0xA3: // UNMAP_QUEUES
 			if (asic->family <= FAMILY_VI) {
 				switch(decoder->pm4.cur_word) {
