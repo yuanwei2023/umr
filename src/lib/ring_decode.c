@@ -189,7 +189,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_SET_RESOURCES", // a0
 	"UNK", // a1
 	"PKT3_MAP_QUEUES", // a2
-	"UNK", // a3
+	"PKT3_UNMAP_QUEUES", // a3
 	"UNK", // a4
 	"UNK", // a5
 	"UNK", // a6
@@ -1151,7 +1151,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 			break;
 		case 0x9F: // LOAD_CONTEXT_REG_INDEX
 			switch(decoder->pm4.cur_word) {
-				case 0: decoder->pm4.next_write_mem.addr_lo = BITS(ib, 0, 31) & ~0x3UL;
+				case 0: decoder->pm4.next_write_mem.addr_lo = BITS(ib, 0, 32) & ~0x3UL;
 					decoder->pm4.next_write_mem.type = BITS(ib, 0, 1); // INDEX bit
 					if (BITS(ib, 0, 1))
 						printf("INDEX: %s1%s", BLUE, RST);
@@ -1181,6 +1181,96 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						printf("DATA: %s0x%lx%s\n", BLUE, (unsigned long)ib, RST);
 					}
 					break;
+			}
+			break;
+		case 0xA3: // UNMAP_QUEUES
+			if (asic->family <= FAMILY_VI) {
+				switch(decoder->pm4.cur_word) {
+					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
+						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+								BLUE, (unsigned)BITS(ib, 0, 2), RST,
+								BLUE, (unsigned)BITS(ib, 4, 6), RST,
+								BLUE, (unsigned)BITS(ib, 26, 29), RST,
+								BLUE, (unsigned)BITS(ib, 29, 32), RST);
+						break;
+					case 1:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 4, 6) == 1)
+							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+						else
+							printf("DOORBELL_OFFSET0: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						break;
+					case 2:
+						printf("DOORBELL_OFFSET1: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						break;
+					case 3:
+						printf("DOORBELL_OFFSET2: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						break;
+					case 4:
+						printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						break;
+				}
+			} else if (asic->family <= FAMILY_AI) {
+				switch(decoder->pm4.cur_word) {
+					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
+						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+								BLUE, (unsigned)BITS(ib, 0, 2), RST,
+								BLUE, (unsigned)BITS(ib, 4, 6), RST,
+								BLUE, (unsigned)BITS(ib, 26, 29), RST,
+								BLUE, (unsigned)BITS(ib, 29, 32), RST);
+						break;
+					case 1:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 4, 6) == 1)
+							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+						else
+							printf("DOORBELL_OFFSET0: %s0x%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+					case 2:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 26, 29) == 4 && BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
+							printf("RB_WPTR: %s0x%lx%s\n", YELLOW, BITS(ib, 0, 20), RST);
+						else
+							printf("DOORBELL_OFFSET1: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+					case 3:
+						printf("DOORBELL_OFFSET2: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+					case 4:
+						printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+				}
+			} else if (asic->family <= FAMILY_NV) {
+				switch(decoder->pm4.cur_word) {
+					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
+						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+								BLUE, (unsigned)BITS(ib, 0, 2), RST,
+								BLUE, (unsigned)BITS(ib, 4, 6), RST,
+								BLUE, (unsigned)BITS(ib, 26, 29), RST,
+								BLUE, (unsigned)BITS(ib, 29, 32), RST);
+						break;
+					case 1:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 4, 6) == 1)
+							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+						else
+							printf("DOORBELL_OFFSET0: %s0x%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+					case 2:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
+							printf("TF_ADDR_LO32: %s0x%lx%s\n", YELLOW, BITS(ib, 2, 32), RST);
+						else
+							printf("DOORBELL_OFFSET1: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+					case 3:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
+							printf("TF_ADDR_HI32: %s0x%lx%s\n", YELLOW, BITS(ib, 0, 32), RST);
+						else
+							printf("DOORBELL_OFFSET2: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+					case 4:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
+							printf("TF_DATA: %s0x%lx%s\n", YELLOW, BITS(ib, 0, 32), RST);
+						else
+							printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						break;
+				}
 			}
 			break;
 		default:

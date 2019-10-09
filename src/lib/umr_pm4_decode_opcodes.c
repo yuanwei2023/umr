@@ -189,7 +189,7 @@ static char *pm4_pkt3_opcode_names[] = {
 	"PKT3_SET_RESOURCES", // a0
 	"UNK", // a1
 	"PKT3_MAP_QUEUES", // a2
-	"UNK", // a3
+	"PKT3_UNMAP_QUEUES", // a3
 	"UNK", // a4
 	"UNK", // a5
 	"UNK", // a6
@@ -733,7 +733,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				if (index)
 					ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", index, NULL, 10);
 				else
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "MEM_ADDR_LO", BITS(stream->words[0], 0, 31) & ~0x3UL, NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "MEM_ADDR_LO", BITS(stream->words[0], 0, 32) & ~0x3UL, NULL, 16);
 				if (index)
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "CONTEXT_BASE_ADDR", stream->words[1], NULL, 16);
 				else
@@ -746,6 +746,72 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 					uint32_t addr = 0xA000 + BITS(stream->words[2], 0, 16);
 					for (n = 4; n < stream->n_words; n++)
 						ui->add_field(ui, ib_addr + n * 4, ib_vmid, umr_reg_name(asic, addr + n - 4), stream->words[n], NULL, 16);
+				}
+			}
+			break;
+		case 0xA3: // PKT3_UNMAP_QUEUES
+			{
+				uint32_t action, queue_sel, num_queues, engine_sel;
+
+				if (asic->family <= FAMILY_VI) {
+					queue_sel = BITS(stream->words[0], 4, 6);
+					engine_sel = BITS(stream->words[0], 26, 29);
+					num_queues = BITS(stream->words[0], 29, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ACTION", BITS(stream->words[0], 0, 2), NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", queue_sel, NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", engine_sel, NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", num_queues, NULL, 10);
+					if (queue_sel == 1)
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "PASID", BITS(stream->words[1], 0, 16), NULL, 10);
+					else
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET0", BITS(stream->words[1], 2, 23), NULL, 16);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "DOORBELL_OFFSET1", BITS(stream->words[2], 2, 23), NULL, 16);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "DOORBELL_OFFSET2", BITS(stream->words[3], 2, 23), NULL, 16);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(stream->words[4], 2, 23), NULL, 16);
+				} else if (asic->family <= FAMILY_AI) {
+					queue_sel = BITS(stream->words[0], 4, 6);
+					engine_sel = BITS(stream->words[0], 26, 29);
+					num_queues = BITS(stream->words[0], 29, 32);
+					action = BITS(stream->words[0], 0, 2);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ACTION", BITS(stream->words[0], 0, 2), NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", queue_sel, NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", engine_sel, NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", num_queues, NULL, 10);
+					if (queue_sel == 1)
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "PASID", BITS(stream->words[1], 0, 16), NULL, 10);
+					else
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET0", BITS(stream->words[1], 2, 28), NULL, 16);
+					if (engine_sel == 4 && action == 3)
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "RB_WPTR", BITS(stream->words[2], 0, 20), NULL, 16);
+					else
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "DOORBELL_OFFSET1", BITS(stream->words[2], 2, 28), NULL, 16);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "DOORBELL_OFFSET2", BITS(stream->words[3], 2, 28), NULL, 16);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(stream->words[4], 2, 28), NULL, 16);
+				} else if (asic->family <= FAMILY_NV) {
+					queue_sel = BITS(stream->words[0], 4, 6);
+					engine_sel = BITS(stream->words[0], 26, 29);
+					num_queues = BITS(stream->words[0], 29, 32);
+					action = BITS(stream->words[0], 0, 2);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ACTION", BITS(stream->words[0], 0, 2), NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", queue_sel, NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", engine_sel, NULL, 10);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", num_queues, NULL, 10);
+					if (queue_sel == 1)
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "PASID", BITS(stream->words[1], 0, 16), NULL, 10);
+					else
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET0", BITS(stream->words[1], 2, 28), NULL, 16);
+					if (action == 3)
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "TF_ADDR_LO32", BITS(stream->words[2], 2, 32), NULL, 16);
+					else
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "DOORBELL_OFFSET1", BITS(stream->words[2], 2, 28), NULL, 16);
+					if (action == 3)
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "TF_ADDR_HI32", BITS(stream->words[2], 0, 32), NULL, 16);
+					else
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "DOORBELL_OFFSET2", BITS(stream->words[3], 2, 28), NULL, 16);
+					if (action == 3)
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "TF_DATA", BITS(stream->words[2], 0, 32), NULL, 16);
+					else
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(stream->words[4], 2, 28), NULL, 16);
 				}
 			}
 			break;
