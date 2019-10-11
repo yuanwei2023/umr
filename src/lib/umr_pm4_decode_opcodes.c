@@ -187,7 +187,7 @@ static char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 9e
 	"PKT3_LOAD_CONTEXT_REG_INDEX", // 9f
 	"PKT3_SET_RESOURCES", // a0
-	"UNK", // a1
+	"PKT3_MAP_PROCESS", // a1
 	"PKT3_MAP_QUEUES", // a2
 	"PKT3_UNMAP_QUEUES", // a3
 	"UNK", // a4
@@ -747,6 +747,48 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 					for (n = 4; n < stream->n_words; n++)
 						ui->add_field(ui, ib_addr + n * 4, ib_vmid, umr_reg_name(asic, addr + n - 4), stream->words[n], NULL, 16);
 				}
+			}
+			break;
+		case 0xA1: // PKT3_MAP_PROCESS
+			if (asic->family <= FAMILY_VI) {
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "PASID", BITS(stream->words[0], 0, 16), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "DIQ_ENABLE", BITS(stream->words[0], 24, 25), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "PAGE_TABLE_BASE", BITS(stream->words[1], 0, 28), NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "SH_MEM_BASES", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "SH_MEM_APE1_BASE", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "SH_MEM_APE1_LIMIT", stream->words[4], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "SH_MEM_CONFIG", stream->words[5], NULL, 16);
+				ui->add_field(ui, ib_addr + 28, ib_vmid, "GDS_ADDR_LO", stream->words[6], NULL, 16);
+				ui->add_field(ui, ib_addr + 32, ib_vmid, "GDS_ADDR_HI", stream->words[7], NULL, 16);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "NUM_GWS", BITS(stream->words[8], 0, 6), NULL, 10);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "NUM_OAC", BITS(stream->words[8], 8, 12), NULL, 10);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "GDS_SIZE", BITS(stream->words[8], 16, 22), NULL, 10);
+			} else if (asic->family <= FAMILY_NV) {
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "PASID", BITS(stream->words[0], 0, 16), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "DEBUG_VMID", BITS(stream->words[0], 18, 22), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "DEBUG_FLAG", BITS(stream->words[0], 22, 23), NULL, 10);
+				if (asic->family < FAMILY_NV)
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "TMZ", BITS(stream->words[0], 23, 24), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "DIQ_ENABLE", BITS(stream->words[0], 24, 25), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "PROCESS_QUANTUM", BITS(stream->words[0], 25, 32), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "VM_CONTEXT_PAGE_TABLE_BASE_ADDR_LO32", stream->words[1], NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "VM_CONTEXT_PAGE_TABLE_BASE_ADDR_HI32", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "SH_MEM_BASES", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "SH_MEM_CONFIG", stream->words[4], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "SQ_SHADER_TBA_LO", stream->words[5], NULL, 16);
+				ui->add_field(ui, ib_addr + 28, ib_vmid, "SQ_SHADER_TBA_HI", stream->words[6], NULL, 16);
+				ui->add_field(ui, ib_addr + 32, ib_vmid, "SQ_SHADER_TMA_LO", stream->words[7], NULL, 16);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "SQ_SHADER_TMA_HI", stream->words[8], NULL, 16);
+				// offset 40 is reserved...
+				ui->add_field(ui, ib_addr + 44, ib_vmid, "GDS_ADDR_LO", stream->words[10], NULL, 16);
+				ui->add_field(ui, ib_addr + 48, ib_vmid, "GDS_ADDR_HI", stream->words[11], NULL, 16);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "NUM_GWS", BITS(stream->words[12], 0, 6), NULL, 10);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "SDMA_ENABLE", BITS(stream->words[12], 7, 8), NULL, 10);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "NUM_OAC", BITS(stream->words[12], 8, 12), NULL, 10);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "GDS_SIZE", BITS(stream->words[12], 16, 22), NULL, 10);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "NUM_QUEUES", BITS(stream->words[12], 22, 32), NULL, 10);
+				ui->add_field(ui, ib_addr + 56, ib_vmid, "COMPLETION_SIGNAL_LO32", stream->words[13], NULL, 16);
+				ui->add_field(ui, ib_addr + 60, ib_vmid, "COMPLETION_SIGNAL_HI32", stream->words[14], NULL, 16);
 			}
 			break;
 		case 0xA2: // PKT3_MAP_QUEUES

@@ -187,7 +187,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 9e
 	"PKT3_LOAD_CONTEXT_REG_INDEX", // 9f
 	"PKT3_SET_RESOURCES", // a0
-	"UNK", // a1
+	"PKT3_MAP_PROCESS", // a1
 	"PKT3_MAP_QUEUES", // a2
 	"PKT3_UNMAP_QUEUES", // a3
 	"UNK", // a4
@@ -1181,6 +1181,64 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						printf("DATA: %s0x%lx%s\n", BLUE, (unsigned long)ib, RST);
 					}
 					break;
+			}
+			break;
+		case 0xA1: // PKT3_MAP_PROCESS
+			if (asic->family <= FAMILY_VI) {
+				switch(decoder->pm4.cur_word) {
+					case 0:
+						printf("PASID: %s%u%s, DIQ_ENABLE: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 0, 16), RST,
+							BLUE, (unsigned)BITS(ib, 24, 25), RST);
+						break;
+					case 1: printf("PAGE_TABLE_BASE: %s0x%lx%s\n", YELLOW, (unsigned long)BITS(ib, 0, 28), RST); break;
+					case 2: printf("SH_MEM_BASES: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("SH_MEM_APE1_BASE: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("SH_MEM_APE1_LIMIT: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("GDS_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 6: printf("GDS_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 7:
+						printf("NUM_GWS: %s%u%s, NUM_OAC: %s%u%s, GDS_SIZE: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 0, 6), RST,
+							BLUE, (unsigned)BITS(ib, 8, 12), RST,
+							BLUE, (unsigned)BITS(ib, 16, 22), RST);
+						break;
+				}
+			} else if (asic->family <= FAMILY_NV) {
+				switch(decoder->pm4.cur_word) {
+					case 0:
+						printf("PASID: %s%u%s, DEBUG_VMID: %s%u%s, DEBUG_FLAG: %s%u%s",
+							BLUE, (unsigned)BITS(ib, 0, 16), RST,
+							BLUE, (unsigned)BITS(ib, 18, 22), RST,
+							BLUE, (unsigned)BITS(ib, 22, 23), RST);
+						if (asic->family < FAMILY_NV)
+							printf(", TMZ: %s%u%s", BLUE, (unsigned)BITS(ib, 23, 24), RST);
+						printf(", DIQ_ENABLE: %s%u%s, PROCESS_QUANTUM: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 24, 25), RST,
+							BLUE, (unsigned)BITS(ib, 25, 32), RST);
+						break;
+					case 1: printf("VM_CONTEXT_PAGE_TABLE_BASE_ADDR_LO32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 2: printf("VM_CONTEXT_PAGE_TABLE_BASE_ADDR_HI32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("SH_MEM_BASES: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("SH_MEM_CONFIG: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("SQ_SHADER_TBA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 6: printf("SQ_SHADER_TBA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 7: printf("SQ_SHADER_TMA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 8: printf("SQ_SHADER_TMA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 9: printf("RESERVED\n"); break;
+					case 10: printf("GDS_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 11: printf("GDS_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 12:
+						printf("NUM_GWS: %s%u%s, SDMA_ENABLE: %s%u%s, NUM_OAC: %s%u%s, GDS_SIZE: %s%u%s, NUM_QUEUES: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 0, 6), RST,
+							BLUE, (unsigned)BITS(ib, 7, 8), RST,
+							BLUE, (unsigned)BITS(ib, 8, 12), RST,
+							BLUE, (unsigned)BITS(ib, 16, 22), RST,
+							BLUE, (unsigned)BITS(ib, 22, 23), RST);
+						break;
+					case 13: printf("COMPLETION_SIGNAL_LO32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 14: printf("COMPLETION_SIGNAL_HI32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				}
 			}
 			break;
 		case 0xA2: // MAP_QUEUES
