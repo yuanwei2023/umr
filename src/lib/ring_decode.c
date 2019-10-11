@@ -190,7 +190,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_MAP_PROCESS", // a1
 	"PKT3_MAP_QUEUES", // a2
 	"PKT3_UNMAP_QUEUES", // a3
-	"UNK", // a4
+	"PKT3_QUERY_STATUS", // a4
 	"UNK", // a5
 	"UNK", // a6
 	"UNK", // a7
@@ -1374,6 +1374,53 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						else
 							printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
 						break;
+				}
+			}
+			break;
+		case 0xA4: // PKT3_QUERY_STATUS
+			if (asic->family <= FAMILY_VI) {
+				switch(decoder->pm4.cur_word) {
+					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
+						printf("CONTEXT_ID: %s%u%s, INTERRUPT_SEL: %s%u%s, COMMAND: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 0, 28), RST,
+							BLUE, (unsigned)BITS(ib, 28, 30), RST,
+							BLUE, (unsigned)BITS(ib, 30, 32), RST);
+						break;
+					case 1:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 28, 30) == 1) {
+							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+						} else {
+							printf("DOORBELL_OFFSET: %s0x%lx%s, ENGINE_SEL: %s%u%s\n",
+								YELLOW, (unsigned long)BITS(ib, 2, 23), RST,
+								BLUE, (unsigned)BITS(ib, 26, 29), RST);
+						}
+						break;
+					case 2: printf("ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("DATA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("DATA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				}
+			} else if (asic->family <= FAMILY_NV) {
+				switch(decoder->pm4.cur_word) {
+					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
+						printf("CONTEXT_ID: %s%u%s, INTERRUPT_SEL: %s%u%s, COMMAND: %s%u%s\n",
+							BLUE, (unsigned)BITS(ib, 0, 28), RST,
+							BLUE, (unsigned)BITS(ib, 28, 30), RST,
+							BLUE, (unsigned)BITS(ib, 30, 32), RST);
+						break;
+					case 1:
+						if (BITS(decoder->pm4.next_write_mem.addr_lo, 28, 30) == 1) {
+							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+						} else {
+							printf("DOORBELL_OFFSET: %s0x%lx%s, ENGINE_SEL: %s%u%s\n",
+								YELLOW, (unsigned long)BITS(ib, 2, 28), RST,
+								BLUE, (unsigned)BITS(ib, 28, 31), RST);
+						}
+						break;
+					case 2: printf("ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("DATA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("DATA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
 				}
 			}
 			break;

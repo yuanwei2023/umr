@@ -190,7 +190,7 @@ static char *pm4_pkt3_opcode_names[] = {
 	"PKT3_MAP_PROCESS", // a1
 	"PKT3_MAP_QUEUES", // a2
 	"PKT3_UNMAP_QUEUES", // a3
-	"UNK", // a4
+	"PKT3_QUERY_STATUS", // a4
 	"UNK", // a5
 	"UNK", // a6
 	"UNK", // a7
@@ -885,6 +885,37 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 					else
 						ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(stream->words[4], 2, 28), NULL, 16);
 				}
+			}
+			break;
+		case 0xA4: // PKT3_QUERY_STATUS
+			if (asic->family <= FAMILY_VI) {
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTEXT_ID", BITS(stream->words[0], 0, 28), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INTERRUPT_SEL", BITS(stream->words[0], 28, 30), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(stream->words[0], 30, 32), NULL, 10);
+				if (BITS(stream->words[0], 28, 30) == 1) {
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "PASID", BITS(stream->words[1], 0, 16), NULL, 10);
+				} else {
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(stream->words[1], 2, 23), NULL, 16);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "ENGINE_SEL", BITS(stream->words[1], 26, 29), NULL, 10);
+				}
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDR_LO", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "ADDR_HI", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", stream->words[4], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", stream->words[5], NULL, 16);
+			} else if (asic->family <= FAMILY_NV) {
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTEXT_ID", BITS(stream->words[0], 0, 28), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INTERRUPT_SEL", BITS(stream->words[0], 28, 30), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(stream->words[0], 30, 32), NULL, 10);
+				if (BITS(stream->words[0], 28, 30) == 1) {
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "PASID", BITS(stream->words[1], 0, 16), NULL, 10);
+				} else {
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(stream->words[1], 2, 28), NULL, 16);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "ENGINE_SEL", BITS(stream->words[1], 28, 31), NULL, 10);
+				}
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDR_LO", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "ADDR_HI", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", stream->words[4], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", stream->words[5], NULL, 16);
 			}
 			break;
 		default:
