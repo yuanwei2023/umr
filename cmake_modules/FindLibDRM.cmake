@@ -25,7 +25,7 @@ find_library(LIBDRM_LIBRARY NAMES libdrm_amdgpu.so.1
     /usr/lib
 )
 
-SET(LIBDRM_LIBRARIES optimized ${LIBDRM_LIBRARY})
+SET(LIBDRM_LIBRARIES ${LIBDRM_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(LIBDRM DEFAULT_MSG
