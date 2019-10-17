@@ -76,13 +76,21 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 	owd = wd = umr_scan_wave_data(asic);
 	while (wd) {
 		if (!asic->options.bitfields && first) {
+			static const char* titles[] = {
+				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "INST_DW1", "EXEC_HI", "EXEC_LO", "HW_ID", "GPRALLOC",
+				"LDSALLOC", "TRAPSTS", "IBSTS", "TBA_HI", "TBA_LO", "TMA_HI", "TMA_LO", "IB_DBG0", "M0", NULL
+			};
 			first = 0;
-			printf("SE SH CU SIMD WAVE# WAVE_STATUS PC_HI PC_LO INST_DW0 INST_DW1 EXEC_HI EXEC_LO HW_ID GPRALLOC LDSALLOC TRAPSTS IBSTS TBA_HI TBA_LO TMA_HI TMA_LO IB_DBG0 M0\n");
+			printf("SE SH CU SIMD WAVE# ");
+			for (int x = 0; titles[x]; x++) {
+				printf("%8s ", titles[x]);
+			}
+			printf("\n");
 		}
 		if (!asic->options.bitfields) {
 		printf(
-"%u %u %u %u %u " // se/sh/cu/simd/wave
-"%08lx %08lx %08lx " // wave_status pc/hi/lo
+"%2u %2u %2u %4u %5u " // se/sh/cu/simd/wave
+"   %08lx %08lx %08lx " // wave_status pc/hi/lo
 "%08lx %08lx %08lx %08lx " // inst0/1 exec hi/lo
 "%08lx %08lx %08lx %08lx %08lx " // HW_ID GPR/LDSALLOC TRAP/IB STS
 "%08lx %08lx %08lx %08lx %08lx %08lx " // TBA_HI TBA_LO TMA_HI TMA_LO IB_DBG0 M0\n");
@@ -355,13 +363,20 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 
 	while (wd) {
 		if (!asic->options.bitfields && first) {
+			static const char* titles[] = {
+				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "EXEC_HI", "EXEC_LO", "HW_ID1", "HW_ID2", "GPRALLOC", "LDSALLOC", "TRAPSTS", "IBSTS1", "IBSTS2", "IB_DBG1", "M0", NULL
+			};
 			first = 0;
-			printf("SE SA WGP SIMD WAVE# WAVE_STATUS PC_HI PC_LO INST_DW0 EXEC_HI EXEC_LO HW_ID1 HW_ID2 GPRALLOC LDSALLOC TRAPSTS IBSTS1 IBSTS2 IB_DBG1 M0\n");
+			printf("SE SA WGP SIMD WAVE# ");
+			for (int x = 0; titles[x]; x++) {
+				printf("%8s ", titles[x]);
+			}
+			printf("\n");
 		}
 		if (!asic->options.bitfields) {
 		printf(
-"%u %u %u %u %u " // se/sa/wgp/simd/wave
-"%08lx %08lx %08lx " // wave_status pc/hi/lo
+"%2u %2u %3u %4u %5u " // se/sa/wgp/simd/wave
+"   %08lx %08lx %08lx " // wave_status pc/hi/lo
 "%08lx %08lx %08lx " // inst0 exec hi/lo
 "%08lx %08lx %08lx %08lx %08lx %08lx %08lx " // HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
 "%08lx %08lx " // IB_DBG1 M0\n");
