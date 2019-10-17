@@ -25,7 +25,7 @@ find_library(PCIACCESS_LIBRARY NAMES pciaccess
     /usr/lib
 )
 
-SET(PCIACCESS_LIBRARIES optimized ${PCIACCESS_LIBRARY})
+SET(PCIACCESS_LIBRARIES ${PCIACCESS_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(PCIACCESS DEFAULT_MSG

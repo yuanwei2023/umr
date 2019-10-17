@@ -46,7 +46,7 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 	snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_ring_%s", asic->instance, ringname);
 	fd = open(fname, O_RDWR);
 	if (fd < 0) {
-		fprintf(stderr, "[ERROR]: Could not open ring debugfs file");
+		fprintf(stderr, "[ERROR]: Could not open ring debugfs file '%s'\n", fname);
 		return NULL;
 	}
 
