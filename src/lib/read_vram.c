@@ -340,7 +340,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	} pte_fields;
 	char buf[64];
 	unsigned char *pdst = dst;
-	char *hub, *regprefix;
+	char *hub, *vm0prefix, *regprefix;
 	unsigned hubid;
 	static const char *indentation = "            \\->";
 
@@ -372,27 +372,31 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	hubid = vmid & 0xFF00;
 	vmid &= 0xFF;
 
-	regprefix = "";
+	vm0prefix = regprefix = "";
 	switch (hubid) {
 		case UMR_MM_VC0:
 			hub = "mmhub";
-			if (asic->family == FAMILY_AI)
-				regprefix = "VML2VC0";
+			if (asic->family == FAMILY_AI) {
+				regprefix = "VML2VC0_";
+				vm0prefix = "VMSHAREDVC0_";
+			}
 			break;
 		case UMR_MM_VC1:
 			hub = "mmhub";
-			if (asic->family == FAMILY_AI)
-				regprefix = "VML2VC1";
+			if (asic->family == FAMILY_AI) {
+				regprefix = "VML2VC1_";
+				vm0prefix = "VMSHAREDVC1_";
+			}
 			break;
 		case UMR_MM_HUB:
 			hub = "mmhub";
 			if (asic->family == FAMILY_NV)
-				regprefix = "MM";
+				vm0prefix = regprefix = "MM";
 			break;
 		case UMR_GFX_HUB:
 			hub = "gfx";
 			if (asic->family == FAMILY_NV)
-				regprefix = "GC";
+				vm0prefix = regprefix = "GC";
 			break;
 		case UMR_USER_HUB:
 			hub = asic->options.hub_name;
@@ -405,21 +409,21 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	// read vm registers
 	if (vmid == 0) {
 		// only need system aperture registers if we're using VMID 0
-		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", regprefix);
+		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", vm0prefix);
 			registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip(asic, hub, buf);
-		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", regprefix);
+		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", vm0prefix);
 			registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip(asic, hub, buf);
 		system_aperture_low = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << 18;
 		system_aperture_high = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR) << 18;
 
-		sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", regprefix);
+		sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", vm0prefix);
 			registers.mmMC_VM_FB_LOCATION_BASE = umr_read_reg_by_name_by_ip(asic, hub, buf);
 			fb_bottom = ((uint64_t)registers.mmMC_VM_FB_LOCATION_BASE) << 24;
-		sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", regprefix);
+		sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", vm0prefix);
 			registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip(asic, hub, buf);
 			fb_top = ((uint64_t)registers.mmMC_VM_FB_LOCATION_TOP) << 24;
 
-		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", regprefix);
+		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
 			registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip(asic, hub, buf);
 	}
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32", regprefix, vmid);
