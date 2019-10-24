@@ -30,6 +30,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	    first, i, j, k, count = 0;
 	uint64_t addr, scale;
 	char buf[256], regname_copy[256];
+	uint32_t mmio_addr = 0;
 
 	// does the register name contain a trailing star?
 	strcpy(regname_copy, regname);
@@ -75,12 +76,18 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 							default: return -1;
 							}
 
-							if (asic->blocks[i]->regs[j].type == REG_MMIO)
+							if (asic->blocks[i]->regs[j].type == REG_MMIO) {
 								addr = umr_apply_bank_selection_address(asic);
-							else
+								// apply context banking
+								mmio_addr = asic->blocks[i]->regs[j].addr*scale;
+								if ((mmio_addr >= (0xA000*4)) && (mmio_addr < (0xB000*4)))
+									mmio_addr += asic->options.context_reg_bank * 0x1000;
+							} else {
 								addr = 0;
+								mmio_addr = asic->blocks[i]->regs[j].addr * scale;
+							}
 
-							if (lseek(fd, addr|(asic->blocks[i]->regs[j].addr*scale), SEEK_SET) == -1) {
+							if (lseek(fd, addr|mmio_addr, SEEK_SET) == -1) {
 								snprintf(buf, sizeof(buf)-1, "Could not seek reading register %s.%s.%s", asic->asicname, asic->blocks[i]->ipname, asic->blocks[i]->regs[j].regname);
 								perror(buf);
 								r = -1;
