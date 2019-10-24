@@ -216,17 +216,30 @@ Disassemble 'size' bytes (in hex) from a given address (in hex).  The size can b
 specified as zero to have umr try and compute the shader size.
 
 .SH Ring and PM4 Decoding
-.IP "--ring, -R <string>(from:to)"
-Read the contents of a ring named by the string without the
-.B amdgpu_ring_
-prefix.  By default it will read and display the entire ring.  A
-starting and ending address can be specified in decimal or a '.' can
-be used to indicate relative to the current
+.IP "--ring, -R <string>[range]"
+Read the contents of the ring named by the string
+.B amdgpu_ring_<string>,
+i.e. without the
+.B amdgpu_ring
+prefix. By default it reads and prints the entire ring.  A
+range is optional and has the format '[start:end]'. The
+starting and ending address are non-negative integers or
+the '.' (dot) symbol, which indicates the
+.B rptr
+when on the left side and
 .B wptr
-pointer.  For example, "-R gfx" would read the entire gfx ring,
-"-R gfx[0:16]" would display the contents from 0 to 16 inclusively, and
-"-R gfx[.]" or "-R gfx[.:.]" would display the last 32 words relative
-to rptr.
+when on the right side of the range.
+For instance,
+"-R gfx" prints the entire gfx ring, "-R gfx[0:16]" prints
+the contents from 0 to 16 inclusively, and "-R gfx[.]" or
+"-R gfx[.:.]" prints the range [rptr,wptr]. When one of
+the range limits is a number while the other is the dot, '.',
+then the number indicates the relative range before or after the
+corresponding ring pointer. For instance, "-R sdma0[16:.]"
+prints [wptr-16, wptr] words of the SDMA0 ring, and
+"-R sdma1[.:32]" prints [rptr, rptr+32] double-words of the
+SDMA1 ring. The contents of the ring is always interpreted,
+if it can be interpreted.
 .IP "--dump-ib, -di [vmid@]address length [pm]"
 Dump an IB packet at an address with an optional VMID.  The length is specified
 in bytes.  The type of decoder <pm> is optional and defaults to PM4 packets.

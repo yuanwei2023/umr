@@ -28,7 +28,7 @@
 void umr_read_ring(struct umr_asic *asic, char *ringpath)
 {
 	char ringname[32], from[32], to[32];
-	int use_decoder, enable_decoder, gprs;
+	int  enable_decoder, gprs;
 	uint32_t wptr, rptr, drv_wptr, ringsize, start, end, value,
 		 *ring_data;
 	struct umr_ring_decoder decoder, *pdecoder, *ppdecoder;
@@ -73,33 +73,46 @@ void umr_read_ring(struct umr_asic *asic, char *ringpath)
 	drv_wptr = ring_data[2]<<2;
 
 	/* default to reading entire ring */
-	use_decoder = 0;
 	if (!from[0]) {
 		start = 0;
 		end   = ringsize-4;
 	} else {
-		if (from[0] == '.' || !to[0] || to[0] == '.') {
-			/* start from 32 words prior to rptr up to wptr */
-			end = wptr;
-			if (rptr < (31*4)) {
-				start = rptr - 31*4;
-				start += ringsize;
+		if (from[0] == '.') {
+			if (to[0] == 0 || to[0] == '.') {
+				/* Notation: [.] or [.:.], meaning
+				 * [rptr, wptr].
+				 */
+				start = rptr;
+				end = wptr;
 			} else {
-				start = rptr - 31*4;
+				/* Notation: [.:k], k >=0, meaning
+				 * [rptr, rtpr+k] double-words.
+				 */
+				start = rptr;
+				sscanf(to, "%"SCNu32, &end);
+				end *= 4;
+				end = (start + end + ringsize) % ringsize;
 			}
-
 		} else {
 			sscanf(from, "%"SCNu32, &start);
-			sscanf(to, "%"SCNu32, &end);
 			start *= 4;
-			end *= 4;
-			use_decoder = 1;
-			decoder.pm4.cur_opcode = 0xFFFFFFFF;
-			decoder.sdma.cur_opcode = 0xFFFFFFFF;
+
+			if (to[0] != 0 && to[0] != '.') {
+				/* [k:r] ==> absolute [k, r].
+				 */
+				sscanf(to, "%"SCNu32, &end);
+				end *= 4;
+				start %= ringsize;
+				end %= ringsize;
+			} else {
+				/* to[0] is 0 or '.',
+				 * [k] or [k:.] ==> [wptr - k, wptr]
+				 */
+				start = (wptr - start + ringsize) % ringsize;
+				end = wptr;
+			}
 		}
 	}
-	end %= ringsize;
-	start %= ringsize;
 
 	/* dump data */
 	printf("\n%s.%s.rptr == %lu\n%s.%s.wptr == %lu\n%s.%s.drv_wptr == %lu\n",
@@ -107,23 +120,23 @@ void umr_read_ring(struct umr_asic *asic, char *ringpath)
 		asic->asicname, ringname, (unsigned long)wptr >> 2,
 		asic->asicname, ringname, (unsigned long)drv_wptr >> 2);
 
+	if (enable_decoder) {
+		decoder.pm4.cur_opcode = 0xFFFFFFFF;
+		decoder.sdma.cur_opcode = 0xFFFFFFFF;
+	}
+
 	do {
 		value = ring_data[(start+12)>>2];
 		printf("%s.%s.ring[%s%4lu%s] == %s0x%08lx%s   ",
 			asic->asicname, ringname,
 			BLUE, (unsigned long)start >> 2, RST,
 			YELLOW, (unsigned long)value, RST);
-		if (enable_decoder && start == rptr && start != wptr) {
-			use_decoder = 1;
-			decoder.pm4.cur_opcode = 0xFFFFFFFF;
-			decoder.sdma.cur_opcode = 0xFFFFFFFF;
-		}
 		printf(" %c%c%c ",
 			(start == rptr) ? 'r' : '.',
 			(start == wptr) ? 'w' : '.',
 			(start == drv_wptr) ? 'D' : '.');
 		decoder.next_ib_info.addr = start / 4;
-		if (use_decoder)
+		if (enable_decoder)
 			umr_print_decode(asic, &decoder, value);
 		printf("\n");
 		start += 4;
