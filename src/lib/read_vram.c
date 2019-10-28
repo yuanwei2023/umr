@@ -473,7 +473,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				"mmVGA_MEMORY_BASE_ADDRESS=0x%" PRIx32 "\n"
 				"mmVGA_MEMORY_BASE_ADDRESS_HIGH=0x%" PRIx32 "\n"
 				"mmMC_VM_FB_OFFSET=0x%" PRIx32 "\n"
-				"mmMC_VM_MX_L1_TLB_CNTL=0x%" PRIx32 "\n"
+				"mm%sMC_VM_MX_L1_TLB_CNTL=0x%" PRIx32 "\n"
 				"mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x%" PRIx32 "\n"
 				"mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x%" PRIx32 "\n"
 				"mm%sMC_VM_FB_LOCATION_BASE=0x%" PRIx32 "\n"
@@ -486,11 +486,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			registers.mmVGA_MEMORY_BASE_ADDRESS,
 			registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH,
 			registers.mmMC_VM_FB_OFFSET,
-			registers.mmMC_VM_MX_L1_TLB_CNTL,
-			regprefix, registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR,
-			regprefix, registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR,
-			regprefix, registers.mmMC_VM_FB_LOCATION_BASE,
-			regprefix, registers.mmMC_VM_FB_LOCATION_TOP
+			vm0prefix, registers.mmMC_VM_MX_L1_TLB_CNTL,
+			vm0prefix, registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR,
+			vm0prefix, registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR,
+			vm0prefix, registers.mmMC_VM_FB_LOCATION_BASE,
+			vm0prefix, registers.mmMC_VM_FB_LOCATION_TOP
 			);
 
 	// transform page_table_base
@@ -499,7 +499,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	if (vmid == 0) {
 		uint32_t sam;
 
-		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", regprefix);
+		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
 		sam = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "SYSTEM_ACCESS_MODE", registers.mmMC_VM_MX_L1_TLB_CNTL);
 
 #if 0
