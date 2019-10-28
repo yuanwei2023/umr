@@ -419,6 +419,8 @@ static struct umr_bitfield mmIH_STORM_CLIENT_LIST_CNTL[] = {
 	 { "CLIENT31_IS_STORM_CLIENT", 31, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmIH_CLK_CTRL[] = {
+	 { "IH_RETRY_INT_CAM_MEM_CLK_SOFT_OVERRIDE", 25, 25, &umr_bitfield_default },
+	 { "IH_BUFFER_MEM_CLK_SOFT_OVERRIDE", 26, 26, &umr_bitfield_default },
 	 { "DBUS_MUX_CLK_SOFT_OVERRIDE", 27, 27, &umr_bitfield_default },
 	 { "OSSSYS_SHARE_CLK_SOFT_OVERRIDE", 28, 28, &umr_bitfield_default },
 	 { "LIMIT_SMN_CLK_SOFT_OVERRIDE", 29, 29, &umr_bitfield_default },
