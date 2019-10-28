@@ -1,3 +1,22 @@
+static struct umr_bitfield mmMMSCH_VF_VMID[] = {
+	 { "VF_CTX_VMID", 0, 4, &umr_bitfield_default },
+	 { "VF_GPCOM_VMID", 5, 9, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMSCH_VF_CTX_ADDR_LO[] = {
+	 { "VF_CTX_ADDR_LO", 6, 31, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMSCH_VF_CTX_ADDR_HI[] = {
+	 { "VF_CTX_ADDR_HI", 0, 31, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMSCH_VF_CTX_SIZE[] = {
+	 { "VF_CTX_SIZE", 0, 31, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMSCH_VF_MAILBOX_HOST[] = {
+	 { "DATA", 0, 31, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMSCH_VF_MAILBOX_RESP[] = {
+	 { "RESP", 0, 31, &umr_bitfield_default },
+};
 static struct umr_bitfield mmUVD_JPEG_CNTL[] = {
 	 { "REQUEST_EN", 1, 1, &umr_bitfield_default },
 	 { "ERR_RST_EN", 2, 2, &umr_bitfield_default },
