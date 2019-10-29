@@ -1020,6 +1020,36 @@ struct umr_sdma_stream_decode_ui {
 
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, struct umr_sdma_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 
+/* IH decoding */
+struct umr_ih_decode_ui {
+	/** start_vector - Start processing an interrupt vector
+	 *
+	 * ui: The callback structure used
+	 * offset: The offset in dwords of the start of the vector
+	 */
+	void (*start_vector)(struct umr_ih_decode_ui *ui, uint32_t offset);
+
+	/** add_field - Add a field to the decoding of the interrupt vector
+	 *
+	 * ui: The callback structure used
+	 * offset: The offset in dwords of the field
+	 * field_name: Description of the field
+	 * value: Value (if any) of the field
+	 * str: A string value (if any) for the field
+	 * ideal_radix:  The ideal radix to print the value in
+	 */
+	void (*add_field)(struct umr_ih_decode_ui *ui, uint32_t offset, const char *field_name, uint32_t value, char *str, int ideal_radix);
+
+	/** done: Finish a vector */
+	void (*done)(struct umr_ih_decode_ui *ui);
+
+	/** data -- opaque pointer that can be used to track state information */
+	void *data;
+};
+
+// decode interrupt vectors
+int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, uint32_t *ih_data, uint32_t length);
+
 // various low level functions
 
 void umr_print_decode(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib);

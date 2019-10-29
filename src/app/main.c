@@ -666,6 +666,12 @@ int main(int argc, char **argv)
 				printf("--update requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+#if 0
+		} else if (!strcmp(argv[i], "--iv")) {
+			if (!asic)
+				asic = get_asic();
+			ih_self_test(asic);
+#endif
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s), Copyright (c) 2019, AMD Inc.\n"
 "\n*** Device Selection ***\n"

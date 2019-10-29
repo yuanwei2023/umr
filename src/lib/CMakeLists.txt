@@ -24,6 +24,7 @@ add_library(umrcore STATIC
   transfer_soc15.c
   umr_apply_bank_address.c
   umr_apply_callbacks.c
+  umr_ih_decode_vectors.c
   umr_read_pm4_stream.c
   umr_read_sdma_stream.c
   umr_pm4_decode_opcodes.c
