@@ -16,3 +16,4 @@ libumrcore.a: API Documentation
    libshader_disasm
    libpm4_stream
    libsdma_stream
+   libih_decode
