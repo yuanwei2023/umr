@@ -47,6 +47,8 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 	fd = open(fname, O_RDWR);
 	if (fd < 0) {
 		fprintf(stderr, "[ERROR]: Could not open ring debugfs file '%s'\n", fname);
+		if (asic->family >= FAMILY_NV && !strcmp(ringname, "gfx"))
+			fprintf(stderr, "[WARNING]: On Navi and later ASICs the gfx ring name has changed, for instance: 'gfx_0.0.0'\n");
 		return NULL;
 	}
 
