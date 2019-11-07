@@ -1183,6 +1183,24 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 					break;
 			}
 			break;
+		case 0xA0: // SET_RESOURCES
+			switch(decoder->pm4.cur_word) {
+				case 0: printf("VMID_MASK: %s0x%lx%s, UNMAP_LATENCY: %s%lu%s, QUEUE_TYPE: %s%lu%s\n",
+							BLUE, (unsigned long)BITS(ib, 0, 16), RST,
+							BLUE, (unsigned long)BITS(ib, 16, 24), RST,
+							BLUE, (unsigned long)BITS(ib, 29, 32), RST);
+						break;
+				case 1: printf("QUEUE_MASK_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				case 2: printf("QUEUE_MASK_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				case 3: printf("GWS_MASK_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				case 4: printf("GWS_MASK_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+				case 5: printf("OAC_MASK: %s0x%lx%s\n", YELLOW, (unsigned long)BITS(ib, 0, 16), RST); break;
+				case 6: printf("GDS_HEAP_BASE: %s%lu%s, GDS_HEAP_SIZE: %s%lu%s",
+							BLUE, (unsigned long)BITS(ib, 0, 6), RST,
+							BLUE, (unsigned long)BITS(ib, 11, 17), RST);
+						break;
+			}
+			break;
 		case 0xA1: // PKT3_MAP_PROCESS
 			if (asic->family <= FAMILY_VI) {
 				switch(decoder->pm4.cur_word) {
