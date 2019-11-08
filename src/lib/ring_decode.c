@@ -1195,7 +1195,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				case 3: printf("GWS_MASK_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
 				case 4: printf("GWS_MASK_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
 				case 5: printf("OAC_MASK: %s0x%lx%s\n", YELLOW, (unsigned long)BITS(ib, 0, 16), RST); break;
-				case 6: printf("GDS_HEAP_BASE: %s%lu%s, GDS_HEAP_SIZE: %s%lu%s",
+				case 6: printf("GDS_HEAP_BASE: %s%lu%s, GDS_HEAP_SIZE: %s%lu%s\n",
 							BLUE, (unsigned long)BITS(ib, 0, 6), RST,
 							BLUE, (unsigned long)BITS(ib, 11, 17), RST);
 						break;
