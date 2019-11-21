@@ -7,6 +7,10 @@ is a tool to read and display, as well as write to AMDGPU device
 MMIO, PCIE, SMC, and DIDT registers via userspace.  It can autodetect
 and scan AMDGPU devices (SI and up).
 .SH Device Selection
+.IP "--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
+Select a gpu by ASIC name and either the instance number or the PCI bus identifier.  For instance,
+"raven1@1" would pick the raven1 device in the 2nd DRI instance slot.  Similarly,
+"raven1=0000:06:00.0" would pick a raven1 device with the PCI bus address '0000:06:00.0'.
 .IP "--instance, -i <number>"
 Pick a device instance to work with.  Defaults to the 0'th device.  The instance
 refers to a directory under

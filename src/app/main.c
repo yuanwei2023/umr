@@ -161,6 +161,7 @@ static void parse_options(char *str)
 	}
 }
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 int main(int argc, char **argv)
 {
@@ -179,12 +180,34 @@ int main(int argc, char **argv)
 	options.follow_ib = 1;
 
 	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--instance") || !strcmp(argv[i], "-i")) {
+		if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
+			if (i + 1 < argc) {
+				char *s;
+				s = strstr(argv[i+1], "@");
+				if (s) {
+					strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
+					options.instance = atoi(s + 1);
+					asic = get_asic();
+				} else if ((s = strstr(argv[i+1], "="))) {
+					strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
+					sscanf(s + 1, "%04x:%02x:%02x.%01x", &options.pci.domain, &options.pci.bus, &options.pci.slot, &options.pci.func);
+					options.use_pci = 1;
+					asic = get_asic();
+				} else {
+					fprintf(stderr, "[ERROR]: Invalid syntax for option --gpu\n");
+					return EXIT_FAILURE;
+				}
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --gpu requires a parameter\n");
+				return EXIT_FAILURE;
+			}
+		} else if (!strcmp(argv[i], "--instance") || !strcmp(argv[i], "-i")) {
 			if (i + 1 < argc) {
 				options.instance = atoi(argv[i+1]);
 				++i;
 			} else {
-				printf("--instance requires a number\n");
+				fprintf(stderr, "[ERROR]: --instance requires a number\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--bank") || !strcmp(argv[i], "-b")) {
@@ -205,7 +228,7 @@ int main(int argc, char **argv)
 				i += 3;
 				asic->options = options;
 			} else {
-				printf("--bank requires three parameters\n");
+				fprintf(stderr, "[ERROR]: --bank requires three parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--sbank") || !strcmp(argv[i], "-sb")) {
@@ -223,7 +246,7 @@ int main(int argc, char **argv)
 				i += 3;
 				asic->options = options;
 			} else {
-				printf("--sbank requires three parameters\n");
+				fprintf(stderr, "[ERROR]: --sbank requires three parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--cbank") || !strcmp(argv[i], "-cb")) {
@@ -234,7 +257,7 @@ int main(int argc, char **argv)
 				++i;
 				asic->options = options;
 			} else {
-				printf("--cbank requires one parameters\n");
+				fprintf(stderr, "[ERROR]: --cbank requires one parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "-f")) {
@@ -248,7 +271,7 @@ int main(int argc, char **argv)
 				options.instance = -1;
 				++i;
 			} else {
-				printf("--force requires a number/name\n");
+				fprintf(stderr, "[ERROR]: --force requires a number/name\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--pci")) {
@@ -258,7 +281,7 @@ int main(int argc, char **argv)
 				options.use_pci = 1; // implied by the --pci option
 				++i;
 			} else {
-				printf("--pci requires domain:bus:slot.function\n");
+				fprintf(stderr, "[ERROR]: --pci requires domain:bus:slot.function\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
@@ -288,7 +311,7 @@ int main(int argc, char **argv)
 						}
 				++i;
 			} else {
-				printf("--list-regs requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --list-regs requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--lookup") || !strcmp(argv[i], "-lu")) {
@@ -314,7 +337,7 @@ int main(int argc, char **argv)
 				i += 2;
 				options.need_scan = 0;
 			} else {
-				printf("--write requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --write requires two parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--writebit") || !strcmp(argv[i], "-wb")) {
@@ -325,7 +348,7 @@ int main(int argc, char **argv)
 				i += 2;
 				options.need_scan = 0;
 			} else {
-				printf("--write requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --write requires two parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--waves") || !strcmp(argv[i], "-wa")) {
@@ -350,7 +373,7 @@ int main(int argc, char **argv)
 				++i;
 				options.need_scan = 0;
 			} else {
-				printf("--scan requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --scan requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--read") || !strcmp(argv[i], "-r")) {
@@ -376,7 +399,7 @@ int main(int argc, char **argv)
 						strcpy(ipname, str+1);
 						strcpy(regname, str2+1);
 					} else {
-						printf("Invalid asicname.ipname.regname syntax\n");
+						fprintf(stderr, "[ERROR]: Invalid asicname.ipname.regname syntax\n");
 						return EXIT_FAILURE;
 					}
 					umr_scan_asic(asic, asicname, ipname, regname);
@@ -384,7 +407,7 @@ int main(int argc, char **argv)
 				}
 				++i;
 			} else {
-				printf("--read requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --read requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--ring") || !strcmp(argv[i], "-R")) {
@@ -394,7 +417,7 @@ int main(int argc, char **argv)
 				umr_read_ring(asic, argv[i+1]);
 				++i;
 			} else {
-				printf("--ring requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --ring requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--dump-ib") || !strcmp(argv[i], "-di")) {
@@ -423,7 +446,8 @@ int main(int argc, char **argv)
 				}
 				umr_ib_read(asic, vmid, address, len, pm);
 			} else {
-					printf("--dump-ib requires three parameters\n");
+				fprintf(stderr, "[ERROR]: --dump-ib requires three parameters\n");
+				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--dump-ib-file") || !strcmp(argv[i], "-df")) {
 			if (i + 1 < argc) {
@@ -441,7 +465,8 @@ int main(int argc, char **argv)
 				}
 				umr_ib_read_file(asic, name, pm);
 			} else {
-					printf("--dump-ib-file requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --dump-ib-file requires two parameters\n");
+				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--logscan") || !strcmp(argv[i], "-ls")) {
 			if (!asic)
@@ -483,7 +508,7 @@ int main(int argc, char **argv)
 				strcpy(options.hub_name, argv[i+1]);
 				++i;
 			} else {
-				printf("-mm requires on parameter");
+				fprintf(stderr, "[ERROR]: -mm requires on parameter");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--vm-decode") || !strcmp(argv[i], "-vm")) {
@@ -516,7 +541,7 @@ int main(int argc, char **argv)
 
 				asic->options.verbose = overbose;
 			} else {
-				printf("--vm-decode requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --vm-decode requires two parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "-vr") || !strcmp(argv[i], "--vm-read")) {
@@ -551,7 +576,7 @@ int main(int argc, char **argv)
 				} while (size);
 				i += 2;
 			} else {
-				printf("--vm-read requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --vm-read requires two parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "-vw") || !strcmp(argv[i], "--vm-write")) {
@@ -586,7 +611,7 @@ int main(int argc, char **argv)
 				} while (size);
 				i += 2;
 			} else {
-				printf("--vm-write requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --vm-write requires two parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "-vdis") || !strcmp(argv[i], "--vm-disasm")) {
@@ -620,7 +645,7 @@ int main(int argc, char **argv)
 
 				i += 2;
 			} else {
-				printf("--vm-disasm requires two parameters\n");
+				fprintf(stderr, "[ERROR]: --vm-disasm requires two parameters\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "-prof") || !strcmp(argv[i], "--profiler")) {
@@ -643,7 +668,7 @@ int main(int argc, char **argv)
 				umr_profiler(asic, samples, type);
 				i += 1 + n;
 			} else {
-				printf("--profiler requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --profiler requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--option") || !strcmp(argv[i], "-O")) {
@@ -651,7 +676,7 @@ int main(int argc, char **argv)
 				parse_options(argv[i+1]);
 				++i;
 			} else {
-				printf("--option requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --option requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 			if (asic)
@@ -663,7 +688,7 @@ int main(int argc, char **argv)
 				umr_update(asic, argv[i+1]);
 				++i;
 			} else {
-				printf("--update requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --update requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 #if 0
@@ -677,6 +702,8 @@ int main(int argc, char **argv)
 "\n*** Device Selection ***\n"
 "\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags: bits, bitsfull, empty_log, follow, no_follow_ib, named, many,"
 	"\n\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves, disasm_early_term, no_disasm, disasm_anyways, wave64, full_shader\n"
+"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
+	"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 "\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"
 	"\n\t\tThe instance is the directory name under /sys/kernel/debug/dri/"
 	"\n\t\tof the card you want to work with.\n"
