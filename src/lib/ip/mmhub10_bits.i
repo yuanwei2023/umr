@@ -6426,3 +6426,72 @@ static struct umr_bitfield mmATC_L2_PERFCOUNTER_RSLT_CNTL[] = {
 	 { "CLEAR_ALL", 25, 25, &umr_bitfield_default },
 	 { "STOP_ALL_ON_SATURATE", 26, 26, &umr_bitfield_default },
 };
+static struct umr_bitfield mmMMEA0_EDC_CNT_VG20[] = {
+	 { "DRAMRD_CMDMEM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "DRAMRD_CMDMEM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "DRAMWR_CMDMEM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "DRAMWR_CMDMEM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "DRAMWR_DATAMEM_SEC_COUNT", 8, 9, &umr_bitfield_default },
+	 { "DRAMWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "RRET_TAGMEM_SEC_COUNT", 12, 13, &umr_bitfield_default },
+	 { "RRET_TAGMEM_DED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "WRET_TAGMEM_SEC_COUNT", 16, 17, &umr_bitfield_default },
+	 { "WRET_TAGMEM_DED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "DRAMRD_PAGEMEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "DRAMWR_PAGEMEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "IORD_CMDMEM_SED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "IOWR_CMDMEM_SED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "IOWR_DATAMEM_SED_COUNT", 28, 29, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMEA0_EDC_CNT2_VG20[] = {
+	 { "GMIRD_CMDMEM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "GMIRD_CMDMEM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "GMIWR_CMDMEM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "GMIWR_CMDMEM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "GMIWR_DATAMEM_SEC_COUNT", 8, 9, &umr_bitfield_default },
+	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
+	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMEA1_EDC_CNT_VG20[] = {
+	 { "DRAMRD_CMDMEM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "DRAMRD_CMDMEM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "DRAMWR_CMDMEM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "DRAMWR_CMDMEM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "DRAMWR_DATAMEM_SEC_COUNT", 8, 9, &umr_bitfield_default },
+	 { "DRAMWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "RRET_TAGMEM_SEC_COUNT", 12, 13, &umr_bitfield_default },
+	 { "RRET_TAGMEM_DED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "WRET_TAGMEM_SEC_COUNT", 16, 17, &umr_bitfield_default },
+	 { "WRET_TAGMEM_DED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "DRAMRD_PAGEMEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "DRAMWR_PAGEMEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "IORD_CMDMEM_SED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "IOWR_CMDMEM_SED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "IOWR_DATAMEM_SED_COUNT", 28, 29, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMMEA1_EDC_CNT2_VG20[] = {
+	 { "GMIRD_CMDMEM_SEC_COUNT", 0, 1, &umr_bitfield_default },
+	 { "GMIRD_CMDMEM_DED_COUNT", 2, 3, &umr_bitfield_default },
+	 { "GMIWR_CMDMEM_SEC_COUNT", 4, 5, &umr_bitfield_default },
+	 { "GMIWR_CMDMEM_DED_COUNT", 6, 7, &umr_bitfield_default },
+	 { "GMIWR_DATAMEM_SEC_COUNT", 8, 9, &umr_bitfield_default },
+	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
+	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
+	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMC_VM_XGMI_LFB_CNTL[] = {
+	 { "PF_LFB_REGION", 0, 2, &umr_bitfield_default },
+	 { "PF_MAX_REGION", 4, 6, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMC_VM_XGMI_LFB_SIZE[] = {
+	 { "PF_LFB_SIZE", 0, 15, &umr_bitfield_default },
+};

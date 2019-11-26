@@ -4309,6 +4309,20 @@ static struct umr_bitfield mmVM_L2_CGTT_CLK_CTRL[] = {
 	 { "SOFT_STALL_OVERRIDE", 16, 23, &umr_bitfield_default },
 	 { "SOFT_OVERRIDE", 24, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmVM_L2_MEM_ECC_INDEX[] = {
+	 { "INDEX", 0, 7, &umr_bitfield_default },
+};
+static struct umr_bitfield mmVM_L2_WALKER_MEM_ECC_INDEX[] = {
+	 { "INDEX", 0, 7, &umr_bitfield_default },
+};
+static struct umr_bitfield mmVM_L2_MEM_ECC_CNT[] = {
+	 { "SEC_COUNT", 12, 13, &umr_bitfield_default },
+	 { "DED_COUNT", 14, 15, &umr_bitfield_default },
+};
+static struct umr_bitfield mmVM_L2_WALKER_MEM_ECC_CNT[] = {
+	 { "SEC_COUNT", 12, 13, &umr_bitfield_default },
+	 { "DED_COUNT", 14, 15, &umr_bitfield_default },
+};
 static struct umr_bitfield mmVM_CONTEXT0_CNTL[] = {
 	 { "ENABLE_CONTEXT", 0, 0, &umr_bitfield_default },
 	 { "PAGE_TABLE_DEPTH", 1, 2, &umr_bitfield_default },
