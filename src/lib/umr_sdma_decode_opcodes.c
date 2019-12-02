@@ -322,6 +322,32 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				ui->add_field(ui, ib_addr + 0, ib_vmid, "DEV_SEL", (stream->header_dw >> 16) & 0xFF, NULL, 10);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "EXEC_COUNT", stream->words[0] & 0x3FFF, NULL, 10);
 				break;
+			case 17: // GRC
+				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GRC");
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_VA_LO", BITS(stream->words[0], 7, 32) << 7, NULL, 16);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VA_HI", BITS(stream->words[1], 0, 16), NULL, 16);
+				n = stream->words[1] >> 16;
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL2_WB", BITS(n, 15, 16), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL2_INV", BITS(n, 14, 15), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL2_DISCARD", BITS(n, 13, 14), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL2_RANGE", BITS(n, 11, 13), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL2_US", BITS(n, 10, 11), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL1_INV", BITS(n, 9, 10), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GLV_INV", BITS(n, 8, 9), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GLK_INV", BITS(n, 7, 8), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GLK_WB", BITS(n, 6, 7), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GLM_INV", BITS(n, 5, 6), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GLM_WB", BITS(n, 4, 5), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GL1_RANGE", BITS(n, 2, 4), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "GLI_INV", BITS(n, 0, 2), NULL, 10);
+
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "RANGE_IS_PA", BITS(stream->words[2], 2, 3), NULL, 10);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "SEQ", BITS(stream->words[2], 0, 2), NULL, 10);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "LIMIT_VA_LO", BITS(stream->words[2], 7, 32) << 7, NULL, 16);
+
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "LIMIT_VA_HI", BITS(stream->words[3], 0, 16), NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "VMID", BITS(stream->words[3], 24, 28), NULL, 10);
+				break;
 			default:
 				if (ui->unhandled)
 					ui->unhandled(ui, asic, ib_addr, ib_vmid, stream);
@@ -377,6 +403,10 @@ static void unhandled(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asi
 {
 }
 
+static void *unhandled_subop(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream)
+{
+}
+
 static void done(struct umr_sdma_stream_decode_ui *ui)
 {
 	struct demo_ui_data *data = ui->data;
@@ -385,7 +415,15 @@ static void done(struct umr_sdma_stream_decode_ui *ui)
 	printf("Done decoding IB\n");
 }
 
-static struct  umr_sdma_stream_decode_ui demo_ui = { start_ib, start_opcode, add_field, unhandled, done, NULL };
+static struct  umr_sdma_stream_decode_ui demo_ui = { start_ib, start_opcode, add_field, unhandled, unhandled_subop, done, NULL };
+
+static const uint32_t gcr_data[] = {
+0x11,
+0x0,
+0xc0000000,
+0xffffff84,
+0x0000ffff,
+};
 
 /** demo */
 int umr__demo(struct umr_asic *asic)
@@ -397,16 +435,17 @@ int umr__demo(struct umr_asic *asic)
 	// assign our opaque structure
 	myui.data = calloc(1, sizeof(struct demo_ui_data));
 
-while (1) {
+//while (1) {
 	memset(myui.data, 0, sizeof(struct demo_ui_data));
-	stream = umr_sdma_decode_ring(asic, "sdma0");
+//	stream = umr_sdma_decode_ring(asic, "sdma0");
+stream = umr_sdma_decode_stream(asic, 0, &gcr_data[0], sizeof(gcr_data)/sizeof(gcr_data[0]));
 	if (stream) {
 		sstream = umr_sdma_decode_stream_opcodes(asic, &myui, stream, 0, 0, 0, 0, ~0UL, 1);
 	//	printf("\nand now the rest...\n");
 	//	umr_sdma_decode_stream_opcodes(asic, &myui, sstream, 0, 0, 0, 0, ~0UL, 1);
 		umr_free_sdma_stream(stream);
 	}
-}
+//}
 
 	free(myui.data);
 }

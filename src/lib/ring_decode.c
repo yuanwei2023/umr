@@ -1571,6 +1571,8 @@ static const char *sdma_opcodes[] = {
 	"TIMESTAMP", //13
 	"SRBM WRITE", //14
 	"PRE EXE",//15
+	"",//16
+	"GCR_REQ", //17
 };
 
 static void parse_next_sdma_pkt(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib)
@@ -1976,6 +1978,44 @@ static void parse_next_sdma_pkt(struct umr_asic *asic, struct umr_ring_decoder *
 				case 1: printf("COUNT: %s0x%08lu%s", BLUE, (unsigned long)ib & 0x3FFF, RST);
 					break;
 			}
+			break;
+		case 17: // GCR
+			switch (decoder->sdma.cur_word) {
+				case 1: printf("BASE_VA_LO: %s0x%08lx%s", YELLOW, (unsigned long)(decoder->sdma.next_write_mem = BITS(ib, 7, 32) << 7), RST); break;
+				case 2: printf("BASE_VA_HI: %s0x%08lx%s (BASE_VA: %s0x%llx%s), ",
+							   YELLOW, (unsigned long)BITS(ib, 0, 16), RST,
+							   YELLOW, (unsigned long long)(((unsigned long long)BITS(ib, 0, 16) << 39) | decoder->sdma.next_write_mem ), RST);
+						ib >>= 16;
+						printf("GL2_WB: %s%u%s, GL2_INV: %s%u%s, GL2_DISCARD: %s%u%s, "
+							   "GL2_RANGE: %s%u%s, GL2_US: %s%u%s, GL1_INV: %s%u%s, "
+							   "GLV_INV: %s%u%s, GLK_INV: %s%u%s, GLK_WB: %s%u%s, "
+							   "GLM_INV: %s%u%s, GLM_WB: %s%u%s, GL1_RANGE: %s%u%s, GLI_INV: %s%u%s",
+							   BLUE, (unsigned)BITS(ib, 15, 16), RST,
+							   BLUE, (unsigned)BITS(ib, 14, 15), RST,
+							   BLUE, (unsigned)BITS(ib, 13, 14), RST,
+							   BLUE, (unsigned)BITS(ib, 11, 13), RST,
+							   BLUE, (unsigned)BITS(ib, 10, 11), RST,
+							   BLUE, (unsigned)BITS(ib, 9, 10), RST,
+							   BLUE, (unsigned)BITS(ib, 8, 9), RST,
+							   BLUE, (unsigned)BITS(ib, 7, 8), RST,
+							   BLUE, (unsigned)BITS(ib, 6, 7), RST,
+							   BLUE, (unsigned)BITS(ib, 5, 6), RST,
+							   BLUE, (unsigned)BITS(ib, 4, 5), RST,
+							   BLUE, (unsigned)BITS(ib, 2, 4), RST,
+							   BLUE, (unsigned)BITS(ib, 0, 2), RST);
+						break;
+				case 3: printf("RANGE_IS_PA: %s%u%s, SEQ: %s%u%s, LIMIT_VA_LO: %s0x%08lx%s",
+							   BLUE, (unsigned)BITS(ib, 2, 3), RST,
+							   BLUE, (unsigned)BITS(ib, 0, 2), RST,
+							   YELLOW, (unsigned long)(decoder->sdma.next_write_mem = BITS(ib, 7, 32) << 7), RST);
+						break;
+				case 4: printf("LIMIT_VA_HI: %s0x%08lx%s (LIMIT_VA: %s0x%llx%s), VMID: %s%u%s",
+							   YELLOW, (unsigned long)BITS(ib, 0, 16), RST,
+							   YELLOW, (unsigned long long)(((unsigned long long)BITS(ib, 0, 16) << 39) | decoder->sdma.next_write_mem), RST,
+							   BLUE, (unsigned)BITS(ib, 24, 28), RST);
+						break;
+			}
+			break;
 	}
 
 	decoder->sdma.cur_word++;
@@ -1992,7 +2032,7 @@ static void print_decode_sdma(struct umr_asic *asic, struct umr_ring_decoder *de
 			decoder->sdma.header_dw = ib;
 
 			// sanity check
-			if (decoder->sdma.cur_opcode > 15) {
+			if (decoder->sdma.cur_opcode > 17) {
 				// invalid
 				decoder->sdma.cur_opcode = 0xFFFFFFFF;
 				break;
@@ -2122,6 +2162,10 @@ static void print_decode_sdma(struct umr_asic *asic, struct umr_ring_decoder *de
 					printf(", DEV_SEL: %s%u%s",
 						BLUE, (unsigned)((ib >> 16) & 0xFF), RST);
 					decoder->sdma.n_words = 2;
+					break;
+				case 17: // GCR
+					printf(", GCR");
+					decoder->sdma.n_words = 5;
 					break;
 				default:
 					break; // nothing to print

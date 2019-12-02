@@ -195,6 +195,13 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, 
 			case 15: // PRE_EXE
 				ps->nwords = 1;
 				break;
+			case 17: // GRC
+				ps->nwords = 4;
+				break;
+			default:
+				fprintf(stderr, "[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
+				umr_free_sdma_stream(ops);
+				return NULL;
 		}
 
 		if (nwords < 1 + ps->nwords) {
