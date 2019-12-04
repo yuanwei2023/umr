@@ -40,13 +40,20 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 	uint32_t x, y, shift, thread;
 	uint64_t pgm_addr, shader_addr;
 	struct umr_wave_data *wd, *owd;
-	int first = 1, col = 0, ring_halted = 0;
+	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
 	struct umr_pm4_stream *stream;
+	struct {
+		uint32_t vmid, size;
+		uint64_t addr;
+	} ib_addr;
+
+	if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
+		use_ring = 0;
 
 	if (asic->options.halt_waves) {
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		if (!umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
+		if (use_ring && !umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
 			fprintf(stderr, "[WARNING]: Rings are not halted!  %s\n", asic->options.disasm_anyways ? "" : "Use '-O disasm_anyways' to enable disassembly without halted rings");
 		else
 			ring_halted = 1;
@@ -62,7 +69,17 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 	if (!asic->options.no_disasm) {
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
-		stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
+		if (use_ring) {
+			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
+		} else {
+			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
+			umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib);
+			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)
+				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4);
+			else
+				stream = NULL;
+			free(ib);
+		}
 	} else {
 		ring_halted = 0;
 		stream = NULL;
@@ -327,9 +344,16 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	uint32_t x, y, thread;
 	uint64_t pgm_addr, shader_addr;
 	struct umr_wave_data *wd, *owd;
-	int first = 1, col = 0, ring_halted = 0;
+	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
 	struct umr_pm4_stream *stream;
+	struct {
+		uint32_t vmid, size;
+		uint64_t addr;
+	} ib_addr;
+
+	if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
+		use_ring = 0;
 
 	if (asic->options.halt_waves) {
 		// warn users if they don't specify a ring on gfx10 hardware
@@ -337,11 +361,12 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			fprintf(stderr, "[WARNING]: On gfx10 the default ring name 'gfx' is not valid.  Please specify one on the command line.\n");
 
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		if (!umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
+		if (use_ring && !umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
 			fprintf(stderr, "[WARNING]: Rings are not halted!\n");
 		else
 			ring_halted = 1;
 	}
+
 
 	// always disasm if disasm_anyways is enabled
 	if (asic->options.disasm_anyways)
@@ -353,7 +378,16 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	if (!asic->options.no_disasm) {
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
-		stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
+		if (use_ring) {
+			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
+		} else {
+			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
+			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)
+				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4);
+			else
+				stream = NULL;
+			free(ib);
+		}
 	} else {
 		ring_halted = 0;
 		stream = NULL;

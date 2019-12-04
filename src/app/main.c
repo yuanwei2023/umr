@@ -746,11 +746,12 @@ int main(int argc, char **argv)
 "\n*** Device Utilization ***\n"
 "\n\t--top, -t\n\t\tSummarize GPU utilization.  Can select a SE block with --bank.  Can use"
 	"\n\t\toptions 'use_colour' to colourize output and 'use_pci' to improve efficiency.\n"
-"\n\t--waves, -wa <ring_name>\n\t\tPrint out information about any active CU waves.  Can use '-O bits'"
+"\n\t--waves, -wa [<ring_name> | <vmid>@<addr>.<size>]\n\t\tPrint out information about any active CU waves.  Can use '-O bits'"
 	"\n\t\tto see decoding of various wave fields.  Can use the '-O halt_waves' option"
 	"\n\t\tto halt the SQ while reading registers.  An optional ring name can be specified"
 	"\n\t\twhich will then search a given ring for pointers to active shaders.  It will"
-	"\n\t\tdefault to the 'gfx' ring if nothing is specified.\n",
+	"\n\t\tdefault to the 'gfx' ring if nothing is specified.  Alternatively, an IB can be specified"
+	"\n\t\tby a vmid, address, and size (in hex bytes) triplet.\n",
 	UMR_BUILD_VER, UMR_BUILD_REV);
 
 printf(
