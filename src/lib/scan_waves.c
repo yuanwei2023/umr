@@ -28,6 +28,36 @@
 
 #define MANY_TO_INSTANCE(wgp, simd) (((simd) & 3) | ((wgp) << 2))
 
+int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws)
+{
+	uint32_t value;
+	uint64_t index, data, bank;
+
+	index = umr_find_reg(asic, "mmSQ_IND_INDEX") * 4;
+	data = umr_find_reg(asic, "mmSQ_IND_DATA") * 4;
+	bank =
+		(1ULL << 62) |
+		(((uint64_t)se) << 24) |
+		(((uint64_t)sh) << 34) |
+		(((uint64_t)cu) << 44);
+
+	if (!index || !data) {
+		fprintf(stderr, "[BUG]: Cannot find SQ indirect registers on this asic!\n");
+		return -1;
+	}
+
+	umr_write_reg(asic, index|bank, 8 << 16, REG_MMIO);
+	value = umr_read_reg(asic, data|bank, REG_MMIO);
+
+	/* Did we try to query a non-existing SQ instance? */
+	if (value == 0xbebebeef)
+		value = 0;
+
+	ws->sq_info.busy = value & 1;
+	ws->sq_info.wave_level = (value >> 4) & 0x3F;
+	return 0;
+}
+
 static uint32_t wave_read_ind(struct umr_asic *asic, uint32_t simd, uint32_t wave, uint32_t address)
 {
 	struct umr_reg *ind_index, *ind_data;
