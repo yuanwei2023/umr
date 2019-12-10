@@ -73,7 +73,6 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
 		} else {
 			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
-			umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib);
 			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)
 				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4);
 			else
