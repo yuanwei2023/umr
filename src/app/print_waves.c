@@ -267,8 +267,11 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 					}
 
 					printf("    [%s%3u%s] = {", YELLOW, x, RST);
-					for (thread = 0; thread < 64; ++thread)
-						printf(" %s%08x%s", BLUE, wd->vgprs[thread * 256 + x], RST);
+					for (thread = 0; thread < 64; ++thread) {
+						unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))
+										: (wd->ws.exec_hi & (1u << (thread - 32)));
+						printf(" %s%08x%s", live ? BLUE : RST, wd->vgprs[thread * 256 + x], RST);
+					}
 					printf(" }\n");
 				}
 			}
@@ -557,8 +560,11 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 					}
 
 					printf("    [%3u] = {", x);
-					for (thread = 0; thread < wd->num_threads; ++thread)
-						printf(" %08x", wd->vgprs[thread * 256 + x]);
+					for (thread = 0; thread < wd->num_threads; ++thread) {
+						unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))
+										: (wd->ws.exec_hi & (1u << (thread - 32)));
+						printf(" %s%08x%s", live ? BLUE : RST, wd->vgprs[thread * 256 + x], RST);
+					}
 					printf(" }\n");
 				}
 
