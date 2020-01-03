@@ -138,7 +138,7 @@ static void parse_options(char *str)
 		} else if (!strcmp(option, "full_shader")) {
 			options.full_shader = 1;
 		} else if (!strcmp(option, "no_follow_ib")) {
-			options.follow_ib = 0;
+			options.no_follow_ib = 1;
 		} else if (!strcmp(option, "verbose")) {
 			options.verbose = 1;
 		} else if (!strcmp(option, "halt_waves")) {
@@ -177,7 +177,6 @@ int main(int argc, char **argv)
 	options.need_scan = 1;
 	options.forcedid = -1;
 	options.scanblock = "";
-	options.follow_ib = 1;
 
 	for (i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {

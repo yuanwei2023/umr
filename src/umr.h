@@ -214,7 +214,7 @@ struct umr_options {
 	    use_colour,
 	    read_smc,
 	    quiet,
-	    follow_ib,
+	    no_follow_ib,
 	    verbose,
 	    halt_waves,
 	    no_kernel,

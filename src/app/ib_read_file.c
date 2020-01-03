@@ -171,8 +171,8 @@ void umr_ib_read_file(struct umr_asic *asic, char *filename, int pm)
 	}
 	fclose(infile);
 
-	follow_ib = asic->options.follow_ib;
-	asic->options.follow_ib = 0;
+	follow_ib = asic->options.no_follow_ib;
+	asic->options.no_follow_ib = 1;
 #ifdef PM4_STREAM
 	foo(asic, data, x);
 #else
@@ -182,6 +182,6 @@ void umr_ib_read_file(struct umr_asic *asic, char *filename, int pm)
 	decoder.pm = pm;
 	umr_dump_ib(asic, &decoder);
 #endif
-	asic->options.follow_ib = follow_ib;
+	asic->options.no_follow_ib = follow_ib;
 	free(data);
 }

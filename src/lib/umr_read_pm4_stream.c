@@ -80,7 +80,7 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 				ps->shader = calloc(1, sizeof(ps->shader[0]));
 				ps->shader->vmid = vmid;
 				ps->shader->addr = shader_addr;
-				if (asic->options.follow_ib)
+				if (!asic->options.no_follow_ib)
 					ps->shader->size = umr_compute_shader_size(asic, ps->shader);
 				else
 					ps->shader->size = 1;
@@ -92,7 +92,7 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 		}
 		case 0x3f: // INDIRECT_BUFFER_CIK
 		case 0x33: // INDIRECT_BUFFER_CONST
-			if (asic->options.follow_ib) {
+			if (!asic->options.no_follow_ib) {
 				addr = (ps->words[0] & ~3ULL) | ((uint64_t)(ps->words[1] & 0xFFFF) << 32);
 
 				// abort if the IB is >8 MB in size which is very likely just garbage data

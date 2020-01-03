@@ -42,7 +42,7 @@ void umr_ib_read(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint32_t l
 	umr_dump_shaders(asic, &decoder, wd);
 	pdecoder = decoder.next_ib;
 	while (pdecoder) {
-		if (asic->options.follow_ib) {
+		if (!asic->options.no_follow_ib) {
 			umr_dump_ib(asic, pdecoder);
 			umr_dump_shaders(asic, pdecoder, wd);
 		}
