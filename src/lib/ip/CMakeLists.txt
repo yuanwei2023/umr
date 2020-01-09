@@ -74,6 +74,8 @@ add_library(ip OBJECT
   thm90.c
   thm1102.c
   umc60.c
+  umc611.c
+  umc612.c
   uvd40.c
   uvd42.c
   uvd5.c

@@ -72,6 +72,9 @@ ENDCB
 ) > /tmp/countbits.c
 gcc /tmp/countbits.c -o /tmp/countbits
 
+parse_bits ${pk}/umc/umc_6_1_1 src/lib/ip/umc611
+parse_bits ${pk}/umc/umc_6_1_2 src/lib/ip/umc612
+
 #renoir
 parse_bits ${pk}/mp/mp_12_0_0 src/lib/ip/mp1200
 parse_bits ${pk}/clk/clk_10_0_2 src/lib/ip/clk1002

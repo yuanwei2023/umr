@@ -24,28 +24,42 @@
  */
 #include "umr.h"
 
-static struct umr_ip_offsets_soc15 vega20_offs[] = {
-#include "vega20.i"
-	{ NULL },
+#include "umc60_bits.i"
+#include "umc612_bits.i"
+
+static const struct umr_reg_soc15 umc612_registers[] = {
+// the 612 headers don't include all of the relevant registers so we import
+// the 60 headers too
+#include "umc60_regs.i"
+#include "umc612_regs.i"
 };
 
-struct umr_asic *umr_create_vega20(struct umr_options *options)
+struct umr_ip_block *umr_create_ex_umc612(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst)
 {
-	return
-		umr_create_asic_helper("vega20", FAMILY_AI,
-			umr_create_gfx90(vega20_offs, options),
-			umr_create_uvd70(vega20_offs, options),
-			umr_create_vce40(vega20_offs, options),
-			umr_create_dce120(vega20_offs, options),
-			umr_create_hdp40(vega20_offs, options),
-			umr_create_nbio61(vega20_offs, options),
-			umr_create_oss40(vega20_offs, options),
-			umr_create_sdma042(vega20_offs, options),
-			umr_create_sdma142(vega20_offs, options),
-			umr_create_thm90(vega20_offs, options),
-			umr_create_mmhub10(vega20_offs, options),
-			umr_create_mp90(vega20_offs, options),
-			umr_create_ex_umc611(vega20_offs, options, 0),
-			NULL);
-}
+	struct umr_ip_block *ip;
 
+	ip = calloc(1, sizeof *ip);
+	if (!ip)
+		return NULL;
+
+	switch (inst) {
+		case 0:  ip->ipname = "umc612{0}"; break;
+		case 1:  ip->ipname = "umc612{1}"; break;
+		case 2:  ip->ipname = "umc612{2}"; break;
+		case 3:  ip->ipname = "umc612{3}"; break;
+		case 4:  ip->ipname = "umc612{4}"; break;
+	}
+	ip->no_regs = sizeof(umc612_registers)/sizeof(umc612_registers[0]);
+	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
+	if (!ip->regs) {
+		free(ip);
+		return NULL;
+	}
+
+	if (umr_transfer_soc15_to_reg_ex(options, soc15_offsets, "UMC", umc612_registers, ip, inst)) {
+		free(ip);
+		return NULL;
+	}
+
+	return ip;
+}

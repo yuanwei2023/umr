@@ -686,6 +686,8 @@ struct umr_ip_block *umr_create_mp100(struct umr_ip_offsets_soc15 *soc15_offsets
 struct umr_ip_block *umr_create_thm90(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_vcn10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_ex_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
+struct umr_ip_block *umr_create_ex_umc611(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
+struct umr_ip_block *umr_create_ex_umc612(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
 
 // renoir
 struct umr_ip_block *umr_create_mp1200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
