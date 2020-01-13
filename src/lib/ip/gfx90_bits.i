@@ -5539,6 +5539,9 @@ static struct umr_bitfield mmTCP_ADDR_CONFIG[] = {
 	 { "NUM_BANKS", 4, 5, &umr_bitfield_default },
 	 { "COLHI_WIDTH", 6, 8, &umr_bitfield_default },
 	 { "RB_SPLIT_COLHI", 9, 9, &umr_bitfield_default },
+	 { "ENABLE64KHASH", 11, 11, &umr_bitfield_default },
+	 { "ENABLE2MHASH", 12, 12, &umr_bitfield_default },
+	 { "ENABLE1GHASH", 13, 13, &umr_bitfield_default },
 };
 static struct umr_bitfield mmTCP_CREDIT[] = {
 	 { "LFIFO_CREDIT", 0, 9, &umr_bitfield_default },
