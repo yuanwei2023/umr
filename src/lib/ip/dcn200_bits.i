@@ -19569,6 +19569,13 @@ static struct umr_bitfield mmMPC_OUT5_CSC_C33_C34_B[] = {
 	 { "MPC_OCSC_C33_B", 0, 15, &umr_bitfield_default },
 	 { "MPC_OCSC_C34_B", 16, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmMPC_OCSC_TEST_DEBUG_INDEX[] = {
+	 { "MPC_OCSC_TEST_DEBUG_INDEX", 0, 7, &umr_bitfield_default },
+	 { "MPC_OCSC_TEST_DEBUG_WRITE_EN", 8, 8, &umr_bitfield_default },
+};
+static struct umr_bitfield mmMPC_OCSC_TEST_DEBUG_DATA[] = {
+	 { "MPC_OCSC_TEST_DEBUG_DATA", 0, 31, &umr_bitfield_default },
+};
 static struct umr_bitfield mmDC_PERFMON17_PERFCOUNTER_CNTL[] = {
 	 { "PERFCOUNTER_EVENT_SEL", 0, 8, &umr_bitfield_default },
 	 { "PERFCOUNTER_CVALUE_SEL", 9, 11, &umr_bitfield_default },
