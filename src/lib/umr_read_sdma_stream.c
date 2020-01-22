@@ -195,6 +195,9 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, 
 			case 15: // PRE_EXE
 				ps->nwords = 1;
 				break;
+			case 16: // GPUVM_INV
+				ps->nwords = 3;
+				break;
 			case 17: // GRC
 				ps->nwords = 4;
 				break;

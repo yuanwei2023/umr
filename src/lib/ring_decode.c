@@ -1979,6 +1979,33 @@ static void parse_next_sdma_pkt(struct umr_asic *asic, struct umr_ring_decoder *
 					break;
 			}
 			break;
+		case 16: // GPUVM_INC
+			switch (decoder->sdma.cur_word) {
+				case 1:
+					printf("PER_VMID_INV_REQ: %s%x%s, FLUSH_TYPE: %s%x%s, INV_L2_PTES: %s%u%s, INV_L2_PDE0: %s%u%s, "
+					       "INV_L2_PDE1: %s%u%s, INV_L2_PDE2: %s%u%s, INV_L1_PTES: %s%u%s, "
+					       "CLEAR_PROTECTION_FAULT_STATUS_ADDR: %s%u%s, LOG_REQUEST: %s%u%s, 4KB: %s%u%s",
+							BLUE, (unsigned)ib, RST,
+							BLUE, (unsigned)BITS(ib, 16, 19), RST,
+							BLUE, (unsigned)BITS(ib, 19, 20), RST,
+							BLUE, (unsigned)BITS(ib, 20, 21), RST,
+							BLUE, (unsigned)BITS(ib, 21, 22), RST,
+							BLUE, (unsigned)BITS(ib, 22, 23), RST,
+							BLUE, (unsigned)BITS(ib, 23, 24), RST,
+							BLUE, (unsigned)BITS(ib, 24, 25), RST,
+							BLUE, (unsigned)BITS(ib, 25, 26), RST,
+							BLUE, (unsigned)BITS(ib, 26, 27), RST);
+					break;
+				case 2:
+					printf("S_BIT: %s%u%s, PAGE_VM_ADDR_LO: %s0x%lx%s",
+						BLUE, (unsigned)BITS(ib, 0, 1), RST,
+						YELLOW, (unsigned long)BITS(ib, 1, 32), RST);
+					break;
+				case 3:
+					printf("PAGE_VM_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 0, 6), RST);
+					break;
+			}
+			break;
 		case 17: // GCR
 			switch (decoder->sdma.cur_word) {
 				case 1: printf("BASE_VA_LO: %s0x%08lx%s", YELLOW, (unsigned long)(decoder->sdma.next_write_mem = BITS(ib, 7, 32) << 7), RST); break;
@@ -2162,6 +2189,10 @@ static void print_decode_sdma(struct umr_asic *asic, struct umr_ring_decoder *de
 					printf(", DEV_SEL: %s%u%s",
 						BLUE, (unsigned)((ib >> 16) & 0xFF), RST);
 					decoder->sdma.n_words = 2;
+					break;
+				case 16: // GPUVM_INV
+					printf(", GPUVM_INV");
+					decoder->sdma.n_words = 4;
 					break;
 				case 17: // GCR
 					printf(", GCR");

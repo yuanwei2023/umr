@@ -322,6 +322,22 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				ui->add_field(ui, ib_addr + 0, ib_vmid, "DEV_SEL", (stream->header_dw >> 16) & 0xFF, NULL, 10);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "EXEC_COUNT", stream->words[0] & 0x3FFF, NULL, 10);
 				break;
+			case 16: // GPUVM_INV
+				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GPUVM_INV");
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "PER_VMID_INV_REQ", stream->words[0], NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "FLUSH_TYPE", BITS(stream->words[0], 16, 19), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PTES", BITS(stream->words[0], 19, 20), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE0", BITS(stream->words[0], 20, 21), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE1", BITS(stream->words[0], 21, 22), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE2", BITS(stream->words[0], 22, 23), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L1_PTES", BITS(stream->words[0], 23, 24), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "CLEAR_PROTECTION_FAULT_STATUS_ADDR", BITS(stream->words[0], 24, 25), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "LOG_REQUEST", BITS(stream->words[0], 25, 26), NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "4KB", BITS(stream->words[0], 26, 27), NULL, 16);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "S_BIT", BITS(stream->words[1], 0, 1), NULL, 16);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "PAGE_VM_ADDR_LO", BITS(stream->words[1], 1, 32), NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "PAGE_VM_ADDR_HI", BITS(stream->words[2], 0, 6), NULL, 16);
+				break;
 			case 17: // GRC
 				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GRC");
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_VA_LO", BITS(stream->words[0], 7, 32) << 7, NULL, 16);
