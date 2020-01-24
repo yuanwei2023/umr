@@ -25,7 +25,7 @@
 #include "umr.h"
 #include <inttypes.h>
 
-static char *pm4_pkt3_opcode_names[] = {
+static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 00
 	"UNK", // 01
 	"UNK", // 02
@@ -337,7 +337,6 @@ static char *vgt_event_decode(unsigned tag)
 	}
 	return "<unknown event>";
 }
-
 
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
 

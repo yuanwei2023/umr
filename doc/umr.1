@@ -253,6 +253,8 @@ Can specify '3' for SDMA packets.
 Dump an IB stored in a file as a series of hexadecimal DWORDS one per line.
 Optionally supply a PM type, can specify '3' for SDMA IBs or '4' for
 PM4 IBs.  The default is PM4.
+.IP "--header-dump, -hd [HEADER_DUMP_reg]"
+Dump the contents of the HEADER_DUMP buffer and decode the opcode into a human readable string.
 .IP "--logscan, -ls"
 Read and display contents of the MMIO register log.  Usually specified
 with '-O bits,follow,empty_log' to enable continual dumping of the trace

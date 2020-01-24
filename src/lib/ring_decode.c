@@ -338,6 +338,11 @@ static char *vgt_event_decode(unsigned tag)
 	return "<unknown event>";
 }
 
+const char *umr_pm4_opcode_to_str(uint32_t header)
+{
+	return pm4_pkt3_opcode_names[(header >> 8) & 0xFF];
+}
+
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
 
 /**

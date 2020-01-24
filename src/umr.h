@@ -918,7 +918,7 @@ struct umr_pm4_stream_decode_ui {
 	 * nwords: number of DWORDS in this opcode
 	 * opcode_name: Printable string name of opcode
 	 */
-	void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, char *opcode_name);
+	void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name);
 
 	/** add_field -- Add a decoded field to a specific DWORD
 	 * ib_addr/ib_vmid:  Address of the word from which the field comes
@@ -1057,7 +1057,7 @@ struct umr_ih_decode_ui {
 int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, uint32_t *ih_data, uint32_t length);
 
 // various low level functions
-
+const char *umr_pm4_opcode_to_str(uint32_t header);
 void umr_print_decode(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib);
 void umr_dump_ib(struct umr_asic *asic, struct umr_ring_decoder *decoder);
 void umr_dump_shaders(struct umr_asic *asic, struct umr_ring_decoder *decoder, struct umr_wave_data *wd);

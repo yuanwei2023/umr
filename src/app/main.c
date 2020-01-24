@@ -690,6 +690,20 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --update requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--header-dump") || !strcmp(argv[i], "-hd")) {
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				int n;
+				for (n = 0; n < 8; n++) {
+					uint32_t v = umr_read_reg_by_name(asic, argv[i+1]);
+					printf("\t[0x%08" PRIx32"] %s\n", v, umr_pm4_opcode_to_str(v));
+				}
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --header-dump requires one parameter\n");
+				return EXIT_FAILURE;
+			}
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -795,7 +809,10 @@ printf(
 "\n\t--dump-ib-file, -df filename [pm]"
 	"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line."
 	"\n\t\tOptionally supply a PM type, can specify '3' for SDMA IBs or '4' for"
-	"\n\t\tPM4 IBs.  The default is PM4."
+	"\n\t\tPM4 IBs.  The default is PM4.\n"
+"\n\t--header-dump, -hd [HEADER_DUMP_reg]"
+	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
+	"\n\t\thuman readable string.\n"
 "\n\n");
 			exit(EXIT_SUCCESS);
 		} else {
