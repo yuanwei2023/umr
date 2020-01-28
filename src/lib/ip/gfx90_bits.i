@@ -1224,7 +1224,8 @@ static struct umr_bitfield mmPA_SC_TILE_STEERING_CREST_OVERRIDE[] = {
 	 { "RB_SELECT", 5, 6, &umr_bitfield_default },
 };
 static struct umr_bitfield mmSQ_CONFIG[] = {
-	 { "UNUSED", 0, 6, &umr_bitfield_default },
+	 { "DISABLE_BARRIER_WAITCNT", 0, 0, &umr_bitfield_default },
+	 { "UNUSED", 1, 6, &umr_bitfield_default },
 	 { "OVERRIDE_ALU_BUSY", 7, 7, &umr_bitfield_default },
 	 { "DEBUG_EN", 8, 8, &umr_bitfield_default },
 	 { "DEBUG_SINGLE_MEMOP", 9, 9, &umr_bitfield_default },
