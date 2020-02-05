@@ -617,6 +617,23 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				case 2: printf("IB_SIZE:%s%lu%s, VMID: %s%lu%s", BLUE, BITS(ib, 0, 20), RST, BLUE, BITS(ib, 24, 28), RST);
 					decoder->pm4.next_ib_state.ib_size = BITS(ib, 0, 20) * 4;
 					decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid ? decoder->next_ib_info.vmid : BITS(ib, 24, 28);
+					if (decoder->pm4.cur_opcode == 0x33) {
+						if (asic->family >= FAMILY_NV) {
+							printf(", CHAIN: %s%u%s, PRE_ENA: %s%u%s, CACHE_POLICY: %s%u%s, PRE_RESUME: %s%u%s PRIV: %s%u%s",
+								   BLUE, (unsigned)BITS(ib, 20, 21), RST,
+								   BLUE, (unsigned)BITS(ib, 21, 22), RST,
+								   BLUE, (unsigned)BITS(ib, 28, 30), RST,
+								   BLUE, (unsigned)BITS(ib, 30, 31), RST,
+								   BLUE, (unsigned)BITS(ib, 31, 32), RST);
+						} else if (asic->family >= FAMILY_AI) {
+							printf(", CHAIN: %s%u%s, OFFLOAD_POLLING: %s%u%s, VALID: %s%u%s, CACHE_POLICY: %s%u%s PRIV: %s%u%s",
+								   BLUE, (unsigned)BITS(ib, 20, 21), RST,
+								   BLUE, (unsigned)BITS(ib, 21, 22), RST,
+								   BLUE, (unsigned)BITS(ib, 23, 24), RST,
+								   BLUE, (unsigned)BITS(ib, 28, 30), RST,
+								   BLUE, (unsigned)BITS(ib, 31, 32), RST);
+						}
+					}
 					if (!asic->options.no_follow_ib) {
 						if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
 										  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0) {
