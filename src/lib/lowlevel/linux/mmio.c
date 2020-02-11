@@ -24,6 +24,76 @@
  */
 #include "umr.h"
 
+/**
+ * umr_pcie_read - Read a PCIE register
+ *
+ * Reads a PCIE register via debugfs or direct MMIO.
+ */
+static uint32_t umr_pcie_read(struct umr_asic *asic, uint64_t addr)
+{
+	uint32_t value;
+	if (asic->options.use_pci) {
+		switch (asic->config.gfx.family) {
+#if 0
+			case 110: // SI
+			case 120: // CIK
+			case 125: // KV
+			case 130: // VI
+				umr_write_reg_by_name(asic, "mmSMC_IND_INDEX_1", addr);
+				return umr_read_reg_by_name(asic, "mmSMC_IND_DATA_1");
+			case 135: // CZ
+				umr_write_reg_by_name(asic, "mmMP0PUB_IND_INDEX_1", addr);
+				return umr_read_reg_by_name(asic, "mmMP0PUB_IND_DATA_1");
+#endif
+			default:
+				fprintf(stderr, "[BUG]: Unsupported family type in umr_pcie_read()\n");
+				return 0;
+		}
+	} else {
+		if (lseek(asic->fd.pcie, addr, SEEK_SET) < 0)
+			perror("Cannot seek to PCIE address");
+		if (read(asic->fd.pcie, &value, 4) != 4)
+			perror("Cannot read from PCIE reg");
+		return value;
+	}
+}
+
+/**
+ * umr_pcie_write - Write a PCIE register
+ *
+ * Write a PCIE register via debugfs or direct MMIO access.
+ */
+static uint32_t umr_pcie_write(struct umr_asic *asic, uint64_t addr, uint32_t value)
+{
+	if (asic->options.use_pci) {
+		switch (asic->config.gfx.family) {
+#if 0
+			case 110: // SI
+			case 120: // CIK
+			case 125: // KV
+			case 130: // VI
+				umr_write_reg_by_name(asic, "mmSMC_IND_INDEX_1", addr);
+				return umr_write_reg_by_name(asic, "mmSMC_IND_DATA_1", value);
+			case 135: // CZ
+				umr_write_reg_by_name(asic, "mmMP0PUB_IND_INDEX_1", addr);
+				return umr_write_reg_by_name(asic, "mmMP0PUB_IND_DATA_1", value);
+#endif
+			default:
+				fprintf(stderr, "[BUG]: Unsupported family type in umr_pcie_write()\n");
+				return -1;
+		}
+	} else {
+		if (lseek(asic->fd.pcie, addr, SEEK_SET) < 0) {
+			perror("Cannot seek to PCIE address");
+			return -1;
+		}
+		if (write(asic->fd.pcie, &value, 4) != 4) {
+			perror("Cannot write to PCIE reg");
+			return -1;
+		}
+	}
+	return 0;
+}
 
 /**
  * umr_smc_read - Read an SMC register
@@ -82,11 +152,11 @@ static uint32_t umr_smc_write(struct umr_asic *asic, uint64_t addr, uint32_t val
 		}
 	} else {
 		if (lseek(asic->fd.smc, addr, SEEK_SET) < 0) {
-			perror("Cannot seek to MMIO address");
+			perror("Cannot seek to SMC address");
 			return -1;
 		}
 		if (write(asic->fd.smc, &value, 4) != 4) {
-			perror("Cannot write to MMIO reg");
+			perror("Cannot write to SMC reg");
 			return -1;
 		}
 	}
@@ -115,6 +185,8 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 		addr += asic->options.context_reg_bank * 0x1000;
 
 	switch (type) {
+		case REG_PCIE:
+			return umr_pcie_read(asic, addr);
 		case REG_MMIO:
 			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) { // only use pci if enabled and not using high bits
 				return asic->pci.mem[addr/4];
@@ -155,6 +227,8 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 		addr += asic->options.context_reg_bank * 0x1000;
 
 	switch (type) {
+		case REG_PCIE:
+			return umr_pcie_write(asic, addr, value);
 		case REG_MMIO:
 			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) {
 				asic->pci.mem[addr/4] = value;

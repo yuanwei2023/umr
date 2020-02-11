@@ -138,9 +138,9 @@ static int do_add_reg(char **ptr, struct umr_asic *as)
 
 	parse_regpath(ptr, asic, ip, reg);
 	consume_str(ptr, type);
-	if (!strcmp(type, "pci") || !strcmp(type, "smc")) {
+	if (!strcmp(type, "pci") || !strcmp(type, "smc") || !strcmp(type, "pcie")) {
 		consume_str(ptr, addr);
-		if (!strcmp(type, "pci"))
+		if (!strcmp(type, "pci") || !strcmp(type, "pcie"))
 			mtype = REG_PCIE;
 		else
 			mtype = REG_SMC;

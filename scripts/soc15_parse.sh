@@ -11,20 +11,32 @@ fi
 parse_bits() {
 regfile=$1_offset.h
 bitfile=$1_sh_mask.h
+smnfile=$1_smn.h
 
 if [ ! -f ${regfile} ]; then printf "Cannot find reg file ${regfile}\n"; exit 1; fi
 if [ ! -f ${bitfile} ]; then printf "Cannot find bit file ${bitfile}\n"; exit 1; fi
+if [ ! -f ${smnfile} ]; then smnfile=""; fi
 
-printf "Parsing ${regfile}\n"
+printf "Parsing ${regfile} ${smnfile}\n"
 
-grep -E "(mm|ix)" ${regfile} | grep -v _BASE_IDX | grep -v "addressBlock:" | (while read line; do
+grep -E "(smn|mm|ix)" ${regfile} ${smnfile} | grep -v _BASE_IDX | grep -v _DEFAULT | grep -v "addressBlock:" | (while read line; do
 	reg=`echo "${line}" | awk '{ print $2; }'`
 	addr=`echo "${line}" | awk '{ print $3; }'`
 	regclean=`echo ${reg} | sed -e 's/^mm//g' | sed -e 's/^ix//g'`
 	regidx=`grep ${reg}_BASE_IDX ${regfile} | awk '{ print $3; }'`
 	if [ "${regidx}" == "" ]; then regidx="0"; fi
-	`echo ${reg} | grep '^mm' > /dev/null`
-	if [ $? != 0 ]; then class="SMC"; else class="MMIO"; fi
+
+	`echo ${reg} | grep '^smn' > /dev/null`
+	if [ $? != 0 ]; then
+		`echo ${reg} | grep '^mm' > /dev/null` ;
+		if [ $? != 0 ]; then
+			class="SMC";
+		else
+			class="MMIO";
+		fi;
+	else
+		class="PCIE";
+	fi
 	if grep "[ 	]${regclean}__" ${bitfile} > /dev/null; then
 		# has bit definitions ...
 		# output reg declaration

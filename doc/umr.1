@@ -28,8 +28,9 @@ This is useful when more than one GPU is available. If the amdgpu driver is
 loaded the corresponding instance will be automatically detected.
 .IP "--update, -u <filename>"
 Specify update file to add, change, or delete registers from the register
-database.  Useful for adding registers that are not including in the kernel headers.
-
+database.  Can also use '@' prefix to specify update commands on the command line.
+For instance '@add reg raven1.gfx91.mmFoo 0x1234' would add a gfx mmio register.
+Useful for adding registers that are not including in the kernel headers.
 .IP "--option, -O <string>[,<string>,...]"
 Specify options to the tool.  Multiple options can be specified as comma
 separated strings.  Options should be specified before --update or --force commands

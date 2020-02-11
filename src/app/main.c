@@ -302,7 +302,7 @@ int main(int argc, char **argv)
 				for (j = 0; j < asic->no_blocks; j++)
 					if (!strcmp(asic->blocks[j]->ipname, blockname))
 						for (k = 0; k < asic->blocks[j]->no_regs; k++) {
-							printf("\t%s.%s.%s => 0x%05lx\n", asic->asicname, asic->blocks[j]->ipname, asic->blocks[j]->regs[k].regname, (unsigned long)asic->blocks[j]->regs[k].addr);
+							printf("\t%s.%s.%s (%d) => 0x%05lx\n", asic->asicname, asic->blocks[j]->ipname, asic->blocks[j]->regs[k].regname, (int)asic->blocks[j]->regs[k].type, (unsigned long)asic->blocks[j]->regs[k].addr);
 							if (options.bitfields) {
 								for (l = 0; l < asic->blocks[j]->regs[k].no_bits; l++)
 									printf("\t\t%s.%s.%s.%s[%d:%d]\n", asic->asicname, asic->blocks[j]->ipname, asic->blocks[j]->regs[k].regname, asic->blocks[j]->regs[k].bits[l].regname, asic->blocks[j]->regs[k].bits[l].start, asic->blocks[j]->regs[k].bits[l].stop);
@@ -684,7 +684,10 @@ int main(int argc, char **argv)
 			if (!asic)
 				asic = get_asic();
 			if (i + 1 < argc) {
-				umr_update(asic, argv[i+1]);
+				if (argv[i+1][0] == '@')
+					umr_update_string(asic, &argv[i+1][1]);
+				else
+					umr_update(asic, argv[i+1]);
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --update requires one parameter\n");
@@ -728,8 +731,10 @@ int main(int argc, char **argv)
 	"\n\t\tloaded the corresponding instance will be automatically detected.\n"
 "\n\t--update, -u <filename>"
 	"\n\t\tSpecify update file to add, change, or delete registers from the register"
-	"\n\t\tdatabase.  Useful for adding registers that are not including in the kernel headers.  See"
-	"\n\t\tthe content under demo/update/ for an example.\n"
+	"\n\t\tdatabase.  Can also use \'@\' prefix to specify update commands on the command line.  For"
+	"\n\t\tinstance '@add reg raven1.gfx91.mmFoo 0x1234' would add a gfx mmio register.  Useful for"
+	"\n\t\tadding registers that are not including in the kernel headers.  See the content under"
+	"\n\t\tdemo/update/ for an example.\n"
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"
@@ -755,7 +760,10 @@ int main(int argc, char **argv)
 "\n\t--scan, -s <string>\n\t\tScan and print an ip block by name, e.g. \"uvd6\" or \"carrizo.uvd6\"."
 	"\n\t\tCan be used multiple times.\n"
 "\n\t--logscan, -ls\n\t\tRead and display contents of the MMIO register log (usually specified with"
-	"\n\t\t'-O bits,follow,empty_log' to continually dump the trace log.)\n"
+	"\n\t\t'-O bits,follow,empty_log' to continually dump the trace log.)\n",
+	UMR_BUILD_VER, UMR_BUILD_REV);
+
+printf(
 "\n*** Device Utilization ***\n"
 "\n\t--top, -t\n\t\tSummarize GPU utilization.  Can select a SE block with --bank.  Can use"
 	"\n\t\toptions 'use_colour' to colourize output and 'use_pci' to improve efficiency.\n"
@@ -764,10 +772,7 @@ int main(int argc, char **argv)
 	"\n\t\tto halt the SQ while reading registers.  An optional ring name can be specified"
 	"\n\t\twhich will then search a given ring for pointers to active shaders.  It will"
 	"\n\t\tdefault to the 'gfx' ring if nothing is specified.  Alternatively, an IB can be specified"
-	"\n\t\tby a vmid, address, and size (in hex bytes) triplet.\n",
-	UMR_BUILD_VER, UMR_BUILD_REV);
-
-printf(
+	"\n\t\tby a vmid, address, and size (in hex bytes) triplet.\n"
 "\n\t--profiler, -prof [pixel= | vertex= | compute=]<nsamples> [ring]"
 	"\n\t\tCapture 'nsamples' samples of wave data. Optionally specify a ring to search"
 	"\n\t\tfor IBs that point to shaders.  Defaults to 'gfx'.  Additionally, the type"
