@@ -764,7 +764,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			}
 			break;
 		case 0xA0: // SET_RESOURCES
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID_MASK", BITS(stream->words[0], 0, 16), NULL, 10);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID_MASK", BITS(stream->words[0], 0, 16), NULL, 16);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "UNMAP_LATENCY", BITS(stream->words[0], 16, 24), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_TYPE", BITS(stream->words[0], 29, 32), NULL, 10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "QUEUE_MASK_LO", stream->words[1], NULL, 16);
