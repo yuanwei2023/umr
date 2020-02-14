@@ -1193,31 +1193,31 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 					else
 						printf("REG: (ignored)\n");
 					break;
-				case 3: printf("NUM_DWORDS: %s0x%lx%s\n", BLUE, (unsigned long)BITS(ib, 0, 14), RST);
+				case 3: printf("NUM_DWORDS: %s0x%lx%s", BLUE, (unsigned long)BITS(ib, 0, 14), RST);
 					break;
 				default:
 					if (decoder->pm4.next_write_mem.type & 2) {
 						printf("%s <= %s0x%08lx%s", umr_reg_name(asic, decoder->pm4.next_write_mem.addr_lo++), YELLOW, (unsigned long)ib, RST);
 						print_bits(asic, decoder->pm4.next_write_mem.addr_lo - 1, ib, 0);
 					} else {
-						printf("DATA: %s0x%lx%s\n", BLUE, (unsigned long)ib, RST);
+						printf("DATA: %s0x%lx%s", BLUE, (unsigned long)ib, RST);
 					}
 					break;
 			}
 			break;
 		case 0xA0: // SET_RESOURCES
 			switch(decoder->pm4.cur_word) {
-				case 0: printf("VMID_MASK: %s0x%lx%s, UNMAP_LATENCY: %s%lu%s, QUEUE_TYPE: %s%lu%s\n",
+				case 0: printf("VMID_MASK: %s0x%lx%s, UNMAP_LATENCY: %s%lu%s, QUEUE_TYPE: %s%lu%s",
 							BLUE, (unsigned long)BITS(ib, 0, 16), RST,
 							BLUE, (unsigned long)BITS(ib, 16, 24), RST,
 							BLUE, (unsigned long)BITS(ib, 29, 32), RST);
 						break;
-				case 1: printf("QUEUE_MASK_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-				case 2: printf("QUEUE_MASK_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-				case 3: printf("GWS_MASK_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-				case 4: printf("GWS_MASK_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-				case 5: printf("OAC_MASK: %s0x%lx%s\n", YELLOW, (unsigned long)BITS(ib, 0, 16), RST); break;
-				case 6: printf("GDS_HEAP_BASE: %s%lu%s, GDS_HEAP_SIZE: %s%lu%s\n",
+				case 1: printf("QUEUE_MASK_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 2: printf("QUEUE_MASK_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 3: printf("GWS_MASK_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 4: printf("GWS_MASK_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 5: printf("OAC_MASK: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 0, 16), RST); break;
+				case 6: printf("GDS_HEAP_BASE: %s%lu%s, GDS_HEAP_SIZE: %s%lu%s",
 							BLUE, (unsigned long)BITS(ib, 0, 6), RST,
 							BLUE, (unsigned long)BITS(ib, 11, 17), RST);
 						break;
@@ -1227,18 +1227,18 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 			if (asic->family <= FAMILY_VI) {
 				switch(decoder->pm4.cur_word) {
 					case 0:
-						printf("PASID: %s%u%s, DIQ_ENABLE: %s%u%s\n",
+						printf("PASID: %s%u%s, DIQ_ENABLE: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 0, 16), RST,
 							BLUE, (unsigned)BITS(ib, 24, 25), RST);
 						break;
-					case 1: printf("PAGE_TABLE_BASE: %s0x%lx%s\n", YELLOW, (unsigned long)BITS(ib, 0, 28), RST); break;
-					case 2: printf("SH_MEM_BASES: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("SH_MEM_APE1_BASE: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("SH_MEM_APE1_LIMIT: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("GDS_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 6: printf("GDS_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 1: printf("PAGE_TABLE_BASE: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 0, 28), RST); break;
+					case 2: printf("SH_MEM_BASES: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("SH_MEM_APE1_BASE: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("SH_MEM_APE1_LIMIT: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("GDS_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 6: printf("GDS_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 					case 7:
-						printf("NUM_GWS: %s%u%s, NUM_OAC: %s%u%s, GDS_SIZE: %s%u%s\n",
+						printf("NUM_GWS: %s%u%s, NUM_OAC: %s%u%s, GDS_SIZE: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 0, 6), RST,
 							BLUE, (unsigned)BITS(ib, 8, 12), RST,
 							BLUE, (unsigned)BITS(ib, 16, 22), RST);
@@ -1253,31 +1253,31 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 							BLUE, (unsigned)BITS(ib, 22, 23), RST);
 						if (asic->family < FAMILY_NV)
 							printf(", TMZ: %s%u%s", BLUE, (unsigned)BITS(ib, 23, 24), RST);
-						printf(", DIQ_ENABLE: %s%u%s, PROCESS_QUANTUM: %s%u%s\n",
+						printf(", DIQ_ENABLE: %s%u%s, PROCESS_QUANTUM: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 24, 25), RST,
 							BLUE, (unsigned)BITS(ib, 25, 32), RST);
 						break;
-					case 1: printf("VM_CONTEXT_PAGE_TABLE_BASE_ADDR_LO32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 2: printf("VM_CONTEXT_PAGE_TABLE_BASE_ADDR_HI32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("SH_MEM_BASES: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("SH_MEM_CONFIG: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("SQ_SHADER_TBA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 6: printf("SQ_SHADER_TBA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 7: printf("SQ_SHADER_TMA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 8: printf("SQ_SHADER_TMA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 9: printf("RESERVED\n"); break;
-					case 10: printf("GDS_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 11: printf("GDS_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 1: printf("VM_CONTEXT_PAGE_TABLE_BASE_ADDR_LO32: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 2: printf("VM_CONTEXT_PAGE_TABLE_BASE_ADDR_HI32: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("SH_MEM_BASES: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("SH_MEM_CONFIG: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("SQ_SHADER_TBA_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 6: printf("SQ_SHADER_TBA_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 7: printf("SQ_SHADER_TMA_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 8: printf("SQ_SHADER_TMA_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 9: printf("RESERVED"); break;
+					case 10: printf("GDS_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 11: printf("GDS_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 					case 12:
-						printf("NUM_GWS: %s%u%s, SDMA_ENABLE: %s%u%s, NUM_OAC: %s%u%s, GDS_SIZE: %s%u%s, NUM_QUEUES: %s%u%s\n",
+						printf("NUM_GWS: %s%u%s, SDMA_ENABLE: %s%u%s, NUM_OAC: %s%u%s, GDS_SIZE: %s%u%s, NUM_QUEUES: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 0, 6), RST,
 							BLUE, (unsigned)BITS(ib, 7, 8), RST,
 							BLUE, (unsigned)BITS(ib, 8, 12), RST,
 							BLUE, (unsigned)BITS(ib, 16, 22), RST,
 							BLUE, (unsigned)BITS(ib, 22, 23), RST);
 						break;
-					case 13: printf("COMPLETION_SIGNAL_LO32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 14: printf("COMPLETION_SIGNAL_HI32: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 13: printf("COMPLETION_SIGNAL_LO32: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 14: printf("COMPLETION_SIGNAL_HI32: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 				}
 			}
 			break;
@@ -1285,7 +1285,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 			if (asic->family <= FAMILY_VI) {
 				switch(decoder->pm4.cur_word) {
 					case 0:
-						printf("QUEUE_SEL: %s%u%s, VMID: %s%u%s, VIDMEM: %s%u%s, ALLOC_FORMAT: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+						printf("QUEUE_SEL: %s%u%s, VMID: %s%u%s, VIDMEM: %s%u%s, ALLOC_FORMAT: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 4, 6), RST,
 							BLUE, (unsigned)BITS(ib, 8, 12), RST,
 							BLUE, (unsigned)BITS(ib, 16, 18), RST,
@@ -1294,19 +1294,19 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 							BLUE, (unsigned)BITS(ib, 29, 32), RST);
 						break;
 					case 1:
-						printf("DOORBELL_OFFSET: %s0x%lx%s, QUEUE: %s%u%s\n",
+						printf("DOORBELL_OFFSET: %s0x%lx%s, QUEUE: %s%u%s",
 							YELLOW, (unsigned long)BITS(ib, 2, 23), RST,
 							BLUE, (unsigned)BITS(ib, 26, 32), RST);
 						break;
-					case 2: printf("MQD_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("MQD_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 2: printf("MQD_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("MQD_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 				}
 			} else if (asic->family <= FAMILY_NV) {
 				switch(decoder->pm4.cur_word) {
 					case 0:
-						printf("QUEUE_SEL: %s%u%s, VMID: %s%u%s, QUEUE: %s%u%s, QUEUE_TYPE: %s%u%s, STATIC_QUEUE_GROUP: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+						printf("QUEUE_SEL: %s%u%s, VMID: %s%u%s, QUEUE: %s%u%s, QUEUE_TYPE: %s%u%s, STATIC_QUEUE_GROUP: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 4, 6), RST,
 							BLUE, (unsigned)BITS(ib, 8, 12), RST,
 							BLUE, (unsigned)BITS(ib, 13, 21), RST,
@@ -1316,14 +1316,14 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 							BLUE, (unsigned)BITS(ib, 29, 32), RST);
 						break;
 					case 1:
-						printf("CHECK_DISABLE: %s%u%s, DOORBELL_OFFSET: %s0x%lx%s\n",
+						printf("CHECK_DISABLE: %s%u%s, DOORBELL_OFFSET: %s0x%lx%s",
 							BLUE, (unsigned)BITS(ib, 1, 2), RST,
 							YELLOW, (unsigned long)BITS(ib, 2, 28), RST);
 						break;
-					case 2: printf("MQD_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("MQD_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 2: printf("MQD_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("MQD_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 				}
 			}
 			break;
@@ -1331,7 +1331,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 			if (asic->family <= FAMILY_VI) {
 				switch(decoder->pm4.cur_word) {
 					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
-						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s",
 								BLUE, (unsigned)BITS(ib, 0, 2), RST,
 								BLUE, (unsigned)BITS(ib, 4, 6), RST,
 								BLUE, (unsigned)BITS(ib, 26, 29), RST,
@@ -1339,24 +1339,24 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						break;
 					case 1:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 4, 6) == 1)
-							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+							printf("PASID: %s%u%s", BLUE, (unsigned)BITS(ib, 0, 16), RST);
 						else
-							printf("DOORBELL_OFFSET0: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+							printf("DOORBELL_OFFSET0: %s%lx%s", YELLOW, BITS(ib, 2, 23), RST);
 						break;
 					case 2:
-						printf("DOORBELL_OFFSET1: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						printf("DOORBELL_OFFSET1: %s%lx%s", YELLOW, BITS(ib, 2, 23), RST);
 						break;
 					case 3:
-						printf("DOORBELL_OFFSET2: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						printf("DOORBELL_OFFSET2: %s%lx%s", YELLOW, BITS(ib, 2, 23), RST);
 						break;
 					case 4:
-						printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 23), RST);
+						printf("DOORBELL_OFFSET3: %s%lx%s", YELLOW, BITS(ib, 2, 23), RST);
 						break;
 				}
 			} else if (asic->family <= FAMILY_AI) {
 				switch(decoder->pm4.cur_word) {
 					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
-						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s",
 								BLUE, (unsigned)BITS(ib, 0, 2), RST,
 								BLUE, (unsigned)BITS(ib, 4, 6), RST,
 								BLUE, (unsigned)BITS(ib, 26, 29), RST,
@@ -1364,27 +1364,27 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						break;
 					case 1:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 4, 6) == 1)
-							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+							printf("PASID: %s%u%s", BLUE, (unsigned)BITS(ib, 0, 16), RST);
 						else
-							printf("DOORBELL_OFFSET0: %s0x%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+							printf("DOORBELL_OFFSET0: %s0x%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 					case 2:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 26, 29) == 4 && BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
-							printf("RB_WPTR: %s0x%lx%s\n", YELLOW, BITS(ib, 0, 20), RST);
+							printf("RB_WPTR: %s0x%lx%s", YELLOW, BITS(ib, 0, 20), RST);
 						else
-							printf("DOORBELL_OFFSET1: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+							printf("DOORBELL_OFFSET1: %s%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 					case 3:
-						printf("DOORBELL_OFFSET2: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						printf("DOORBELL_OFFSET2: %s%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 					case 4:
-						printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+						printf("DOORBELL_OFFSET3: %s%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 				}
 			} else if (asic->family <= FAMILY_NV) {
 				switch(decoder->pm4.cur_word) {
 					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
-						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s\n",
+						printf("ACTION: %s%u%s, QUEUE_SEL: %s%u%s, ENGINE_SEL: %s%u%s, NUM_QUEUES: %s%u%s",
 								BLUE, (unsigned)BITS(ib, 0, 2), RST,
 								BLUE, (unsigned)BITS(ib, 4, 6), RST,
 								BLUE, (unsigned)BITS(ib, 26, 29), RST,
@@ -1392,27 +1392,27 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						break;
 					case 1:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 4, 6) == 1)
-							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+							printf("PASID: %s%u%s", BLUE, (unsigned)BITS(ib, 0, 16), RST);
 						else
-							printf("DOORBELL_OFFSET0: %s0x%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+							printf("DOORBELL_OFFSET0: %s0x%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 					case 2:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
-							printf("TF_ADDR_LO32: %s0x%lx%s\n", YELLOW, BITS(ib, 2, 32), RST);
+							printf("TF_ADDR_LO32: %s0x%lx%s", YELLOW, BITS(ib, 2, 32), RST);
 						else
-							printf("DOORBELL_OFFSET1: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+							printf("DOORBELL_OFFSET1: %s%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 					case 3:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
-							printf("TF_ADDR_HI32: %s0x%lx%s\n", YELLOW, BITS(ib, 0, 32), RST);
+							printf("TF_ADDR_HI32: %s0x%lx%s", YELLOW, BITS(ib, 0, 32), RST);
 						else
-							printf("DOORBELL_OFFSET2: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+							printf("DOORBELL_OFFSET2: %s%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 					case 4:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 0, 2) == 3)
-							printf("TF_DATA: %s0x%lx%s\n", YELLOW, BITS(ib, 0, 32), RST);
+							printf("TF_DATA: %s0x%lx%s", YELLOW, BITS(ib, 0, 32), RST);
 						else
-							printf("DOORBELL_OFFSET3: %s%lx%s\n", YELLOW, BITS(ib, 2, 28), RST);
+							printf("DOORBELL_OFFSET3: %s%lx%s", YELLOW, BITS(ib, 2, 28), RST);
 						break;
 				}
 			}
@@ -1421,46 +1421,46 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 			if (asic->family <= FAMILY_VI) {
 				switch(decoder->pm4.cur_word) {
 					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
-						printf("CONTEXT_ID: %s%u%s, INTERRUPT_SEL: %s%u%s, COMMAND: %s%u%s\n",
+						printf("CONTEXT_ID: %s%u%s, INTERRUPT_SEL: %s%u%s, COMMAND: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 0, 28), RST,
 							BLUE, (unsigned)BITS(ib, 28, 30), RST,
 							BLUE, (unsigned)BITS(ib, 30, 32), RST);
 						break;
 					case 1:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 28, 30) == 1) {
-							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+							printf("PASID: %s%u%s", BLUE, (unsigned)BITS(ib, 0, 16), RST);
 						} else {
-							printf("DOORBELL_OFFSET: %s0x%lx%s, ENGINE_SEL: %s%u%s\n",
+							printf("DOORBELL_OFFSET: %s0x%lx%s, ENGINE_SEL: %s%u%s",
 								YELLOW, (unsigned long)BITS(ib, 2, 23), RST,
 								BLUE, (unsigned)BITS(ib, 26, 29), RST);
 						}
 						break;
-					case 2: printf("ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("DATA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("DATA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 2: printf("ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("DATA_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("DATA_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 				}
 			} else if (asic->family <= FAMILY_NV) {
 				switch(decoder->pm4.cur_word) {
 					case 0: decoder->pm4.next_write_mem.addr_lo = ib;
-						printf("CONTEXT_ID: %s%u%s, INTERRUPT_SEL: %s%u%s, COMMAND: %s%u%s\n",
+						printf("CONTEXT_ID: %s%u%s, INTERRUPT_SEL: %s%u%s, COMMAND: %s%u%s",
 							BLUE, (unsigned)BITS(ib, 0, 28), RST,
 							BLUE, (unsigned)BITS(ib, 28, 30), RST,
 							BLUE, (unsigned)BITS(ib, 30, 32), RST);
 						break;
 					case 1:
 						if (BITS(decoder->pm4.next_write_mem.addr_lo, 28, 30) == 1) {
-							printf("PASID: %s%u%s\n", BLUE, (unsigned)BITS(ib, 0, 16), RST);
+							printf("PASID: %s%u%s", BLUE, (unsigned)BITS(ib, 0, 16), RST);
 						} else {
-							printf("DOORBELL_OFFSET: %s0x%lx%s, ENGINE_SEL: %s%u%s\n",
+							printf("DOORBELL_OFFSET: %s0x%lx%s, ENGINE_SEL: %s%u%s",
 								YELLOW, (unsigned long)BITS(ib, 2, 28), RST,
 								BLUE, (unsigned)BITS(ib, 28, 31), RST);
 						}
 						break;
-					case 2: printf("ADDR_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("ADDR_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("DATA_LO: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("DATA_HI: %s0x%lx%s\n", YELLOW, (unsigned long)ib, RST); break;
+					case 2: printf("ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 3: printf("ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 4: printf("DATA_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+					case 5: printf("DATA_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 				}
 			}
 			break;
