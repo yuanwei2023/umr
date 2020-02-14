@@ -40,9 +40,15 @@ int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t s
 	uint32_t *out = dst;
 
 	// find registers
-	MM_INDEX    = umr_find_reg(asic, "mmMM_INDEX") * 4;
-	MM_INDEX_HI = umr_find_reg(asic, "mmMM_INDEX_HI") * 4;
-	MM_DATA     = umr_find_reg(asic, "mmMM_DATA") * 4;
+	if (asic->family >= FAMILY_NV) {
+		MM_INDEX    = umr_find_reg(asic, "mmBIF_BX_PF_MM_INDEX");
+		MM_INDEX_HI = umr_find_reg(asic, "mmBIF_BX_PF_MM_INDEX_HI");
+		MM_DATA     = umr_find_reg(asic, "mmBIF_BX_PF_MM_DATA");
+	} else {
+		MM_INDEX    = umr_find_reg(asic, "mmMM_INDEX");
+		MM_INDEX_HI = umr_find_reg(asic, "mmMM_INDEX_HI");
+		MM_DATA     = umr_find_reg(asic, "mmMM_DATA");
+	}
 
 	if (MM_INDEX == 0xFFFFFFFF    ||
 	    MM_INDEX_HI == 0xFFFFFFFF ||
@@ -50,6 +56,11 @@ int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t s
 		fprintf(stderr, "[BUG]: Cannot find MM access registers for this asic!\n");
 		return -1;
 	}
+
+	// scale up to byte address
+	MM_INDEX *= 4;
+	MM_INDEX_HI *= 4;
+	MM_DATA *= 4;
 
 	while (size) {
 		asic->reg_funcs.write_reg(asic, MM_INDEX, address | 0x80000000, REG_MMIO);
