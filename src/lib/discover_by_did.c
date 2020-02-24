@@ -346,6 +346,7 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did)
 		asic->fd.vram = -1;
 		asic->fd.gpr = -1;
 		asic->fd.drm = -1;
+		asic->fd.gfxoff = -1;
 	} else {
 		if (!options->quiet && !options->dev_name[0])
 			printf("ERROR: Device 0x%04lx not found in UMR device table\n", did);

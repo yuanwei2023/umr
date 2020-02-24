@@ -707,6 +707,21 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --header-dump requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--gfxoff") || !strcmp(argv[i], "-go")) {
+			uint32_t value;
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				sscanf(argv[i+1], "%"SCNu32, &value);
+				if (asic->fd.gfxoff >= 0)
+					write(asic->fd.gfxoff, &value, sizeof(value));
+				else
+					fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --gfxoff requires one parameter\n");
+				return EXIT_FAILURE;
+			}
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -735,6 +750,9 @@ int main(int argc, char **argv)
 	"\n\t\tinstance '@add reg raven1.gfx91.mmFoo 0x1234' would add a gfx mmio register.  Useful for"
 	"\n\t\tadding registers that are not including in the kernel headers.  See the content under"
 	"\n\t\tdemo/update/ for an example.\n"
+"\n\t--gfxoff, -go <0 | 1>"
+	"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
+	"\n\t\tselect hardware.\n"
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"

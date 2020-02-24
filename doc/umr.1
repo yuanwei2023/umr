@@ -31,6 +31,9 @@ Specify update file to add, change, or delete registers from the register
 database.  Can also use '@' prefix to specify update commands on the command line.
 For instance '@add reg raven1.gfx91.mmFoo 0x1234' would add a gfx mmio register.
 Useful for adding registers that are not including in the kernel headers.
+.IP "--gfxoff, -go <0 | 1>"
+Turn on or off GFXOFF on select hardware.  A non-zero value enables the GFXOFF feature and
+a zero value disables it.
 .IP "--option, -O <string>[,<string>,...]"
 Specify options to the tool.  Multiple options can be specified as comma
 separated strings.  Options should be specified before --update or --force commands
