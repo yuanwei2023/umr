@@ -664,7 +664,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 						if (!decoder->pm4.next_write_mem.addr_lo)
 							decoder->pm4.next_write_mem.addr_hi++;
 					} else {
-						printf("DATA: %s%08lx%s", YELLOW, (unsigned long)ib, RST);
+						printf("DATA: %s0x%08lx%s", YELLOW, (unsigned long)ib, RST);
 					}
 			}
 			break;
