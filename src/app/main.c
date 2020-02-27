@@ -169,10 +169,12 @@ int main(int argc, char **argv)
 	struct umr_asic *asic;
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256];
 	struct timespec req;
+	struct umr_test_harness *th;
 
 	memset(&options, 0, sizeof options);
 
 	/* defaults */
+	th = NULL;
 	asic = NULL;
 	options.need_scan = 1;
 	options.forcedid = -1;
@@ -383,7 +385,7 @@ int main(int argc, char **argv)
 					asic = get_asic();
 
 				if (!memcmp(argv[i+1], "0x", 2) && sscanf(argv[i+1], "%"SCNx32, &reg) == 1) {
-					reg = umr_read_reg(asic, reg, REG_MMIO);
+					reg = asic->reg_funcs.read_reg(asic, reg, REG_MMIO);
 					printf("0x%08lx\n", (unsigned long)reg);
 				} else {
 					str = strstr(argv[i+1], ".");
@@ -722,6 +724,19 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --gfxoff requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--test-harness") || !strcmp(argv[i], "-th")) {
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				th = umr_create_test_harness_file(argv[i+1]);
+				if (!th)
+					exit(EXIT_FAILURE);
+				umr_attach_test_harness(th, asic);
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
+				return EXIT_FAILURE;
+			}
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -860,4 +875,5 @@ printf(
 	} else {
 		umr_close_asic(asic);
 	}
+	umr_free_test_harness(th);
 }

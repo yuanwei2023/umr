@@ -1081,8 +1081,46 @@ int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t siz
 #define umr_read_vram(asic, vmid, address, size, dst) umr_access_vram(asic, vmid, address, size, dst, 0)
 #define umr_write_vram(asic, vmid, address, size, src) umr_access_vram(asic, vmid, address, size, src, 1)
 
+// test harness support
+// struct for sysram and vram blocks
+struct umr_ram_blocks {
+	uint64_t base_address; // base address in bytes
+	uint32_t size;         // size in bytes
+	uint8_t *contents;
+	struct umr_ram_blocks *next;
+};
 
+struct umr_mmio_blocks {
+	uint32_t mmio_address;  // dword address
+	uint32_t *values;       // values for this register
+	uint32_t no_values;     // number of values slotted in this spot
+	uint32_t cur_slot;      // index to current value to return
+	struct umr_mmio_blocks *next;
+};
 
+struct umr_sq_blocks {
+	uint32_t sq_address;    // value for SQ_IND_INDEX
+	uint32_t *values;       // values for this register
+	uint32_t no_values;     // number of values slotted in this spot
+	uint32_t cur_slot;      // index to current value to return
+	struct umr_sq_blocks *next;
+};
+
+struct umr_test_harness {
+	struct umr_asic *asic;
+
+	struct umr_ram_blocks vram, sysram;
+	struct umr_mmio_blocks mmio;
+	struct umr_sq_blocks sq;
+
+	uint64_t vram_mm_index; // when these are written they are shadowed here
+	uint32_t sq_ind_index;
+};
+
+struct umr_test_harness *umr_create_test_harness_file(const char *fname);
+struct umr_test_harness *umr_create_test_harness(const char *script);
+void umr_free_test_harness(struct umr_test_harness *th);
+void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic);
 
 #define RED     (asic->options.use_colour ? "\x1b[31;1m" : "")
 #define YELLOW  (asic->options.use_colour ? "\x1b[33;1m" : "")

@@ -146,13 +146,17 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter*
  * Returns the offset of the register if found or 0xFFFFFFFF if not.
  */
 uint32_t umr_find_reg(struct umr_asic* asic, const char* regname) {
-	int i, j;
+	int i, j, k;
 
+	k = regname[0] == '@';
+	if (k)
+		++regname;
 	for (i = 0; i < asic->no_blocks; i++)
 		for (j = 0; j < asic->blocks[i]->no_regs; j++)
 			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname))
 				return asic->blocks[i]->regs[j].addr;
-	fprintf(stderr, "[BUG]: reg [%s] not found on asic [%s]\n", regname, asic->asicname);
+	if (!k)
+		fprintf(stderr, "[BUG]: reg [%s] not found on asic [%s]\n", regname, asic->asicname);
 	return 0xFFFFFFFF;
 }
 
@@ -164,8 +168,11 @@ uint32_t umr_find_reg(struct umr_asic* asic, const char* regname) {
  * is only compared as a prefix (e.g., "gfx" will match "gfx90").
  */
 struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, const char* regname) {
-	int i, j;
+	int i, j, k;
 
+	k = regname[0] == '@';
+	if (k)
+		++regname;
 	for (i = 0; i < asic->no_blocks; i++) {
 		if (ip && memcmp(asic->blocks[i]->ipname, ip, strlen(ip)))
 			continue;
@@ -173,7 +180,8 @@ struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, c
 			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname))
 				return &asic->blocks[i]->regs[j];
 	}
-	fprintf(stderr, "[BUG]: reg [%s] not found on asic [%s]\n", regname, asic->asicname);
+	if (!k)
+		fprintf(stderr, "[BUG]: reg [%s] not found on asic [%s]\n", regname, asic->asicname);
 	return NULL;
 }
 

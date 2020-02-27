@@ -21,6 +21,7 @@ add_library(umrcore STATIC
   scan_waves.c
   shader_disasm.c
   sq_cmd_halt_waves.c
+  testing_harness.c
   transfer_soc15.c
   umr_apply_bank_address.c
   umr_apply_callbacks.c

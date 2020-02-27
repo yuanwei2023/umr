@@ -43,7 +43,7 @@ static int try_substitutes(struct umr_ip_offsets_soc15 *ip, char *ipname)
 	int x, y, z;
 
 	// find ipname in aka list
-	for (x = 0; common_names[x].aka[0]; x++)
+	for (y = x = 0; common_names[x].aka[0]; x++)
 		for (y = 0; common_names[x].aka[y]; y++)
 			if (!strcmp(ipname, common_names[x].aka[y]))
 				goto out;
