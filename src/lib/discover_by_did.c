@@ -346,6 +346,8 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did)
 		asic->fd.vram = -1;
 		asic->fd.gpr = -1;
 		asic->fd.drm = -1;
+		asic->fd.iova = -1;
+		asic->fd.iomem = -1;
 		asic->fd.gfxoff = -1;
 	} else {
 		if (!options->quiet && !options->dev_name[0])
