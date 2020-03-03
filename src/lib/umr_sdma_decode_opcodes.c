@@ -247,17 +247,16 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 							ui->add_field(ui, ib_addr + 4, ib_vmid, "REGISTER", BITS(stream->words[0], 2, 20), umr_reg_name(asic, BITS(stream->words[0], 2, 20)), 16);
 							if ((stream->header_dw >> 26) & 1) { // if HDP_FLUSH, the write register is provided
 								ui->add_field(ui, ib_addr + 8, ib_vmid, "REGISTER", BITS(stream->words[1], 2, 20), umr_reg_name(asic, BITS(stream->words[1], 2, 20)), 16);
-							}
-							else {
+							} else {
 								ui->add_field(ui, ib_addr + 8, ib_vmid, NULL, stream->words[1], NULL, 16);
 							}
 						} else {
 							ui->add_field(ui, ib_addr + 4, ib_vmid, "POLL_REGMEM_ADDR_LO", stream->words[0], NULL, 16);
 							ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_REGMEM_ADDR_HI", stream->words[1], NULL, 16);
 						}
-						ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_REGMEM_ADDR_VALUE", stream->words[2], NULL, 16);
-						ui->add_field(ui, ib_addr + 12, ib_vmid, "POLL_REGMEM_ADDR_MASK", stream->words[3], NULL, 16);
-						ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_REGMEM_ADDR_DW5", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "POLL_REGMEM_ADDR_VALUE", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_REGMEM_ADDR_MASK", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "POLL_REGMEM_ADDR_DW5", stream->words[4], NULL, 16);
 						break;
 					case 1: // WRITE WAIT_REG_MEM
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR", stream->words[0], NULL, 16);
