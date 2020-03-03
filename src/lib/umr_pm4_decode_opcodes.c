@@ -501,8 +501,10 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 		case 0x46: // EVENT_WRITE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(stream->words[0], 0, 6), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(stream->words[0], 8, 12), NULL, 10);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(stream->words[1], 3, 32) << 3, NULL, 16);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESS_HI", stream->words[2], NULL, 16);
+			if (stream->n_words > 2) {
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(stream->words[1], 3, 32) << 3, NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESS_HI", stream->words[2], NULL, 16);
+			}
 			break;
 		case 0x47: // EVENT_WRITE_EOP
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(stream->words[0], 0, 6), NULL, 10);
