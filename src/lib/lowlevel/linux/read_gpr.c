@@ -81,7 +81,7 @@ static int umr_read_sgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 
 		// read trap if any
 		if (ws->wave_status.trap_en || ws->wave_status.priv) {
-			addr += 0x6C;
+			addr += 4 * 0x6C; // address in bytes, kernel adds 0x200 to request
 			lseek(asic->fd.gpr, addr, SEEK_SET);
 			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
 		}
@@ -144,7 +144,7 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 
 		// read trap if any
 		if (ws->wave_status.trap_en || ws->wave_status.priv) {
-			addr += 0x6C;
+			addr += 4 * 0x6C;  // byte offset, kernel adds 0x200 to address
 			lseek(asic->fd.gpr, addr, SEEK_SET);
 			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
 		}
