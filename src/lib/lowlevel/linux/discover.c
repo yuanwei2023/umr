@@ -345,14 +345,14 @@ struct umr_asic *umr_discover_asic(struct umr_options *options)
 				}
 			}
 
-			// scan for a region 256K <= X <= 1024K which is 32-bit, non IO, non prefetchable
+			// scan for a region 256K <= X <= 4096K which is 32-bit, non IO, non prefetchable
 			if (use_region == 6) {
 				for (use_region = 0; use_region < 6; use_region++)
 					if (asic->pci.pdevice->regions[use_region].is_64 == 0 &&
 					    asic->pci.pdevice->regions[use_region].is_prefetchable == 0 &&
 					    asic->pci.pdevice->regions[use_region].is_IO == 0 &&
 					    asic->pci.pdevice->regions[use_region].size >= (256UL * 1024) &&
-					    asic->pci.pdevice->regions[use_region].size <= (1024UL * 1024))
+					    asic->pci.pdevice->regions[use_region].size <= (4096UL * 1024))
 						break;
 			}
 
