@@ -80,7 +80,7 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 				ps->shader = calloc(1, sizeof(ps->shader[0]));
 				ps->shader->vmid = vmid;
 				ps->shader->addr = shader_addr;
-				if (!asic->options.no_follow_ib)
+				if (!asic->options.no_follow_shader)
 					ps->shader->size = umr_compute_shader_size(asic, ps->shader);
 				else
 					ps->shader->size = 1;
