@@ -483,6 +483,10 @@ static struct umr_bitfield mmCP_DE_LAST_INVAL_COUNT[] = {
 static struct umr_bitfield mmCP_DE_DE_COUNT[] = {
 	 { "DRAW_ENGINE_COUNT", 0, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield mmPWR_MISC_CNTL_STATUS[] = {
+	 { "PWR_GFX_RLC_CGPG_EN", 0, 0, &umr_bitfield_default },
+	 { "PWR_GFXOFF_STATUS", 1, 2, &umr_bitfield_default },
+};
 static struct umr_bitfield mmCP_STALLED_STAT3[] = {
 	 { "CE_TO_CSF_NOT_RDY_TO_RCV", 0, 0, &umr_bitfield_default },
 	 { "CE_TO_RAM_INIT_FETCHER_NOT_RDY_TO_RCV", 1, 1, &umr_bitfield_default },

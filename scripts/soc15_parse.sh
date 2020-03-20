@@ -19,7 +19,7 @@ if [ ! -f ${smnfile} ]; then smnfile=""; fi
 
 printf "Parsing ${regfile} ${smnfile}\n"
 
-grep -E "(smn|mm|ix)" ${regfile} ${smnfile} | grep -v _BASE_IDX | grep -v _DEFAULT | grep -v "addressBlock:" | (while read line; do
+grep -E "(smn|mm|ix)" ${regfile} ${smnfile} | grep -v _BASE_IDX | grep -v "_DEFAULT.+" | grep -v "addressBlock:" | (while read line; do
 	reg=`echo "${line}" | awk '{ print $2; }'`
 	addr=`echo "${line}" | awk '{ print $3; }'`
 	regclean=`echo ${reg} | sed -e 's/^mm//g' | sed -e 's/^ix//g'`
