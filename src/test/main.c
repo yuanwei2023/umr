@@ -1,0 +1,16 @@
+#include "test_framework.h"
+
+int main(int argc, char **argv)
+{
+    struct global_config global_config;
+
+    if (1 < argc) {
+        global_config.envdef_base_dir = argv[1];
+        run_tests(&global_config);
+
+    } else {
+        fprintf(stderr, "[ERROR]: %s requires one parameter\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+}
