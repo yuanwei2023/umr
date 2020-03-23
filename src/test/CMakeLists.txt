@@ -6,6 +6,8 @@ add_executable(umrtest
   testing_harness.c
   test_framework.c
   main.c
+
+  test_mmio.c
 )
 
 target_link_libraries(umrtest umrcore)
