@@ -24,25 +24,32 @@
  */
 #include "umr.h"
 
-static struct umr_ip_offsets_soc15 vega10_offs[] = {
-#include "vega10.i"
-	{ NULL },
+#include "smuio1200_bits.i"
+
+static const struct umr_reg_soc15 smuio1200_registers[] = {
+#include "smuio1200_regs.i"
 };
 
-struct umr_asic *umr_create_raven1(struct umr_options *options)
+struct umr_ip_block *umr_create_smuio1200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
 {
-	return
-		umr_create_asic_helper("raven1", FAMILY_AI,
-			umr_create_gfx91(vega10_offs, options),
-			umr_create_vcn10(vega10_offs, options),
-			umr_create_dcn10(vega10_offs, options),
-			umr_create_nbio70(vega10_offs, options),
-			umr_create_sdma041(vega10_offs, options),
-			umr_create_hdp40(vega10_offs, options),
-			umr_create_oss40(vega10_offs, options),
-			umr_create_mmhub91(vega10_offs, options),
-			umr_create_mp100(vega10_offs, options),
-			umr_create_pwr1000(vega10_offs, options),
-			NULL);
-}
+	struct umr_ip_block *ip;
 
+	ip = calloc(1, sizeof *ip);
+	if (!ip)
+		return NULL;
+
+	ip->ipname = "smuio1200";
+	ip->no_regs = sizeof(smuio1200_registers)/sizeof(smuio1200_registers[0]);
+	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
+	if (!ip->regs) {
+		free(ip);
+		return NULL;
+	}
+
+	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "SMUIO", smuio1200_registers, ip)) {
+		free(ip);
+		return NULL;
+	}
+
+	return ip;
+}

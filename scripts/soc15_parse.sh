@@ -84,6 +84,9 @@ ENDCB
 ) > /tmp/countbits.c
 gcc /tmp/countbits.c -o /tmp/countbits
 
+parse_bits ${pk}/pwr/pwr_10_0 src/lib/ip/pwr1000
+parse_bits ${pk}/smuio/smuio_12_0_0 src/lib/ip/smuio1200
+
 parse_bits ${pk}/umc/umc_6_1_1 src/lib/ip/umc611
 parse_bits ${pk}/umc/umc_6_1_2 src/lib/ip/umc612
 
