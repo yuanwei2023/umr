@@ -446,12 +446,17 @@ static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass typ
 	struct umr_sq_blocks *sq;
 	struct umr_mmio_blocks *mm;
 	uint32_t v;
+	uint64_t qaddr;
+
+	// 'addr' is a byte address of the register but the database
+	// is stored in DWORD addresses
+	qaddr = addr >> 2;
 
 	if (type != REG_MMIO)
 		return 0xDEADBEEF;
 
 	// are we reading from SQ_IND_DATA or MM_DATA?
-	if (addr == umr_find_reg(asic, "mmSQ_IND_DATA")) {
+	if (qaddr == umr_find_reg(asic, "mmSQ_IND_DATA")) {
 		// find in SQ list
 		sq = &th->sq;
 		while (sq) {
@@ -464,10 +469,10 @@ static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass typ
 			sq = sq->next;
 		}
 		return 0xDEADBEEF;
-	} else if (addr == umr_find_reg(asic, "mmSQ_IND_INDEX")) {
+	} else if (qaddr == umr_find_reg(asic, "mmSQ_IND_INDEX")) {
 		return th->sq_ind_index;
-	} else if (addr == umr_find_reg(asic, "@mmMM_DATA") ||
-			   addr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA")) {
+	} else if (qaddr == umr_find_reg(asic, "@mmMM_DATA") ||
+			   qaddr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA")) {
 		fprintf(stderr, "MM_DATA!\n");
 		// read from VRAM
 		if (th->vram_mm_index & (1ULL << 31)) {
@@ -483,11 +488,11 @@ static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass typ
 			fprintf(stderr, "[ERROR]: MM_INDEX must have 32nd bit set\n");
 			return 0;
 		}
-	} else if (addr == umr_find_reg(asic, "@mmMM_INDEX") ||
-			   addr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX")) {
+	} else if (qaddr == umr_find_reg(asic, "@mmMM_INDEX") ||
+			   qaddr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX")) {
 		return th->vram_mm_index & 0xFFFFFFFFULL;
-	} else if (addr == umr_find_reg(asic, "@mmMM_INDEX_HI") ||
-			   addr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI")) {
+	} else if (qaddr == umr_find_reg(asic, "@mmMM_INDEX_HI") ||
+			   qaddr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI")) {
 		return th->vram_mm_index >> 32;
 	} else {
 		// read from MMIO list
@@ -509,19 +514,24 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
 	struct umr_mmio_blocks *mm;
+	uint64_t qaddr;
+
+	// 'addr' is a byte address of the register but the database
+	// is stored in DWORD addresses
+	qaddr = addr >> 2;
 
 	if (type != REG_MMIO)
 		return -1;
 
 	// are we reading from SQ_IND_DATA or MM_DATA?
-	if (addr == umr_find_reg(asic, "mmSQ_IND_DATA")) {
+	if (qaddr == umr_find_reg(asic, "mmSQ_IND_DATA")) {
 		// don't allow writing to SQ_IND_DATA
 		return -1;
-	} else if (addr == umr_find_reg(asic, "mmSQ_IND_INDEX")) {
+	} else if (qaddr == umr_find_reg(asic, "mmSQ_IND_INDEX")) {
 		th->sq_ind_index = value;
 		return 0;
-	} else if (addr == umr_find_reg(asic, "@mmMM_DATA") ||
-			   addr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA")) {
+	} else if (qaddr == umr_find_reg(asic, "@mmMM_DATA") ||
+			   qaddr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA")) {
 		// write to VRAM
 		if (th->vram_mm_index & (1ULL << 31)) {
 			uint64_t addr;
@@ -536,12 +546,12 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 			fprintf(stderr, "[ERROR]: MM_INDEX must have 32nd bit set\n");
 			return -1;
 		}
-	} else if (addr == umr_find_reg(asic, "@mmMM_INDEX") ||
-			   addr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX")) {
+	} else if (qaddr == umr_find_reg(asic, "@mmMM_INDEX") ||
+			   qaddr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX")) {
 		th->vram_mm_index = (th->vram_mm_index & 0xFFFFFFFF00000000ULL) | value;
 		return 0;
-	} else if (addr == umr_find_reg(asic, "@mmMM_INDEX_HI") ||
-			   addr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI")) {
+	} else if (qaddr == umr_find_reg(asic, "@mmMM_INDEX_HI") ||
+			   qaddr == umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI")) {
 		th->vram_mm_index = (th->vram_mm_index & 0xFFFFFFFFULL) | ((uint64_t)value << 32);
 		return 0;
 	} else {
