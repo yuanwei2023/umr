@@ -42,6 +42,7 @@ struct umr_asic *umr_create_picasso(struct umr_options *options)
 			umr_create_oss40(vega10_offs, options),
 			umr_create_mmhub91(vega10_offs, options),
 			umr_create_mp100(vega10_offs, options),
+			umr_create_pwr1000(vega10_offs, options),
 			NULL);
 }
 
