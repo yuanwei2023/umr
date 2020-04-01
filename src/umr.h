@@ -1109,6 +1109,10 @@ struct umr_sq_blocks {
 	struct umr_sq_blocks *next;
 };
 
+struct umr_vmid_info {
+	uint32_t enabled;	
+};
+
 struct umr_test_harness {
 	struct umr_asic *asic;
 
@@ -1118,6 +1122,8 @@ struct umr_test_harness {
 
 	uint64_t vram_mm_index; // when these are written they are shadowed here
 	uint32_t sq_ind_index;
+
+	struct umr_vmid_info vmids[16];
 };
 
 struct umr_test_harness *umr_create_test_harness_file(const char *fname);

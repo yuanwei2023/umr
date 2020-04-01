@@ -368,6 +368,19 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			sq->next = calloc(1, sizeof *sq);
 			sq = sq->next;
 		}
+		if (consume_word(&script, "VMID@")) {
+			uint32_t vmid;
+
+			vmid = consume_xint32(&script, &r);
+			if (!r)
+				goto error;
+			if (vmid >= 16) {
+				fprintf(stderr, "%"PRIu32 " is not a valid VMID", vmid);
+				goto error;
+			}
+
+			th->vmids[vmid].enabled = 1;
+		}
 	}
 	return th;
 error:
@@ -570,6 +583,55 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 	}
 }
 
+static void set_vm_register(struct umr_test_harness *th, struct umr_asic* asic, uint32_t vmid, char* regsuffix, uint32_t value)
+{
+	char regname[64];
+	uint32_t regoffset;
+	struct umr_mmio_blocks* old_mmio_head = th->mmio.next;
+
+	snprintf(regname, sizeof(regname), "@mm%sVM_CONTEXT%d_%s", (asic->family >=FAMILY_NV)?"GC":"" ,vmid, regsuffix);
+	regoffset = umr_find_reg(asic, regname);
+
+	if (regoffset == 0xFFFFFFFF) {
+		fprintf(stderr, "Unknown register %s\n", regname);
+		return;		
+	}
+
+	th->mmio.next = (struct umr_mmio_blocks*)calloc(1, sizeof(struct umr_mmio_blocks));
+	th->mmio.next->mmio_address = 4*regoffset;
+	th->mmio.next->no_values = 1;
+	th->mmio.next->values = calloc(1, sizeof(uint32_t));
+	th->mmio.next->values[0] = value;
+	th->mmio.next->next = old_mmio_head;
+}
+
+static void enable_vmid(struct umr_test_harness *th, struct umr_asic* asic, uint32_t vmid)
+{
+	uint32_t cntl_reg_value;
+	uint64_t pt_base;
+
+	set_vm_register(th, asic, vmid, "PAGE_TABLE_START_ADDR_LO32", 0);
+	set_vm_register(th, asic, vmid, "PAGE_TABLE_START_ADDR_HI32", 0);
+
+	cntl_reg_value = 	1 			| 	//ENABLE_CONTEXT
+						3  << 1 	| 	//PAGE_TABLE_DEPTH
+						12 << 3;		//PAGE_TABLE_BLOCK_SIZE
+	set_vm_register(th, asic, vmid, "CNTL", cntl_reg_value);
+
+	pt_base = (uint64_t)vmid<<44;
+	set_vm_register(th, asic, vmid, "PAGE_TABLE_BASE_ADDR_LO32", pt_base);
+	set_vm_register(th, asic, vmid, "PAGE_TABLE_BASE_ADDR_HI32", pt_base>>32);
+}
+
+static void set_up_vmids(struct umr_test_harness *th, struct umr_asic *asic)
+{
+	for (int vmid = 0; vmid < 16; ++vmid) {
+		if (th->vmids[vmid].enabled){
+			enable_vmid(th, asic, vmid);
+		}
+	}
+}
+
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 {
 	asic->mem_funcs.access_linear_vram = access_linear_vram;
@@ -583,4 +645,6 @@ void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 	asic->reg_funcs.data = th;
 
 	th->asic = asic;
+
+	set_up_vmids(th, asic);
 }
