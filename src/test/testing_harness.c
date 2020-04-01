@@ -303,6 +303,15 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	free(th);
 }
 
+static void add_virt_phys_mapping(struct umr_vmid_info* vmid, uint64_t virtual, uint64_t physical)
+{
+	struct umr_vaddr_mapping_info* old_head = vmid->address_mapping;
+	vmid->address_mapping = calloc(1, sizeof(struct umr_vaddr_mapping_info));
+	vmid->address_mapping->virtual = virtual;
+	vmid->address_mapping->physical = physical;
+	vmid->address_mapping->next = old_head;
+}
+
 struct umr_test_harness *umr_create_test_harness(const char *script)
 {
 	struct umr_test_harness *th;
@@ -380,6 +389,35 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			}
 
 			th->vmids[vmid].enabled = 1;
+		}
+		if (consume_word(&script, "MAPVA@")){
+			uint32_t vmid;
+			uint64_t va, pa;
+
+			vmid = consume_xint32(&script, &r);
+			if (!r)
+				goto error;
+			
+			if (!expect_word(&script, ","))
+				goto error;
+
+			va = consume_xint64(&script, &r);
+			if (!r)
+				goto error;
+
+			if (!expect_word(&script, "="))
+				goto error;
+
+			pa = consume_xint32(&script, &r);
+			if (!r)
+				goto error;
+				
+			if (!th->vmids[vmid].enabled) {
+				fprintf(stderr, "VMID %"PRIu32" not configured - use the VMID@ keyword in the envdef file to set up a VMID.\n", vmid);
+				goto error;
+			}
+
+			add_virt_phys_mapping(&th->vmids[vmid], va, pa);
 		}
 	}
 	return th;
@@ -583,6 +621,81 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 	}
 }
 
+
+static struct umr_ram_blocks* find_vram_page(struct umr_test_harness* th, uint64_t addr)
+{
+	struct umr_ram_blocks* vram;
+	uint64_t page_addr = addr&~0xFFF;
+
+	for (vram = &th->vram; vram ; vram = vram->next) {
+		if (vram->base_address == page_addr){
+			if (vram->size < 0x1000) {
+				fprintf(stderr, "[BUG] physical address mapping for page table is smaller than a page");
+			}
+			return vram;
+		}
+	}
+
+	for (vram = &th->vram; vram->next != 0 ; vram = vram->next)
+		;
+
+	vram->next = calloc(1, sizeof(*vram));
+	vram = vram->next;
+	vram->base_address = page_addr;
+	vram->size = 0x1000;
+	vram->contents = calloc(1, 0x1000);
+
+	return vram;
+}
+
+static void set_memory_contents(struct umr_test_harness* th, uint64_t addr, uint64_t value)
+{
+	struct umr_ram_blocks* vram;
+	uint64_t page_offset = addr&0xFFF;
+
+	if (page_offset + sizeof(value) > 0x1000) {
+		fprintf(stderr, "[BUG] trying to put PTE/PDE beyond end of page");
+	}
+
+	vram = find_vram_page(th, addr);
+	memcpy(vram->contents+page_offset, &value, sizeof(value));
+}
+
+static uint64_t pde_for_address(uint64_t address, int is_pte)
+{
+	return 	address 			|
+			1					|	//VALID
+			(uint64_t)is_pte<<54;	//PTE
+}
+
+static void set_up_page_table_mapping(struct umr_test_harness* th, uint32_t vmid, uint64_t va, uint64_t pa)
+{
+	uint64_t pt_base;
+	uint32_t pt_idx[4];
+	uint64_t pde_addr[4];
+
+	pt_base = (uint64_t)vmid<<44;
+
+
+	//pde_idx = (address >> ((current_depth-1)*9 + (12 + 9 + /*12*/page_table_size)));
+	pt_idx[0] = (va>>51)&0x1FF; //pde_idx = address >> [(3-1)*9 + 12 + 9 + 12]
+	pt_idx[1] = (va>>42)&0x1FF; //pde_idx = address >> [(2-1)*9 + 12 + 9 + 12]
+	pt_idx[2] = (va>>33)&0x1FF; //pde_idx = address >> [(1-1)*9 + 12 + 9 + 12]
+	pt_idx[3] = (va>>24)&0x1FF; //pde_idx = address >> [(0-1)*9 + 12 + 9 + 12]
+
+	pde_addr[0] = pt_base+sizeof(uint64_t)*pt_idx[0];
+	pde_addr[1] = pt_base | (1ull<<38) | (pt_idx[0]<<12) | pt_idx[1]*sizeof(uint64_t);
+	pde_addr[2] = pt_base | (2ull<<38) | (pt_idx[1]<<12) | pt_idx[2]*sizeof(uint64_t);
+	pde_addr[3] = pt_base | (3ull<<38) | (pt_idx[2]<<12) | pt_idx[3]*sizeof(uint64_t);
+
+	//printf("VA: %"PRIX64" PDE0@%"PRIX64" PDE1@%"PRIX64" PDE2@%"PRIX64" PDE3@%"PRIX64"\n", va, pde_addr[0], pde_addr[1], pde_addr[2], pde_addr[3]);
+
+	set_memory_contents(th, pde_addr[0], pde_for_address(pde_addr[1], 0));
+	set_memory_contents(th, pde_addr[1], pde_for_address(pde_addr[2], 0));
+	set_memory_contents(th, pde_addr[2], pde_for_address(pde_addr[3], 0));
+	set_memory_contents(th, pde_addr[3], pde_for_address(pa, 1));
+}
+
 static void set_vm_register(struct umr_test_harness *th, struct umr_asic* asic, uint32_t vmid, char* regsuffix, uint32_t value)
 {
 	char regname[64];
@@ -625,9 +738,18 @@ static void enable_vmid(struct umr_test_harness *th, struct umr_asic* asic, uint
 
 static void set_up_vmids(struct umr_test_harness *th, struct umr_asic *asic)
 {
+	struct umr_vaddr_mapping_info* vamapping;
+
 	for (int vmid = 0; vmid < 16; ++vmid) {
-		if (th->vmids[vmid].enabled){
+
+		if (th->vmids[vmid].enabled){			
 			enable_vmid(th, asic, vmid);
+
+			vamapping = th->vmids[vmid].address_mapping;
+			while (vamapping != NULL) {
+				set_up_page_table_mapping(th, vmid, vamapping->virtual, vamapping->physical);
+				vamapping = vamapping->next;
+			}
 		}
 	}
 }

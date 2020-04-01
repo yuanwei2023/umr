@@ -1109,8 +1109,15 @@ struct umr_sq_blocks {
 	struct umr_sq_blocks *next;
 };
 
+struct umr_vaddr_mapping_info {
+	uint64_t physical;
+	uint64_t virtual;
+	struct umr_vaddr_mapping_info* next;
+};
+
 struct umr_vmid_info {
-	uint32_t enabled;	
+	uint32_t enabled;
+	struct umr_vaddr_mapping_info* address_mapping;
 };
 
 struct umr_test_harness {
