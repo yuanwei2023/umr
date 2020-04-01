@@ -94,6 +94,7 @@ static uint32_t consume_xint32(const char **ptr, int *res)
 static uint8_t consume_xint8(const char **ptr, int *res)
 {
 	uint8_t v;
+	const char* nextdigit;
 	char t[3];
 	t[2] = 0;
 
@@ -103,14 +104,15 @@ static uint8_t consume_xint8(const char **ptr, int *res)
 		return 0;
 	}
 
-	while (**ptr && !isxdigit(**ptr)) ++(*ptr);
-	t[0] = **ptr;
-	while (**ptr && !isxdigit(**ptr)) ++(*ptr);
-	t[1] = **ptr;
+	nextdigit = *ptr;
+	while (*nextdigit && !isxdigit(*nextdigit)) ++nextdigit;
+	t[0] = *nextdigit++;
+	while (*nextdigit && !isxdigit(*nextdigit)) ++nextdigit;
+	t[1] = *nextdigit++;
 
 	if (sscanf(t, "%"SCNx8, &v) == 1) {
 		*res = 1;
-		(*ptr) += 2;
+		(*ptr) = nextdigit;
 		return v;
 	} else {
 		*res = 0;
