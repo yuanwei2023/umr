@@ -8,6 +8,7 @@ add_executable(umrtest
   main.c
 
   test_mmio.c
+  test_vm.c
 )
 
 target_link_libraries(umrtest umrcore)

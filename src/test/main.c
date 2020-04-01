@@ -1,12 +1,14 @@
 #include "test_framework.h"
 
 DECLARE_TESTS(mmio_tests);
+DECLARE_TESTS(vm_tests);
 
 int main(int argc, char **argv)
 {
     struct global_config global_config;
 
     REGISTER_TESTS(mmio_tests);
+    REGISTER_TESTS(vm_tests);
 
     if (1 < argc) {
         global_config.envdef_base_dir = argv[1];
