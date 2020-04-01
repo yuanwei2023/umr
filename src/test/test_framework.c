@@ -55,8 +55,9 @@ static enum TEST_RESULT run_test(struct global_config* global_config, struct tes
     }
 
     memset(&options, 0, sizeof(options));
-    ///TODO set up options
+    options.verbose = global_config->verbose;
     asic = umr_discover_asic_by_name(&options, test_config->asic_name);
+    asic->options.verbose = global_config->verbose;
 
     umr_attach_test_harness(th, asic);
 

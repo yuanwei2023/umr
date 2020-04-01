@@ -575,6 +575,7 @@ void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 	asic->mem_funcs.access_linear_vram = access_linear_vram;
 	asic->mem_funcs.access_sram = access_sram;
 	asic->mem_funcs.gpu_bus_to_cpu_address = gpu_bus_to_cpu_address;
+	asic->mem_funcs.vm_message = &printf;
 	asic->mem_funcs.data = th;
 
 	asic->reg_funcs.read_reg = read_reg;

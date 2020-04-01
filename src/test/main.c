@@ -10,8 +10,8 @@ int main(int argc, char **argv)
 
     if (1 < argc) {
         global_config.envdef_base_dir = argv[1];
+        global_config.verbose = 0;
         run_tests(&global_config);
-
     } else {
         fprintf(stderr, "[ERROR]: %s requires one parameter\n", argv[0]);
         return EXIT_FAILURE;

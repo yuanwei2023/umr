@@ -82,6 +82,7 @@ typedef enum TEST_RESULT (*test_func) (struct umr_asic*);
 struct global_config
 {
     char* envdef_base_dir;
+    int   verbose;
 };
 
 /**run_tests()
