@@ -11,7 +11,7 @@ static struct registered_tests* registered_tests = NULL;
 
 static void error(char* str)
 {
-    fprintf(stderr, str);
+    fputs(str, stderr);
 }
 
 void register_tests(struct test_table_entry* tests, size_t ntests)
