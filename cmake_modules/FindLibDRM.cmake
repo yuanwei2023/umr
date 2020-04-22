@@ -28,7 +28,7 @@ find_library(LIBDRM_LIBRARY NAMES libdrm_amdgpu.so.1
 SET(LIBDRM_LIBRARIES ${LIBDRM_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LIBDRM DEFAULT_MSG
+find_package_handle_standard_args(LibDRM DEFAULT_MSG
 	LIBDRM_LIBRARIES LIBDRM_INCLUDE_DIR
 )
 

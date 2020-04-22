@@ -28,7 +28,7 @@ find_library(PCIACCESS_LIBRARY NAMES pciaccess
 SET(PCIACCESS_LIBRARIES ${PCIACCESS_LIBRARY})
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PCIACCESS DEFAULT_MSG
+find_package_handle_standard_args(PCIAccess DEFAULT_MSG
 	PCIACCESS_LIBRARIES PCIACCESS_INCLUDE_DIR
 )
 
