@@ -625,7 +625,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				uint64_t addr = BITS(stream->words[0], 0, 16) + 0x2000;
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
 					addr += 1;
 				}
 			}
@@ -635,7 +635,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				uint64_t addr = BITS(stream->words[0], 0, 16) + 0xA000;
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
 					addr += 1;
 				}
 			}
@@ -645,7 +645,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				uint64_t addr = BITS(stream->words[0], 0, 16) + 0x2C00;
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
 					addr += 1;
 				}
 			}
@@ -655,7 +655,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				uint64_t addr = BITS(stream->words[0], 0, 16) + 0xC000;
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
 					addr += 1;
 				}
 			}
@@ -666,7 +666,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				uint32_t n;
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", 0, op_7a_index_str[BITS(stream->words[0], 28, 32)], 0);
 				for (n = 1; n < stream->n_words; n++) {
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
 					addr += 1;
 				}
 			}
@@ -685,7 +685,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				char buf[32];
 				for (n = 1; n < stream->n_words; n++) {
 					sprintf(buf, "CONST_RAM[%lx]", (unsigned long)addr);
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, buf, stream->words[n], NULL, 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, buf, stream->words[n], NULL, 16);
 					addr += 4;
 				}
 			}
@@ -730,7 +730,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				uint32_t n;
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", BITS(stream->words[0], 28, 32), NULL, 10);
 				for (n = 1; n < stream->n_words; n++) {
-					ui->add_field(ui, ib_addr + 4 * n, ib_vmid, umr_reg_name(asic, addr), stream->words[n], NULL, 16);
+					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, umr_reg_name(asic, addr), stream->words[n], NULL, 16);
 					addr += 1;
 				}
 			}
