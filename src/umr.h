@@ -60,6 +60,8 @@ enum umr_shader_type {
 	UMR_SHADER_PIXEL = 0,
 	UMR_SHADER_VERTEX,
 	UMR_SHADER_COMPUTE,
+	UMR_SHADER_HS,
+	UMR_SHADER_GS,
 };
 
 /* sourced from amd_powerplay.h from the kernel */

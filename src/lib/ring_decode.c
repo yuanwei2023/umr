@@ -1008,19 +1008,41 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 					{
 						char *tmp = umr_reg_name(asic, decoder->pm4.next_write_mem.addr_lo);
 						printf("%s <= %s0x%08lx%s", tmp, YELLOW, (unsigned long)ib, RST);
-						if (strstr(tmp, "SPI_SHADER_PGM_LO_") || strstr(tmp, "COMPUTE_PGM_LO")) {
-							decoder->pm4.next_ib_state.ib_addr_lo = ib;
-						} else if (strstr(tmp, "SPI_SHADER_PGM_HI_") || strstr(tmp, "COMPUTE_PGM_HI")) {
-							decoder->pm4.next_ib_state.ib_addr_hi = ib;
-							decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid;
-							if (!asic->options.no_follow_ib) {
-								if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
-												  (((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo) << 8,
-												  4, buf) < 0) {
-									printf(" [%sUNMAPPED%s]", RED, RST);
-								} else {
-									printf(" [%sMAPPED%s]", GREEN, RST);
-									add_shader(asic, decoder);
+						if (asic->family <= FAMILY_VI) {
+							if (strstr(tmp, "SPI_SHADER_PGM_LO_") || strstr(tmp, "COMPUTE_PGM_LO")) {
+								decoder->pm4.next_ib_state.ib_addr_lo = ib;
+							} else if (strstr(tmp, "SPI_SHADER_PGM_HI_") || strstr(tmp, "COMPUTE_PGM_HI")) {
+								decoder->pm4.next_ib_state.ib_addr_hi = ib;
+								decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid;
+								if (!asic->options.no_follow_ib) {
+									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+													  (((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo) << 8,
+													  4, buf) < 0) {
+										printf(" [%sUNMAPPED%s]", RED, RST);
+									} else {
+										printf(" [%sMAPPED%s]", GREEN, RST);
+										add_shader(asic, decoder);
+									}
+								}
+							}
+						} else {
+							// on gfx9+ HS and GS shaders are opaque
+							if ((strstr(tmp, "SPI_SHADER_PGM_LO_") || strstr(tmp, "COMPUTE_PGM_LO")) &&
+								 strcmp(tmp, "SPI_SHADER_PGM_LO_HS") && strcmp(tmp, "SPI_SHADER_PGM_LO_GS")) {
+								decoder->pm4.next_ib_state.ib_addr_lo = ib;
+							} else if ((strstr(tmp, "SPI_SHADER_PGM_HI_") || strstr(tmp, "COMPUTE_PGM_HI")) &&
+								 strcmp(tmp, "SPI_SHADER_PGM_HI_HS") && strcmp(tmp, "SPI_SHADER_PGM_HI_GS")) {
+								decoder->pm4.next_ib_state.ib_addr_hi = ib;
+								decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid;
+								if (!asic->options.no_follow_ib) {
+									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+													  (((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo) << 8,
+													  4, buf) < 0) {
+										printf(" [%sUNMAPPED%s]", RED, RST);
+									} else {
+										printf(" [%sMAPPED%s]", GREEN, RST);
+										add_shader(asic, decoder);
+									}
 								}
 							}
 						}
