@@ -62,6 +62,9 @@ enum umr_shader_type {
 	UMR_SHADER_COMPUTE,
 	UMR_SHADER_HS,
 	UMR_SHADER_GS,
+	UMR_SHADER_ES,
+	UMR_SHADER_LS,
+	UMR_SHADER_OPAQUE,
 };
 
 /* sourced from amd_powerplay.h from the kernel */

@@ -91,8 +91,8 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 	struct umr_shaders_pgm *shader;
 	unsigned nitems, nmax, nshaders, x, y, z, found;
 	char *ringname;
-	uint32_t total_hits_by_type[5], total_hits;
-	const char *shader_names[5] = { "pixel", "vertex", "compute", "hs", "gs" };
+	uint32_t total_hits_by_type[8], total_hits;
+	const char *shader_names[8] = { "pixel", "vertex", "compute", "hs", "gs", "es", "ls", "opaque" };
 	int sample_hit, gprs;
 
 	kill_asic = asic;
@@ -358,12 +358,15 @@ throw_back:
 	}
 	total_hits = total_hits_by_type[0] + total_hits_by_type[1] +
 				 total_hits_by_type[2] + total_hits_by_type[3] +
-				 total_hits_by_type[4];
+				 total_hits_by_type[4] + total_hits_by_type[5] +
+				 total_hits_by_type[6];
 	printf("\nPixel Shaders:   %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_PIXEL]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_PIXEL]) / total_hits) % 10);
 	printf("Vertex Shaders:  %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_VERTEX]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_VERTEX]) / total_hits) % 10);
 	printf("Compute Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_COMPUTE]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_COMPUTE]) / total_hits) % 10);
 	printf("HS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_HS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_HS]) / total_hits) % 10);
 	printf("GS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_GS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_GS]) / total_hits) % 10);
+	printf("ES Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_ES]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_ES]) / total_hits) % 10);
+	printf("LS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_LS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_LS]) / total_hits) % 10);
 
 	texts = otext;
 	while (texts) {

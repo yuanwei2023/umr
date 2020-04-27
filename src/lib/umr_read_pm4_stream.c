@@ -62,18 +62,18 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 					else if (strstr(tmp, "LO_VS"))
 						type = UMR_SHADER_VERTEX;
 					else if (strstr(tmp, "LO_HS"))
-						type = UMR_SHADER_HS;
+						type = (asic->family <= FAMILY_VI) ? UMR_SHADER_HS : UMR_SHADER_OPAQUE;
 					else if (strstr(tmp, "LO_GS"))
-						type = UMR_SHADER_GS;
+						type = (asic->family <= FAMILY_VI) ? UMR_SHADER_GS : UMR_SHADER_OPAQUE;
+					else if (strstr(tmp, "LO_LS"))
+						type = (asic->family > FAMILY_VI) ? UMR_SHADER_HS : UMR_SHADER_LS;
+					else if (strstr(tmp, "LO_ES"))
+						type = (asic->family > FAMILY_VI) ? UMR_SHADER_GS : UMR_SHADER_ES;
 					else
 						type = UMR_SHADER_COMPUTE;
 					shader_addr = (shader_addr & ~0xFFFFFFFFFFULL) | ((uint64_t)ps->words[n] << 8);
-					if (asic->family <= FAMILY_VI) {
+					if (type != UMR_SHADER_OPAQUE)
 						na |= 1;
-					} else {
-						if (!(type == UMR_SHADER_HS || type == UMR_SHADER_GS))
-							na |= 1;
-					}
 				} else if (strstr(tmp, "SPI_SHADER_PGM_HI_") || strstr(tmp, "COMPUTE_PGM_HI")) {
 					shader_addr = (shader_addr & 0xFFFFFFFFFFULL) | ((uint64_t)ps->words[n] << 40);
 					na |= 2;
