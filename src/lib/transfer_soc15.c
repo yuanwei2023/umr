@@ -108,6 +108,7 @@ int umr_transfer_soc15_to_reg_ex(struct umr_options *options, struct umr_ip_offs
 		dst->regs[y].no_bits = regs[y].no_bits;
 		dst->regs[y].regname = regs[y].regname;
 		dst->regs[y].type = regs[y].type;
+		dst->regs[y].bit64 = regs[y].bit64;
 	}
 	return 0;
 }

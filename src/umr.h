@@ -118,7 +118,7 @@ struct umr_reg {
 	uint32_t addr;
 	struct umr_bitfield *bits;
 	int no_bits;
-	uint32_t value, reserved;
+	uint32_t bit64, value;
 };
 
 struct umr_reg_soc15 {
@@ -127,7 +127,7 @@ struct umr_reg_soc15 {
 	uint32_t addr, idx;
 	struct umr_bitfield *bits;
 	int no_bits;
-	uint32_t value, reserved;
+	uint32_t bit64, value;
 };
 
 struct umr_find_reg_iter {

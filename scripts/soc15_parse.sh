@@ -39,17 +39,20 @@ grep -E "(smn|mm|ix)" ${regfile} ${smnfile} | grep -v _BASE_IDX | grep -v "_DEFA
 	fi
 	if grep "[ 	]${regclean}__" ${bitfile} > /dev/null; then
 		# has bit definitions ...
-		# output reg declaration
-		printf "\t{ \"${reg}\", REG_${class}, ${addr}, ${regidx}, &${reg}[0], sizeof(${reg})/sizeof(${reg}[0]), 0, 0 },\n" >> /tmp/bits.1
 		# now we parse out bits
 		printf "static struct umr_bitfield ${reg}[] = {\n" >> /tmp/bits.2
 		grep "[ 	]${regclean}__" ${bitfile} | grep "_MASK[ 	]" | grep -v "__SHIFT[ 	]" | ( while read bitline; do
+			rm -f /tmp/bits.3
 			bitmask=`echo ${bitline} | awk '{ print $3; }'`
 			bitname=`echo ${bitline} | awk '{ print $2; }'`
 			bitnameclean=`echo ${bitname} | sed -e "s/^${regclean}__//" | sed -e 's/_MASK$//'`
 			bitidx=`/tmp/countbits ${bitmask}`
+			echo $? > /tmp/bits.3
 			printf "\t { \"${bitnameclean}\", ${bitidx}, &umr_bitfield_default },\n" >> /tmp/bits.2
 		done; )
+		# output reg declaration
+		bit64=`cat /tmp/bits.3`
+		printf "\t{ \"${reg}\", REG_${class}, ${addr}, ${regidx}, &${reg}[0], sizeof(${reg})/sizeof(${reg}[0]), ${bit64}, 0 },\n" >> /tmp/bits.1
 		printf "};\n" >> /tmp/bits.2
 	else
 		printf "\t{ \"${reg}\", REG_${class}, ${addr}, ${regidx}, NULL, 0, 0, 0 },\n" >> /tmp/bits.1
@@ -64,21 +67,25 @@ if [ ! -d ${pk} ]; then
 	exit 1
 fi
 
-rm -f /tmp/bits.1 /tmp/bits.2 /tmp/countbits*
+rm -f /tmp/bits.1 /tmp/bits.2 /tmp/bits.3 /tmp/countbits*
 
 (cat <<ENDCB
 #include <stdio.h>
+#include <stdint.h>
 int main(int argc, char **argv)
 {
-	unsigned long value, x;
-	if (sscanf(argv[1], "0x%08lx", &value)) {
+	uint64_t value, x, y;
+	y = 0;
+	if (sscanf(argv[1], "0x%016lx", &value)) {
 		x = 0;
-		while (!(value & 1) && x < 32) { x++; value >>= 1; }
+		while (!(value & 1) && x < 64) { x++; value >>= 1; }
+		if (x > 31) y |= 1;
 		printf("%lu, ", x);
-		while ((value & 1) && x < 32) { x++; value >>= 1; }
+		while ((value & 1) && x < 64) { x++; value >>= 1; }
+		if (x > 32) y |= 1;
 		printf("%lu", x-1);
 	}
-	return 0;
+	return y;
 }
 ENDCB
 ) > /tmp/countbits.c
