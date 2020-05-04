@@ -32,14 +32,19 @@
  * @ip block.  The IP block can be NULL to find the first instance
  * of the register in the ASIC.
  */
-uint32_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
+uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
 {
 	struct umr_reg *reg;
 	reg = umr_find_reg_data_by_ip(asic, ip, name);
-	if (reg)
-		return asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type);
-	else
+	if (reg) {
+		if (reg->bit64)
+			return ((uint64_t)asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type)) |
+			((uint64_t)asic->reg_funcs.read_reg(asic, (reg->addr + 1) * (reg->type == REG_MMIO ? 4 : 1), reg->type) << 32);
+		else
+			return asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type);
+	} else {
 		return 0;
+	}
 }
 
 /**
@@ -49,7 +54,7 @@ uint32_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
  * IP block found to contain the register.  To specify an IP block
  * use: umr_read_reg_by_name_by_ip().
  */
-uint32_t umr_read_reg_by_name(struct umr_asic *asic, char *name)
+uint64_t umr_read_reg_by_name(struct umr_asic *asic, char *name)
 {
 	return umr_read_reg_by_name_by_ip(asic, NULL, name);
 }
@@ -61,14 +66,24 @@ uint32_t umr_read_reg_by_name(struct umr_asic *asic, char *name)
  * a specified @ip block.  The IP block can be NULL to find the
  * first instance of the register in the ASIC.
  */
-int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uint32_t value)
+int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uint64_t value)
 {
 	struct umr_reg *reg;
+	int r;
+
 	reg = umr_find_reg_data_by_ip(asic, ip, name);
-	if (reg)
-		return asic->reg_funcs.write_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), value, reg->type);
-	else
+	if (reg) {
+		if (reg->bit64) {
+			r = asic->reg_funcs.write_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), value & 0xFFFFFFFFUL, reg->type);
+			if (!r)
+				return asic->reg_funcs.write_reg(asic, (reg->addr + 1) * (reg->type == REG_MMIO ? 4 : 1), value >> 32, reg->type);
+			return r;
+		} else {
+			return asic->reg_funcs.write_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), value, reg->type);
+		}
+	} else {
 		return -1;
+	}
 }
 
 /**
@@ -78,7 +93,7 @@ int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uin
  * from the first IP block found to contain the register.  To specify
  * an IP block use: umr_write_reg_by_name_by_ip().
  */
-int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint32_t value)
+int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint64_t value)
 {
 	return umr_write_reg_by_name_by_ip(asic, NULL, name, value);
 }
@@ -90,13 +105,13 @@ int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint32_t value)
  * @reg by the bitfield parameters specified by the name @bitname.
  * The entire register value must be specified by @regvalue.
  */
-uint32_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint32_t regvalue)
+uint64_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue)
 {
 	int i;
 	for (i = 0; i < reg->no_bits; i++) {
 		if (!strcmp(bitname, reg->bits[i].regname)) {
 			regvalue >>= reg->bits[i].start;
-			regvalue &= (1UL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
+			regvalue &= (1ULL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
 			return regvalue;
 		}
 	}
@@ -112,12 +127,12 @@ uint32_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitn
  * value can be OR'ed with other composed values to complete an
  * entire register word.
  */
-uint32_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint32_t regvalue)
+uint64_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue)
 {
 	int i;
 	for (i = 0; i < reg->no_bits; i++) {
 		if (!strcmp(bitname, reg->bits[i].regname)) {
-			regvalue &= (1UL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
+			regvalue &= (1ULL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
 			regvalue <<= reg->bits[i].start;
 			return regvalue;
 		}
@@ -129,7 +144,7 @@ uint32_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, 
 /**
  * umr_bitslice_reg_by_name_by_ip - Slice out a bitfield by IP and register name.
  */
-uint32_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint32_t regvalue)
+uint64_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue)
 {
 	struct umr_reg *reg;
 	reg = umr_find_reg_data_by_ip(asic, ip, regname);
@@ -142,7 +157,7 @@ uint32_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *r
 /**
  * umr_bitslice_reg_by_name - Slice out a bitfield by register name.
  */
-uint32_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint32_t regvalue)
+uint64_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint64_t regvalue)
 {
 	return umr_bitslice_reg_by_name_by_ip(asic, NULL, regname, bitname, regvalue);
 }
@@ -158,7 +173,7 @@ uint32_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bi
  * Returns the masked and shifted bitfield value that can be OR'ed
  * with other composed bitfields to form a register value.
  */
-uint32_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint32_t regvalue)
+uint64_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue)
 {
 	struct umr_reg *reg;
 	reg = umr_find_reg_data_by_ip(asic, ip, regname);
@@ -177,7 +192,7 @@ uint32_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *i
  * Returns the masked and shifted bitfield value that can be OR'ed
  * with other composed bitfields to form a register value.
  */
-uint32_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *regname, char *bitname, uint32_t regvalue)
+uint64_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *regname, char *bitname, uint64_t regvalue)
 {
 	return umr_bitslice_compose_value_by_name_by_ip(asic, NULL, regname, bitname, regvalue);
 }

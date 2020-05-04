@@ -33,8 +33,8 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 {
 	char asicname[128], ipname[128], regname[128];
 	int i, j, fd;
-	uint32_t value;
-	uint64_t addr, scale;
+	uint64_t value, addr, scale;
+	uint32_t v32;
 
 	if (sscanf(regpath, "%[^.].%[^.].%[^.]", asicname, ipname, regname) != 3) {
 		fprintf(stderr, "[ERROR]: Invalid regpath for write\n");
@@ -47,7 +47,7 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 			if (ipname[0] == '*' || !strcmp(ipname, asic->blocks[i]->ipname)) {
 				for (j = 0; j < asic->blocks[i]->no_regs; j++) {
 					if (!strcmp(regname, asic->blocks[i]->regs[j].regname)) {
-						sscanf(regvalue, "%"SCNx32, &value);
+						sscanf(regvalue, "%"SCNx64, &value);
 
 						if (asic->pci.mem == NULL) {
 							// set this register
@@ -70,9 +70,16 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 							else
 								addr = 0;
 
+							v32 = value & 0xFFFFFFFF;
 							lseek(fd, addr | (asic->blocks[i]->regs[j].addr*scale), SEEK_SET);
-							if (write(fd, &value, 4) != 4)
+							if (write(fd, &v32, 4) != 4)
 								return -1;
+
+							if (asic->blocks[i]->regs[j].bit64) {
+								v32 = value >> 32;
+								if (write(fd, &v32, 4) != 4)
+									return -1;
+							}
 
 							if (asic->blocks[i]->release) {
 								if (asic->blocks[i]->release(asic)) {
@@ -84,7 +91,9 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 								umr_grbm_select_index(asic, asic->options.bank.grbm.se, asic->options.bank.grbm.sh, asic->options.bank.grbm.instance);
 							if (asic->options.use_bank == 2)
 								umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
-							asic->pci.mem[asic->blocks[i]->regs[j].addr] = value;
+							asic->pci.mem[asic->blocks[i]->regs[j].addr] = value & 0xFFFFFFFF;
+							if (asic->blocks[i]->regs[j].bit64)
+								asic->pci.mem[asic->blocks[i]->regs[j].addr + 1] = value >> 32;
 							if (asic->options.use_bank == 1)
 								umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 							if (asic->options.use_bank == 2)

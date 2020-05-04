@@ -30,7 +30,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	    first, i, j, k, count = 0;
 	uint64_t addr, scale;
 	char buf[256], regname_copy[256];
-	uint32_t mmio_addr = 0;
+	uint32_t mmio_addr = 0, v32;
 
 	// does the register name contain a trailing star?
 	strcpy(regname_copy, regname);
@@ -93,11 +93,21 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 								r = -1;
 								goto error;
 							}
-							if (read(fd, &asic->blocks[i]->regs[j].value, 4) != 4) {
+							if (read(fd, &v32, 4) != 4) {
 								snprintf(buf, sizeof(buf)-1, "Could not read register %s.%s.%s", asic->asicname, asic->blocks[i]->ipname, asic->blocks[i]->regs[j].regname);
 								perror(buf);
 								r = -1;
 								goto error;
+							}
+							asic->blocks[i]->regs[j].value = v32;
+							if (asic->blocks[i]->regs[j].bit64) {
+								if (read(fd, &v32, 4) != 4) {
+									snprintf(buf, sizeof(buf)-1, "Could not read register %s.%s.%s", asic->asicname, asic->blocks[i]->ipname, asic->blocks[i]->regs[j].regname);
+									perror(buf);
+									r = -1;
+									goto error;
+								}
+								asic->blocks[i]->regs[j].value |= (uint64_t)v32 << 32;
 							}
 						} else if (asic->blocks[i]->regs[j].type == REG_MMIO || asic->blocks[i]->regs[j].type == REG_SMC) {
 							if (asic->options.use_bank == 1)
@@ -105,6 +115,8 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 							if (asic->options.use_bank == 2)
 								umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
 							asic->blocks[i]->regs[j].value = umr_read_reg(asic, asic->blocks[i]->regs[j].addr * (asic->blocks[i]->regs[j].type == REG_MMIO ? 4 : 1), asic->blocks[i]->regs[j].type);
+							if (asic->blocks[i]->regs[j].bit64)
+								asic->blocks[i]->regs[j].value |= (uint64_t)umr_read_reg(asic, (asic->blocks[i]->regs[j].addr + 1) * (asic->blocks[i]->regs[j].type == REG_MMIO ? 4 : 1), asic->blocks[i]->regs[j].type) << 32;
 							if (asic->options.use_bank == 1)
 								umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 							if (asic->options.use_bank == 2)

@@ -118,7 +118,7 @@ struct umr_reg {
 	uint32_t addr;
 	struct umr_bitfield *bits;
 	int no_bits;
-	uint32_t bit64, value;
+	uint64_t bit64, value;
 };
 
 struct umr_reg_soc15 {
@@ -127,7 +127,7 @@ struct umr_reg_soc15 {
 	uint32_t addr, idx;
 	struct umr_bitfield *bits;
 	int no_bits;
-	uint32_t bit64, value;
+	uint64_t bit64, value;
 };
 
 struct umr_find_reg_iter {
@@ -855,22 +855,22 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type);
 int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum regclass type);
 
 // read/write a register given a name
-uint32_t umr_read_reg_by_name(struct umr_asic *asic, char *name);
-int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint32_t value);
+uint64_t umr_read_reg_by_name(struct umr_asic *asic, char *name);
+int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint64_t value);
 
 // read/write a register by ip/name
-uint32_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name);
-int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uint32_t value);
+uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name);
+int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uint64_t value);
 
 // slice a full register into bits (shifted into LSB)
-uint32_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint32_t regvalue);
-uint32_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint32_t regvalue);
-uint32_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint32_t regvalue);
+uint64_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
+uint64_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint64_t regvalue);
+uint64_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue);
 
-// compose a 32-bit register with a value and a bitfield
-uint32_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint32_t regvalue);
-uint32_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *reg, char *bitname, uint32_t regvalue);
-uint32_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint32_t regvalue);
+// compose a 64-bit register with a value and a bitfield
+uint64_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
+uint64_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *reg, char *bitname, uint64_t regvalue);
+uint64_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue);
 
 // bank switching
 uint64_t umr_apply_bank_selection_address(struct umr_asic *asic);

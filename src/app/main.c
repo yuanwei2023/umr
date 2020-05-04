@@ -384,8 +384,7 @@ int main(int argc, char **argv)
 					asic = get_asic();
 
 				if (!memcmp(argv[i+1], "0x", 2) && sscanf(argv[i+1], "%"SCNx32, &reg) == 1) {
-					reg = asic->reg_funcs.read_reg(asic, reg, REG_MMIO);
-					printf("0x%08lx\n", (unsigned long)reg);
+					printf("0x%08lx\n", (unsigned long)asic->reg_funcs.read_reg(asic, reg, REG_MMIO));
 				} else {
 					str = strstr(argv[i+1], ".");
 					str2 = str ? strstr(str+1, ".") : NULL;
