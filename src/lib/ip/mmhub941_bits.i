@@ -6836,6 +6836,14 @@ static struct umr_bitfield mmMMEA0_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA0_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -8687,6 +8695,14 @@ static struct umr_bitfield mmMMEA1_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA1_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -10538,6 +10554,14 @@ static struct umr_bitfield mmMMEA2_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA2_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -12389,6 +12413,14 @@ static struct umr_bitfield mmMMEA3_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA3_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -14240,6 +14272,14 @@ static struct umr_bitfield mmMMEA4_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA4_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -21667,6 +21707,14 @@ static struct umr_bitfield mmMMEA5_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA5_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -23518,6 +23566,14 @@ static struct umr_bitfield mmMMEA6_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA6_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },
@@ -25369,6 +25425,14 @@ static struct umr_bitfield mmMMEA7_EDC_CNT2[] = {
 	 { "GMIWR_DATAMEM_DED_COUNT", 10, 11, &umr_bitfield_default },
 	 { "GMIRD_PAGEMEM_SED_COUNT", 12, 13, &umr_bitfield_default },
 	 { "GMIWR_PAGEMEM_SED_COUNT", 14, 15, &umr_bitfield_default },
+	 { "MAM_D0MEM_SED_COUNT", 16, 17, &umr_bitfield_default },
+	 { "MAM_D1MEM_SED_COUNT", 18, 19, &umr_bitfield_default },
+	 { "MAM_D2MEM_SED_COUNT", 20, 21, &umr_bitfield_default },
+	 { "MAM_D3MEM_SED_COUNT", 22, 23, &umr_bitfield_default },
+	 { "MAM_D0MEM_DED_COUNT", 24, 25, &umr_bitfield_default },
+	 { "MAM_D1MEM_DED_COUNT", 26, 27, &umr_bitfield_default },
+	 { "MAM_D2MEM_DED_COUNT", 28, 29, &umr_bitfield_default },
+	 { "MAM_D3MEM_DED_COUNT", 30, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmMMEA7_DSM_CNTL[] = {
 	 { "DRAMRD_CMDMEM_DSM_IRRITATOR_DATA", 0, 1, &umr_bitfield_default },

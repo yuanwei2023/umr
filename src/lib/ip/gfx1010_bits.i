@@ -4255,6 +4255,7 @@ static struct umr_bitfield mmGRBM_PWR_CNTL[] = {
 };
 static struct umr_bitfield mmGRBM_STATUS[] = {
 	 { "ME0PIPE0_CMDFIFO_AVAIL", 0, 3, &umr_bitfield_default },
+	 { "RSMU_RQ_PENDING", 5, 5, &umr_bitfield_default },
 	 { "ME0PIPE0_CF_RQ_PENDING", 7, 7, &umr_bitfield_default },
 	 { "ME0PIPE0_PF_RQ_PENDING", 8, 8, &umr_bitfield_default },
 	 { "GDS_DMA_RQ_PENDING", 9, 9, &umr_bitfield_default },
@@ -4388,6 +4389,7 @@ static struct umr_bitfield mmGRBM_READ_ERROR[] = {
 };
 static struct umr_bitfield mmGRBM_READ_ERROR2[] = {
 	 { "READ_REQUESTER_CPF", 16, 16, &umr_bitfield_default },
+	 { "READ_REQUESTER_RSMU", 17, 17, &umr_bitfield_default },
 	 { "READ_REQUESTER_RLC", 18, 18, &umr_bitfield_default },
 	 { "READ_REQUESTER_GDS_DMA", 19, 19, &umr_bitfield_default },
 	 { "READ_REQUESTER_ME0PIPE0_CF", 20, 20, &umr_bitfield_default },
