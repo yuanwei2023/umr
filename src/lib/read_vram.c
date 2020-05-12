@@ -83,7 +83,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			      void *dst, int write_en)
 {
 	uint64_t start_addr, page_table_start_addr, page_table_base_addr,
-		 page_table_size, pte_idx, pde_idx, pte_entry, pde_entry,
+		 page_table_block_size, pte_idx, pde_idx, pte_entry, pde_entry,
 		 vm_fb_base, vm_fb_offset, pde_mask, pte_mask;
 	uint32_t chunk_size, tmp;
 	int page_table_depth;
@@ -143,7 +143,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 	sprintf(buf, "mmVM_CONTEXT%d_CNTL", vmid ? 1 : 0);
 		tmp = registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name(asic, buf);
 		page_table_depth      = umr_bitslice_reg_by_name(asic, buf, "PAGE_TABLE_DEPTH", tmp);
-		page_table_size       = umr_bitslice_reg_by_name(asic, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
+		page_table_block_size       = umr_bitslice_reg_by_name(asic, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
 
 	sprintf(buf, "mmVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR", vmid);
 		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR = umr_read_reg_by_name(asic, buf);
@@ -176,18 +176,21 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 	do {
 		if (page_table_depth == 1) {
 			// decode addr into pte and pde selectors...
-			pde_mask = ((1ULL << (40 - 12 - 9 - page_table_size)) - 1);
-			pte_mask = ((1ULL << (9 + page_table_size)) - 1);
+			pde_mask = ((1ULL << (40 - 12 - 9 - page_table_block_size)) - 1);
+			pte_mask = ((1ULL << (9 + page_table_block_size)) - 1);
 
-			pde_idx = (address >> (12 + 9 + page_table_size)) & pde_mask;
+			pde_idx = (address >> (12 + 9 + page_table_block_size)) & pde_mask;
 			pte_idx = (address >> 12) & pte_mask;
 
 			// shift masks so we can use them later
 			pte_mask <<= 12;
-			pde_mask <<= (12 + 9 + page_table_size);
+			pde_mask <<= (12 + 9 + page_table_block_size);
 
 			// read PDE entry
-			umr_read_vram(asic, UMR_LINEAR_HUB, page_table_base_addr + pde_idx * 8 - vm_fb_base, 8, &pde_entry);
+			if (umr_read_vram(asic, UMR_LINEAR_HUB, page_table_base_addr + pde_idx * 8 - vm_fb_base, 8, &pde_entry)) {
+				asic->mem_funcs.vm_message("[ERROR]:  Could not read PDE.\n");
+				return -1;
+			}
 
 			// decode PDE values
 			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
@@ -309,11 +312,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			      void *dst, int write_en)
 {
 	uint64_t start_addr, page_table_start_addr, page_table_base_addr,
-		 page_table_size, pte_idx, pde_idx, pte_entry, pde_entry,
+		 page_table_block_size, pte_idx, pde_idx, pte_entry, pde_entry,
 		 pde_address, vga_base_address, vm_fb_offset,
 		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
-		 fb_top, fb_bottom;
-	uint32_t chunk_size, tmp;
+		 fb_top, fb_bottom, pte_page_mask;
+	uint32_t chunk_size, tmp, pde0_block_fragment_size;
 	int pde_cnt, current_depth, page_table_depth, first;
 	struct {
 		uint32_t
@@ -447,7 +450,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_CNTL", regprefix, vmid);
 		tmp = registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name_by_ip(asic, hub, buf);
 		page_table_depth      = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "PAGE_TABLE_DEPTH", tmp);
-		page_table_size       = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
+		page_table_block_size = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
 
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32", regprefix, vmid);
 		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
@@ -455,6 +458,12 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32", regprefix, vmid);
 		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
 		page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
+
+	// The block_fragment_size is only valid in the BASE (first level PDE)
+	// and should be zero in subsequent level PDEs it's the log2 of the
+	// number of 4KB regions a PTE page points to, default is 0 which
+	// means one 4KB region (e.g. 4KB sized pages).
+	pde0_block_fragment_size = (page_table_base_addr >> 59) & 0x1F;
 
 	if (page_table_base_addr == 0xFFFFFFFFFFFFFFFFULL)
 		asic->mem_funcs.vm_message("PAGE_TABLE_BASE_ADDRESS read as all F's likely indicates that the ASIC is powered off\n");
@@ -474,13 +483,17 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		vm_fb_offset = 0;
 	}
 
-	if (asic->options.verbose)
+	if (asic->options.verbose) {
+		asic->mem_funcs.vm_message("\n\n=== VM Decoding of address %d@0x%" PRIx64 " ===\n", vmid, address);
 		asic->mem_funcs.vm_message(
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32=0x%" PRIx32 "\n"
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_HI32=0x%" PRIx32 "\n"
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32=0x%" PRIx32 "\n"
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32=0x%" PRIx32 "\n"
+				"PDE0.block_fragment_size=%" PRIu64 "\n"
 				"mm%sVM_CONTEXT%" PRIu32 "_CNTL=0x%" PRIx32 "\n"
+				"VMID%" PRIu32 ".page_table_block_size=%" PRIu64 "\n"
+				"VMID%" PRIu32 ".page_table_depth=%" PRIu64 "\n"
 				"mmVGA_MEMORY_BASE_ADDRESS=0x%" PRIx32 "\n"
 				"mmVGA_MEMORY_BASE_ADDRESS_HIGH=0x%" PRIx32 "\n"
 				"mmMC_VM_FB_OFFSET=0x%" PRIx32 "\n"
@@ -493,7 +506,10 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			regprefix, vmid, registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32,
 			regprefix, vmid, registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32,
 			regprefix, vmid, registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32,
+			pde0_block_fragment_size,
 			regprefix, vmid, registers.mmVM_CONTEXTx_CNTL,
+			vmid, page_table_block_size,
+			vmid, page_table_depth,
 			registers.mmVGA_MEMORY_BASE_ADDRESS,
 			registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH,
 			registers.mmMC_VM_FB_OFFSET,
@@ -503,9 +519,16 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			vm0prefix, registers.mmMC_VM_FB_LOCATION_BASE,
 			vm0prefix, registers.mmMC_VM_FB_LOCATION_TOP
 			);
+	}
 
 	// transform page_table_base
 	page_table_base_addr -= vm_fb_offset;
+
+	// convert some defaults to actual values AFTER printing out to user
+	// page_table_block_size of 0 means 9 (512 entries)
+	if (!page_table_block_size)
+		page_table_block_size = 9;
+	pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
 
 	if (vmid == 0) {
 		uint32_t sam;
@@ -570,7 +593,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			// AI+ supports more than 1 level of PDEs so we iterate for all of the depths
 			pde_address = page_table_base_addr & ~1ULL;
 			pde_fields.system = 0;
-			va_mask = ((uint64_t)511 << ((page_table_depth)*9 + (12 + 9 + page_table_size)));
+
+			// TODO: Should "page_table_block_size" just be 9 to account for potential PTB1 selectors?
+			va_mask = ((uint64_t)511 << ((page_table_depth)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
 			pde_cnt = 0;
 
 			if (memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields) && asic->options.verbose)
@@ -589,7 +614,8 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				DEBUG("Decoding depth %d...(0x%" PRIx64 ")\n", current_depth, address);
 				// decode addr into pte and pde selectors...
 				//                         ~~~ PDE selector ~~~      ~~~ PTE selector ~~~
-				pde_idx = (address >> ((current_depth-1)*9 + (12 + 9 + page_table_size)));
+				// TODO: Should "page_table_block_size" just be 9 to account for potential PTB1 selectors?
+				pde_idx = (address >> ((current_depth-1)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
 
 				// don't mask the first PDE idx
 				if (!first)
@@ -597,18 +623,23 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				first = 0;
 
 				DEBUG("pde_idx == %" PRIx64 "\n", pde_idx);
-				va_mask = ((uint64_t)511 << ((page_table_depth - pde_cnt)*9 + (12 + 9 + page_table_size)));
+				// TODO: Should "page_table_block_size" just be 9 to account for potential PTB1 selectors?
+				va_mask = ((uint64_t)511 << ((page_table_depth - pde_cnt)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
 				DEBUG("selector mask == %llx\n", va_mask);
 
 				// read PDE entry
 				if (pde_fields.system == 0) {
-					if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_address + pde_idx * 8, 8, &pde_entry) < 0)
+					if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_address + pde_idx * 8, 8, &pde_entry) < 0) {
+						asic->mem_funcs.vm_message("[ERROR]: Could not read PDE from VRAM\n");
 						return -1;
+					}
 				} else {
 					int r;
 					r = asic->mem_funcs.access_sram(asic, pde_address + pde_idx * 8, 8, &pde_entry, 0);
-					if (r < 0)
+					if (r < 0) {
+						asic->mem_funcs.vm_message("[ERROR]: Could not read PDE from SYSTEM RAM\n");
 						return -1;
+					}
 				}
 
 				// decode PDE values
@@ -620,7 +651,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				pde_fields.pte           = (pde_entry >> 54) & 1;
 				if (!pde_fields.pte) {
 					if (memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields) && asic->options.verbose)
-						asic->mem_funcs.vm_message("%s PDE%d=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 "\n",
+						asic->mem_funcs.vm_message("%s PDE%d=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 "\n",
 								&indentation[12-pde_cnt*3],
 								page_table_depth - pde_cnt,
 								pde_entry,
@@ -629,7 +660,8 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 								pde_fields.valid,
 								pde_fields.system,
 								pde_fields.cache,
-								pde_fields.pte);
+								pde_fields.pte,
+								pde_fields.frag_size);
 					memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 				} else {
 					pte_entry = pde_entry;
@@ -656,8 +688,10 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				DEBUG("...done\n\n");
 			}
 
-			// read PTE selector
-			pte_idx = (address >> (12 + pde_fields.frag_size + page_table_size)) & ((1ULL << (9 + page_table_size - pde_fields.frag_size)) - 1);
+			// read PTE selector (to select from PTB0)
+			// TODO:  support for page_table_block_size > 9
+			pte_idx = (address >> ((12 + pde0_block_fragment_size) + (9 - page_table_block_size))) &
+						((1ULL << page_table_block_size) - 1);
 pte_further:
 			// now read PTE entry for this page
 			if (pde_fields.system == 0) {
@@ -677,25 +711,34 @@ pde_is_pte:
 			pte_fields.valid          = pte_entry & 1;
 			pte_fields.prt            = (pte_entry >> 61) & 1;
 			pte_fields.further        = (pte_entry >> 56) & 1;
-			pte_fields.page_base_addr = pte_entry & (pte_fields.further ? 0xFFFFFFFFFFC0ULL : 0xFFFFFFFFF000ULL);
+			pte_fields.page_base_addr = pte_entry & (pte_fields.further ? 0xFFFFFFFFFFC0ULL : 0xFFFFFFFFF000ULL); // FIXME: ???
 			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("%s %s==0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", P=%" PRIu64 "\n",
+				asic->mem_funcs.vm_message("%s %s==0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 "\n",
 					&indentation[12-pde_cnt*3],
 					(pte_fields.further) ? "PTE-FURTHER" : "PTE",
 					pte_entry,
-					address & ((((uint64_t)1 << (9 + page_table_size)) - 1) << 12),
+					address & (((1ULL << page_table_block_size) - 1) << (12 + pde0_block_fragment_size)),
 					pte_fields.page_base_addr,
 					pte_fields.valid,
 					pte_fields.system,
-					pte_fields.prt);
+					pte_fields.prt,
+					pte_fields.further);
 
 			if (pte_fields.further) {
 				// what goes into pte_idx at this point?
-				pte_idx = (address >> 12) & ((1ULL << pde_fields.frag_size) - 1);
+				// FIXME: mask off leaf PTE (1'st level) index
+				// TODO:  support for page_table_block_size > 9
+				if (page_table_block_size == 9) {
+					// this case doesn't make sense unless we support PTBS > 9
+					asic->mem_funcs.vm_message("[ERROR]: PTE.further is set and *CNTL.PAGE_TABLE_BLOCK_SIZE is 9...\n");
+					return -1;
+				} else {
+					pte_idx = (address >> (12 + pde0_block_fragment_size)) & ((1ULL << (9 - page_table_block_size)) - 1);
 
-				// grab PTE base address from the PTE that has the F bit set.
-				pde_fields.pte_base_addr = pte_fields.page_base_addr;
-				goto pte_further;
+					// grab PTE base address from the PTE that has the F bit set.
+					pde_fields.pte_base_addr = pte_fields.page_base_addr;
+					goto pte_further;
+				}
 			}
 
 			if (!pte_fields.system)
@@ -705,7 +748,7 @@ pde_is_pte:
 				goto invalid_page;
 
 			// compute starting address
-			offset_mask = (1ULL << ((current_depth * 9) + (12 + page_table_size))) - 1;
+			offset_mask = (1ULL << ((current_depth * 9) + (12 + pde0_block_fragment_size))) - 1;
 
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
 			DEBUG("phys address to read from: %" PRIx64 "\n\n\n", start_addr);
@@ -732,7 +775,7 @@ pde_is_pte:
 				return -1;
 
 			// PTE addr = baseaddr[47:6] + (logical - start) >> fragsize)
-			pte_idx = (address >> (12 + pde_fields.frag_size));
+			pte_idx = (address >> (12 + pde0_block_fragment_size));
 
 			if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
 				return -1;
@@ -762,9 +805,9 @@ pde_is_pte:
 
 next_page:
 		// read upto 4K from it
-		// TODO: Support page sizes >4KB
-		if (((start_addr & 0xFFF) + size) & ~0xFFF) {
-			chunk_size = 0x1000 - (start_addr & 0xFFF);
+		// FIXME: Support page sizes >4KB
+		if (((start_addr & pte_page_mask) + size) & ~pte_page_mask) {
+			chunk_size = (1 + pte_page_mask) - (start_addr & pte_page_mask);
 		} else {
 			chunk_size = size;
 		}
@@ -800,6 +843,8 @@ next_page:
 		size -= chunk_size;
 		address += chunk_size;
 	} while (size);
+	if (asic->options.verbose)
+		asic->mem_funcs.vm_message("\n=== Completed VM Decoding ===\n");
 	return 0;
 
 invalid_page:

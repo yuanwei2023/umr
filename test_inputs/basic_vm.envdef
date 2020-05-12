@@ -1,4 +1,0 @@
-VMID@1
-;the GPU page size is 2^24, we want to map the first VA page that's not 0.
-MAPVA@1,0x1000000 = 0xb8000000
-VRAM@0xb8000000 = { 21436587 }
