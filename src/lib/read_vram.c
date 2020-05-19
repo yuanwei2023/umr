@@ -460,7 +460,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		asic->mem_funcs.vm_message("PAGE_TABLE_BASE_ADDRESS read as all F's likely indicates that the ASIC is powered off\n");
 
 	// update addresses for APUs
-	if (asic->config.gfx.family == 142) {
+	if (!strcmp(asic->asicname, "raven1") || !strcmp(asic->asicname, "raven2")) {
 		DEBUG("Reading vram config...\n");
 		registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
 		registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
