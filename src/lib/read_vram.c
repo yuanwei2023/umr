@@ -591,7 +591,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			pde_fields.pte           = (pde_entry >> 54) & 1;
 
 			// AI+ supports more than 1 level of PDEs so we iterate for all of the depths
-			pde_address = page_table_base_addr & ~1ULL;
+			pde_address = pde_fields.pte_base_addr;
 
 			// TODO: Should "page_table_block_size" just be 9 to account for potential PTB1 selectors?
 			va_mask = ((uint64_t)511 << ((page_table_depth)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
