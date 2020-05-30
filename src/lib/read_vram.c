@@ -317,7 +317,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
 		 fb_top, fb_bottom, pte_page_mask, agp_base, agp_bot, agp_top, prev_addr;
 	uint32_t chunk_size, tmp, pde0_block_fragment_size;
-	int pde_cnt, current_depth, page_table_depth, first, zfb;
+	int pde_cnt, current_depth, page_table_depth, zfb;
 	struct {
 		uint32_t
 			mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32,
@@ -601,7 +601,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	do {
 		pde_entry = page_table_base_addr;
 
-		first = 1;
 		if (page_table_depth >= 1) {
 			// decode PDE values
 			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
