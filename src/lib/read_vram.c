@@ -601,6 +601,10 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	do {
 		pde_entry = page_table_base_addr;
 
+		// defaults in case we have to bail out before fully decoding to a PTE
+		pde_cnt = 0;
+		pte_page_mask = (1ULL << 12) - 1;
+
 		if (page_table_depth >= 1) {
 			// decode PDE values
 			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
@@ -615,7 +619,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 			// TODO: Should "page_table_block_size" just be 9 to account for potential PTB1 selectors?
 			va_mask = ((uint64_t)511 << ((page_table_depth)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
-			pde_cnt = 0;
 
 			if (memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields) && asic->options.verbose)
 				asic->mem_funcs.vm_message("BASE=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 "\n",
@@ -719,6 +722,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 					// vm-decode mode
 					pte_fields.prt = 0;
 					pte_fields.valid = 0;
+					pte_fields.system = 0;
 					start_addr = address & 0xFFF; // grab page offset so we can advance to next page
 					goto next_page;
 				}
