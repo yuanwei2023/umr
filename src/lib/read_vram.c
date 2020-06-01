@@ -25,12 +25,6 @@
 #include "umrapp.h"
 #include <inttypes.h>
 
-#if 0
-#define DEBUG(...) fprintf(stderr, "DEBUG:" __VA_ARGS__)
-#else
-#define DEBUG(...)
-#endif
-
 /**
  * access_vram_via_mmio - Access VRAM via direct MMIO control
  */
@@ -274,7 +268,6 @@ next_page:
 		} else {
 			chunk_size = size;
 		}
-		DEBUG("Computed address we will read from: %s:%" PRIx64 " (reading: %" PRIu32 " bytes)\n", pte_fields.system ? "sys" : "vram", start_addr, chunk_size);
 
 		// allow destination to be NULL to simply use decoder
 		if (pdst) {
@@ -313,7 +306,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 {
 	uint64_t start_addr, page_table_start_addr, page_table_base_addr,
 		 page_table_block_size, pte_idx, pde_idx, pte_entry, pde_entry,
-		 pde_address, vga_base_address, vm_fb_offset,
+		 pde_address, vm_fb_offset,
 		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
 		 fb_top, fb_bottom, pte_page_mask, agp_base, agp_bot, agp_top, prev_addr;
 	uint32_t chunk_size, tmp, pde0_block_fragment_size;
@@ -361,7 +354,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	unsigned hubid;
 	static const char *indentation = "               \\->";
 
-	fb_bottom = fb_top = 0;
 	memset(&registers, 0, sizeof registers);
 	memset(&pde_array, 0xff, sizeof pde_array);
 
@@ -487,16 +479,12 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 	// update addresses for APUs
 	if (!strcmp(asic->asicname, "raven1")) {
-		DEBUG("Reading vram config...\n");
 		registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
 		registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
 		sprintf(buf, "mm%sMC_VM_FB_OFFSET", regprefix);
 		registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip(asic, hub, buf);
-		vga_base_address  = (uint64_t)registers.mmVGA_MEMORY_BASE_ADDRESS << 0;
-		vga_base_address |= (uint64_t)registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH << 32;
 		vm_fb_offset      = (uint64_t)registers.mmMC_VM_FB_OFFSET << 24;
 	} else {
-		vga_base_address = 0;
 		vm_fb_offset = 0;
 	}
 
@@ -730,7 +718,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 				// for the next round the address we're decoding is the phys address in the currently decoded PDE
 				--current_depth;
 				pde_address = pde_fields.pte_base_addr;
-				DEBUG("...done\n\n");
 			}
 
 			// read PTE selector (to select from PTB0)
@@ -816,12 +803,9 @@ pde_is_pte:
 			offset_mask = (1ULL << ((current_depth * 9) + (12 + pde0_block_fragment_size))) - 1;
 
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
-			DEBUG("phys address to read from: %" PRIx64 "\n\n\n", start_addr);
 		} else {
 			// in AI+ the BASE_ADDR is treated like a PDE entry...
 			// decode PDE values
-			DEBUG("Decoding depth %d...(0x%" PRIx64 ")\n", page_table_depth, address);
-			pde_idx = 0; // unused
 			pde_fields.frag_size     = (page_table_base_addr >> 59) & 0x1F;
 			pde0_block_fragment_size = pde_fields.frag_size;
 			pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
@@ -990,8 +974,6 @@ int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint
 		address &= 0xFFFFFFFFFFFFULL;
 
 	if ((vmid & 0xFF00) == UMR_LINEAR_HUB) {
-		DEBUG("Reading physical VRAM addr: 0x%" PRIx64 "\n", address);
-
 		// if we are using xgmi let's find the device for this address
 		if (asic->options.use_xgmi) {
 			int n;
