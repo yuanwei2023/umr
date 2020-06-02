@@ -310,7 +310,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
 		 fb_top, fb_bottom, pte_page_mask, agp_base, agp_bot, agp_top, prev_addr;
 	uint32_t chunk_size, tmp, pde0_block_fragment_size;
-	int pde_cnt, current_depth, page_table_depth, zfb;
+	int pde_cnt, current_depth, page_table_depth, zfb, further;
 	struct {
 		uint32_t
 			mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32,
@@ -592,6 +592,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		// defaults in case we have to bail out before fully decoding to a PTE
 		pde_cnt = 0;
 		pte_page_mask = (1ULL << 12) - 1;
+		further = 0;
 
 		if (page_table_depth >= 1) {
 			// decode PDE values
@@ -722,8 +723,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 			// read PTE selector (to select from PTB0)
 			// TODO:  support for page_table_block_size > 9
-			pte_idx = (address >> ((12 + pde0_block_fragment_size) + (9 - page_table_block_size))) &
-					  ((1ULL << page_table_block_size) - 1);
+			pte_idx = (address >> (12 + pde0_block_fragment_size)) & ((1ULL << page_table_block_size) - 1);
 pte_further:
 			// now read PTE entry for this page
 			prev_addr = pde_fields.pte_base_addr + pte_idx*8;
@@ -759,7 +759,8 @@ pde_is_pte:
 			pte_fields.valid          = pte_entry & 1;
 			pte_fields.prt            = (pte_entry >> 61) & 1;
 			pte_fields.further        = (pte_entry >> 56) & 1;
-			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL; // FIXME: ???
+			pte_fields.page_base_addr = pte_entry & (pte_fields.further ? 0xFFFFFFFFFFC0ULL : 0xFFFFFFFFF000ULL);
+
 			if (asic->options.verbose)
 				asic->mem_funcs.vm_message("%s %s@{0x%" PRIx64 "/%" PRIx64"}==0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 ", F=%" PRIu64 "\n",
 					&indentation[15-pde_cnt*3],
@@ -776,18 +777,17 @@ pde_is_pte:
 					pte_fields.further);
 
 			if (pte_fields.further) {
-				// what goes into pte_idx at this point?
-				// FIXME: mask off leaf PTE (1'st level) index
-				// TODO:  support for page_table_block_size > 9
 				if (page_table_block_size == 9) {
 					// this case doesn't make sense unless we support PTBS > 9
 					asic->mem_funcs.vm_message("[ERROR]: PTE.further is set and *CNTL.PAGE_TABLE_BLOCK_SIZE is 9...\n");
 					return -1;
 				} else {
-					pte_idx = (address >> (12 + pde0_block_fragment_size)) & ((1ULL << page_table_block_size) - 1);
+					pte_idx = (address >> 12) & ((1ULL << pde0_block_fragment_size) - 1);
+					pte_page_mask = (1ULL << 12) - 1;
 
 					// grab PTE base address from the PTE that has the F bit set.
 					pde_fields.pte_base_addr = pte_fields.page_base_addr;
+					further = 1;
 					goto pte_further;
 				}
 			}
@@ -800,7 +800,11 @@ pde_is_pte:
 
 			// compute starting address
 			// this also accounts for PDE-is-PTE masking since current_depth > 0 at this point
-			offset_mask = (1ULL << ((current_depth * 9) + (12 + pde0_block_fragment_size))) - 1;
+			// if we are processing a PTE leaf node then the page size is 12 bits
+			if (!further)
+				offset_mask = (1ULL << ((current_depth * 9) + (12 + pde0_block_fragment_size))) - 1;
+			else
+				offset_mask = (1ULL << 12) - 1; // offset masks are always 12-bits wide with PTE.further set
 
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
 		} else {
