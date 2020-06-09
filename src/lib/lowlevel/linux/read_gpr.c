@@ -169,6 +169,7 @@ int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *
 static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
 {
 	uint64_t addr;
+	unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 registers
 
 	// reading VGPR is not supported on pre GFX9 devices
 	if (asic->family < FAMILY_AI)
@@ -186,11 +187,11 @@ static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 			((uint64_t)thread << 52);
 
 		lseek(asic->fd.gpr, addr, SEEK_SET);
-		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << 2));
+		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
 	} else {
 		umr_grbm_select_index(asic, ws->hw_id.se_id, ws->hw_id.sh_id, ws->hw_id.cu_id);
 		wave_read_regs_via_mmio(asic, ws->hw_id.simd_id, ws->hw_id.wave_id, thread, 0x400,
-					(ws->gpr_alloc.vgpr_size + 1) << 2, dst);
+					(ws->gpr_alloc.vgpr_size + 1) << granularity, dst);
 		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 		return 0;
 	}
@@ -199,6 +200,7 @@ static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
 {
 	uint64_t addr;
+	unsigned granularity = asic->parameters.vgpr_granularity;
 
 	if (!asic->options.no_kernel) {
 		addr =
@@ -211,11 +213,11 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 			((uint64_t)thread << 52);
 
 		lseek(asic->fd.gpr, addr, SEEK_SET);
-		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << 2));
+		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
 	} else {
 		umr_grbm_select_index(asic, ws->hw_id1.se_id, ws->hw_id1.sa_id, ((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id));
 		wave_read_regs_via_mmio_nv(asic, ws->hw_id1.wave_id, thread, 0x400,
-					(ws->gpr_alloc.vgpr_size + 1) << 2, dst);
+					(ws->gpr_alloc.vgpr_size + 1) << granularity, dst);
 		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 		return 0;
 	}

@@ -79,5 +79,8 @@ struct umr_asic *umr_create_asic_helper(char *name, int family, ...)
 	}
 	va_end(ap);
 
+	// parameters defaults
+	asic->parameters.vgpr_granularity = 2; // default is block of 4 VGPRs (1<<'2' == 4)
+
 	return asic;
 }

@@ -353,6 +353,9 @@ struct umr_asic {
 	unsigned did;
 	struct umr_ip_block **blocks;
 	struct {
+		unsigned vgpr_granularity;
+	} parameters;
+	struct {
 		struct umr_gfx_config gfx;
 		struct umr_fw_config fw[UMR_MAX_FW];
 		struct umr_pci_config pci;

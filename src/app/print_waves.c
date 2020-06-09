@@ -251,8 +251,9 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 			}
 
 			if (wd->have_vgprs) {
+				unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 VGPRs
 				printf("\n");
-				for (x = 0; x < ((wd->ws.gpr_alloc.vgpr_size + 1) << 2); ++x) {
+				for (x = 0; x < ((wd->ws.gpr_alloc.vgpr_size + 1) << granularity); ++x) {
 					if (x % 16 == 0) {
 						if (x == 0)
 							printf("VGPRS:       ");
@@ -544,8 +545,9 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			}
 
 			if (wd->have_vgprs) {
+				unsigned granularity = asic->parameters.vgpr_granularity;
 				printf("\n");
-				for (x = 0; x < ((wd->ws.gpr_alloc.vgpr_size + 1) << 2); ++x) {
+				for (x = 0; x < ((wd->ws.gpr_alloc.vgpr_size + 1) << granularity); ++x) {
 					if (x % 16 == 0) {
 						if (x == 0)
 							printf("VGPRS:       ");
