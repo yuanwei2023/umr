@@ -2701,9 +2701,6 @@ static struct umr_bitfield mmSPI_SX_SCOREBOARD_BUFFER_SIZES[] = {
 	 { "COLOR_SCOREBOARD_SIZE", 0, 15, &umr_bitfield_default },
 	 { "POSITION_SCOREBOARD_SIZE", 16, 31, &umr_bitfield_default },
 };
-static struct umr_bitfield mmSPI_CSQ_WF_ACTIVE_STATUS[] = {
-	 { "ACTIVE", 0, 31, &umr_bitfield_default },
-};
 static struct umr_bitfield mmSPI_CSQ_WF_ACTIVE_COUNT_0[] = {
 	 { "COUNT", 0, 10, &umr_bitfield_default },
 	 { "EVENTS", 16, 26, &umr_bitfield_default },
@@ -19454,6 +19451,10 @@ static struct umr_bitfield ixSE_CAC_OVR_SEL[] = {
 };
 static struct umr_bitfield ixSE_CAC_OVR_VAL[] = {
 	 { "CAC_OVR_VAL", 0, 31, &umr_bitfield_default },
+};
+static struct umr_bitfield ixSQ_DEBUG_STS_LOCAL[] = {
+	 { "BUSY", 0, 0, &umr_bitfield_default },
+	 { "WAVE_LEVEL", 4, 9, &umr_bitfield_default },
 };
 static struct umr_bitfield ixSQ_WAVE_MODE[] = {
 	 { "FP_ROUND", 0, 3, &umr_bitfield_default },

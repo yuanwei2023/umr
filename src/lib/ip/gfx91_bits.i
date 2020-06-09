@@ -20176,6 +20176,10 @@ static struct umr_bitfield ixSE_CAC_OVR_SEL[] = {
 static struct umr_bitfield ixSE_CAC_OVR_VAL[] = {
 	 { "CAC_OVR_VAL", 0, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield ixSQ_DEBUG_STS_LOCAL[] = {
+	 { "BUSY", 0, 0, &umr_bitfield_default },
+	 { "WAVE_LEVEL", 4, 9, &umr_bitfield_default },
+};
 static struct umr_bitfield ixSQ_WAVE_MODE[] = {
 	 { "FP_ROUND", 0, 3, &umr_bitfield_default },
 	 { "FP_DENORM", 4, 7, &umr_bitfield_default },

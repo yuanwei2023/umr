@@ -3674,6 +3674,7 @@
 	{ "ixSE_CAC_CNTL", REG_SMC, 0x0000, 0, &ixSE_CAC_CNTL[0], sizeof(ixSE_CAC_CNTL)/sizeof(ixSE_CAC_CNTL[0]), 0, 0 },
 	{ "ixSE_CAC_OVR_SEL", REG_SMC, 0x0001, 0, &ixSE_CAC_OVR_SEL[0], sizeof(ixSE_CAC_OVR_SEL)/sizeof(ixSE_CAC_OVR_SEL[0]), 0, 0 },
 	{ "ixSE_CAC_OVR_VAL", REG_SMC, 0x0002, 0, &ixSE_CAC_OVR_VAL[0], sizeof(ixSE_CAC_OVR_VAL)/sizeof(ixSE_CAC_OVR_VAL[0]), 0, 0 },
+	{ "ixSQ_DEBUG_STS_LOCAL", REG_SMC, 0x0008, 0, &ixSQ_DEBUG_STS_LOCAL[0], sizeof(ixSQ_DEBUG_STS_LOCAL)/sizeof(ixSQ_DEBUG_STS_LOCAL[0]), 0, 0 },
 	{ "ixSQ_WAVE_MODE", REG_SMC, 0x0011, 0, &ixSQ_WAVE_MODE[0], sizeof(ixSQ_WAVE_MODE)/sizeof(ixSQ_WAVE_MODE[0]), 0, 0 },
 	{ "ixSQ_WAVE_STATUS", REG_SMC, 0x0012, 0, &ixSQ_WAVE_STATUS[0], sizeof(ixSQ_WAVE_STATUS)/sizeof(ixSQ_WAVE_STATUS[0]), 0, 0 },
 	{ "ixSQ_WAVE_TRAPSTS", REG_SMC, 0x0013, 0, &ixSQ_WAVE_TRAPSTS[0], sizeof(ixSQ_WAVE_TRAPSTS)/sizeof(ixSQ_WAVE_TRAPSTS[0]), 0, 0 },

@@ -29589,6 +29589,17 @@ static struct umr_bitfield ixSE_SA1WGP11TCP1_SAMPLEDELAY[] = {
 	 { "SAMPLEDELAY", 0, 5, &umr_bitfield_default },
 	 { "RESERVED", 6, 31, &umr_bitfield_default },
 };
+static struct umr_bitfield ixSQ_DEBUG_STS_LOCAL[] = {
+	 { "BUSY", 0, 0, &umr_bitfield_default },
+	 { "WAVE_LEVEL", 4, 9, &umr_bitfield_default },
+	 { "SQ_BUSY", 12, 12, &umr_bitfield_default },
+	 { "IS_BUSY", 13, 13, &umr_bitfield_default },
+	 { "IB_BUSY", 14, 14, &umr_bitfield_default },
+	 { "ARB_BUSY", 15, 15, &umr_bitfield_default },
+	 { "EXP_BUSY", 16, 16, &umr_bitfield_default },
+	 { "BRMSG_BUSY", 17, 17, &umr_bitfield_default },
+	 { "VM_BUSY", 18, 18, &umr_bitfield_default },
+};
 static struct umr_bitfield ixSQ_WAVE_MODE[] = {
 	 { "FP_ROUND", 0, 3, &umr_bitfield_default },
 	 { "FP_DENORM", 4, 7, &umr_bitfield_default },
