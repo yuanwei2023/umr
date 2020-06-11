@@ -1,3 +1,19 @@
+static struct umr_bitfield mmSQ_DEBUG_STS_GLOBAL[] = {
+	 { "BUSY", 0, 0, &umr_bitfield_default },
+	 { "INTERRUPT_MSG_BUSY", 1, 1, &umr_bitfield_default },
+	 { "WAVE_LEVEL_SH0", 4, 15, &umr_bitfield_default },
+	 { "WAVE_LEVEL_SH1", 16, 27, &umr_bitfield_default },
+};
+static struct umr_bitfield mmSQ_DEBUG_STS_GLOBAL2[] = {
+	 { "FIFO_LEVEL_GFX0", 0, 7, &umr_bitfield_default },
+	 { "FIFO_LEVEL_GFX1", 8, 15, &umr_bitfield_default },
+	 { "FIFO_LEVEL_HOST", 24, 31, &umr_bitfield_default },
+	 { "FIFO_LEVEL_IMMED", 16, 23, &umr_bitfield_default },
+};
+static struct umr_bitfield mmSQ_DEBUG_STS_GLOBAL3[] = {
+	 { "FIFO_LEVEL_HOST_CMD", 0, 3, &umr_bitfield_default },
+	 { "FIFO_LEVEL_HOST_REG", 4, 7, &umr_bitfield_default },
+};
 static struct umr_bitfield mmGRBM_CNTL[] = {
 	 { "READ_TIMEOUT", 0, 7, &umr_bitfield_default },
 	 { "REPORT_LAST_RDERR", 31, 31, &umr_bitfield_default },

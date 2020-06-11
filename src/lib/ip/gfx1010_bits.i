@@ -1,3 +1,14 @@
+static struct umr_bitfield mmSQ_DEBUG_STS_GLOBAL[] = {
+	 { "BUSY", 0, 0, &umr_bitfield_default },
+	 { "INTERRUPT_MSG_BUSY", 1, 1, &umr_bitfield_default },
+	 { "WAVE_LEVEL_SA0", 4, 15, &umr_bitfield_default },
+	 { "WAVE_LEVEL_SA1", 16, 27, &umr_bitfield_default },
+};
+static struct umr_bitfield mmSQ_DEBUG_STS_GLOBAL2[] = {
+	 { "FIFO_LEVEL_GFX0", 0, 7, &umr_bitfield_default },
+	 { "FIFO_LEVEL_GFX1", 8, 15, &umr_bitfield_default },
+	 { "FIFO_LEVEL_COMPUTE", 16, 23, &umr_bitfield_default },
+};
 static struct umr_bitfield mmSDMA0_DEC_START[] = {
 	 { "START", 0, 31, &umr_bitfield_default },
 };
