@@ -722,6 +722,10 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --gfxoff requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--power") || !strcmp(argv[i], "-p")) {
+			if (!asic)
+				asic = get_asic();
+			umr_power(asic);
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -836,6 +840,9 @@ printf(
 "\n\t--header-dump, -hd [HEADER_DUMP_reg]"
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
 	"\n\t\thuman readable string.\n"
+"\n*** Power and clock ***\n"
+"\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
+	"\n\t\toptions 'use_colour' to colourize output \n"
 "\n\n");
 			exit(EXIT_SUCCESS);
 		} else {

@@ -51,3 +51,4 @@ void umr_top(struct umr_asic *asic);
 void umr_print_config(struct umr_asic *asic);
 void umr_print_waves(struct umr_asic *asic);
 void umr_profiler(struct umr_asic *asic, int samples, int shader_target);
+void umr_power(struct umr_asic *asic);

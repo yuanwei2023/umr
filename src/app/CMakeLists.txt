@@ -18,6 +18,7 @@ add_library(umrapp STATIC
   set_reg.c
   print_waves.c
   enum.c
+  power.c
 )
 
 add_executable(umr main.c)
