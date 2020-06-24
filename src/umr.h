@@ -101,6 +101,16 @@ enum regclass {
 	REG_PCIE
 };
 
+enum UMR_CLOCK_SOURCES{
+	UMR_CLOCK_SCLK = 0,
+	UMR_CLOCK_MCLK,
+	UMR_CLOCK_PCIE,
+	UMR_CLOCK_FCLK,
+	UMR_CLOCK_SOCCLK,
+	UMR_CLOCK_DCEFCLK,
+	UMR_CLOCK_MAX,
+};
+
 struct umr_asic;
 
 struct umr_bitfield {
@@ -1145,3 +1155,20 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan);
 void umr_apply_callbacks(struct umr_asic *asic,
 			 struct umr_memory_access_funcs *mems,
 			 struct umr_register_access_funcs *regs);
+//clock
+struct umr_clock_source{
+	char clock_name[32];
+	uint32_t clock_Mhz[10];
+	int clock_level;
+	int current_clock;
+};
+
+struct umr_asic_clocks{
+	struct umr_asic *asic;
+	struct umr_clock_source clocks[UMR_CLOCK_MAX];
+};
+
+void umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_source* clock);
+void umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value);
+void umr_set_clock_performance(struct umr_asic *asic, const char* operation);
+uint32_t umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);

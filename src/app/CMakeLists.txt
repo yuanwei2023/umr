@@ -19,6 +19,7 @@ add_library(umrapp STATIC
   print_waves.c
   enum.c
   power.c
+  clock.c
 )
 
 add_executable(umr main.c)

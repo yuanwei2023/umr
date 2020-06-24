@@ -168,7 +168,7 @@ int main(int argc, char **argv)
 {
 	int i, j, k, l;
 	struct umr_asic *asic;
-	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256];
+	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
 
 	memset(&options, 0, sizeof options);
@@ -726,6 +726,44 @@ int main(int argc, char **argv)
 			if (!asic)
 				asic = get_asic();
 			umr_power(asic);
+		} else if (!strcmp(argv[i], "--clock-scan") || !strcmp(argv[i], "-cs")) {
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				umr_clock_scan(asic, argv[i+1]);
+				i++;
+			} else {
+				umr_clock_scan(asic, NULL);
+			}
+		} else if (!strcmp(argv[i], "--clock-manual") || !strcmp(argv[i], "-cm")) {
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				umr_clock_manual(asic, argv[i+1], argv[i+2]);
+				i += 2;
+			} else {
+				umr_set_clock_performance(asic, "manual");
+				if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
+					printf("power_dpm_force_performance_level: %s", clockperformance);
+			}
+		} else if (!strcmp(argv[i], "--clock-high") || !strcmp(argv[i], "-ch")) {
+			if (!asic)
+				asic = get_asic();
+			umr_set_clock_performance(asic, "high");
+			if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
+				printf("power_dpm_force_performance_level: %s", clockperformance);
+		} else if (!strcmp(argv[i], "--clock-low") || !strcmp(argv[i], "-cl")) {
+			if (!asic)
+				asic = get_asic();
+			umr_set_clock_performance(asic, "low");
+			if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
+				printf("power_dpm_force_performance_level: %s", clockperformance);
+		} else if (!strcmp(argv[i], "--clock-auto") || !strcmp(argv[i], "-ca")) {
+			if (!asic)
+				asic = get_asic();
+			umr_set_clock_performance(asic, "auto");
+			if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
+				printf("power_dpm_force_performance_level: %s", clockperformance);
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -841,8 +879,15 @@ printf(
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
 	"\n\t\thuman readable string.\n"
 "\n*** Power and clock ***\n"
-"\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
-	"\n\t\toptions 'use_colour' to colourize output \n"
+"\n\t--power, -p \n\t\tRead the content of clocks, temperature, gpu loading at runtime"
+	"\n\t\toptions 'use_colour' to colourize output.\n"
+"\n\t--clock-scan, -cs [clock]\n\t\tScan the current hierarchy value of each clock."
+	"\n\t\tDefault will list all the hierarchy value of clocks. otherwise will list the corresponding clock, eg. sclk.\n"
+"\n\t--clock-manual, -cm [clock] [value]\n\t\tSet the value of the corresponding clock."
+	"\n\t\tUse -cs command to check hierarchy values of clock and then use -cm value to set the clock.\n"
+"\n\t--clock-high, -ch\n\t\tSet power_dpm_force_performance_level to high.\n"
+"\n\t--clock-low, -cl\n\t\tSet power_dpm_force_performance_level to low.\n"
+"\n\t--clock-auto, -ca\n\t\tSet power_dpm_force_performance_level to auto.\n"
 "\n\n");
 			exit(EXIT_SUCCESS);
 		} else {

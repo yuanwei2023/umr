@@ -58,20 +58,19 @@ static void print_temperature(uint32_t temp)
 	if (options.use_colour){
 		if (temp <= 40){
 			attron(COLOR_PAIR(1)|A_BOLD);
-			printw("\t%u ", temp);
+			printw("%u C\n", temp);
 			attroff(COLOR_PAIR(1)|A_BOLD);
 		} else if ( temp > 40 && temp <= 70) {
 			attron(COLOR_PAIR(2)|A_BOLD);
-			printw("\t%u ", temp);
+			printw("%u C\n", temp);
 			attroff(COLOR_PAIR(2)|A_BOLD);
 		} else if (temp > 70){
 			attron(COLOR_PAIR(3)|A_BOLD);
-			printw("\t%u ", temp);
+			printw("%u C\n", temp);
 			attroff(COLOR_PAIR(3)|A_BOLD);
 		}
-		printw("C \n");
 	} else {
-		printw("\t%u C\n", temp);
+		printw("%u C\n", temp);
 	}
 }
 
@@ -80,19 +79,19 @@ static void print_gpu_load(uint32_t gpu_load)
 	if (options.use_colour){
 		if (gpu_load <= 40){
 			attron(COLOR_PAIR(1)|A_BOLD);
-			printw("\t%u %%\n", gpu_load);
+			printw("%u %%\n", gpu_load);
 			attroff(COLOR_PAIR(1)|A_BOLD);
 		} else if ( gpu_load > 40 && gpu_load <= 70) {
 			attron(COLOR_PAIR(2)|A_BOLD);
-			printw("\t%u %%\n", gpu_load);
+			printw("%u %%\n", gpu_load);
 			attroff(COLOR_PAIR(2)|A_BOLD);
 		} else if (gpu_load > 70){
 			attron(COLOR_PAIR(3)|A_BOLD);
-			printw("\t%u %%\n", gpu_load);
+			printw("%u %%\n", gpu_load);
 			attroff(COLOR_PAIR(3)|A_BOLD);
 		}
 	} else {
-		printw("\t%u %%\n", gpu_load);
+		printw("%u %%\n", gpu_load);
 	}
 }
 
@@ -168,19 +167,15 @@ static void power_print(struct umr_asic *asic)
 				break;
 			case AMDGPU_PP_SENSOR_GPU_LOAD:
 				printw("\n= = = = = = = = = = = = = = = = = = = = = = = = = = =\n");
-				if (p_info[i].value != 0){
-					printw("\nGPU Load:");
-					print_gpu_load(p_info[i].value);
-				}
+				printw("\nGPU Load:\t\t");
+				print_gpu_load(p_info[i].value);
 				break;
 			case AMDGPU_PP_SENSOR_MEM_LOAD:
-				if (p_info[i].value != 0){
-					printw("\nMEM Load:");
-					print_gpu_load(p_info[i].value);
-				}
+				printw("\nMEM Load:\t\t");
+				print_gpu_load(p_info[i].value);
 				break;
 			case AMDGPU_PP_SENSOR_GPU_TEMP:
-				printw("\nGPU Temperature:");
+				printw("\nGPU Temperature:\t");
 				print_temperature(p_info[i].value);
 				break;
 			default:
