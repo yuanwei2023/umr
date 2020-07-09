@@ -51,14 +51,18 @@ if(LLVM_CMAKE_DIR)
   list(APPEND CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
   include(AddLLVM)
 
-  LLVM_MAP_COMPONENTS_TO_LIBNAMES(LLVM_LIBS
-    AllTargetsDescs
-    AllTargetsDisassemblers
-    AllTargetsInfos
-    MC
-    Support
-    MCDisassembler
-  )
+  if (LLVM_LINK_LLVM_DYLIB)
+    set(LLVM_LIBS LLVM)
+  else()
+    LLVM_MAP_COMPONENTS_TO_LIBNAMES(LLVM_LIBS
+      AllTargetsDescs
+      AllTargetsDisassemblers
+      AllTargetsInfos
+      MC
+      Support
+      MCDisassembler
+    )
+  endif()
 endif()
 endif()
 
