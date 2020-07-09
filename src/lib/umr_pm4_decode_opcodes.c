@@ -102,8 +102,8 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_RELEASE_MEM", // 49
 	"PKT3_PREAMBLE_CNTL", // 4a
 	"UNK", // 4b
-	"UNK", // 4c
-	"UNK", // 4d
+	"PKT3_DISPATCH_MESH_INDIRECT_MULTI", // 4c
+	"PKT3_DISPATCH_TASKMESH_GFX", // 4d
 	"UNK", // 4e
 	"UNK", // 4f
 	"PKT3_DMA_DATA", // 50
@@ -171,7 +171,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 8e
 	"UNK", // 8f
 	"PKT3_FRAME_CONTROL", // 90
-	"UNK", // 91
+	"PKT3_INDEX_ATTRIBUTES_INDIRECT", // 91
 	"UNK", // 92
 	"UNK", // 93
 	"UNK", // 94
@@ -195,11 +195,11 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // a6
 	"UNK", // a7
 	"UNK", // a8
-	"UNK", // a9
-	"UNK", // aa
+	"PKT3_DISPATCH_TASK_STATE_INIT", // a9
+	"PKT3_DISPATCH_TASKMESH_DIRECT_ACE", // aa
 	"UNK", // ab
 	"UNK", // ac
-	"UNK", // ad
+	"PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE", // ad
 	"UNK", // ae
 	"UNK", // af
 	"UNK", // b0
@@ -563,6 +563,26 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			if (asic->family >= FAMILY_AI)
 				ui->add_field(ui, ib_addr + 28, ib_vmid, "INT_CTXID", stream->words[6], NULL, 16);
 			break;
+		case 0x4C: // DISPATCH_MESH_INDIRECT_MULTI
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", stream->words[0], NULL, 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "XYZ_DIM_LOC", BITS(stream->words[1], 0, 16) + 0x2C00, umr_reg_name(asic, BITS(stream->words[1], 0, 16) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "RING_ENTRY_LOC", BITS(stream->words[1], 16, 32) + 0x2C00, umr_reg_name(asic, BITS(stream->words[1], 16, 32) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "USE_VGPRS", BITS(stream->words[2], 28, 29), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "THREAD_TRACE_MARKER_ENABLE", BITS(stream->words[2], 29, 30), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "COUNT_INDIRECT_ENABLE", BITS(stream->words[2], 30, 31), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DRAW_INDEX_ENABLE", BITS(stream->words[2], 31, 32), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "COUNT", stream->words[3], NULL, 10);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "COUNT_ADDR_LO", BITS(stream->words[4], 2, 32) << 2, NULL, 16);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "COUNT_ADDR_HI", stream->words[5], NULL, 16);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "STRIDE", stream->words[6], NULL, 16);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "DRAW_INITIATOR", stream->words[7], NULL, 10);
+			break;
+		case 0x4D: // DISPATCH_TASKMESH_GFX
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "XYZ_DIM_LOC", BITS(stream->words[0], 0, 16) + 0x2C00, umr_reg_name(asic, BITS(stream->words[0], 0, 16) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "RING_ENTRY_LOC", BITS(stream->words[0], 16, 32) + 0x2C00, umr_reg_name(asic, BITS(stream->words[0], 16, 32) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "THREAD_TRACE_MARKER_ENABLE", BITS(stream->words[1], 31, 32), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DRAW_INITIATOR", stream->words[2], NULL, 16);
+			break;
 		case 0x50: // DMA_DATA
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(stream->words[0], 0, 1), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_CACHE_POLICY", BITS(stream->words[0], 13, 15), NULL, 10);
@@ -716,6 +736,15 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 		case 0x90: // FRAME_CONTROL
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TMZ", BITS(stream->words[0], 0, 1), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(stream->words[0], 28, 32), NULL, 10);
+			break;
+		case 0x91: // INDEX_ATTRIBUTES_INDIRECT
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ATTRIBUTE_BASE_LO", BITS(stream->words[0], 4, 32) << 4, NULL, 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ATTRIBUTE_BASE_HI", stream->words[1], NULL, 16);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "ATTRIBUTE_INDEX", BITS(stream->words[2], 0, 16), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "INDEX_BASE_LO", stream->words[3], NULL, 16);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "INDEX_BASE_HI", stream->words[4], NULL, 16);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "INDEX_BUFFER_SIZE", stream->words[5], NULL, 10);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "INDEX_TYPE", stream->words[6], NULL, 10);
 			break;
 		case 0x9A: // DMA_DATA_FILL_MULTI
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(stream->words[0], 0, 1), NULL, 10);
@@ -943,6 +972,33 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", stream->words[4], NULL, 16);
 				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", stream->words[5], NULL, 16);
 			}
+			break;
+		case 0xA9: 	// PKT3_DISPATCH_TASK_STATE_INIT
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTROL_BUF_ADDR_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "CONTROL_BUF_ADDR_HI", stream->words[1], NULL, 16);
+			break;
+		case 0xAA:	// DISPATCH_TASKMESH_DIRECT_ACE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DIM_X", stream->words[0], NULL, 10);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DIM_Y", stream->words[1], NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DIM_Z", stream->words[2], NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DISPATCH_INITIATOR", stream->words[3], NULL, 16);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "RING_ENTRY_LOC", BITS(stream->words[4], 0, 16) + 0x2C00, umr_reg_name(asic, BITS(stream->words[4], 0, 16) + 0x2C00), 16);
+			break;
+		case 0xAD: // DISPATCH_TASKMESH_INDIRECT_MULTI_ACE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_ADDR_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DATA_ADDR_HI", stream->words[1], NULL, 16);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "RING_ENTRY_LOC", BITS(stream->words[2], 0, 16) + 0x2C00, umr_reg_name(asic, BITS(stream->words[2], 0, 16) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "THREAD_TRACE_MARKER_ENABLE", BITS(stream->words[3], 0, 1), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "COUNT_INDIRECT_ENABLE", BITS(stream->words[3], 1, 2), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DISPATCH_INDEX_ENABLE", BITS(stream->words[3], 2, 3), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "COMPUTE_XYZ_DIM_ENABLE", BITS(stream->words[3], 3, 4), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DISPATCH_INDEX_LOC", BITS(stream->words[3], 16, 32) + 0x2C00, umr_reg_name(asic, BITS(stream->words[3], 16, 32) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "COMPUTE_XYZ_DIM_LOC", BITS(stream->words[4], 0, 16) + 0x2C00, umr_reg_name(asic, BITS(stream->words[4], 0, 16) + 0x2C00), 16);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "COUNT", stream->words[5], NULL, 10);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "COUNT_ADDR_LO", BITS(stream->words[6], 2, 32) << 2, NULL, 16);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "COUNT_ADDR_HI", stream->words[7], NULL, 16);
+			ui->add_field(ui, ib_addr + 36, ib_vmid, "STRIDE", stream->words[8], NULL, 10);
+			ui->add_field(ui, ib_addr + 40, ib_vmid, "DISPATCH_INITIATOR", stream->words[9], NULL, 16);
 			break;
 		default:
 			if (ui->unhandled)

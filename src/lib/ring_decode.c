@@ -102,8 +102,8 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_RELEASE_MEM", // 49
 	"PKT3_PREAMBLE_CNTL", // 4a
 	"UNK", // 4b
-	"UNK", // 4c
-	"UNK", // 4d
+	"PKT3_DISPATCH_MESH_INDIRECT_MULTI", // 4c
+	"PKT3_DISPATCH_TASKMESH_GFX", // 4d
 	"UNK", // 4e
 	"UNK", // 4f
 	"PKT3_DMA_DATA", // 50
@@ -171,7 +171,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 8e
 	"UNK", // 8f
 	"PKT3_FRAME_CONTROL", // 90
-	"UNK", // 91
+	"PKT3_INDEX_ATTRIBUTES_INDIRECT", // 91
 	"UNK", // 92
 	"UNK", // 93
 	"UNK", // 94
@@ -195,11 +195,11 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // a6
 	"UNK", // a7
 	"UNK", // a8
-	"UNK", // a9
-	"UNK", // aa
+	"PKT3_DISPATCH_TASK_STATE_INIT", // a9
+	"PKT3_DISPATCH_TASKMESH_DIRECT_ACE", // aa
 	"UNK", // ab
 	"UNK", // ac
-	"UNK", // ad
+	"PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE", // ad
 	"UNK", // ae
 	"UNK", // af
 	"UNK", // b0
@@ -860,6 +860,36 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				default: printf("Invalid word for opcode 0x%02lx", (unsigned long)decoder->pm4.cur_opcode);
 			}
 			break;
+		case 0x4C: // DISPATCH_MESH_INDIRECT_MULTI
+			switch(decoder->pm4.cur_word) {
+				case 0: printf("DATA_OFFSET: %s0x%lx%s", BLUE, (unsigned long)ib, RST); break;
+				case 1: printf("XYZ_DIM_LOC: %s0x%lx%s (%s%s%s), RING_ENTRY_LOC: %s0x%lx%s (%s%s%s)",
+							   BLUE, (unsigned long)BITS(ib, 0, 16), RST, RED, umr_reg_name(asic, BITS(ib, 0, 16) + 0x2C00), RST,
+							   BLUE, (unsigned long)BITS(ib, 16, 32), RST, RED, umr_reg_name(asic, BITS(ib, 16, 32) + 0x2C00), RST);
+						break;
+				case 2: printf("USE_VGPRS: %s%lu%s, THREAD_TRACE_MARKER_ENABLE: %s%lu%s, COUNT_INDIRECT_ENABLE: %s%lu%s, DRAW_INDEX_ENABLE: %s%lu%s",
+							   BLUE, (unsigned long)BITS(ib, 28, 29), RST,
+							   BLUE, (unsigned long)BITS(ib, 29, 30), RST,
+							   BLUE, (unsigned long)BITS(ib, 30, 31), RST,
+							   BLUE, (unsigned long)BITS(ib, 31, 32), RST);
+						break;
+				case 3: printf("COUNT: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 4: printf("COUNT_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 2, 32) << 2, RST); break;
+				case 5: printf("COUNT_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 6: printf("STRIDE: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 7: printf("DRAW_INITIATOR: %s0x%lx%s", BLUE, (unsigned long)ib, RST); break;
+			}
+			break;
+		case 0x4D: // DISPATCH_TASKMESH_GFX
+			switch(decoder->pm4.cur_word) {
+				case 0: printf("XYZ_DIM_LOC: %s0x%lx%s (%s%s%s), RING_ENTRY_LOC: %s0x%lx%s (%s%s%s)",
+							   BLUE, (unsigned long)BITS(ib, 0, 16), RST, RED, umr_reg_name(asic, BITS(ib, 0, 16) + 0x2C00), RST,
+							   BLUE, (unsigned long)BITS(ib, 16, 32), RST, RED, umr_reg_name(asic, BITS(ib, 16, 32) + 0x2C00), RST);
+						break;
+				case 1: printf("THREAD_TRACE_MARKER_ENABLE: %s%lu%s", BLUE, (unsigned long)BITS(ib, 31, 32), RST); break;
+				case 2: printf("DRAW_INITIATOR: %s0x%lx%s", BLUE, (unsigned long)ib, RST); break;
+			}
+			break;
 		case 0x50: // DMA_DATA
 			switch(decoder->pm4.cur_word) {
 				case 0: printf("ENG_SEL: %s%d%s, SRC_CACHE: %s%d%s, DST_SEL: %s%d%s, DST_CACHE: %s%d%s, SRC_SEL: %s%d%s, CP_SYNC: %s%d%s",
@@ -1156,7 +1186,17 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				default: printf("Invalid word for opcode 0x%02lx", (unsigned long)decoder->pm4.cur_opcode);
 			}
 			break;
-
+		case 0x91: // INDEX_ATTRIBUTES_INDIRECT
+			switch(decoder->pm4.cur_word) {
+				case 0: printf("ATTRIBUTE_BASE_LO: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 4, 32) << 4, RST); break;
+				case 1: printf("ATTRIBUTE_BASE_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 2: printf("ATTRIBUTE_INDEX: %s%lu%s", BLUE, (unsigned long)BITS(ib, 0, 16), RST); break;
+				case 3: printf("INDEX_BASE_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 4: printf("INDEX_BASE_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 5: printf("INDEX_BUFFER_SIZE: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 6: printf("INDEX_TYPE: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+			}
+			break;
 		case 0x9A: // DMA_DATA_FILL_MULTI
 			switch(decoder->pm4.cur_word) {
 				case 0: printf("ENGINE_SEL: %s%lu%s, MEMLOG_CLEAR: %s%lu%s, DST_SEL: %s%lu%s, DST_CACHE_POLICY: %s%lu%s, SRC_SEL: %s%lu%s, CP_SYNC: %s%lu%s",
@@ -1484,6 +1524,52 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 					case 4: printf("DATA_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 					case 5: printf("DATA_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
 				}
+			}
+			break;
+		case 0xA9: 	// PKT3_DISPATCH_TASK_STATE_INIT
+			switch (decoder->pm4.cur_word) {
+				case 0: printf("CONTROL_BUF_ADDR_LO: %s0x%08lx%s", YELLOW, (unsigned long)ib & 0xFFFFFF00UL, RST); break;
+				case 1: printf("CONTROL_BUF_ADDR_HI: %s0x%08lx%s", YELLOW, (unsigned long)ib, RST); break;
+			}
+			break;
+		case 0xAA:	// DISPATCH_TASKMESH_DIRECT_ACE
+			switch (decoder->pm4.cur_word) {
+				case 0: printf("DIM_X: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 1: printf("DIM_Y: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 2: printf("DIM_Z: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 3: printf("DISPATCH_INITIATOR: %s0x%lx%s", BLUE, (unsigned long)ib, RST); break;
+				case 4: printf("RING_ENTRY_LOC: %s0x%lx%s (%s%s%s)",
+								BLUE, (unsigned long)ib, RST,
+								RED, umr_reg_name(asic, BITS(ib, 0, 16) + 0x2C00), RST);
+						break;
+			}
+			break;
+		case 0xAD: // DISPATCH_TASKMESH_INDIRECT_MULTI_ACE
+			switch (decoder->pm4.cur_word) {
+				case 0: printf("DATA_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 2, 32) << 2, RST); break;
+				case 1: printf("DATA_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 2: printf("RING_ENTRY_LOC: %s0x%lx%s (%s%s%s)",
+								BLUE, (unsigned long)ib, RST,
+								RED, umr_reg_name(asic, BITS(ib, 0, 16) + 0x2C00), RST);
+						break;
+				case 3: printf("THREAD_TRACE_MARKER_ENABLE: %s%u%s, COUNT_INDIRECT_ENABLE: %s%u%s, "
+				               "DISPATCH_INDEX_ENABLE: %s%u%s, COMPUTE_XYZ_DIM_ENABLE: %s%u%s, "
+				               "DISPATCH_INDEX_LOC: %s0x%lx%s (%s%s%s)",
+				               BLUE, (unsigned)BITS(ib, 0, 1), RST,
+				               BLUE, (unsigned)BITS(ib, 1, 2), RST,
+				               BLUE, (unsigned)BITS(ib, 2, 3), RST,
+				               BLUE, (unsigned)BITS(ib, 3, 4), RST,
+				               BLUE, (unsigned long)BITS(ib, 16, 32), RST, RED, umr_reg_name(asic, BITS(ib, 16, 32) + 0x2C00), RST);
+						break;
+				case 4: printf("COMPUTE_XYZ_DIM_LOC: %s0x%lx%s (%s%s%s)",
+								BLUE, (unsigned long)ib, RST,
+								RED, umr_reg_name(asic, BITS(ib, 0, 16) + 0x2C00), RST);
+						break;
+				case 5: printf("COUNT: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 6: printf("COUNT_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)BITS(ib, 2, 32) << 2, RST); break;
+				case 7: printf("COUNT_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				case 8: printf("STRIDE: %s%lu%s", BLUE, (unsigned long)ib, RST); break;
+				case 9: printf("DISPATCH_INITIATOR: %s0x%lx%s", BLUE, (unsigned long)ib, RST); break;
 			}
 			break;
 		default:
