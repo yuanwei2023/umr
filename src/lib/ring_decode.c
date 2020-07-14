@@ -1819,7 +1819,7 @@ static void parse_next_sdma_pkt(struct umr_asic *asic, struct umr_ring_decoder *
 						case 2: printf("DST_ADDR_HI: %s0x%08lx%s", YELLOW, (unsigned long)ib, RST);
 							break;
 						case 3: printf("COUNT: %s0x%08lx%s", BLUE, (unsigned long)ib, RST);
-							decoder->sdma.n_words += ib - 1;
+							decoder->sdma.n_words += ib;
 							break;
 						default: printf("DATA: %s0x%08lx%s", BLUE, (unsigned long)ib, RST);
 							break;
