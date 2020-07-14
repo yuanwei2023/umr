@@ -74,27 +74,29 @@ void umr_clock_scan(struct umr_asic *asic, const char* clock_name)
 	asic_clocks.asic = asic;
 	if (clock_name == NULL){
 		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
-			umr_read_clock(asic, asic_clocks.clocks[i].clock_name, &asic_clocks.clocks[i]);
-			if (strcmp(asic_clocks.clocks[i].clock_name, "pcie"))
-				print_clock(asic_clocks.clocks[i], asic);
-			else {
-				if (asic_clocks.clocks[i].clock_level != 0)
-					print_pcie_clock(asic);
-			}
-		}
-		input_flag = 1;
-	} else {
-		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
-			if (!strcmp(asic_clocks.clocks[i].clock_name, clock_name)) {
-				umr_read_clock(asic, asic_clocks.clocks[i].clock_name, &asic_clocks.clocks[i]);
+			if (umr_read_clock(asic, asic_clocks.clocks[i].clock_name, &asic_clocks.clocks[i]) == 0) {
 				if (strcmp(asic_clocks.clocks[i].clock_name, "pcie"))
 					print_clock(asic_clocks.clocks[i], asic);
 				else {
 					if (asic_clocks.clocks[i].clock_level != 0)
 						print_pcie_clock(asic);
 				}
-				input_flag = 1;
-				break;
+			}
+		}
+		input_flag = 1;
+	} else {
+		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
+			if (!strcmp(asic_clocks.clocks[i].clock_name, clock_name)) {
+				if (umr_read_clock(asic, asic_clocks.clocks[i].clock_name, &asic_clocks.clocks[i]) == 0){
+					if (strcmp(asic_clocks.clocks[i].clock_name, "pcie"))
+						print_clock(asic_clocks.clocks[i], asic);
+					else {
+						if (asic_clocks.clocks[i].clock_level != 0)
+							print_pcie_clock(asic);
+					}
+					input_flag = 1;
+					break;
+				}
 			}
 		}
 	}
@@ -110,8 +112,8 @@ void umr_clock_manual(struct umr_asic *asic, const char* clock_name, void* value
 	if (clock_name != NULL && value != NULL){
 		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
 			if (!strcmp(asic_clocks.clocks[i].clock_name, clock_name)) {
-				umr_set_clock(asic, asic_clocks.clocks[i].clock_name, value);
-				print_clock(asic_clocks.clocks[i], asic);
+				if (umr_set_clock(asic, asic_clocks.clocks[i].clock_name, value) == 0)
+					print_clock(asic_clocks.clocks[i], asic);
 				break;
 			}
 		}

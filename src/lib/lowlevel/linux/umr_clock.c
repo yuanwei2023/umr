@@ -25,11 +25,12 @@
 /**
  * umr_read_clock - Read a clock information via sysfs
  */
-void umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_source* clock)
+int umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_source* clock)
 {
 	FILE* fp = NULL;
 	char name[256];
 	char* token;
+	int ret = -1;
 	snprintf(name, sizeof(name)-1, \
 		"/sys/class/drm/card%d/device/pp_dpm_%s", asic->instance, clockname);
 	clock->clock_level = 0;
@@ -51,19 +52,23 @@ void umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_sou
 			clock->clock_level++;
 		}
 		fclose(fp);
+		ret = 0;
 	}
+
+	return ret;
 }
 
 /**
  * umr_set_clock - set a clock value via sysfs
  */
-void umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value)
+int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value)
 {
 	char name[128];
 	int fd;
 	int input_flag = 0;
 	char input[8];
 	uint32_t input_len = strlen(value);
+	int ret = -1;
 
 	umr_set_clock_performance(asic, "manual");
 	strcpy(input, value);
@@ -76,10 +81,13 @@ void umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value)
 		write(fd, input, input_len+1);
 		close(fd);
 		input_flag = 1;
+		ret = 0;
 	}
 
 	if(!input_flag)
 		fprintf(stderr, "[ERROR]: Invalid input clock name!\n");
+
+	return ret;
 }
 
 /**
@@ -107,17 +115,22 @@ void umr_set_clock_performance(struct umr_asic *asic, const char* operation)
 /**
  * umr_check_clock_performance - check power_dpm_force_performance_level via sysfs
  */
-uint32_t umr_check_clock_performance(struct umr_asic *asic, char* clockperformance, uint32_t len)
+int umr_check_clock_performance(struct umr_asic *asic, char* clockperformance, uint32_t len)
 {
 
 	FILE* fp = NULL;
 	char name[256];
+	int ret = 0;
 	snprintf(name, sizeof(name)-1, \
 		"/sys/class/drm/card%d/device/power_dpm_force_performance_level", asic->instance);
 	fp = fopen(name, "r");
 	if (fp) {
 		fgets(clockperformance, len-1, fp);
 		fclose(fp);
+		ret = strlen(clockperformance);
+	} else {
+		ret = 0;
 	}
-	return strlen(clockperformance);
+
+	return ret;
 }

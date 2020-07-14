@@ -2,6 +2,9 @@
 
 project(umr)
 
+#where app .h file can be found
+include_directories(inc)
+
 #application objects
 add_library(umrapp STATIC
   print.c
@@ -20,6 +23,9 @@ add_library(umrapp STATIC
   enum.c
   power.c
   clock.c
+  gfxoff.c
+  pp_table.c
+  navi10_ppt.c
 )
 
 add_executable(umr main.c)

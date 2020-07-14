@@ -733,8 +733,10 @@ int main(int argc, char **argv)
 					fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
 				++i;
 			} else {
-				fprintf(stderr, "[ERROR]: --gfxoff requires one parameter\n");
-				return EXIT_FAILURE;
+				if (asic->fd.gfxoff >= 0)
+					umr_gfxoff_read(asic);
+				else
+					fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
 			}
 		} else if (!strcmp(argv[i], "--power") || !strcmp(argv[i], "-p")) {
 			if (!asic)
@@ -778,6 +780,17 @@ int main(int argc, char **argv)
 			umr_set_clock_performance(asic, "auto");
 			if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
 				printf("power_dpm_force_performance_level: %s", clockperformance);
+		} else if (!strcmp(argv[i], "--ppt_read") || !strcmp(argv[i], "-pptr")) {
+			if (!asic)
+				asic = get_asic();
+			if (i + 1 < argc) {
+				if (umr_print_pp_table(asic, argv[i+1]) != 0)
+					fprintf(stderr, "[ERROR]: can not print pp table info.\n");
+				i++;
+			} else {
+				if (umr_print_pp_table(asic, NULL) != 0)
+					fprintf(stderr, "[ERROR]: can not print pp table info.\n");
+			}
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -808,7 +821,7 @@ int main(int argc, char **argv)
 	"\n\t\tdemo/update/ for an example.\n"
 "\n\t--gfxoff, -go <0 | 1>"
 	"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
-	"\n\t\tselect hardware.\n"
+	"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"
@@ -891,7 +904,9 @@ printf(
 	"\n\t\tPM4 IBs.  The default is PM4.\n"
 "\n\t--header-dump, -hd [HEADER_DUMP_reg]"
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
-	"\n\t\thuman readable string.\n"
+	"\n\t\thuman readable string.\n");
+
+printf(
 "\n*** Power and clock ***\n"
 "\n\t--power, -p \n\t\tRead the content of clocks, temperature, gpu loading at runtime"
 	"\n\t\toptions 'use_colour' to colourize output.\n"
@@ -902,6 +917,8 @@ printf(
 "\n\t--clock-high, -ch\n\t\tSet power_dpm_force_performance_level to high.\n"
 "\n\t--clock-low, -cl\n\t\tSet power_dpm_force_performance_level to low.\n"
 "\n\t--clock-auto, -ca\n\t\tSet power_dpm_force_performance_level to auto.\n"
+"\n\t--ppt_read, -pptr <string>\n\t\tRead powerplay table value and print it to stdout."
+	"\n\t\tThis command will print all the powerplay table information or the corresponding string in powerplay table.\n"
 "\n\n");
 			exit(EXIT_SUCCESS);
 		} else {

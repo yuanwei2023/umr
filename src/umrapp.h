@@ -54,3 +54,5 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target);
 void umr_power(struct umr_asic *asic);
 void umr_clock_scan(struct umr_asic *asic, const char* clock_name);
 void umr_clock_manual(struct umr_asic *asic, const char* clock_name, void* value);
+void umr_gfxoff_read(struct umr_asic *asic);
+int umr_print_pp_table(struct umr_asic *asic, const char* param);

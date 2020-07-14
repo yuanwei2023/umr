@@ -1181,7 +1181,7 @@ struct umr_asic_clocks{
 	struct umr_clock_source clocks[UMR_CLOCK_MAX];
 };
 
-void umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_source* clock);
-void umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value);
+int umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_source* clock);
+int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value);
 void umr_set_clock_performance(struct umr_asic *asic, const char* operation);
-uint32_t umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);
+int umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);

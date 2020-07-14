@@ -19,6 +19,7 @@ UMR: User Mode Register Debugger
    vm_decoding
    ring
    top
+   power
    npi_scripting
    
    libumr_api
