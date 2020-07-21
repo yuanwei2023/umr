@@ -771,7 +771,7 @@ int main(int argc, char **argv)
 			ih_self_test(asic);
 #endif
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s), Copyright (c) 2020, AMD Inc.\n"
+			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2020, AMD Inc.\n"
 "\n*** Device Selection ***\n"
 "\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags: bits, bitsfull, empty_log, follow, no_follow_ib, named, many,"
 	"\n\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves, disasm_early_term, no_disasm, disasm_anyways, wave64, full_shader\n"
@@ -821,7 +821,7 @@ int main(int argc, char **argv)
 	"\n\t\tCan be used multiple times.\n"
 "\n\t--logscan, -ls\n\t\tRead and display contents of the MMIO register log (usually specified with"
 	"\n\t\t'-O bits,follow,empty_log' to continually dump the trace log.)\n",
-	UMR_BUILD_VER, UMR_BUILD_REV);
+	UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH);
 
 printf(
 "\n*** Device Utilization ***\n"
@@ -895,14 +895,21 @@ printf(
 		}
 	}
 
-	if (!asic)
+	if (options.need_scan && options.print) {
 		asic = get_asic();
-
-	if (options.need_scan && options.print)
 		umr_scan_asic(asic, "", "", "");
+	}
 
-	if (options.print)
+	if (options.print) {
+		asic = get_asic();
 		umr_print_asic(asic, "");
+	}
+
+	if (!asic) {
+		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2020, AMD Inc.\n\n"
+			   "Use '--help' for a list of commands and options.\n",
+			    UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH);
+	}
 
 	if (options.use_xgmi) {
 		// the parent 'asic' is included in the nodes array

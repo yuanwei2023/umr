@@ -15,8 +15,14 @@ execute_process(COMMAND  git describe --abbrev=12 --always
     OUTPUT_STRIP_TRAILING_WHITESPACE
     OUTPUT_VARIABLE GIT_REV
 )
+execute_process(COMMAND  git branch --show-current
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    OUTPUT_VARIABLE GIT_BRANCH
+)
 add_definitions(-DUMR_BUILD_VER=${RELEASE_VERSION})
 add_definitions(-DUMR_BUILD_REV=\"${GIT_REV}\")
+add_definitions(-DUMR_BUILD_BRANCH=\"${GIT_BRANCH}\")
 
 # Add local repository for FindXXX.cmake modules.
 SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" ${CMAKE_MODULE_PATH})
