@@ -373,6 +373,12 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 						free(str);
 						break;
 				}
+			} else if (stream->words[0] == 0x3337F77D) { // magic value for BINARY data
+				uint32_t n;
+
+				for (n = 1; n < stream->n_words; n++) {
+					ui->add_field(ui, ib_addr + 4 + (4 * n), ib_vmid, "BINARY DATA", stream->words[n], NULL, 16);
+				}
 			}
 			break;
 		case 0x12: // CLEAR_STATE
