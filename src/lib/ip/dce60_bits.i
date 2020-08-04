@@ -4625,6 +4625,37 @@ static struct umr_bitfield mmDC_LUT_WHITE_OFFSET_RED[] = {
 static struct umr_bitfield mmCUR_REQUEST_FILTER_CNTL[] = {
 	 { "CUR_REQUEST_FILTER_DIS", 0, 0, &umr_bitfield_default },
 };
+static struct umr_bitfield mmDATA_FORMAT[] = {
+	 { "INTERLEAVE_EN", 0, 0, &umr_bitfield_default },
+	 { "RESET_REQ_AT_EOL", 4, 4, &umr_bitfield_default },
+	 { "PREFETCH", 12, 12, &umr_bitfield_default },
+	 { "SOF_READ_PT", 16, 20, &umr_bitfield_default },
+	 { "REQUEST_MODE", 24, 25, &umr_bitfield_default },
+	 { "ALLOW_REQ_MODE_1_2", 28, 28, &umr_bitfield_default },
+};
+static struct umr_bitfield mmDC_LB_MEMORY_SPLIT[] = {
+	 { "LB_NUM_PARTITIONS", 16, 19, &umr_bitfield_default },
+	 { "DC_LB_MEMORY_CONFIG", 20, 21, &umr_bitfield_default },
+};
+static struct umr_bitfield mmDC_LB_MEM_SIZE[] = {
+	 { "DC_LB_MEM_SIZE", 0, 10, &umr_bitfield_default },
+};
+static struct umr_bitfield mmPRIORITY_A_CNT[] = {
+	 { "PRIORITY_MARK_A", 0, 14, &umr_bitfield_default },
+	 { "PRIORITY_A_OFF", 16, 16, &umr_bitfield_default },
+	 { "PRIORITY_A_ALWAYS_ON", 20, 20, &umr_bitfield_default },
+	 { "PRIORITY_A_FORCE_MASK", 24, 24, &umr_bitfield_default },
+};
+static struct umr_bitfield mmPRIORITY_B_CNT[] = {
+	 { "PRIORITY_MARK_B", 0, 14, &umr_bitfield_default },
+	 { "PRIORITY_B_OFF", 16, 16, &umr_bitfield_default },
+	 { "PRIORITY_B_ALWAYS_ON", 20, 20, &umr_bitfield_default },
+	 { "PRIORITY_B_FORCE_MASK", 24, 24, &umr_bitfield_default },
+};
+static struct umr_bitfield mmINT_MASK[] = {
+	 { "VBLANK_INT", 0, 0, &umr_bitfield_default },
+	 { "VLINE_INT", 4, 4, &umr_bitfield_default },
+};
 static struct umr_bitfield mmDC_MVP_LB_CONTROL[] = {
 	 { "DC_MVP_SPARE_FLOPS", 31, 31, &umr_bitfield_default },
 	 { "DC_MVP_SWAP_LOCK_IN_CAP", 28, 28, &umr_bitfield_default },
@@ -4633,6 +4664,31 @@ static struct umr_bitfield mmDC_MVP_LB_CONTROL[] = {
 	 { "DC_MVP_SWAP_LOCK_OUT_SEL", 8, 8, &umr_bitfield_default },
 	 { "DC_MVP_SWAP_LOCK_STATUS", 20, 20, &umr_bitfield_default },
 	 { "MVP_SWAP_LOCK_IN_MODE", 0, 1, &umr_bitfield_default },
+};
+static struct umr_bitfield mmVLINE_STATUS[] = {
+	 { "VLINE_OCCURRED", 0, 0, &umr_bitfield_default },
+	 { "VLINE_ACK", 4, 4, &umr_bitfield_default },
+	 { "VLINE_STAT", 12, 12, &umr_bitfield_default },
+	 { "VLINE_INTERRUPT", 16, 16, &umr_bitfield_default },
+	 { "VLINE_INTERRUPT_TYPE", 17, 17, &umr_bitfield_default },
+};
+static struct umr_bitfield mmVBLANK_STATUS[] = {
+	 { "VBLANK_OCCURRED", 0, 0, &umr_bitfield_default },
+	 { "VBLANK_ACK", 4, 4, &umr_bitfield_default },
+	 { "VBLANK_STAT", 12, 12, &umr_bitfield_default },
+	 { "VBLANK_INTERRUPT", 16, 16, &umr_bitfield_default },
+	 { "VBLANK_INTERRUPT_TYPE", 17, 17, &umr_bitfield_default },
+};
+static struct umr_bitfield mmDPG_PIPE_ARBITRATION_CONTROL3[] = {
+	 { "URGENCY_WATERMARK_MASK", 16, 17, &umr_bitfield_default },
+};
+static struct umr_bitfield mmSCL_HORZ_FILTER_INIT_RGB_LUMA[] = {
+	 { "SCL_H_INIT_FRAC_RGB_Y", 0, 15, &umr_bitfield_default },
+	 { "SCL_H_INIT_INT_RGB_Y", 16, 19, &umr_bitfield_default },
+};
+static struct umr_bitfield mmSCL_HORZ_FILTER_INIT_CHROMA[] = {
+	 { "SCL_H_INIT_FRAC_CBCR", 0, 15, &umr_bitfield_default },
+	 { "SCL_H_INIT_INT_CBCR", 16, 18, &umr_bitfield_default },
 };
 static struct umr_bitfield mmEXT_OVERSCAN_LEFT_RIGHT[] = {
 	 { "EXT_OVERSCAN_LEFT", 16, 27, &umr_bitfield_default },
