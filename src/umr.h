@@ -243,6 +243,12 @@ struct umr_options {
 	    full_shader,
 	    context_reg_bank;
 
+	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
+	struct {
+		int enable_gs_shader,
+			enable_hs_shader;
+	} shader_enable;
+
 	union {
 		struct {
 			unsigned

@@ -62,9 +62,9 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 					else if (strstr(tmp, "LO_VS"))
 						type = UMR_SHADER_VERTEX;
 					else if (strstr(tmp, "LO_HS"))
-						type = (asic->family <= FAMILY_VI) ? UMR_SHADER_HS : UMR_SHADER_OPAQUE;
+						type = (asic->family <= FAMILY_VI || asic->options.shader_enable.enable_hs_shader) ? UMR_SHADER_HS : UMR_SHADER_OPAQUE;
 					else if (strstr(tmp, "LO_GS"))
-						type = (asic->family <= FAMILY_VI) ? UMR_SHADER_GS : UMR_SHADER_OPAQUE;
+						type = (asic->family <= FAMILY_VI || asic->options.shader_enable.enable_gs_shader) ? UMR_SHADER_GS : UMR_SHADER_OPAQUE;
 					else if (strstr(tmp, "LO_LS"))
 						type = (asic->family > FAMILY_VI) ? UMR_SHADER_HS : UMR_SHADER_LS;
 					else if (strstr(tmp, "LO_ES"))
