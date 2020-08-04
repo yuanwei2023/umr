@@ -75,6 +75,20 @@ static struct umr_asic *get_asic(void)
 	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
 	asic->wave_funcs.get_wave_status = umr_get_wave_status;
 
+	// default shader options
+	if (asic->family <= FAMILY_VI) { // on gfx9+ hs/gs are opaque
+		asic->options.shader_enable.enable_gs_shader = 1;
+		asic->options.shader_enable.enable_hs_shader = 1;
+	}
+	asic->options.shader_enable.enable_vs_shader   = 1;
+	asic->options.shader_enable.enable_ps_shader   = 1;
+	asic->options.shader_enable.enable_es_shader   = 1;
+	asic->options.shader_enable.enable_ls_shader   = 1;
+	asic->options.shader_enable.enable_comp_shader = 1;
+
+	if (asic->family > FAMILY_VI)
+		asic->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
+
 	return asic;
 }
 

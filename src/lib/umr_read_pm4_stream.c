@@ -57,20 +57,28 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 				tmp = umr_reg_name(asic, reg_addr + n - 1);
 				if (strstr(tmp, "SPI_SHADER_PGM_LO_") || strstr(tmp, "COMPUTE_PGM_LO")) {
 					// grab shader type (pixel, vertex, compute)
-					if (strstr(tmp, "LO_PS"))
-						type = UMR_SHADER_PIXEL;
-					else if (strstr(tmp, "LO_VS"))
-						type = UMR_SHADER_VERTEX;
-					else if (strstr(tmp, "LO_HS"))
+					if (strstr(tmp, "LO_PS")) {
+						type = asic->options.shader_enable.enable_ps_shader ? UMR_SHADER_PIXEL : UMR_SHADER_OPAQUE;
+					} else if (strstr(tmp, "LO_VS")) {
+						type = asic->options.shader_enable.enable_vs_shader ? UMR_SHADER_VERTEX : UMR_SHADER_OPAQUE;
+					} else if (strstr(tmp, "LO_HS")) {
 						type = (asic->family <= FAMILY_VI || asic->options.shader_enable.enable_hs_shader) ? UMR_SHADER_HS : UMR_SHADER_OPAQUE;
-					else if (strstr(tmp, "LO_GS"))
+					} else if (strstr(tmp, "LO_GS")) {
 						type = (asic->family <= FAMILY_VI || asic->options.shader_enable.enable_gs_shader) ? UMR_SHADER_GS : UMR_SHADER_OPAQUE;
-					else if (strstr(tmp, "LO_LS"))
-						type = (asic->family > FAMILY_VI) ? UMR_SHADER_HS : UMR_SHADER_LS;
-					else if (strstr(tmp, "LO_ES"))
-						type = (asic->family > FAMILY_VI) ? UMR_SHADER_GS : UMR_SHADER_ES;
-					else
-						type = UMR_SHADER_COMPUTE;
+					} else if (strstr(tmp, "LO_LS")) {
+						if (asic->options.shader_enable.enable_ls_shader)
+							type = (asic->family > FAMILY_VI && asic->options.shader_enable.enable_es_ls_swap) ? UMR_SHADER_HS : UMR_SHADER_LS;
+						else
+							type = UMR_SHADER_OPAQUE;
+					} else if (strstr(tmp, "LO_ES")) {
+						if (asic->options.shader_enable.enable_es_shader)
+							type = (asic->family > FAMILY_VI && asic->options.shader_enable.enable_es_ls_swap) ? UMR_SHADER_GS : UMR_SHADER_ES;
+						else
+							type = UMR_SHADER_OPAQUE;
+					} else {
+						type = asic->options.shader_enable.enable_comp_shader ? UMR_SHADER_COMPUTE : UMR_SHADER_OPAQUE;
+					}
+
 					shader_addr = (shader_addr & ~0xFFFFFFFFFFULL) | ((uint64_t)ps->words[n] << 8);
 					if (type != UMR_SHADER_OPAQUE)
 						na |= 1;
