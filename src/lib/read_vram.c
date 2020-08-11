@@ -955,8 +955,10 @@ static uint64_t round_up_pot(uint64_t x)
 int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en)
 {
 	// only aligned reads
-	if ((address & 3) || (size & 3))
+	if ((address & 3) || (size & 3)) {
+		fprintf(stderr, "[ERROR]:  The address and size must be a multiple of 4 to access VRAM\n");
 		return -1;
+	}
 
 	// only aligned destinations
 	if (((intptr_t)data) & 3) {
