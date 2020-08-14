@@ -345,10 +345,14 @@ int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname)
 		ringsize /= 4;
 		ringdata[0] %= ringsize;
 		ringdata[1] %= ringsize;
-		if (ringdata[0] == ringdata[1])
+		if (ringdata[0] == ringdata[1]) {
+			free(ringdata);
 			return 0;
+		}
 		usleep(5);
 	}
+
+	free(ringdata);
 	return 1;
 }
 
