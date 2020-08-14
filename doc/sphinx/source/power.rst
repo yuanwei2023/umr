@@ -2,7 +2,7 @@
 Power and Clock
 ===============
 
-The UMR tool can get real time power and clock information, dynamically 
+The UMR tool can get real time power and clock information, dynamically
 set clock and read powerplay table information.
 
 ::
@@ -10,7 +10,7 @@ set clock and read powerplay table information.
 	umr --power
 
 The command reads real time power and clock information, including GPU
-load, memory load, GPU temperature, GFX clock information and power 
+load, memory load, GPU temperature, GFX clock information and power
 average. The refresh rate is one second.
 
 -------------------
@@ -56,7 +56,7 @@ Powerplay table information
 
 ::
 
-	umr --ppt_read <string>
+	umr --ppt_read [ppt_field_name]
 
 This Command will read all powerplay talbe information in default.
 If has input string, print corresponding value in powerplay table.

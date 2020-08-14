@@ -38,6 +38,7 @@ int umr_print_pp_table(struct umr_asic *asic, const char* param)
 		}
 		fclose(fp);
 	} else {
+		printf("Powerplay table feature only support on Navi10/Navi14 now.");
 		return -1;
 	}
 

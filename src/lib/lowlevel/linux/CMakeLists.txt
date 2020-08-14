@@ -10,6 +10,7 @@ add_library(umrlow STATIC
   umr_read_ring_data.c
   umr_shader_disasm.c
   umr_clock.c
+  gfxoff.c
 )
 
 target_link_libraries(umrlow ${REQUIRED_EXTERNAL_LIBS})

@@ -23,7 +23,6 @@ add_library(umrapp STATIC
   enum.c
   power.c
   clock.c
-  gfxoff.c
   pp_table.c
   navi10_ppt.c
 )

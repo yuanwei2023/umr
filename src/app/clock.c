@@ -101,7 +101,7 @@ void umr_clock_scan(struct umr_asic *asic, const char* clock_name)
 		}
 	}
 
-	if(!input_flag)
+	if (!input_flag)
 		printf("[ERROR]: Invalid input clock name!\n");
 }
 

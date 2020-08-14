@@ -346,7 +346,7 @@ int umr_navi10_pptable_print(const char* param, FILE* fp)
 		printf("Table header length is %d, table length is %d, total structure size is %d\n",
 			table_header_len, table_len, table_container_len);
 		for (i = 0; navi10_pp_table[i].name != NULL; i++) {
-			if( navi10_pp_table[i].len == 8)
+			if (navi10_pp_table[i].len == 8)
 				printf("%s : %u\n", navi10_pp_table[i].name, *(uint8_t *)navi10_pp_table[i].address);
 			else if (navi10_pp_table[i].len == 16)
 				printf("%s : %u\n", navi10_pp_table[i].name, *(uint16_t *)navi10_pp_table[i].address);
@@ -355,9 +355,9 @@ int umr_navi10_pptable_print(const char* param, FILE* fp)
 		}
 	} else {
 		for (i = 0; navi10_pp_table[i].name != NULL; i++) {
-			if (strcmp(navi10_pp_table[i].name, param) == 0) {
+			if (strstr(navi10_pp_table[i].name, param)) {
 				flag++;
-				if( navi10_pp_table[i].len == 8)
+				if (navi10_pp_table[i].len == 8)
 					printf("%s : %u\n", navi10_pp_table[i].name, *(uint8_t *)navi10_pp_table[i].address);
 				else if (navi10_pp_table[i].len == 16)
 					printf("%s : %u\n", navi10_pp_table[i].name, *(uint16_t *)navi10_pp_table[i].address);
@@ -365,7 +365,7 @@ int umr_navi10_pptable_print(const char* param, FILE* fp)
 					printf("%s : %u\n", navi10_pp_table[i].name, *(uint32_t *)navi10_pp_table[i].address);
 			}
 		}
-		if (flag ==0) {
+		if (flag == 0) {
 			printf("Can not find %s in pptable\n", param);
 			free(table_container);
 			return -1;

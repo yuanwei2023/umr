@@ -917,7 +917,7 @@ printf(
 "\n\t--clock-high, -ch\n\t\tSet power_dpm_force_performance_level to high.\n"
 "\n\t--clock-low, -cl\n\t\tSet power_dpm_force_performance_level to low.\n"
 "\n\t--clock-auto, -ca\n\t\tSet power_dpm_force_performance_level to auto.\n"
-"\n\t--ppt_read, -pptr <string>\n\t\tRead powerplay table value and print it to stdout."
+"\n\t--ppt_read, -pptr [ppt_field_name]\n\t\tRead powerplay table value and print it to stdout."
 	"\n\t\tThis command will print all the powerplay table information or the corresponding string in powerplay table.\n"
 "\n\n");
 			exit(EXIT_SUCCESS);

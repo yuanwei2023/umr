@@ -84,7 +84,7 @@ int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value)
 		ret = 0;
 	}
 
-	if(!input_flag)
+	if (!input_flag)
 		fprintf(stderr, "[ERROR]: Invalid input clock name!\n");
 
 	return ret;
