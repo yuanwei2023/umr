@@ -125,7 +125,7 @@ struct umr_bitfield {
 struct umr_reg {
 	char *regname;
 	enum regclass type;
-	uint32_t addr;
+	uint64_t addr;
 	struct umr_bitfield *bits;
 	int no_bits;
 	uint64_t bit64, value;
@@ -134,7 +134,7 @@ struct umr_reg {
 struct umr_reg_soc15 {
 	char *regname;
 	enum regclass type;
-	uint32_t addr, idx;
+	uint64_t addr, idx;
 	struct umr_bitfield *bits;
 	int no_bits;
 	uint64_t bit64, value;

@@ -166,7 +166,7 @@ static int do_add_reg(char **ptr, struct umr_asic *as)
 	newreg.regname = calloc(1, strlen(reg)+1);
 	strcpy(newreg.regname, reg);
 	newreg.type = mtype;
-	sscanf(addr, "%"SCNx32, &newreg.addr);
+	sscanf(addr, "%"SCNx64, &newreg.addr);
 
 	// extend array
 	as->blocks[i]->regs = realloc(as->blocks[i]->regs, sizeof(struct umr_reg) * (as->blocks[i]->no_regs + 1));
@@ -265,7 +265,7 @@ static int do_edit_reg(char **ptr, struct umr_asic *as)
 	}
 
 	// replace address
-	sscanf(addr, "%"SCNx32, &as->blocks[i]->regs[j].addr);
+	sscanf(addr, "%"SCNx64, &as->blocks[i]->regs[j].addr);
 
 	return 0;
 }
