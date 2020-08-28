@@ -117,7 +117,9 @@ void umr_clock_manual(struct umr_asic *asic, const char* clock_name, void* value
 				break;
 			}
 		}
-		print_clock(asic_clocks.clocks[i], asic);
+
+		if(i == UMR_CLOCK_MAX)
+			printf("[ERROR]: Maybe wrong clock name or not support so far!\n");
 	} else {
 		printf("[ERROR]: Invalid input!\n");
 	}
