@@ -396,7 +396,7 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 		ws->hw_id2.state_id     = umr_bitslice_reg(asic, reg, "STATE_ID", value);
 		ws->hw_id2.wg_id        = umr_bitslice_reg(asic, reg, "WG_ID", value);
 		ws->hw_id2.vm_id        = umr_bitslice_reg(asic, reg, "VM_ID", value);
-		ws->hw_id2.compat_level = umr_bitslice_reg(asic, reg, "COMPAT_LEVEL", value);
+		ws->hw_id2.compat_level = umr_bitslice_reg_quiet(asic, reg, "COMPAT_LEVEL", value); // not on 10.3
 
 	ws->wave_inst_dw0 = buf[x++];
 
@@ -422,8 +422,10 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 		ws->trapsts.excp_hi       = umr_bitslice_reg(asic, reg, "EXCP_HI", value);
 		ws->trapsts.buffer_oob    = umr_bitslice_reg(asic, reg, "BUFFER_OOB", value);
 		ws->trapsts.excp_cycle    = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
+		ws->trapsts.excp_group_mask = umr_bitslice_reg_quiet(asic, reg, "EXCP_GROUP_MASK", value);
 		ws->trapsts.excp_wave64hi = umr_bitslice_reg(asic, reg, "EXCP_WAVE64HI", value);
-		ws->trapsts.xnack_error   = umr_bitslice_reg(asic, reg, "XNACK_ERROR", value);
+		ws->trapsts.xnack_error   = umr_bitslice_reg_quiet(asic, reg, "XNACK_ERROR", value);
+		ws->trapsts.utc_error     = umr_bitslice_reg_quiet(asic, reg, "UTC_ERROR", value);
 		ws->trapsts.dp_rate       = umr_bitslice_reg(asic, reg, "DP_RATE", value);
 
 	ws->ib_sts.value = value = buf[x++];
@@ -435,7 +437,7 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 							  (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT4", value) << 4) |
 							  (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT5", value) << 5);
 		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
-		ws->ib_sts.replay_w64h = umr_bitslice_reg(asic, reg, "REPLAY_W64H", value);
+		ws->ib_sts.replay_w64h = umr_bitslice_reg_quiet(asic, reg, "REPLAY_W64H", value);
 		ws->ib_sts.vs_cnt   = umr_bitslice_reg(asic, reg, "VS_CNT", value);
 
 	ws->ib_sts2.value = value = buf[x++];
@@ -445,8 +447,8 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 		ws->ib_sts2.mem_order         = umr_bitslice_reg(asic, reg, "MEM_ORDER", value);
 		ws->ib_sts2.fwd_progress      = umr_bitslice_reg(asic, reg, "FWD_PROGRESS", value);
 		ws->ib_sts2.wave64            = umr_bitslice_reg(asic, reg, "WAVE64", value);
-		ws->ib_sts2.wave64hi          = umr_bitslice_reg(asic, reg, "WAVE64HI", value);
-		ws->ib_sts2.subv_loop         = umr_bitslice_reg(asic, reg, "SUBV_LOOP", value);
+		ws->ib_sts2.wave64hi          = umr_bitslice_reg_quiet(asic, reg, "WAVE64HI", value);
+		ws->ib_sts2.subv_loop         = umr_bitslice_reg_quiet(asic, reg, "SUBV_LOOP", value);
 
 	ws->ib_dbg1 = buf[x++];
 	ws->m0 = buf[x++];

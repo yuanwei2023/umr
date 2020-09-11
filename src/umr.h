@@ -571,7 +571,9 @@ struct umr_wave_status {
 			excp_hi,
 			excp_wave64hi,
 			xnack_error,
-			buffer_oob;
+			buffer_oob,
+			excp_group_mask,
+			utc_error;
 	} trapsts;
 };
 
@@ -890,6 +892,7 @@ int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uin
 
 // slice a full register into bits (shifted into LSB)
 uint64_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
+uint64_t umr_bitslice_reg_quiet(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue);
 

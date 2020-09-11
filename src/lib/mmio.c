@@ -98,6 +98,31 @@ int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint64_t value)
 	return umr_write_reg_by_name_by_ip(asic, NULL, name, value);
 }
 
+
+/**
+ * umr_bitslice_reg_quiet - Slice a register value by a bitfield
+ *
+ * Returns the value of a bitfield of a register specified by
+ * @reg by the bitfield parameters specified by the name @bitname.
+ * The entire register value must be specified by @regvalue.
+ *
+ * This function will return 2^32 - 1 if the register is not found
+ * so it cannot be used for bitfields that are a full 32-bits wide
+ */
+uint64_t umr_bitslice_reg_quiet(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue)
+{
+	int i;
+	(void)asic;
+	for (i = 0; i < reg->no_bits; i++) {
+		if (!strcmp(bitname, reg->bits[i].regname)) {
+			regvalue >>= reg->bits[i].start;
+			regvalue &= (1ULL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
+			return regvalue;
+		}
+	}
+	return 0xFFFFFFFFULL;
+}
+
 /**
  * umr_bitslice_reg - Slice a register value by a bitfield
  *

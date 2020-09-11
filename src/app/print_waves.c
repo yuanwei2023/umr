@@ -24,8 +24,10 @@
  */
 #include "umrapp.h"
 
-#define PP(x, y) if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s%20s%s: %s%8u%s | ", GREEN, #y, RST, BLUE, (unsigned)wd->ws.x.y, RST);
-#define PX(x, y) if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s%20s%s: %s%08lx%s | ", GREEN, #y, RST, BLUE, (unsigned long)wd->ws.x.y, RST);
+// print bitfields but skip ones set to 2^32 - 1 as they are not 
+// present on the current asic
+#define PP(x, y) if (wd->ws.x.y != 0xFFFFFFFF) { if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s%20s%s: %s%8u%s | ", GREEN, #y, RST, BLUE, (unsigned)wd->ws.x.y, RST); }
+#define PX(x, y) if (wd->ws.x.y != 0xFFFFFFFF) { if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s%20s%s: %s%08lx%s | ", GREEN, #y, RST, BLUE, (unsigned long)wd->ws.x.y, RST); }
 
 #define P(x) if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s%20s%s: %s%8u%s | ", GREEN, #x, RST, BLUE, (unsigned)wd->ws.x, RST);
 #define X(x) if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s%20s%s: %s%08lx%s | ", GREEN, #x, RST, BLUE, (unsigned long)wd->ws.x, RST);
@@ -632,6 +634,8 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			PP(trapsts, excp_wave64hi);
 			PP(trapsts, xnack_error);
 			PP(trapsts, dp_rate);
+			PP(trapsts, excp_group_mask);
+			PP(trapsts, utc_error);
 
 			printf("\n"); col = 0;
 		}
