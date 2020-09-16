@@ -38,6 +38,16 @@ and then to install:
 
     $ make install
 
+To build rpm and deb packages, you will need rpmbuild, dpkg and cpack.
+To build:
+
+    $ cpack
+
+and then to install:
+
+    $ sudo rpm -i ./umr-1.0.1-Linux.rpm # or
+    $ sudo dpkg -i ././umr-1.0.1-Linux.deb
+
 If you plan to use it as a non-root user you may want to add the
 setuid bit:
 
