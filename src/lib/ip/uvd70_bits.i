@@ -317,6 +317,17 @@ static struct umr_bitfield mmUVD_MASTINT_EN[] = {
 	 { "SYS_EN", 2, 2, &umr_bitfield_default },
 	 { "INT_OVERRUN", 4, 22, &umr_bitfield_default },
 };
+static struct umr_bitfield mmUVD_FW_STATUS[] = {
+	 { "BUSY", 0, 0, &umr_bitfield_default },
+	 { "ACTIVE", 1, 1, &umr_bitfield_default },
+	 { "SEND_EFUSE_REQ", 2, 2, &umr_bitfield_default },
+	 { "DONE", 8, 8, &umr_bitfield_default },
+	 { "PASS", 16, 16, &umr_bitfield_default },
+	 { "FAIL", 17, 17, &umr_bitfield_default },
+	 { "INVALID_LEN", 18, 18, &umr_bitfield_default },
+	 { "INVALID_0_PADDING", 19, 19, &umr_bitfield_default },
+	 { "INVALID_NONCE", 20, 20, &umr_bitfield_default },
+};
 static struct umr_bitfield mmJPEG_CGC_CTRL[] = {
 	 { "DYN_CLOCK_MODE", 0, 0, &umr_bitfield_default },
 	 { "JPEG2_MODE", 1, 1, &umr_bitfield_default },
