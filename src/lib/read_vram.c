@@ -190,7 +190,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
 			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFF000ULL;
 			pde_fields.valid         = pde_entry & 1;
-			if (memcmp(&pde_copy, &pde_fields, sizeof pde_fields) && asic->options.verbose)
+			if ((asic->options.no_fold_vm_decode || memcmp(&pde_copy, &pde_fields, sizeof pde_fields)) && asic->options.verbose)
 				asic->mem_funcs.vm_message("PDE=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 "\n",
 						pde_entry,
 						address & pde_mask,
@@ -609,7 +609,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			// TODO: Should "page_table_block_size" just be 9 to account for potential PTB1 selectors?
 			va_mask = ((uint64_t)511 << ((page_table_depth)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
 
-			if (memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields) && asic->options.verbose)
+			if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose)
 				asic->mem_funcs.vm_message("BASE=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 "\n",
 						pde_entry,
 						address & va_mask,
@@ -679,7 +679,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 							(unsigned)page_table_block_size);
 				}
 				if (!pde_fields.pte) {
-					if (memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields) && asic->options.verbose) {
+					if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose) {
 						asic->mem_funcs.vm_message("%s PDE%d@{0x%" PRIx64 "/%" PRIx64 "}=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 "\n",
 								&indentation[15-pde_cnt*3],
 								page_table_depth - pde_cnt,
@@ -817,7 +817,7 @@ pde_is_pte:
 			pde_fields.system        = (page_table_base_addr >> 1) & 1;
 			pde_fields.valid         = page_table_base_addr & 1;
 
-			if (memcmp(&pde_array[0], &pde_fields, sizeof pde_fields) && asic->options.verbose)
+			if ((asic->options.no_fold_vm_decode || memcmp(&pde_array[0], &pde_fields, sizeof pde_fields)) && asic->options.verbose)
 				asic->mem_funcs.vm_message("PDE=0x%016" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", FS=%" PRIu64 "\n",
 						page_table_base_addr,
 						pde_fields.pte_base_addr,

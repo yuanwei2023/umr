@@ -144,6 +144,12 @@ The options available are:
 +-------------------+-------------------------------------------------------------------------+
 | disasm_anyways    | Enable disassembly in --waves even if rings are not halted.             |
 +-------------------+-------------------------------------------------------------------------+
+| no_fold_vm_decode | Disable folding of PDEs when VM decoding multiple pages of memory.      |
+|                   | By default, when subsequent pages are decoded if PDEs match previous    |
+|                   | pages they are omitted to cut down on the verbosity of the output.      |
+|                   | This option disables this and will print the full chain of PDEs for     |
+|                   | every page decoded.                                                     |
++-------------------+-------------------------------------------------------------------------+
 
 ------------------
 Device Information

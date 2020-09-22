@@ -169,6 +169,8 @@ static void parse_options(char *str)
 			options.no_disasm = 1;
 		} else if (!strcmp(option, "disasm_anyways")) {
 			options.disasm_anyways = 1;
+		} else if (!strcmp(option, "no_fold_vm_decode")) {
+			options.no_fold_vm_decode = 1;
 		} else {
 			printf("error: Unknown option [%s]\n", option);
 			exit(EXIT_FAILURE);
@@ -800,8 +802,10 @@ int main(int argc, char **argv)
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2020, AMD Inc.\n"
 "\n*** Device Selection ***\n"
-"\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags: bits, bitsfull, empty_log, follow, no_follow_ib, named, many,"
-	"\n\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves, disasm_early_term, no_disasm, disasm_anyways, wave64, full_shader\n"
+"\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
+	"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib, named, many,"
+	"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
+	"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, full_shader, no_fold_vm_decode\n"
 "\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 	"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 "\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"

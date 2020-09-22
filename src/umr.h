@@ -241,7 +241,8 @@ struct umr_options {
 	    skip_gprs,
 	    wave64,
 	    full_shader,
-	    context_reg_bank;
+	    context_reg_bank,
+	    no_fold_vm_decode;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
