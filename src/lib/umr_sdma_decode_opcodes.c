@@ -245,8 +245,8 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 					case 0: // WAIT_REG_MEM
 						if (!(stream->header_dw & (1UL << 31))) {
 							ui->add_field(ui, ib_addr + 4, ib_vmid, "REGISTER", BITS(stream->words[0], 2, 20), umr_reg_name(asic, BITS(stream->words[0], 2, 20)), 16);
-							if ((stream->header_dw >> 26) & 1) { // if HDP_FLUSH, the write register is provided
-								ui->add_field(ui, ib_addr + 8, ib_vmid, "REGISTER", BITS(stream->words[1], 2, 20), umr_reg_name(asic, BITS(stream->words[1], 2, 20)), 16);
+							if (((stream->header_dw >> 26) & 3) == 1) { // if HDP_FLUSH, the write register is provided
+								ui->add_field(ui, ib_addr + 8, ib_vmid, "REGISTER", BITS(stream->words[1], 2, 18), umr_reg_name(asic, BITS(stream->words[1], 2, 18)), 16);
 							} else {
 								ui->add_field(ui, ib_addr + 8, ib_vmid, NULL, stream->words[1], NULL, 16);
 							}
