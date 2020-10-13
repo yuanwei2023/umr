@@ -475,7 +475,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
 
 	if (page_table_base_addr == 0xFFFFFFFFFFFFFFFFULL)
-		asic->mem_funcs.vm_message("PAGE_TABLE_BASE_ADDRESS read as all F's likely indicates that the ASIC is powered off\n");
+		asic->mem_funcs.vm_message(
+			"PAGE_TABLE_BASE_ADDRESS read as all F's likely indicates that the ASIC is powered off (possibly via gfxoff)\n"
+			"On GFX 10+ parts with gfxoff enabled a hang can occur, please disable with '--gfxoff 0'\n");
 
 	// update addresses for APUs
 	if (!strcmp(asic->asicname, "raven1")) {

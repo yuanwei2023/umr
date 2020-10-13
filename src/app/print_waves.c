@@ -643,7 +643,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	}
 
 	if (first)
-		printf("No active waves!\n");
+		printf("No active waves! (or GFXOFF was not disabled)\n");
 
 	wd = owd;
 	while (wd) {

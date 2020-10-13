@@ -82,10 +82,17 @@ static int umr_get_wave_status_ai(struct umr_asic *asic, unsigned se, unsigned s
 
 static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
-	uint32_t buf[32];
+	uint32_t buf[32], reg;
 
 	if (simd)
 		fprintf(stderr, "[BUG]: simd should be zero in umr_get_wave_status_nv()\n");
+
+	// do a trial read of VMID 0's BASE ADDR to see if it's all F's
+	reg = umr_read_reg_by_name_by_ip(asic, "gfx", "mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_LO32");
+	if (reg == 0xFFFFFFFF) {
+		fprintf(stderr, "[ERROR]: The GFXOFF feature may be enabled leading to incorrect behaviour.\nPlease disable with '--gfxoff 0' before reading waves.\n");
+		return -1;
+	}
 
 	memset(buf, 0, sizeof buf);
 

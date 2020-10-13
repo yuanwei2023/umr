@@ -471,19 +471,23 @@ int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, c
  *
  * \param cu the CU on <=gfx9, the WGP on >=gfx10
  */
-static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
+static int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
 			       uint32_t simd, uint32_t wave, struct umr_wave_data *pwd)
 {
 	unsigned thread, num_threads;
+	int r;
 
 	if (asic->family <= FAMILY_AI)
-		asic->wave_funcs.get_wave_status(asic, se, sh, cu, simd, wave, &pwd->ws);
+		r = asic->wave_funcs.get_wave_status(asic, se, sh, cu, simd, wave, &pwd->ws);
 	else
-		asic->wave_funcs.get_wave_status(asic, se, sh, MANY_TO_INSTANCE(cu, simd), 0, wave, &pwd->ws);
+		r = asic->wave_funcs.get_wave_status(asic, se, sh, MANY_TO_INSTANCE(cu, simd), 0, wave, &pwd->ws);
+
+	if (r)
+		return -1;
 
 	if (!pwd->ws.wave_status.valid &&
 	    (!pwd->ws.wave_status.halt || pwd->ws.wave_status.value == 0xbebebeef))
-		return false;
+		return 0;
 
 	pwd->se = se;
 	pwd->sh = sh;
@@ -512,7 +516,7 @@ static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, 
 		pwd->have_vgprs = 0;
 	}
 
-	return true;
+	return 1;
 }
 
 /**
@@ -524,24 +528,28 @@ static bool umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, 
  *              list of wave data structures, with the last element yet to be filled in.
  *              The pointer-to-pointer-to is updated by this function.
  */
-static void umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu, uint32_t simd,
+static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu, uint32_t simd,
 			       struct umr_wave_data ***pppwd)
 {
 	uint32_t wave, wave_limit;
+	int r;
 
 	wave_limit = asic->family <= FAMILY_AI ? 10 : 20;
 
 	for (wave = 0; wave < wave_limit; wave++) {
 		struct umr_wave_data *pwd = **pppwd;
-		if (umr_scan_wave_slot(asic, se, sh, cu, simd, wave, pwd)) {
+		if ((r = umr_scan_wave_slot(asic, se, sh, cu, simd, wave, pwd)) == 1) {
 			pwd->next = calloc(1, sizeof(*pwd));
 			if (!pwd->next) {
 				fprintf(stderr, "[ERROR]: Out of memory\n");
-				return;
+				return -1;
 			}
 			*pppwd = &pwd->next;
 		}
+		if (r == -1)
+			return -1;
 	}
+	return 0;
 }
 
 /**
@@ -552,9 +560,10 @@ static void umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, 
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 {
 	uint32_t se, sh, cu, simd;
-	struct umr_wave_data *head, **ptail;
+	struct umr_wave_data *ohead, *head, **ptail;
+	int r;
 
-	head = calloc(1, sizeof *head);
+	ohead = head = calloc(1, sizeof *head);
 	if (!head) {
 		fprintf(stderr, "[ERROR]: Out of memory\n");
 		return NULL;
@@ -567,14 +576,20 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 		if (asic->family <= FAMILY_AI) {
 			asic->wave_funcs.get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
 			if ((*ptail)->ws.sq_info.busy) {
-				for (simd = 0; simd < 4; simd++)
-					umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+				for (simd = 0; simd < 4; simd++) {
+					r = umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+					if (r < 0)
+						goto error;
+				}
 			}
 		} else {
 			for (simd = 0; simd < 4; simd++) {
 				asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(cu, simd), &(*ptail)->ws);
-				if ((*ptail)->ws.sq_info.busy)
-					umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+				if ((*ptail)->ws.sq_info.busy) {
+					r = umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+					if (r < 0)
+						goto error;
+				}
 			}
 		}
 	}
@@ -583,4 +598,11 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 	free(*ptail);
 	*ptail = NULL;
 	return head;
+error:
+	while (ohead) {
+		head = ohead->next;
+		free(ohead);
+		ohead = head;
+	}
+	return NULL;
 }
