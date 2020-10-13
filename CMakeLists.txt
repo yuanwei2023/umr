@@ -66,7 +66,7 @@ if(UMR_NO_LLVM)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_LLVM")
 else()
 find_package(LLVM REQUIRED COMPONENTS all)
-include_directories(${LLVM_INCLUDE_DIR})
+include_directories(${LLVM_INCLUDE_DIRS})
 
 if(LLVM_CMAKE_DIR)
   list(APPEND CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
