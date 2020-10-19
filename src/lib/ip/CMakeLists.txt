@@ -2,6 +2,7 @@
 
 add_library(ip OBJECT
   athub200.c
+  athub210.c
   bif30.c
   bif41.c
   bif50.c
@@ -17,6 +18,7 @@ add_library(ip OBJECT
   dcn10.c
   dcn200.c
   dcn210.c
+  dcn300.c
   dpcs210.c
   gfx60.c
   gfx70.c
@@ -27,6 +29,7 @@ add_library(ip OBJECT
   gfx91.c
   gfx921.c
   gfx1010.c
+  gfx1030.c
   gmc60.c
   gmc70.c
   gmc81.c
@@ -78,6 +81,7 @@ add_library(ip OBJECT
   umc60.c
   umc611.c
   umc612.c
+  umc870.c
   uvd40.c
   uvd42.c
   uvd5.c
@@ -90,6 +94,7 @@ add_library(ip OBJECT
   vcn10.c
   vcn200.c
   vcn250.c
+  vcn300.c
 )
 
 if(MSVC)

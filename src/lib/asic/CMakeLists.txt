@@ -22,6 +22,7 @@ add_library(asic OBJECT
   polaris12.c
   raven1.c
   renoir.c
+  sienna_cichlid.c
   stoney.c
   tahiti.c
   tonga.c

@@ -48,6 +48,7 @@ static const struct {
 	{ "pitcairn", &umr_create_pitcairn },
 	{ "raven1", &umr_create_raven1 },
 	{ "renoir", &umr_create_renoir },
+	{ "sienna_cichlid", &umr_create_sienna_cichlid },
 	{ "stoney", &umr_create_stoney },
 	{ "tahiti", &umr_create_tahiti },
 	{ "tonga", &umr_create_tonga  },

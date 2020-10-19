@@ -759,6 +759,13 @@ struct umr_ip_block *umr_create_oss50(struct umr_ip_offsets_soc15 *soc15_offsets
 struct umr_ip_block *umr_create_thm1102(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_vcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 
+// sienna_cichlid
+struct umr_ip_block *umr_create_athub210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_dcn300(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_gfx1030(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_ex_umc870(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
+struct umr_ip_block *umr_create_ex_vcn300(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
+
 /* ip block constructors */
 struct umr_ip_block *umr_create_uvd40(struct umr_options *options);
 struct umr_ip_block *umr_create_uvd42(struct umr_options *options);
@@ -816,6 +823,7 @@ struct umr_asic *umr_create_mullins(struct umr_options *options);
 struct umr_asic *umr_create_navi10(struct umr_options *options);
 struct umr_asic *umr_create_navi12(struct umr_options *options);
 struct umr_asic *umr_create_navi14(struct umr_options *options);
+struct umr_asic *umr_create_sienna_cichlid(struct umr_options *options);
 struct umr_asic *umr_create_oland(struct umr_options *options);
 struct umr_asic *umr_create_pitcairn(struct umr_options *options);
 struct umr_asic *umr_create_polaris10(struct umr_options *options);

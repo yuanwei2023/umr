@@ -48,6 +48,8 @@ parse_offsets() {
 	)
 }
 
+parse_offsets ${pk}/sienna_cichlid_ip_offset.h src/lib/asic/sienna_cichlid.i
+exit 0
 parse_offsets ${pk}/renoir_ip_offset.h src/lib/asic/renoir.i
 parse_offsets ${pk}/arct_ip_offset.h src/lib/asic/arct.i
 parse_offsets ${pk}/navi10_ip_offset.h src/lib/asic/navi10.i

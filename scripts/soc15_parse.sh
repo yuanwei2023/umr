@@ -91,6 +91,16 @@ ENDCB
 ) > /tmp/countbits.c
 gcc /tmp/countbits.c -o /tmp/countbits
 
+#sienna_cichlid
+parse_bits ${pk}/athub/athub_2_1_0 src/lib/ip/athub210
+parse_bits ${pk}/gc/gc_10_3_0 src/lib/ip/gfx1030
+parse_bits ${pk}/umc/umc_8_7_0 src/lib/ip/umc870
+parse_bits ${pk}/vcn/vcn_3_0_0 src/lib/ip/vcn300
+parse_bits ${pk}/dcn/dcn_3_0_0 src/lib/ip/dcn300
+
+exit 0
+
+
 parse_bits ${pk}/pwr/pwr_10_0 src/lib/ip/pwr1000
 parse_bits ${pk}/smuio/smuio_12_0_0 src/lib/ip/smuio1200
 
