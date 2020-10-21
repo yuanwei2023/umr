@@ -766,6 +766,13 @@ struct umr_ip_block *umr_create_gfx1030(struct umr_ip_offsets_soc15 *soc15_offse
 struct umr_ip_block *umr_create_ex_umc870(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
 struct umr_ip_block *umr_create_ex_vcn300(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
 
+// vangogh
+struct umr_ip_block *umr_create_clk1150(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_dcn301(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_mmhub230(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_mp1150(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_nbio720(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+
 /* ip block constructors */
 struct umr_ip_block *umr_create_uvd40(struct umr_options *options);
 struct umr_ip_block *umr_create_uvd42(struct umr_options *options);
@@ -824,6 +831,7 @@ struct umr_asic *umr_create_navi10(struct umr_options *options);
 struct umr_asic *umr_create_navi12(struct umr_options *options);
 struct umr_asic *umr_create_navi14(struct umr_options *options);
 struct umr_asic *umr_create_sienna_cichlid(struct umr_options *options);
+struct umr_asic *umr_create_vangogh(struct umr_options *options);
 struct umr_asic *umr_create_oland(struct umr_options *options);
 struct umr_asic *umr_create_pitcairn(struct umr_options *options);
 struct umr_asic *umr_create_polaris10(struct umr_options *options);
@@ -884,7 +892,7 @@ char *umr_reg_name(struct umr_asic *asic, uint64_t addr);
 
 // find the register data for a register
 struct umr_reg *umr_find_reg_data_by_ip(struct umr_asic *asic, const char *ip, const char *regname);
-struct umr_reg *umr_find_reg_data(struct umr_asic *asic, char *regname);
+struct umr_reg *umr_find_reg_data(struct umr_asic *asic, const char *regname);
 struct umr_reg *umr_find_reg_by_addr(struct umr_asic *asic, uint64_t addr, struct umr_ip_block **ip);
 
 // read/write a 32-bit register given a BYTE address

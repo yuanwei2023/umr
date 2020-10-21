@@ -9,6 +9,7 @@ add_library(ip OBJECT
   bif51.c
   clk1002.c
   clk1100.c
+  clk1150.c
   dce100.c
   dce110.c
   dce112.c
@@ -19,6 +20,7 @@ add_library(ip OBJECT
   dcn200.c
   dcn210.c
   dcn300.c
+  dcn301.c
   dpcs210.c
   gfx60.c
   gfx70.c
@@ -37,15 +39,18 @@ add_library(ip OBJECT
   hdp500.c
   mmhub10.c
   mmhub200.c
+  mmhub230.c
   mmhub91.c
   mmhub930.c
   mmhub941.c
   mp90.c
   mp100.c
   mp1100.c
+  mp1150.c
   mp1200.c
   nbio61.c
   nbio70.c
+  nbio720.c
   nbio230.c
   oss10.c
   oss20.c

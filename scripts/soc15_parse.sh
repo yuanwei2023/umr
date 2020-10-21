@@ -19,16 +19,16 @@ if [ ! -f ${smnfile} ]; then smnfile=""; fi
 
 printf "Parsing ${regfile} ${smnfile}\n"
 
-grep -E "(smn|mm|ix)" ${regfile} ${smnfile} | grep -v _BASE_IDX | grep -v "_DEFAULT.+" | grep -v "addressBlock:" | (while read line; do
+grep -E "(reg|smn|mm|ix)" ${regfile} ${smnfile} | grep -v _BASE_IDX | grep -v "_DEFAULT.+" | grep -v "addressBlock:" | (while read line; do
 	reg=`echo "${line}" | awk '{ print $2; }'`
 	addr=`echo "${line}" | awk '{ print $3; }'`
-	regclean=`echo ${reg} | sed -e 's/^mm//g' | sed -e 's/^ix//g'`
+	regclean=`echo ${reg} | sed -e 's/^mm//g' | sed -e 's/^ix//g' | sed -e 's/^reg//g'`
 	regidx=`grep ${reg}_BASE_IDX ${regfile} | awk '{ print $3; }'`
 	if [ "${regidx}" == "" ]; then regidx="0"; fi
 
 	`echo ${reg} | grep '^smn' > /dev/null`
 	if [ $? != 0 ]; then
-		`echo ${reg} | grep '^mm' > /dev/null` ;
+		`echo ${reg} | grep -E '^(reg|mm)' > /dev/null` ;
 		if [ $? != 0 ]; then
 			class="SMC";
 		else
@@ -90,6 +90,15 @@ int main(int argc, char **argv)
 ENDCB
 ) > /tmp/countbits.c
 gcc /tmp/countbits.c -o /tmp/countbits
+
+#van gogh
+parse_bits ${pk}/clk/clk_11_5_0 src/lib/ip/clk1150
+parse_bits ${pk}/dcn/dcn_3_0_1 src/lib/ip/dcn301
+parse_bits ${pk}/mmhub/mmhub_2_3_0 src/lib/ip/mmhub230
+parse_bits ${pk}/mp/mp_11_5_0 src/lib/ip/mp1150
+parse_bits ${pk}/nbio/nbio_7_2_0 src/lib/ip/nbio720
+
+exit 0
 
 #sienna_cichlid
 parse_bits ${pk}/athub/athub_2_1_0 src/lib/ip/athub210

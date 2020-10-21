@@ -53,6 +53,7 @@ static const struct {
 	{ "tahiti", &umr_create_tahiti },
 	{ "tonga", &umr_create_tonga  },
 	{ "topaz", &umr_create_topaz },
+	{ "vangogh", &umr_create_vangogh },
 	{ "vega10", &umr_create_vega10 },
 	{ "vega12", &umr_create_vega12 },
 	{ "vega20", &umr_create_vega20 },

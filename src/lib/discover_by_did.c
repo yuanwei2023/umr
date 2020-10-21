@@ -53,6 +53,7 @@ static const struct {
 	{ 0x15D8, &umr_create_picasso },
 	{ 0x15DD, &umr_create_raven1 },
 	{ 0x1636, &umr_create_renoir },
+	{ 0x163F, &umr_create_vangogh },
 	{ 0x6600, &umr_create_oland },
 	{ 0x6601, &umr_create_oland },
 	{ 0x6602, &umr_create_oland },

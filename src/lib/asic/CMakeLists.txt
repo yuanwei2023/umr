@@ -27,6 +27,7 @@ add_library(asic OBJECT
   tahiti.c
   tonga.c
   topaz.c
+  vangogh.c
   vega10.c
   vega12.c
   vega20.c
