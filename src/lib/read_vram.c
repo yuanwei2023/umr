@@ -480,7 +480,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			"On GFX 10+ parts with gfxoff enabled a hang can occur, please disable with '--gfxoff 0'\n");
 
 	// update addresses for APUs
-	if (!strcmp(asic->asicname, "raven1")) {
+	if (!strcmp(asic->asicname, "raven1") || !strcmp(asic->asicname, "vangogh")) {
 		registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
 		registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
 		sprintf(buf, "mm%sMC_VM_FB_OFFSET", regprefix);
