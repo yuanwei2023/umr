@@ -1012,7 +1012,10 @@ static void top_build_vi_program(struct umr_asic *asic)
 
 	// More GFX bits
 	ENTRY(i++, "mmTA_STATUS", &stat_ta_bits[0], &top_options.vi.ta, "TA");
-	ENTRY(i++, "mmVGT_CNTL_STATUS", &stat_vgt_bits[0], &top_options.vi.vgt, "VGT");
+
+	// VGT bits only valid for gfx7..9
+	if (asic->family < FAMILY_NV)
+		ENTRY(i++, "mmVGT_CNTL_STATUS", &stat_vgt_bits[0], &top_options.vi.vgt, "VGT");
 
 	// UVD registers
 		if (asic->family < FAMILY_AI)
