@@ -171,6 +171,8 @@ static void parse_options(char *str)
 			options.disasm_anyways = 1;
 		} else if (!strcmp(option, "no_fold_vm_decode")) {
 			options.no_fold_vm_decode = 1;
+		} else if (!strcmp(option, "no_scan_waves")) {
+			options.no_scan_waves = 1;
 		} else {
 			printf("error: Unknown option [%s]\n", option);
 			exit(EXIT_FAILURE);

@@ -145,10 +145,14 @@ void umr_read_ring(struct umr_asic *asic, char *ringpath)
 	free(ring_data);
 	printf("\n");
 
-	gprs = asic->options.skip_gprs;
-	asic->options.skip_gprs = 1;
-	wd = umr_scan_wave_data(asic);
-	asic->options.skip_gprs = gprs;
+	if (!asic->options.no_scan_waves) {
+		gprs = asic->options.skip_gprs;
+		asic->options.skip_gprs = 1;
+		wd = umr_scan_wave_data(asic);
+		asic->options.skip_gprs = gprs;
+	} else {
+		wd = NULL;
+	}
 	umr_dump_shaders(asic, &decoder, wd);
 	pdecoder = decoder.next_ib;
 	while (pdecoder) {
