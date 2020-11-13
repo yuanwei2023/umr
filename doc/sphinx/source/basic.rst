@@ -150,6 +150,8 @@ The options available are:
 |                   | This option disables this and will print the full chain of PDEs for     |
 |                   | every page decoded.                                                     |
 +-------------------+-------------------------------------------------------------------------+
+| no_scan_waves     | Disable scaning for wave data during --ring output                      |
++-------------------+-------------------------------------------------------------------------+
 
 ------------------
 Device Information
