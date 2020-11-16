@@ -146,8 +146,19 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 		}
 	}
 
-	if (count == 0)
-		fprintf(stderr, "[ERROR]: Path <%s.%s.%s> not found on this ASIC\n", asicname, ipname, regname);
+	if (count == 0) {
+		if (!memcmp(regname_copy, "reg", 3)) {
+			fprintf(stderr, "[ERROR]: Path <%s.%s.%s> not found on this ASIC\n", asicname, ipname, regname);
+			return 0;
+		} else {
+			char tmpregname[256];
+			// try scanning for reg that starts with reg
+			strcpy(tmpregname, "reg");
+			strcat(tmpregname, regname + 2);
+			fprintf(stderr, "[WARNING]: Retrying operation with new 'reg' name <%s>.\n", tmpregname);
+			return umr_scan_asic(asic, asicname, ipname, tmpregname);
+		}
+	}
 
 	r = 0;
 error:

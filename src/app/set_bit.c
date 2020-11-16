@@ -115,7 +115,14 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 			}
 		}
 	}
-	fprintf(stderr, "[ERROR]: Path <%s> not found on this ASIC\n", regpath);
-	return -1;
+	if (!memcmp(regname, "reg", 3)) {
+		fprintf(stderr, "[ERROR]: Path <%s> not found on this ASIC\n", regpath);
+		return -1;
+	} else {
+		char newregpath[512];
+		sprintf(newregpath, "%s.%s.reg%s.%s", asicname, ipname, regname + 2, bitname);
+		fprintf(stderr, "[WARNING]: Retrying operation with new 'reg' prefix path <%s>.\n", newregpath);
+		return umr_set_register_bit(asic, newregpath, regvalue);
+	}
 }
 
