@@ -28,7 +28,7 @@ static const struct {
 	char *aka[8];
 } common_names[] = {
 	{ { "DCN", "DCE", "DMU", NULL } },
-	{ { "UVD", "UVD0", "VCN", NULL } },
+	{ { "UVD", "UVD0", "VCN", "VCN0", NULL } },
 	{ { "NBIF", "NBIO", "NBIF0", "NBIO0", NULL } },
 	{ { NULL } },
 };

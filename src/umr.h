@@ -835,6 +835,8 @@ struct umr_asic *umr_create_navi10(struct umr_options *options);
 struct umr_asic *umr_create_navi12(struct umr_options *options);
 struct umr_asic *umr_create_navi14(struct umr_options *options);
 struct umr_asic *umr_create_sienna_cichlid(struct umr_options *options);
+struct umr_asic *umr_create_navy_flounder(struct umr_options *options);
+struct umr_asic *umr_create_dimgrey_cavefish(struct umr_options *options);
 struct umr_asic *umr_create_vangogh(struct umr_options *options);
 struct umr_asic *umr_create_oland(struct umr_options *options);
 struct umr_asic *umr_create_pitcairn(struct umr_options *options);

@@ -5,6 +5,7 @@ add_library(asic OBJECT
   arcturus.c
   bonaire.c
   carrizo.c
+  dimgrey_cavefish.c
   fiji.c
   hainan.c
   hawaii.c
@@ -14,6 +15,7 @@ add_library(asic OBJECT
   navi10.c
   navi12.c
   navi14.c
+  navy_flounder.c
   oland.c
   picasso.c
   pitcairn.c
