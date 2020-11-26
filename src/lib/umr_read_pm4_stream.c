@@ -305,7 +305,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 			}
 
 			// we have everything we need to point to an IB
-			if (uvd_ib.n == 15) {
+			if (!asic->options.no_follow_ib && uvd_ib.n == 15) {
 				void *buf;
 				buf = calloc(1, uvd_ib.size);
 				if (umr_read_vram(asic, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
