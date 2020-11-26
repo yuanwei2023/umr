@@ -308,10 +308,13 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 			if (uvd_ib.n == 15) {
 				void *buf;
 				buf = calloc(1, uvd_ib.size);
-				if (umr_read_vram(asic, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0)
+				if (umr_read_vram(asic, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
 					fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
-				else
+				} else {
 					ps->ib = umr_pm4_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4);
+					ps->ib_source.addr = uvd_ib.addr;
+					ps->ib_source.vmid = uvd_ib.vmid;
+				}
 				free(buf);
 				memset(&uvd_ib, 0, sizeof uvd_ib);
 			}
