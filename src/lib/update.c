@@ -103,9 +103,42 @@ static void find_reg(struct umr_asic *as, char *ip, char *reg, int *i, int *j)
 			break;
 	}
 
+	// if the block isn't found add it
 	if (*i == as->no_blocks) {
+		void *tmp;
+		struct umr_ip_block *newip;
+
+		// default to error
 		*i = -1;
-		return;
+
+		// allocate new node
+		newip = calloc(1, sizeof(*newip));
+		if (!newip)
+			return;
+
+		// create new block
+		newip->ipname  = strdup(ip);
+		newip->regs    = calloc(1, sizeof(struct umr_reg));
+		newip->no_regs = 0;
+		if (!newip->ipname || !newip->regs) {
+			free(newip->ipname);
+			free(newip->regs);
+			free(newip);
+			printf(">>>what?\n");
+			return;
+		}
+
+		// resize block array to add new member
+		tmp = realloc(as->blocks, (as->no_blocks + 1) * (sizeof(struct umr_ip_block *)));
+		if (!tmp) {
+			free(newip->ipname);
+			free(newip->regs);
+			free(newip);
+			return;
+		}
+		as->blocks = tmp;
+		as->blocks[as->no_blocks] = newip;
+		*i = as->no_blocks++;
 	}
 
 	// make sure the register doesn't exist already
