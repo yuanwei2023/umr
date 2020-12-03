@@ -26,7 +26,7 @@
 
 #include "hdp500_bits.i"
 
-static const struct umr_reg_soc15 hdp50_registers[] = {
+static const struct umr_reg_soc15 hdp500_registers[] = {
 #include "hdp500_regs.i"
 };
 
@@ -38,15 +38,15 @@ struct umr_ip_block *umr_create_hdp500(struct umr_ip_offsets_soc15 *soc15_offset
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "hdp50";
-	ip->no_regs = sizeof(hdp50_registers)/sizeof(hdp50_registers[0]);
+	ip->ipname = "hdp500";
+	ip->no_regs = sizeof(hdp500_registers)/sizeof(hdp500_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
 		free(ip);
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "HDP", hdp50_registers, ip)) {
+	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "HDP", hdp500_registers, ip)) {
 		free(ip);
 		return NULL;
 	}
