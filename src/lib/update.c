@@ -124,7 +124,6 @@ static void find_reg(struct umr_asic *as, char *ip, char *reg, int *i, int *j)
 			free(newip->ipname);
 			free(newip->regs);
 			free(newip);
-			printf(">>>what?\n");
 			return;
 		}
 
