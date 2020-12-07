@@ -129,10 +129,8 @@ out:
 	fclose(f);
 	if (asic->options.empty_log) {
 		f = fopen("/sys/kernel/debug/tracing/trace", "w");
-		if (f) {
-			fprintf(f, "foo\n");
+		if (f)
 			fclose(f);
-		}
 	}
 }
 
