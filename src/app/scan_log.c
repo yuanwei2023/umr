@@ -24,7 +24,7 @@
  */
 #include "umrapp.h"
 
-#define LIST_SIZE (1ULL << 22)
+#define LIST_SIZE (1ULL << 24)
 
 int umr_create_mmio_accel(struct umr_asic *asic)
 {
@@ -95,7 +95,7 @@ void umr_scan_log(struct umr_asic *asic)
 					continue;
 			}
 
-			if (did == asic->did) {
+			if (did == asic->did && regno < (LIST_SIZE)) {
 				do {
 					if (reglist[regno] != NULL) {
 						// bingo
