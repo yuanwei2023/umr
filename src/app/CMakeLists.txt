@@ -58,6 +58,7 @@ target_link_libraries(umr dl)
 endif()
 
 target_link_libraries(umr ${LLVM_LIBS})
+target_link_libraries(umr ${NCURSES_LDFLAGS})
 target_link_libraries(umr ${REQUIRED_EXTERNAL_LIBS})
 
 execute_process(COMMAND ln -sf umr umrgui
