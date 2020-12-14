@@ -406,6 +406,37 @@ static void add_ib_pm4(struct umr_ring_decoder *decoder)
 	memset(&decoder->pm4.next_ib_state, 0, sizeof(decoder->pm4.next_ib_state));
 }
 
+static void add_data_block_pm4(struct umr_ring_decoder *decoder, enum UMR_DATABLOCK_ENUM type)
+{
+	struct umr_pm4_data_block *p = decoder->datablock;
+
+	if (!p) {
+		// start list
+		decoder->datablock = p = calloc(1, sizeof(*p));
+		if (!p) {
+			fprintf(stderr, "[ERROR]: Out of memory in add_data_block_pm4()\n");
+			return;
+		}
+	} else {
+		// append to list
+		while (p->next) {
+			p = p->next;
+		}
+		p->next = calloc(1, sizeof(*p));
+		p = p->next;
+		if (!p) {
+			fprintf(stderr, "[ERROR]: Out of memory in add_data_block_pm4()\n");
+			return;
+		}
+	}
+
+	p->type = type;
+	p->addr = ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo;
+	p->vmid = decoder->pm4.next_ib_state.ib_vmid;
+	p->extra = decoder->pm4.next_ib_state.ib_size;
+
+}
+
 /**
  * add_ib_pm3 - Add an SDMA indirect buffer to the linked list
  */
@@ -1354,16 +1385,38 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 							BLUE, (unsigned)BITS(ib, 24, 26), RST,
 							BLUE, (unsigned)BITS(ib, 26, 29), RST,
 							BLUE, (unsigned)BITS(ib, 29, 32), RST);
+// TODO: is this only for QUEUE_SEL=0?
+						decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid ? decoder->next_ib_info.vmid : BITS(ib, 8, 12);
+						decoder->pm4.next_ib_state.ib_size = BITS(ib, 26, 29);
 						break;
 					case 1:
 						printf("DOORBELL_OFFSET: %s0x%lx%s, QUEUE: %s%u%s",
 							YELLOW, (unsigned long)BITS(ib, 2, 23), RST,
 							BLUE, (unsigned)BITS(ib, 26, 32), RST);
 						break;
-					case 2: printf("MQD_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("MQD_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				}
+				if (decoder->pm4.cur_word > 1) {
+					switch ((decoder->pm4.cur_word - 2) % 4) {
+						case 0: printf("MQD_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								decoder->pm4.next_ib_state.ib_addr_lo = ib;
+								break;
+						case 1: printf("MQD_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								decoder->pm4.next_ib_state.ib_addr_hi = ib;
+								break;
+						case 2: printf("WPTR_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								break;
+						case 3: printf("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								if (!asic->options.no_follow_ib) {
+									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+													  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0) {
+										printf(" [%sUNMAPPED%s]", RED, RST);
+									} else {
+										printf(" [%sMAPPED%s]", GREEN, RST);
+										add_data_block_pm4(decoder, UMR_DATABLOCK_MQD_VI);
+									}
+								}
+								break;
+					}
 				}
 			} else if (asic->family <= FAMILY_NV) {
 				switch(decoder->pm4.cur_word) {
@@ -1376,16 +1429,38 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 							BLUE, (unsigned)BITS(ib, 24, 26), RST,
 							BLUE, (unsigned)BITS(ib, 26, 29), RST,
 							BLUE, (unsigned)BITS(ib, 29, 32), RST);
+// TODO: is this only for QUEUE_SEL=0?
+						decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid ? decoder->next_ib_info.vmid : BITS(ib, 8, 12);
+						decoder->pm4.next_ib_state.ib_size = BITS(ib, 26, 29);
 						break;
 					case 1:
 						printf("CHECK_DISABLE: %s%u%s, DOORBELL_OFFSET: %s0x%lx%s",
 							BLUE, (unsigned)BITS(ib, 1, 2), RST,
 							YELLOW, (unsigned long)BITS(ib, 2, 28), RST);
 						break;
-					case 2: printf("MQD_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
-					case 3: printf("MQD_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
-					case 4: printf("WPTR_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
-					case 5: printf("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST); break;
+				}
+				if (decoder->pm4.cur_word > 1) {
+					switch ((decoder->pm4.cur_word - 2) % 4) {
+						case 0: printf("MQD_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								decoder->pm4.next_ib_state.ib_addr_lo = ib;
+								break;
+						case 1: printf("MQD_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								decoder->pm4.next_ib_state.ib_addr_hi = ib;
+								break;
+						case 2: printf("WPTR_ADDR_LO: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								break;
+						case 3: printf("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
+								if (!asic->options.no_follow_ib) {
+									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+													  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0) {
+										printf(" [%sUNMAPPED%s]", RED, RST);
+									} else {
+										printf(" [%sMAPPED%s]", GREEN, RST);
+										add_data_block_pm4(decoder, UMR_DATABLOCK_MQD_NV);
+									}
+								}
+								break;
+					}
 				}
 			}
 			break;

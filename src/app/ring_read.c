@@ -154,11 +154,13 @@ void umr_read_ring(struct umr_asic *asic, char *ringpath)
 		wd = NULL;
 	}
 	umr_dump_shaders(asic, &decoder, wd);
+	umr_dump_data(asic, &decoder);
 	pdecoder = decoder.next_ib;
 	while (pdecoder) {
 		if (!asic->options.no_follow_ib) {
 			umr_dump_ib(asic, pdecoder);
 			umr_dump_shaders(asic, pdecoder, wd);
+			umr_dump_data(asic, &decoder);
 		}
 		ppdecoder = pdecoder->next_ib;
 		free(pdecoder);

@@ -104,7 +104,7 @@ enum regclass {
 	REG_PCIE
 };
 
-enum UMR_CLOCK_SOURCES{
+enum UMR_CLOCK_SOURCES {
 	UMR_CLOCK_SCLK = 0,
 	UMR_CLOCK_MCLK,
 	UMR_CLOCK_PCIE,
@@ -112,6 +112,11 @@ enum UMR_CLOCK_SOURCES{
 	UMR_CLOCK_SOCCLK,
 	UMR_CLOCK_DCEFCLK,
 	UMR_CLOCK_MAX,
+};
+
+enum UMR_DATABLOCK_ENUM {
+	UMR_DATABLOCK_MQD_VI=0,
+	UMR_DATABLOCK_MQD_NV
 };
 
 struct umr_asic;
@@ -612,6 +617,13 @@ struct umr_shaders_pgm {
 	} src;
 };
 
+struct umr_pm4_data_block {
+	uint32_t vmid, extra;
+	uint64_t addr;
+	enum UMR_DATABLOCK_ENUM type;
+	struct umr_pm4_data_block *next;
+};
+
 struct umr_ring_decoder {
 	// type of ring (4==PM4, 3==SDMA)
 	int
@@ -696,6 +708,9 @@ struct umr_ring_decoder {
 
 	// count shaders in the IB
 	struct umr_shaders_pgm *shader;
+
+	// count data blocks in IB
+	struct umr_pm4_data_block *datablock;
 };
 
 /* ip block constructors for soc15 */
@@ -1123,6 +1138,7 @@ const char *umr_pm4_opcode_to_str(uint32_t header);
 void umr_print_decode(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib);
 void umr_dump_ib(struct umr_asic *asic, struct umr_ring_decoder *decoder);
 void umr_dump_shaders(struct umr_asic *asic, struct umr_ring_decoder *decoder, struct umr_wave_data *wd);
+void umr_dump_data(struct umr_asic *asic, struct umr_ring_decoder *decoder);
 
 int umr_shader_disasm(struct umr_asic *asic,
 		    uint8_t *inst, unsigned inst_bytes,
