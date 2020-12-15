@@ -229,6 +229,9 @@ directly access VRAM.
 Write 'size' bytes (in hex) to the address specified (in hexadecimal) to VRAM
 from stdin.
 
+.IP "--vm-write-word, -vww [vmid@]<address> <data>"
+Write a 32-bit word 'data' (in hex) to a given address (in hex) in host machine order.
+
 .IP "--vm-disasm, -vdis [<vmid>@]<address> <size>"
 Disassemble 'size' bytes (in hex) from a given address (in hex).  The size can be
 specified as zero to have umr try and compute the shader size.

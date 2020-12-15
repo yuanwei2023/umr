@@ -631,6 +631,34 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --vm-write requires two parameters\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "-vww") || !strcmp(argv[i], "--vm-write-word")) {
+			if (i + 2 < argc) {
+				uint64_t address;
+				uint32_t n, data, vmid;
+
+				if (!asic)
+					asic = get_asic();
+
+				// allow specifying the vmid in hex as well so
+				// people can add the HUB flags more easily
+				if ((n = sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
+					if ((n = sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
+						sscanf(argv[i+1], "%"SCNx64, &address);
+						vmid = UMR_LINEAR_HUB;
+					}
+
+				// imply user hub if hub name specified
+				if (options.hub_name[0])
+					vmid |= UMR_USER_HUB;
+
+				sscanf(argv[i+2], "%"SCNx32, &data);
+				if (umr_write_vram(asic, vmid, address, 4, &data))
+					return EXIT_FAILURE;
+			} else {
+				fprintf(stderr, "[ERROR]: --vm-write-word requires two parameters\n");
+				return EXIT_FAILURE;
+			}
+
 		} else if (!strcmp(argv[i], "-vdis") || !strcmp(argv[i], "--vm-disasm")) {
 			if (i + 2 < argc) {
 				uint64_t address;
@@ -890,6 +918,8 @@ printf(
 	"\n\t\tdecodings.\n"
 "\n\t--vm-write, -vw [<vmid>@]<address> <size>"
 	"\n\t\tWrite 'size' bytes (in hex) to a given address (in hex) from stdin.\n"
+"\n\t--vm-write-word, -vww [<vmid>@]<address> <word>"
+	"\n\t\tWrite a 32-bit word 'data' (in hex) to a given address (in hex) in host machine order.\n"
 "\n\t--vm-disasm, -vdis [<vmid>@]<address> <size>"
 	"\n\t\tDisassemble 'size' bytes (in hex) from a given address (in hex).  The size can"
 	"\n\t\tbe specified as zero to have umr try and compute the shader size.\n"
