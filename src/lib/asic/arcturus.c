@@ -35,7 +35,7 @@ struct umr_asic *umr_create_arcturus(struct umr_options *options)
 		umr_create_asic_helper("arcturus", FAMILY_AI,
 			umr_create_gfx90(arct_offs, options),
 			umr_create_hdp40(arct_offs, options),
-			umr_create_oss40(arct_offs, options),
+			umr_create_oss420(arct_offs, options),
 			umr_create_thm90(arct_offs, options),
 			umr_create_mp90(arct_offs, options),
 			umr_create_mmhub941(arct_offs, options),

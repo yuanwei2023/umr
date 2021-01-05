@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Advanced Micro Devices, Inc.
+ * Copyright 2021 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -713,6 +713,7 @@ struct umr_ip_block *umr_create_nbio61(struct umr_ip_offsets_soc15 *soc15_offset
 struct umr_ip_block *umr_create_nbio70(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_oss40(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_oss401(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_oss420(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_sdma040(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_sdma140(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_sdma042(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);

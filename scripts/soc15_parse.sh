@@ -91,6 +91,10 @@ ENDCB
 ) > /tmp/countbits.c
 gcc /tmp/countbits.c -o /tmp/countbits
 
+#added for vega/arcturus
+parse_bits ${pk}/oss/osssys_4_2_0 src/lib/ip/oss420
+exit 0
+
 #van gogh
 parse_bits ${pk}/clk/clk_11_5_0 src/lib/ip/clk1150
 parse_bits ${pk}/dcn/dcn_3_0_1 src/lib/ip/dcn301
@@ -143,7 +147,7 @@ parse_bits ${pk}/hdp/hdp_5_0_0 src/lib/ip/hdp500
 parse_bits ${pk}/mmhub/mmhub_2_0_0 src/lib/ip/mmhub200
 parse_bits ${pk}/mp/mp_11_0 src/lib/ip/mp1100
 parse_bits ${pk}/nbio/nbio_2_3 src/lib/ip/nbio230
-parse_bits ${pk}/oss/osssys_5_0_0 src/lib/ip/oss50
+parse_bits ${pk}/oss/osssys_5_0_0 src/lib/ip/oss500
 parse_bits ${pk}/smuio/smuio_11_0_0 src/lib/ip/smu1100
 parse_bits ${pk}/thm/thm_11_0_2 src/lib/ip/thm1102
 parse_bits ${pk}/vcn/vcn_2_0_0 src/lib/ip/vcn200
@@ -157,7 +161,7 @@ parse_bits ${pk}/uvd/uvd_7_0 src/lib/ip/uvd70
 parse_bits ${pk}/sdma1/sdma1_4_0 src/lib/ip/sdma140
 parse_bits ${pk}/sdma0/sdma0_4_0 src/lib/ip/sdma040
 parse_bits ${pk}/thm/thm_9_0 src/lib/ip/thm90
-parse_bits ${pk}/oss/osssys_4_0 src/lib/ip/oss40
+parse_bits ${pk}/oss/osssys_4_0 src/lib/ip/oss400
 parse_bits ${pk}/gc/gc_9_0 src/lib/ip/gfx90
 parse_bits ${pk}/nbio/nbio_6_1 src/lib/ip/nbio61
 parse_bits ${pk}/hdp/hdp_4_0 src/lib/ip/hdp40
