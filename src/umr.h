@@ -775,7 +775,7 @@ struct umr_ip_block *umr_create_hdp500(struct umr_ip_offsets_soc15 *soc15_offset
 struct umr_ip_block *umr_create_mmhub200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_mp1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_nbio230(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_oss50(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_oss500(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_thm1102(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_vcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 

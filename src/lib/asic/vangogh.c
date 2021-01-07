@@ -42,7 +42,7 @@ struct umr_asic *umr_create_vangogh(struct umr_options *options)
 			umr_create_mmhub230(vangogh_offs, options),
 			umr_create_mp1150(vangogh_offs, options),
 			umr_create_nbio720(vangogh_offs, options),
-			umr_create_oss50(vangogh_offs, options),
+			umr_create_oss500(vangogh_offs, options),
 			umr_create_ex_vcn300(vangogh_offs, options, 0),
 			NULL);
 }

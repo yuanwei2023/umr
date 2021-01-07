@@ -38,7 +38,7 @@ struct umr_asic *umr_create_navy_flounder(struct umr_options *options)
 			umr_create_hdp500(navy_flounder_offs, options),
 			umr_create_mmhub200(navy_flounder_offs, options),
 			umr_create_mp1100(navy_flounder_offs, options),
-			umr_create_oss50(navy_flounder_offs, options),
+			umr_create_oss500(navy_flounder_offs, options),
 			umr_create_ex_umc870(navy_flounder_offs, options, 0),
 			umr_create_ex_vcn300(navy_flounder_offs, options, 0),
 			umr_create_ex_vcn300(navy_flounder_offs, options, 1),

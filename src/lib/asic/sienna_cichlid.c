@@ -38,7 +38,7 @@ struct umr_asic *umr_create_sienna_cichlid(struct umr_options *options)
 			umr_create_hdp500(sienna_cichlid_offs, options),
 			umr_create_mmhub200(sienna_cichlid_offs, options),
 			umr_create_mp1100(sienna_cichlid_offs, options),
-			umr_create_oss50(sienna_cichlid_offs, options),
+			umr_create_oss500(sienna_cichlid_offs, options),
 			umr_create_ex_umc870(sienna_cichlid_offs, options, 0),
 			umr_create_ex_vcn300(sienna_cichlid_offs, options, 0),
 			umr_create_ex_vcn300(sienna_cichlid_offs, options, 1),

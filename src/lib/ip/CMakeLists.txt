@@ -58,7 +58,7 @@ add_library(ip OBJECT
   oss40.c
   oss401.c
   oss420.c
-  oss50.c
+  oss500.c
   pwr1000.c
   sdma040.c
   sdma041.c

@@ -38,7 +38,7 @@ struct umr_asic *umr_create_dimgrey_cavefish(struct umr_options *options)
 			umr_create_hdp500(dimgrey_cavefish_offs, options),
 			umr_create_mmhub200(dimgrey_cavefish_offs, options),
 			umr_create_mp1100(dimgrey_cavefish_offs, options),
-			umr_create_oss50(dimgrey_cavefish_offs, options),
+			umr_create_oss500(dimgrey_cavefish_offs, options),
 			umr_create_ex_umc870(dimgrey_cavefish_offs, options, 0),
 			umr_create_ex_vcn300(dimgrey_cavefish_offs, options, 0),
 			umr_create_dcn300(dimgrey_cavefish_offs, options),

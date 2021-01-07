@@ -41,7 +41,7 @@ struct umr_asic *umr_create_navi14(struct umr_options *options)
 			umr_create_mmhub200(navi14_offs, options),
 			umr_create_mp1100(navi14_offs, options),
 			umr_create_nbio230(navi14_offs, options),
-			umr_create_oss50(navi14_offs, options),
+			umr_create_oss500(navi14_offs, options),
 			umr_create_smu1100(navi14_offs, options),
 			umr_create_thm1102(navi14_offs, options),
 			umr_create_vcn200(navi14_offs, options),
