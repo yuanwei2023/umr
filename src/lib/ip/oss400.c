@@ -24,13 +24,13 @@
  */
 #include "umr.h"
 
-#include "oss40_bits.i"
+#include "oss400_bits.i"
 
-static const struct umr_reg_soc15 oss40_registers[] = {
-#include "oss40_regs.i"
+static const struct umr_reg_soc15 oss400_registers[] = {
+#include "oss400_regs.i"
 };
 
-struct umr_ip_block *umr_create_oss40(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
+struct umr_ip_block *umr_create_oss400(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options)
 {
 	struct umr_ip_block *ip;
 
@@ -38,15 +38,15 @@ struct umr_ip_block *umr_create_oss40(struct umr_ip_offsets_soc15 *soc15_offsets
 	if (!ip)
 		return NULL;
 
-	ip->ipname = "oss40";
-	ip->no_regs = sizeof(oss40_registers)/sizeof(oss40_registers[0]);
+	ip->ipname = "oss400";
+	ip->no_regs = sizeof(oss400_registers)/sizeof(oss400_registers[0]);
 	ip->regs = calloc(ip->no_regs, sizeof(ip->regs[0]));
 	if (!ip->regs) {
 		free(ip);
 		return NULL;
 	}
 
-	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "OSSSYS", oss40_registers, ip)) {
+	if (umr_transfer_soc15_to_reg(options, soc15_offsets, "OSSSYS", oss400_registers, ip)) {
 		free(ip);
 		return NULL;
 	}

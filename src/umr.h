@@ -726,7 +726,7 @@ struct umr_ip_block *umr_create_dcn10(struct umr_ip_offsets_soc15 *soc15_offsets
 struct umr_ip_block *umr_create_hdp40(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_nbio61(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_nbio70(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_oss40(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
+struct umr_ip_block *umr_create_oss400(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_oss401(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_oss420(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
 struct umr_ip_block *umr_create_sdma040(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);

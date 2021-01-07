@@ -41,7 +41,7 @@ struct umr_asic *umr_create_renoir(struct umr_options *options)
 			umr_create_nbio70(renoir_offs, options),
 			umr_create_sdma041(renoir_offs, options),
 			umr_create_hdp40(renoir_offs, options),
-			umr_create_oss40(renoir_offs, options),
+			umr_create_oss400(renoir_offs, options),
 			umr_create_mmhub91(renoir_offs, options),
 			umr_create_mp1200(renoir_offs, options),
 			umr_create_smuio1200(renoir_offs, options),

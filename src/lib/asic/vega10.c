@@ -39,7 +39,7 @@ struct umr_asic *umr_create_vega10(struct umr_options *options)
 			umr_create_dce120(vega10_offs, options),
 			umr_create_hdp40(vega10_offs, options),
 			umr_create_nbio61(vega10_offs, options),
-			umr_create_oss40(vega10_offs, options),
+			umr_create_oss400(vega10_offs, options),
 			umr_create_sdma040(vega10_offs, options),
 			umr_create_sdma140(vega10_offs, options),
 			umr_create_thm90(vega10_offs, options),

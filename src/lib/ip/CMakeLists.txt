@@ -55,7 +55,7 @@ add_library(ip OBJECT
   oss10.c
   oss20.c
   oss30.c
-  oss40.c
+  oss400.c
   oss401.c
   oss420.c
   oss500.c

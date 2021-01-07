@@ -39,7 +39,7 @@ struct umr_asic *umr_create_raven1(struct umr_options *options)
 			umr_create_nbio70(vega10_offs, options),
 			umr_create_sdma041(vega10_offs, options),
 			umr_create_hdp40(vega10_offs, options),
-			umr_create_oss40(vega10_offs, options),
+			umr_create_oss400(vega10_offs, options),
 			umr_create_mmhub91(vega10_offs, options),
 			umr_create_mp100(vega10_offs, options),
 			umr_create_pwr1000(vega10_offs, options),
