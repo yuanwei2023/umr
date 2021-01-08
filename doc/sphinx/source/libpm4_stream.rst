@@ -140,8 +140,10 @@ The function uses the following callback structure to pass information back to t
 		 * opcode: The numeric value of the ocpode
 		 * nwords: number of DWORDS in this opcode
 		 * opcode_name: Printable string name of opcode
+		 * header: Raw header DWORD of this packet
+		 * raw_data: Pointer to a buffer of length nwords containing the raw data of this packet (does not include header DWORD)
 		 */
-		void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, char *opcode_name);
+		void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, char *opcode_name, uint32_t header, const uint32_t* raw_data);
 
 		/** add_field -- Add a decoded field to a specific DWORD
 		 * ib_addr/ib_vmid:  Address of the word from which the field comes

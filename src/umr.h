@@ -955,6 +955,7 @@ struct umr_pm4_stream {
 	uint32_t	 pkttype,				// packet type (0==simple write, 3 == packet)
 			 pkt0off,				// base address for PKT0 writes
 			 opcode,
+			 header,				// header DWORD of packet
 			 n_words,				// number of words ignoring header
 			 *words;				// words following header word
 
@@ -992,10 +993,12 @@ struct umr_pm4_stream_decode_ui {
 	/** start_opcode -- Start a new opcode
 	 * ib_addr/ib_vmid: Address of where packet is found
 	 * opcode: The numeric value of the ocpode
-	 * nwords: number of DWORDS in this opcode
+	 * nwords: Number of DWORDS in this opcode
 	 * opcode_name: Printable string name of opcode
+	 * header: Raw header DWORD of this packet
+	 * raw_data: Pointer to a buffer of length nwords containing the raw data of this packet (does not include header DWORD)
 	 */
-	void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name);
+	void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data);
 
 	/** add_field -- Add a decoded field to a specific DWORD
 	 * ib_addr/ib_vmid:  Address of the word from which the field comes

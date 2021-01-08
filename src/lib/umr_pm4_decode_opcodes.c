@@ -1039,7 +1039,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, nwords, 4);
 	ncodes = opcodes;
 	while (stream && ncodes--) {
-		ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, stream->n_words, stream->pkttype == 3 ? pm4_pkt3_opcode_names[stream->opcode] : "PKT0");
+		ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, stream->n_words, stream->pkttype == 3 ? pm4_pkt3_opcode_names[stream->opcode] : "PKT0", stream->header, stream->words);
 
 		if (stream->pkttype == 3)
 			decode_pkt3(asic, ui, stream, ib_addr, ib_vmid);
@@ -1110,7 +1110,7 @@ static void start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint
 	data->off[data->i++] = ib_addr;
 	printf("Decoding IB at %lu@0x%llx from %lu@0x%llx of %lu words (type %d)\n", (unsigned long)ib_vmid, (unsigned long long)ib_addr, (unsigned long)from_vmid, (unsigned long long)from_addr, (unsigned long)size, type);
 }
-static void start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, char *opcode_name)
+static void start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, char *opcode_name, uint32_t header, const uint32_t* raw_data)
 {
 	struct demo_ui_data *data = ui->data;
 	printf("Opcode 0x%lx [%s] at %lu@[0x%llx + 0x%llx] (%lu words, type: %d)\n", (unsigned long)opcode, opcode_name, (unsigned long)ib_vmid, (unsigned long long)data->off[data->i - 1], (unsigned long long)ib_addr - data->off[data->i - 1], (unsigned long)nwords, pkttype);

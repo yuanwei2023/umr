@@ -249,6 +249,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 
 	while (nwords) {
 		// fetch basics out of header
+		ps->header = *stream;
 		ps->pkttype = *stream >> 30;
 		ps->n_words = ((*stream >> 16) + 1) & 0x3FFF;
 
