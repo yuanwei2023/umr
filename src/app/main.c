@@ -654,6 +654,7 @@ int main(int argc, char **argv)
 				sscanf(argv[i+2], "%"SCNx32, &data);
 				if (umr_write_vram(asic, vmid, address, 4, &data))
 					return EXIT_FAILURE;
+				i += 2;
 			} else {
 				fprintf(stderr, "[ERROR]: --vm-write-word requires two parameters\n");
 				return EXIT_FAILURE;
