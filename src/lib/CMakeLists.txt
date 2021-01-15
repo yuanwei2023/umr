@@ -5,6 +5,7 @@ add_subdirectory(ip)
 add_subdirectory(lowlevel)
 
 add_library(umrcore STATIC
+  add_ip_block.c
   bitfield_print.c
   close_asic.c
   create_asic_helper.c

@@ -835,9 +835,12 @@ struct umr_ip_block *umr_create_bif41(struct umr_options *options);
 struct umr_ip_block *umr_create_bif50(struct umr_options *options);
 struct umr_ip_block *umr_create_bif51(struct umr_options *options);
 
-/* asic constructors */
+/* asic constructor API */
 struct umr_asic *umr_create_asic_helper(char *name, int family, ...);
+int umr_add_ip_block(struct umr_asic *asic, struct umr_ip_block *ip);
 struct umr_asic *umr_create_asic_from_script(struct umr_options *options, char *name);
+
+/* ASIC constructors */
 struct umr_asic *umr_create_arcturus(struct umr_options *options);
 struct umr_asic *umr_create_bonaire(struct umr_options *options);
 struct umr_asic *umr_create_carrizo(struct umr_options *options);
