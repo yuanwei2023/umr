@@ -33,6 +33,7 @@ static const struct {
 	{ "carrizo", &umr_create_carrizo },
 	{ "dimgrey_cavefish", &umr_create_dimgrey_cavefish },
 	{ "fiji", &umr_create_fiji   },
+	{ "green_sardine", &umr_create_green_sardine },
 	{ "hainan", &umr_create_hainan },
 	{ "hawaii", &umr_create_hawaii },
 	{ "kabini", &umr_create_kabini },

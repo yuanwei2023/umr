@@ -7,6 +7,7 @@ add_library(asic OBJECT
   carrizo.c
   dimgrey_cavefish.c
   fiji.c
+  green_sardine.c
   hainan.c
   hawaii.c
   kabini.c
