@@ -23,6 +23,7 @@
  *
  */
 #include "umrapp.h"
+#include <regex.h>
 
 int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *regname)
 {
@@ -31,6 +32,11 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	uint64_t addr, scale;
 	char buf[256], regname_copy[256];
 	uint32_t mmio_addr = 0, v32;
+
+	regex_t     ip_regex, reg_regex;
+
+	regcomp(&ip_regex, ipname, REG_ICASE | REG_EXTENDED | REG_NOSUB);
+	regcomp(&reg_regex, regname, REG_ICASE | REG_EXTENDED | REG_NOSUB);
 
 	// does the register name contain a trailing star?
 	strcpy(regname_copy, regname);
@@ -43,11 +49,12 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	/* scan them all in order */
 	if (!asicname[0] || !strcmp(asicname, "*") || !strcmp(asicname, asic->asicname)) {
 		for (i = 0; i < asic->no_blocks; i++) {
-			if (!ipname[0] || ipname[0] == '*' || !strcmp(ipname, asic->blocks[i]->ipname)) {
+			if (!ipname[0] || ipname[0] == '*' || !regexec(&ip_regex, asic->blocks[i]->ipname, 0, NULL, 0)) {
 				first = 1;
 				for (j = 0; j < asic->blocks[i]->no_regs; j++) {
-					if (!regname[0] || !strcmp(regname, "*") || !strcmp(regname, asic->blocks[i]->regs[j].regname) ||
-					(many && strstr(asic->blocks[i]->regs[j].regname, regname_copy))) {
+					if (!regname[0] || !strcmp(regname, "*") ||
+					    !regexec(&reg_regex, asic->blocks[i]->regs[j].regname, 0, NULL, 0) ||
+					    (many && strstr(asic->blocks[i]->regs[j].regname, regname_copy))) {
 						++ count;
 
 						// only grant if any regspec matches otherwise it's a waste
