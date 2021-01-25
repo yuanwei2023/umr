@@ -62,15 +62,6 @@ separated strings.  Options should be specified before --update or --force comma
      Instruct the --ring command to not attempt to follow IBs pointed to by the packets
      in the ring.
 
-.B named
-     Causes --read to print out the register name with the register
-     value.
-
-.B many
-     Allows matching regname openly (used with --read) and implies
-     "named".  For instance "*.dce100.CRTC" would match any register that
-     contains the fragment "CRTC" in the name.
-
 .B use_pci
      Enable PCI access for MMIO instead of using debugfs.  Used by the --read,
      --scan, --top, --write, and --write-bit commands.  Does not currently

@@ -127,12 +127,7 @@ static void parse_options(char *str)
 		*p = 0;
 		if (*str == ',')
 			++str;
-		if (!strcmp(option, "named")) {
-			options.named = 1;
-		} else if (!strcmp(option, "many")) {
-			options.named = 1;
-			options.many = 1;
-		} else if (!strcmp(option, "bits")) {
+		if (!strcmp(option, "bits")) {
 			options.bitfields = 1;
 		} else if (!strcmp(option, "empty_log")) {
 			options.empty_log = 1;
@@ -834,7 +829,7 @@ int main(int argc, char **argv)
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2020, AMD Inc.\n"
 "\n*** Device Selection ***\n"
 "\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
-	"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib, named, many,"
+	"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib,"
 	"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
 	"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, full_shader, no_fold_vm_decode, no_scan_waves\n"
 "\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"

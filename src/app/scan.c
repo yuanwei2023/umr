@@ -27,22 +27,26 @@
 
 int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *regname)
 {
-	int r, fd, many = asic->options.many, named = asic->options.named,
-	    first, i, j, k, count = 0;
+	int r, fd, first, i, j, k, count = 0;
 	uint64_t addr, scale;
 	char buf[256], regname_copy[256];
 	uint32_t mmio_addr = 0, v32;
 
 	regex_t     ip_regex, reg_regex;
 
-	regcomp(&ip_regex, ipname, REG_ICASE | REG_EXTENDED | REG_NOSUB);
-	regcomp(&reg_regex, regname, REG_ICASE | REG_EXTENDED | REG_NOSUB);
+	if (regcomp(&ip_regex, ipname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
+		fprintf(stderr, "[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
+		return -1;
+	}
+	if (regcomp(&reg_regex, regname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
+		fprintf(stderr, "[ERROR]: Failed to compile register regex for [%s]\n", regname);
+		regfree(&ip_regex);
+		return -1;
+	}
 
 	// does the register name contain a trailing star?
 	strcpy(regname_copy, regname);
 	if (strlen(regname) > 1 && strstr(regname, "*")) {
-		many = 1;
-		named = 1;
 		regname_copy[strlen(regname_copy)-1] = 0;
 	}
 
@@ -53,8 +57,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 				first = 1;
 				for (j = 0; j < asic->blocks[i]->no_regs; j++) {
 					if (!regname[0] || !strcmp(regname, "*") ||
-					    !regexec(&reg_regex, asic->blocks[i]->regs[j].regname, 0, NULL, 0) ||
-					    (many && strstr(asic->blocks[i]->regs[j].regname, regname_copy))) {
+					    !regexec(&reg_regex, asic->blocks[i]->regs[j].regname, 0, NULL, 0)) {
 						++ count;
 
 						// only grant if any regspec matches otherwise it's a waste
@@ -130,8 +133,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 								umr_srbm_select_index(asic, 0, 0, 0, 0);
 						}
 						if (regname[0]) {
-							if (named)
-								printf("%s%s.%s%s => ", CYAN, asic->blocks[i]->ipname,  asic->blocks[i]->regs[j].regname, RST);
+							printf("%s%s.%s%s => ", CYAN, asic->blocks[i]->ipname,  asic->blocks[i]->regs[j].regname, RST);
 							printf("%s0x%08lx%s\n", YELLOW, (unsigned long)asic->blocks[i]->regs[j].value, RST);
 							if (asic->options.bitfields)
 								for (k = 0; k < asic->blocks[i]->regs[j].no_bits; k++) {
@@ -156,19 +158,22 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	if (count == 0) {
 		if (!memcmp(regname_copy, "reg", 3)) {
 			fprintf(stderr, "[ERROR]: Path <%s.%s.%s> not found on this ASIC\n", asicname, ipname, regname);
-			return 0;
+			r = -1;
+			goto error;
 		} else {
 			char tmpregname[256];
 			// try scanning for reg that starts with reg
 			strcpy(tmpregname, "reg");
 			strcat(tmpregname, regname + 2);
 			fprintf(stderr, "[WARNING]: Retrying operation with new 'reg' name <%s>.\n", tmpregname);
-			return umr_scan_asic(asic, asicname, ipname, tmpregname);
+			r = umr_scan_asic(asic, asicname, ipname, tmpregname);
+			goto error;
 		}
 	}
 
 	r = 0;
 error:
-
+	regfree(&ip_regex);
+	regfree(&reg_regex);
 	return r;
 }

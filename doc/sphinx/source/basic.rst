@@ -122,12 +122,6 @@ The options available are:
 +-------------------+-------------------------------------------------------------------------+
 | no_follow_ib      | Instructs the --ring command to not follow IBs pointed to by the ring   |
 +-------------------+-------------------------------------------------------------------------+
-| named             | Tells --read to print out the register name along with the value        |
-+-------------------+-------------------------------------------------------------------------+
-| many              | Allows matching of register names openly.  Used with --read and implies |
-|                   | the *named* option.  For instance: '\*.dce100.CRTC' will match any      |
-|                   | register that contains the fragment 'CRTC' in it.                       |
-+-------------------+-------------------------------------------------------------------------+
 | use_pci           | Enables direct PCI access bypassing the kernels debugfs entries.        |
 +-------------------+-------------------------------------------------------------------------+
 | use_colour        | Enables colourful output in various commands.  Also accepts use_color   |

@@ -151,7 +151,7 @@ struct umr_reg_soc15 {
 struct umr_find_reg_iter {
 	struct umr_asic *asic;
 	char *ip, *reg;
-	int ip_i, reg_i, reg_many;
+	int ip_i, reg_i;
 };
 
 struct umr_ip_block {
@@ -228,7 +228,6 @@ struct umr_options {
 	    print,
 	    bitfields,
 	    bitfields_full,
-	    named,
 	    empty_log,
 	    follow,
 	    use_bank,

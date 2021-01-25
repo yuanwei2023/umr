@@ -19,39 +19,72 @@ as follows:
 ::
 
 	struct umr_options {
-		int hw_inst,
-		    instance,
-		    need_scan,
-		    print,
-		    bitfields,
-		    bitfields_full,
-		    named,
-		    empty_log,
-		    follow,
-		    use_bank,
-		    many,
-		    use_pci,
-		    use_colour,
-		    read_smc,
-		    quiet,
-		    follow_ib,
-		    verbose,
-		    halt_waves,
-		    no_kernel;
-		unsigned
-		    instance_bank,
-		    se_bank,
-		    sh_bank;
+		int instance,
+			need_scan,
+			print,
+			bitfields,
+			bitfields_full,
+			empty_log,
+			follow,
+			use_bank,
+			many,
+			use_pci,
+			use_colour,
+			read_smc,
+			quiet,
+			no_follow_ib,
+			no_follow_shader,
+			verbose,
+			halt_waves,
+			no_kernel,
+			no_disasm,
+			disasm_early_term,
+			use_xgmi,
+			disasm_anyways,
+			skip_gprs,
+			no_scan_waves,
+			wave64,
+			full_shader,
+			context_reg_bank,
+			no_fold_vm_decode;
+		// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
+		struct {
+			int
+				enable_ps_shader,
+				enable_vs_shader,
+				enable_gs_shader,
+				enable_hs_shader,
+				enable_es_shader,
+				enable_ls_shader,
+				enable_es_ls_swap,
+				enable_comp_shader;
+		} shader_enable;
+		union {
+			struct {
+				unsigned
+					instance,
+					se,
+					sh;
+			} grbm;
+			struct {
+				unsigned
+					me,
+					queue,
+					pipe,
+					vmid;
+			} srbm;
+		} bank;
 		long forcedid;
 		char
 			*scanblock,
 			dev_name[32],
-			hub_name[32];
+			hub_name[32],
+			ring_name[32];
 		struct {
-			int domain,
-			    bus,
-			    slot,
-			    func;
+			unsigned domain,
+				bus,
+				slot,
+				func;
 			char name[32];
 		} pci;
 	};
