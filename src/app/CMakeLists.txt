@@ -25,6 +25,7 @@ add_library(umrapp STATIC
   clock.c
   pp_table.c
   navi10_ppt.c
+  read_metrics.c
 )
 
 add_executable(umr main.c)

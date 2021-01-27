@@ -819,6 +819,11 @@ int main(int argc, char **argv)
 				if (umr_print_pp_table(asic, NULL) != 0)
 					fprintf(stderr, "[ERROR]: can not print pp table info.\n");
 			}
+		} else if (!strcmp(argv[i], "--gpu_metrics") || !strcmp(argv[i], "-gm")) {
+			if (!asic)
+				asic = get_asic();
+			if (umr_print_gpu_metrics(asic) != 0)
+				fprintf(stderr, "[ERROR]: Cannot print pp table info.\n");
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
 			if (!asic)
@@ -951,6 +956,8 @@ printf(
 "\n\t--clock-auto, -ca\n\t\tSet power_dpm_force_performance_level to auto.\n"
 "\n\t--ppt_read, -pptr [ppt_field_name]\n\t\tRead powerplay table value and print it to stdout."
 	"\n\t\tThis command will print all the powerplay table information or the corresponding string in powerplay table.\n"
+"\n\t--gpu_metrics, -gm"
+	"\n\t\tPrint the GPU metrics table for the device."
 "\n\n");
 			exit(EXIT_SUCCESS);
 		} else {

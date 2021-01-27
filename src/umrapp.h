@@ -55,3 +55,4 @@ void umr_power(struct umr_asic *asic);
 void umr_clock_scan(struct umr_asic *asic, const char* clock_name);
 void umr_clock_manual(struct umr_asic *asic, const char* clock_name, void* value);
 int umr_print_pp_table(struct umr_asic *asic, const char* param);
+int umr_print_gpu_metrics(struct umr_asic *asic);

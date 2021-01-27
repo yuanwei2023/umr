@@ -267,6 +267,34 @@ Read and display contents of the MMIO register log.  Usually specified
 with '-O bits,follow,empty_log' to enable continual dumping of the trace
 log.
 
+.SH Power and Clock
+.IP "--power, -p"
+Read the content of clocks, temperature, gpu loading at runtime options 'use_colour' to colourize output.
+
+.IP "--clock-scan -cs [clock]"
+Scan the current hierarchy value of each clock.  Default will list all the hierarchy value of clocks.
+otherwise will list the corresponding clock, eg. sclk.
+
+.IP "--clock-manual, -cm [clock] [value]"
+Set the value of the corresponding clock.  Use -cs command to check hierarchy values of clock and then
+use -cm value to set the clock.
+
+.IP "--clock-high, -ch"
+Set power_dpm_force_performance_level to high.
+
+.IP "--clock-low, -cl"
+Set power_dpm_force_performance_level to low.
+
+.IP "--clock-auto, -ca"
+Set power_dpm_force_performance_level to auto.
+
+.IP "--ppt_read, -pptr [ppt_field_name]"
+Read powerplay table value and print it to stdout.  This command will print all the powerplay table
+information or the corresponding string in powerplay table.
+
+.IP "--gpu_metrics, -gm"
+Print the GPU metrics table for the device.
+
 .SH "Notes"
 
 - The "Waves" field in the DRM section of --top only works if GFX PG has been disabled.  Otherwise,

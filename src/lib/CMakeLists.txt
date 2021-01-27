@@ -11,6 +11,7 @@ add_library(umrcore STATIC
   create_asic_helper.c
   create_asic_from_script.c
   create_mmio_accel.c
+  decode_metrics.c
   discover_by_did.c
   discover_by_name.c
   dump_ib.c
