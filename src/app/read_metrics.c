@@ -124,13 +124,13 @@ int umr_print_gpu_metrics(struct umr_asic *asic)
 	size = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	pp_data = calloc(1, size);
-	fread(pp_data, 1, size, f);
 	if (!pp_data) {
 		fprintf(stderr, "[ERROR]: Out of memory\n");
 		fclose(f);
 		return -1;
 	}
 
+	fread(pp_data, 1, size, f);
 	r = umr_decode_metrics(pp_data, size, &metrics);
 	fclose(f);
 	if (r)
