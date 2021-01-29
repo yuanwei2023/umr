@@ -98,6 +98,7 @@ static struct umr_bitfield stat_grbm_bits[] = {
 	 { "CP_BUSY", 255, 255, &umr_bitfield_default },
 	 { "CB_BUSY", 255, 255, &umr_bitfield_default },
 	 { "GUI_ACTIVE", 255, 255, &umr_bitfield_default },
+	 { "GE_BUSY",  255, 255, &umr_bitfield_default },
 	 { NULL, 0, 0, NULL },
 };
 
