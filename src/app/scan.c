@@ -27,20 +27,25 @@
 
 int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *regname)
 {
-	int r, fd, first, i, j, k, count = 0;
+	int r, fd, first, i, j, k, count = 0, noipreg = 1;
 	uint64_t addr, scale;
 	char buf[256], regname_copy[256];
 	uint32_t mmio_addr = 0, v32;
 
-	regex_t     ip_regex, reg_regex;
+	regex_t ip_regex, reg_regex;
 
-	if (regcomp(&ip_regex, ipname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
-		fprintf(stderr, "[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
-		return -1;
+	if (strcmp(ipname, "*")) {
+		if (regcomp(&ip_regex, ipname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
+			fprintf(stderr, "[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
+			return -1;
+		}
+		noipreg = 0;
 	}
+
 	if (regcomp(&reg_regex, regname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
 		fprintf(stderr, "[ERROR]: Failed to compile register regex for [%s]\n", regname);
-		regfree(&ip_regex);
+		if (!noipreg)
+			regfree(&ip_regex);
 		return -1;
 	}
 
@@ -173,7 +178,8 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 
 	r = 0;
 error:
-	regfree(&ip_regex);
+	if (!noipreg)
+		regfree(&ip_regex);
 	regfree(&reg_regex);
 	return r;
 }
