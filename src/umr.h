@@ -835,7 +835,20 @@ union umr_gpu_metrics {
 	struct umr_gpu_metrics_v2_0 v2;
 };
 
-int umr_decode_metrics(const uint8_t *pp_table, uint16_t size, union umr_gpu_metrics *metrics);
+struct field_info {
+	const char *name;
+	uint32_t size;
+	uint32_t offset;
+};
+
+#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define sizeof_field(TYPE, MEMBER) sizeof((((TYPE *)0)->MEMBER))
+
+#define FIELD_INFO(TYPE, MEMBER)	\
+{ #MEMBER, sizeof_field(TYPE, MEMBER), offsetof(TYPE, MEMBER) }
+
+int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
 
 /* ip block constructors for soc15 */
 int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst);

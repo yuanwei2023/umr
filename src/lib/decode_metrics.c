@@ -23,130 +23,165 @@
  *
  */
 #include "umr.h"
+#include <stddef.h>
 
+#define METRICS_HEADER_LIST(__FIELD)	\
+	__FIELD(structure_size),	\
+	__FIELD(format_revision),	\
+	__FIELD(content_revision),
 
-static uint8_t grab8(const uint8_t *d, uint16_t *off, uint16_t size)
+#define METRICS_INFO_V1_0_LIST(__FIELD) \
+	__FIELD(system_clock_counter),	\
+	__FIELD(temperature_edge),	\
+	__FIELD(temperature_hotspot),	\
+	__FIELD(temperature_mem),	\
+	__FIELD(temperature_vrgfx),	\
+	__FIELD(temperature_vrsoc),	\
+	__FIELD(temperature_vrmem),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_umc_activity),	\
+	__FIELD(average_mm_activity),	\
+	__FIELD(average_socket_power),	\
+	__FIELD(energy_accumulator),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_vclk0_frequency),	\
+	__FIELD(average_dclk0_frequency),	\
+	__FIELD(average_vclk1_frequency),	\
+	__FIELD(average_dclk1_frequency),	\
+	__FIELD(current_gfxclk),	\
+	__FIELD(current_socclk),	\
+	__FIELD(current_uclk),	\
+	__FIELD(current_vclk0),	\
+	__FIELD(current_dclk0),	\
+	__FIELD(current_vclk1),	\
+	__FIELD(current_dclk1),	\
+	__FIELD(throttle_status),	\
+	__FIELD(current_fan_speed),	\
+	__FIELD(pcie_link_width),	\
+	__FIELD(pcie_link_speed),
+
+#define METRICS_INFO_V2_0_LIST(__FIELD) \
+	__FIELD(system_clock_counter),	\
+	__FIELD(temperature_gfx),	\
+	__FIELD(temperature_soc),	\
+	__FIELD(temperature_core[0]),	\
+	__FIELD(temperature_core[1]),	\
+	__FIELD(temperature_core[2]),	\
+	__FIELD(temperature_core[3]),	\
+	__FIELD(temperature_core[4]),	\
+	__FIELD(temperature_core[5]),	\
+	__FIELD(temperature_core[6]),	\
+	__FIELD(temperature_core[7]),	\
+	__FIELD(temperature_l3[0]),	\
+	__FIELD(temperature_l3[1]),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_mm_activity),	\
+	__FIELD(average_socket_power),	\
+	__FIELD(average_cpu_power),	\
+	__FIELD(average_soc_power),	\
+	__FIELD(average_gfx_power),	\
+	__FIELD(average_core_power[0]),	\
+	__FIELD(average_core_power[1]),	\
+	__FIELD(average_core_power[2]),	\
+	__FIELD(average_core_power[3]),	\
+	__FIELD(average_core_power[4]),	\
+	__FIELD(average_core_power[5]),	\
+	__FIELD(average_core_power[6]),	\
+	__FIELD(average_core_power[7]),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_fclk_frequency),	\
+	__FIELD(average_vclk_frequency),	\
+	__FIELD(average_dclk_frequency),	\
+	__FIELD(current_gfxclk),	\
+	__FIELD(current_socclk),	\
+	__FIELD(current_uclk),	\
+	__FIELD(current_fclk),	\
+	__FIELD(current_vclk),	\
+	__FIELD(current_dclk),	\
+	__FIELD(current_coreclk[0]),	\
+	__FIELD(current_coreclk[1]),	\
+	__FIELD(current_coreclk[2]),	\
+	__FIELD(current_coreclk[3]),	\
+	__FIELD(current_coreclk[4]),	\
+	__FIELD(current_coreclk[5]),	\
+	__FIELD(current_coreclk[6]),	\
+	__FIELD(current_coreclk[7]),	\
+	__FIELD(current_l3clk[0]),	\
+	__FIELD(current_l3clk[1]),	\
+	__FIELD(throttle_status),	\
+	__FIELD(fan_pwm),
+
+static struct field_info metrics_header[] = {
+#define METRICS_HEADER_INFO(MEMBER)	FIELD_INFO(struct umr_metrics_table_header, MEMBER)
+	METRICS_HEADER_LIST(METRICS_HEADER_INFO)
+};
+
+static struct field_info metrics_v1_0[] = {
+#define METRICS_V1_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_0, MEMBER)
+	METRICS_INFO_V1_0_LIST(METRICS_V1_0_INFO)
+};
+
+static struct field_info metrics_v2_0[] = {
+#define METRICS_V2_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_0, MEMBER)
+	METRICS_INFO_V2_0_LIST(METRICS_V2_0_INFO)
+};
+
+static void umr_dump_field_info(FILE *stream, const struct field_info *info,
+				const uint32_t count, const char *prefix, const uint8_t *ref)
 {
-	if (*off < size)
-		return d[(*off)++];
-	return 0;
+	uint32_t i;
+	const struct field_info *tmp;
+	const char *fmt = "%s%-30s = %lld\n";
+
+	if (!prefix)
+		prefix = "";
+
+	for (i = 0, tmp = &info[i]; i < count; i++, tmp = &info[i]) {
+		switch (tmp->size) {
+		case 1:
+			fprintf(stream, fmt, prefix, tmp->name, *(uint8_t *)(ref + tmp->offset));
+			break;
+		case 2:
+			fprintf(stream, fmt, prefix, tmp->name, *(uint16_t *)(ref + tmp->offset));
+			break;
+		case 4:
+			fprintf(stream, fmt, prefix, tmp->name, *(uint32_t *)(ref + tmp->offset));
+			break;
+		case 8:
+			fprintf(stream, fmt, prefix, tmp->name, *(uint64_t *)(ref + tmp->offset));
+			break;
+		default:
+			break;
+		}
+	}
 }
 
-static uint16_t grab16(const uint8_t *d, uint16_t *off, uint16_t size)
+int umr_dump_metrics(FILE *stream, const void *table, uint32_t size)
 {
-	uint16_t r = 0;
-	r = grab8(d, off, size);
-	r |= ((uint16_t)grab8(d, off, size)) << 8;
-	return r;
-}
+	struct umr_metrics_table_header *header =
+		(struct umr_metrics_table_header *)table;
 
-static uint32_t grab32(const uint8_t *d, uint16_t *off, uint16_t size)
-{
-	uint32_t r;
-	r = grab16(d, off, size);
-	r |= ((uint32_t)grab16(d, off, size)) << 16;
-	return r;
-}
+	if (!table || !size)
+		return -1;
 
-static uint64_t grab64(const uint8_t *d, uint16_t *off, uint16_t size)
-{
-	uint64_t r;
-	r = grab32(d, off, size);
-	r |= ((uint64_t)grab32(d, off, size)) << 32;
-	return r;
-}
+	umr_dump_field_info(stream, metrics_header, ARRAY_SIZE(metrics_header), " hdr.", table);
 
-static void umr_decode_v1(const uint8_t *d, uint16_t *off, uint16_t size, union umr_gpu_metrics *metrics)
-{
-	metrics->v1.system_clock_counter = grab64(d, off, size);
-	metrics->v1.temperature_edge     = grab16(d, off, size);
-	metrics->v1.temperature_hotspot  = grab16(d, off, size);
-	metrics->v1.temperature_mem      = grab16(d, off, size);
-	metrics->v1.temperature_vrgfx    = grab16(d, off, size);
-	metrics->v1.temperature_vrsoc    = grab16(d, off, size);
-	metrics->v1.temperature_vrmem    = grab16(d, off, size);
-	metrics->v1.average_gfx_activity = grab16(d, off, size);
-	metrics->v1.average_umc_activity = grab16(d, off, size);
-	metrics->v1.average_mm_activity  = grab16(d, off, size);
-	metrics->v1.average_socket_power = grab16(d, off, size);
-	metrics->v1.energy_accumulator   = grab32(d, off, size);
-	metrics->v1.average_gfxclk_frequency = grab16(d, off, size);
-	metrics->v1.average_socclk_frequency = grab16(d, off, size);
-	metrics->v1.average_uclk_frequency = grab16(d, off, size);
-	metrics->v1.average_vclk0_frequency = grab16(d, off, size);
-	metrics->v1.average_dclk0_frequency = grab16(d, off, size);
-	metrics->v1.average_vclk1_frequency = grab16(d, off, size);
-	metrics->v1.average_dclk1_frequency = grab16(d, off, size);
-	metrics->v1.current_gfxclk = grab16(d, off, size);
-	metrics->v1.current_socclk = grab16(d, off, size);
-	metrics->v1.current_uclk = grab16(d, off, size);
-	metrics->v1.current_vclk0 = grab16(d, off, size);
-	metrics->v1.current_dclk0 = grab16(d, off, size);
-	metrics->v1.current_vclk1 = grab16(d, off, size);
-	metrics->v1.current_dclk1 = grab16(d, off, size);
-	metrics->v1.throttle_status = grab32(d, off, size);
-	metrics->v1.current_fan_speed = grab16(d, off, size);
-	metrics->v1.pcie_link_width = grab8(d, off, size);
-	metrics->v1.pcie_link_speed = grab8(d, off, size);
-}
-
-static void umr_decode_v2(const uint8_t *d, uint16_t *off, uint16_t size, union umr_gpu_metrics *metrics)
-{
-	unsigned x;
-
-	metrics->v2.system_clock_counter = grab64(d, off, size);
-	metrics->v2.temperature_gfx = grab16(d, off, size);
-	metrics->v2.temperature_soc = grab16(d, off, size);
-	for (x = 0; x < 8; x++)
-		metrics->v2.temperature_core[x] = grab16(d, off, size);
-	for (x = 0; x < 2; x++)
-		metrics->v2.temperature_l3[x] = grab16(d, off, size);
-	metrics->v2.average_gfx_activity = grab16(d, off, size);
-	metrics->v2.average_mm_activity = grab16(d, off, size);
-	metrics->v2.average_socket_power = grab16(d, off, size);
-	metrics->v2.average_cpu_power = grab16(d, off, size);
-	metrics->v2.average_soc_power = grab16(d, off, size);
-	metrics->v2.average_gfx_power = grab16(d, off, size);
-	for (x = 0; x < 8; x++)
-		metrics->v2.average_core_power[x] = grab16(d, off, size);
-	metrics->v2.average_gfxclk_frequency = grab16(d, off, size);
-	metrics->v2.average_socclk_frequency = grab16(d, off, size);
-	metrics->v2.average_uclk_frequency = grab16(d, off, size);
-	metrics->v2.average_fclk_frequency = grab16(d, off, size);
-	metrics->v2.average_vclk_frequency = grab16(d, off, size);
-	metrics->v2.average_dclk_frequency = grab16(d, off, size);
-	metrics->v2.current_gfxclk = grab16(d, off, size);
-	metrics->v2.current_socclk = grab16(d, off, size);
-	metrics->v2.current_uclk = grab16(d, off, size);
-	metrics->v2.current_fclk = grab16(d, off, size);
-	metrics->v2.current_vclk = grab16(d, off, size);
-	metrics->v2.current_dclk = grab16(d, off, size);
-	for (x = 0; x < 8; x++)
-		metrics->v2.current_coreclk[x] = grab16(d, off, size);
-	for (x = 0; x < 2; x++)
-		metrics->v2.current_l3clk[x] = grab16(d, off, size);
-	metrics->v2.throttle_status = grab32(d, off, size);
-	metrics->v2.fan_pwm = grab16(d, off, size);
-	metrics->v2.padding = grab16(d, off, size);
-}
-
-int umr_decode_metrics(const uint8_t *pp_table, uint16_t size, union umr_gpu_metrics *metrics)
-{
-	uint16_t off;
-
-	off = 0;
-
-	// read header
-	metrics->hdr.structure_size   = grab16(pp_table, &off, size);
-	metrics->hdr.format_revision  = grab8(pp_table, &off, size);
-	metrics->hdr.content_revision = grab8(pp_table, &off, size);
-
-	switch (metrics->hdr.format_revision) {
-		case 1: umr_decode_v1(pp_table, &off, size, metrics); break;
-		case 2: umr_decode_v2(pp_table, &off, size, metrics); break;
-		default: fprintf(stderr, "[ERROR]: Unknown PP table format: 0x%"PRIx8"\n", metrics->hdr.format_revision); 
-				 return -1;
+	switch (header->format_revision) {
+	case 1:
+		umr_dump_field_info(stream, metrics_v1_0, ARRAY_SIZE(metrics_v1_0), "v1_0.", table);
+		break;
+	case 2:
+		umr_dump_field_info(stream, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table);
+		break;
+	default:
+		fprintf(stderr, "[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);
+		return -1;
 	}
 
 	return 0;
 }
+
