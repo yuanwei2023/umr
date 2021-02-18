@@ -382,6 +382,7 @@ static struct umr_bitfield mmSDMA0_UTCL1_PAGE[] = {
 	 { "DMA_PAGE_SIZE", 16, 21, &umr_bitfield_default },
 	 { "USE_BC", 22, 22, &umr_bitfield_default },
 	 { "ADDR_IS_PA", 23, 23, &umr_bitfield_default },
+	 { "LLC_NOALLOC", 24, 24, &umr_bitfield_default },
 };
 static struct umr_bitfield mmSDMA0_RELAX_ORDERING_LUT[] = {
 	 { "RESERVED0", 0, 0, &umr_bitfield_default },
@@ -2595,6 +2596,7 @@ static struct umr_bitfield mmSDMA1_UTCL1_PAGE[] = {
 	 { "DMA_PAGE_SIZE", 16, 21, &umr_bitfield_default },
 	 { "USE_BC", 22, 22, &umr_bitfield_default },
 	 { "ADDR_IS_PA", 23, 23, &umr_bitfield_default },
+	 { "LLC_NOALLOC", 24, 24, &umr_bitfield_default },
 };
 static struct umr_bitfield mmSDMA1_RELAX_ORDERING_LUT[] = {
 	 { "RESERVED0", 0, 0, &umr_bitfield_default },
@@ -5398,6 +5400,7 @@ static struct umr_bitfield mmWD_UTCL1_CNTL[] = {
 	 { "FRAG_LIMIT_MODE", 27, 27, &umr_bitfield_default },
 	 { "FORCE_SNOOP", 28, 28, &umr_bitfield_default },
 	 { "MTYPE_OVERRIDE", 29, 29, &umr_bitfield_default },
+	 { "LLC_NOALLOC_OVERRIDE", 30, 30, &umr_bitfield_default },
 };
 static struct umr_bitfield mmWD_UTCL1_STATUS[] = {
 	 { "FAULT_DETECTED", 0, 0, &umr_bitfield_default },
@@ -5421,6 +5424,7 @@ static struct umr_bitfield mmIA_UTCL1_CNTL[] = {
 	 { "FRAG_LIMIT_MODE", 27, 27, &umr_bitfield_default },
 	 { "FORCE_SNOOP", 28, 28, &umr_bitfield_default },
 	 { "MTYPE_OVERRIDE", 29, 29, &umr_bitfield_default },
+	 { "LLC_NOALLOC_OVERRIDE", 30, 30, &umr_bitfield_default },
 };
 static struct umr_bitfield mmIA_UTCL1_STATUS[] = {
 	 { "FAULT_DETECTED", 0, 0, &umr_bitfield_default },
@@ -9416,6 +9420,11 @@ static struct umr_bitfield mmGCMC_VM_XGMI_LFB_CNTL[] = {
 };
 static struct umr_bitfield mmGCMC_VM_XGMI_LFB_SIZE[] = {
 	 { "PF_LFB_SIZE", 0, 16, &umr_bitfield_default },
+};
+static struct umr_bitfield mmGCMC_VM_FB_NOALLOC_CNTL[] = {
+	 { "LOCAL_FB_NOALLOC_NOPTE", 0, 0, &umr_bitfield_default },
+	 { "REMOTE_FB_NOALLOC_NOPTE", 1, 1, &umr_bitfield_default },
+	 { "FB_NOALLOC_WALKER_FETCH", 2, 2, &umr_bitfield_default },
 };
 static struct umr_bitfield mmGCUTCL2_HARVEST_BYPASS_GROUPS[] = {
 	 { "BYPASS_GROUPS", 0, 31, &umr_bitfield_default },
@@ -13903,6 +13912,10 @@ static struct umr_bitfield mmDB_RMI_L2_CACHE_CONTROL[] = {
 	 { "HTILE_RD_POLICY", 20, 21, &umr_bitfield_default },
 	 { "Z_BIG_PAGE", 24, 24, &umr_bitfield_default },
 	 { "S_BIG_PAGE", 25, 25, &umr_bitfield_default },
+	 { "Z_NOALLOC", 26, 26, &umr_bitfield_default },
+	 { "S_NOALLOC", 27, 27, &umr_bitfield_default },
+	 { "HTILE_NOALLOC", 28, 28, &umr_bitfield_default },
+	 { "ZPCPSD_NOALLOC", 29, 29, &umr_bitfield_default },
 };
 static struct umr_bitfield mmTA_BC_BASE_ADDR[] = {
 	 { "ADDRESS", 0, 31, &umr_bitfield_default },
@@ -23018,6 +23031,8 @@ static struct umr_bitfield mmRLC_SPM_MC_CNTL[] = {
 	 { "RLC_SPM_VOL", 14, 14, &umr_bitfield_default },
 	 { "RLC_SPM_NOFILL", 15, 15, &umr_bitfield_default },
 	 { "RESERVED_3", 16, 17, &umr_bitfield_default },
+	 { "RLC_SPM_LLC_NOALLOC", 18, 18, &umr_bitfield_default },
+	 { "RLC_SPM_LLC_NOALLOC_OVER", 19, 19, &umr_bitfield_default },
 	 { "RESERVED", 20, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmRLC_SPM_INT_CNTL[] = {
@@ -26083,6 +26098,7 @@ static struct umr_bitfield mmGCUTC_GPUVA_VMID_TRANSLATION_ASSIST_RESPONSE_HI[] =
 	 { "MTYPE", 18, 20, &umr_bitfield_default },
 	 { "MEMLOG", 21, 21, &umr_bitfield_default },
 	 { "NACK", 22, 23, &umr_bitfield_default },
+	 { "LLC_NOALLOC", 24, 24, &umr_bitfield_default },
 	 { "ACK", 31, 31, &umr_bitfield_default },
 };
 static struct umr_bitfield mmSDMA2_DEC_START[] = {
@@ -26458,6 +26474,7 @@ static struct umr_bitfield mmSDMA2_UTCL1_PAGE[] = {
 	 { "DMA_PAGE_SIZE", 16, 21, &umr_bitfield_default },
 	 { "USE_BC", 22, 22, &umr_bitfield_default },
 	 { "ADDR_IS_PA", 23, 23, &umr_bitfield_default },
+	 { "LLC_NOALLOC", 24, 24, &umr_bitfield_default },
 };
 static struct umr_bitfield mmSDMA2_RELAX_ORDERING_LUT[] = {
 	 { "RESERVED0", 0, 0, &umr_bitfield_default },
@@ -28671,6 +28688,7 @@ static struct umr_bitfield mmSDMA3_UTCL1_PAGE[] = {
 	 { "DMA_PAGE_SIZE", 16, 21, &umr_bitfield_default },
 	 { "USE_BC", 22, 22, &umr_bitfield_default },
 	 { "ADDR_IS_PA", 23, 23, &umr_bitfield_default },
+	 { "LLC_NOALLOC", 24, 24, &umr_bitfield_default },
 };
 static struct umr_bitfield mmSDMA3_RELAX_ORDERING_LUT[] = {
 	 { "RESERVED0", 0, 0, &umr_bitfield_default },

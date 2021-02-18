@@ -93,7 +93,6 @@ gcc /tmp/countbits.c -o /tmp/countbits
 
 #added for vega/arcturus
 parse_bits ${pk}/oss/osssys_4_2_0 src/lib/ip/oss420
-exit 0
 
 #van gogh
 parse_bits ${pk}/clk/clk_11_5_0 src/lib/ip/clk1150
@@ -102,8 +101,6 @@ parse_bits ${pk}/mmhub/mmhub_2_3_0 src/lib/ip/mmhub230
 parse_bits ${pk}/mp/mp_11_5_0 src/lib/ip/mp1150
 parse_bits ${pk}/nbio/nbio_7_2_0 src/lib/ip/nbio720
 
-exit 0
-
 #sienna_cichlid
 parse_bits ${pk}/athub/athub_2_1_0 src/lib/ip/athub210
 parse_bits ${pk}/gc/gc_10_3_0 src/lib/ip/gfx1030
@@ -111,12 +108,8 @@ parse_bits ${pk}/umc/umc_8_7_0 src/lib/ip/umc870
 parse_bits ${pk}/vcn/vcn_3_0_0 src/lib/ip/vcn300
 parse_bits ${pk}/dcn/dcn_3_0_0 src/lib/ip/dcn300
 
-exit 0
-
-
 parse_bits ${pk}/pwr/pwr_10_0 src/lib/ip/pwr1000
 parse_bits ${pk}/smuio/smuio_12_0_0 src/lib/ip/smuio1200
-
 parse_bits ${pk}/umc/umc_6_1_1 src/lib/ip/umc611
 parse_bits ${pk}/umc/umc_6_1_2 src/lib/ip/umc612
 
