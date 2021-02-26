@@ -71,7 +71,7 @@ void umr_dump_ib(struct umr_asic *asic, struct umr_ring_decoder *decoder)
 				YELLOW, decoder->next_ib_info.ib_addr, RST,
 				YELLOW, (unsigned)x * 4, RST,
 				GREEN, (unsigned long)data[x], RST);
-			umr_print_decode(asic, decoder, data[x]);
+			umr_print_decode(asic, decoder, data[x], NULL);
 			printf("\n");
 		}
 	}

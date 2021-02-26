@@ -29,7 +29,10 @@ Building
 ---------
 
 To build umr you will need pciaccess, ncurses, libdrm, llvm and
-pthread headers and libraries.  To build umr:
+pthread headers and libraries. To enable the graphical frontend,
+you'll also need nanomsg, json-c, glew and sdl2.
+
+To build umr:
 
     $ mkdir build && cd build/ && cmake ../
     $ make
@@ -67,6 +70,13 @@ environment.  e.g.,
 
     $ cmake -DUMR_NO_DRM=ON ../
 
+NOTE:  You may enable the graphical frontendby adding UMR_GUI to your
+environment.  e.g.,
+
+    $ cmake -DUMR_GUI=ON ../
+
+
+
 Running umr
 ------------
 
@@ -91,6 +101,29 @@ or
 Options can be stacked with commas.  For instance:
 
     $ umr -O bits,follow,empty_log -ls
+
+
+Running umr GUI
+-------------------
+
+umr can be run in GUI mode using
+
+    $ umr --gui
+
+The other umr options still apply but must be used before --gui.
+
+In GUI mode, umr can also connect to a remote umr instance. For instance,
+on machine A run:
+
+    $ umr --server tcp://0.0.0.0:1234
+
+And on machine B run:
+
+    $ umr --gui  tcp://machineA-IP:1234
+
+This way the actions taken on umr on machine B will be forwarded to machine
+A's umr instance.
+
 
 Selecting Hardware
 -------------------

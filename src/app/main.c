@@ -958,8 +958,29 @@ printf(
 	"\n\t\tThis command will print all the powerplay table information or the corresponding string in powerplay table.\n"
 "\n\t--gpu_metrics, -gm"
 	"\n\t\tPrint the GPU metrics table for the device."
-"\n\n");
+"\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
+	"\n\t\toptions 'use_colour' to colourize output \n");
+
+#if UMR_GUI
+printf(
+"\n*** GUI server ***\n"
+"\n\t--server url \n\t\turl can be tcp://127.0.0.1:1234 or tcp://*:8090.. see Nanomsg protocol doc for more example\n"
+"\n\t--gui [url] \n\t\tRun umr in GUI mode. An optional url can be supplied to connect to a remote instance (see --server)\n");
+#endif
 			exit(EXIT_SUCCESS);
+#if UMR_GUI
+		} else if (!strcmp(argv[i], "--server")) {
+			char *url= argv[i + 1];
+			run_server_loop(url, asic);
+		} else if (!strcmp(argv[i], "--gui")) {
+			char *url = NULL;
+			if (i < argc - 1 && argv[i+1][0] != '-') {
+				url = argv[i+1];
+				i++;
+			}
+			umr_run_gui(url);
+			exit(EXIT_SUCCESS);
+#endif
 		} else {
 			fprintf(stderr, "[ERROR]: Unknown option <%s>\n", argv[i]);
 		}

@@ -1279,7 +1279,7 @@ int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, ui
 
 // various low level functions
 const char *umr_pm4_opcode_to_str(uint32_t header);
-void umr_print_decode(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib);
+void umr_print_decode(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib, int (*custom_message)(const char *fmt, ...));
 void umr_dump_ib(struct umr_asic *asic, struct umr_ring_decoder *decoder);
 void umr_dump_shaders(struct umr_asic *asic, struct umr_ring_decoder *decoder, struct umr_wave_data *wd);
 void umr_dump_data(struct umr_asic *asic, struct umr_ring_decoder *decoder);
@@ -1373,3 +1373,8 @@ int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value);
 void umr_set_clock_performance(struct umr_asic *asic, const char* operation);
 int umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);
 void umr_gfxoff_read(struct umr_asic *asic);
+
+#if UMR_GUI
+struct json_object *umr_process_json_request(struct json_object *request);
+void umr_run_gui(const char *url);
+#endif

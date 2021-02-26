@@ -54,6 +54,7 @@ include_directories(${PCIACCESS_INCLUDE_DIR})
 option(UMR_NO_DRM "Disable libdrm functions to read memory stats" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
+option(UMR_GUI "Enable umr --server and --client (GUI mode for umr) [experimental!]" OFF)
 
 if(UMR_NO_DRM)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_DRM")
@@ -87,6 +88,19 @@ if(LLVM_CMAKE_DIR)
 endif()
 endif()
 
+if (UMR_GUI)
+find_package(SDL2 REQUIRED)
+find_package(GLEW REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(JsonC REQUIRED)
+find_package(NanoMsg REQUIRED)
+include_directories(${GLEW_INCLUDE_DIRS})
+include_directories(${SDL2_INCLUDE_DIRS})
+include_directories(${NANOMSG_INCLUDE_DIR})
+include_directories(${JSON_C_INCLUDE_DIR})
+set(REQUIRED_EXTERNAL_LIBS_GUI ${JSON_C_LIBRARIES} ${NANOMSG_LIBRARIES} ${SDL2_LIBRARIES} ${OPENGL_gl_LIBRARY} ${GLEW_LIBRARIES})
+endif()
+
 if(UMR_NEED_RT)
 set(RT_LIBS "-lrt")
 else()
@@ -99,6 +113,7 @@ set(REQUIRED_EXTERNAL_LIBS
   Threads::Threads
   ${LLVM_LIBS}
   ${RT_LIBS}
+  ${REQUIRED_EXTERNAL_LIBS_GUI}
 )
 
 # Global setting: build everything position independent

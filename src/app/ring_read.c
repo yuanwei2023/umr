@@ -137,7 +137,7 @@ void umr_read_ring(struct umr_asic *asic, char *ringpath)
 			(start == drv_wptr) ? 'D' : '.');
 		decoder.next_ib_info.addr = start / 4;
 		if (enable_decoder)
-			umr_print_decode(asic, &decoder, value);
+			umr_print_decode(asic, &decoder, value, NULL);
 		printf("\n");
 		start += 4;
 		start %= ringsize;
