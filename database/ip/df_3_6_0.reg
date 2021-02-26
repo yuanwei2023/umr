@@ -1,0 +1,17 @@
+4
+mmFabricConfigAccessControl 0 0x410 3 0 0
+	CfgRegInstAccEn 0 0
+	CfgRegInstAccRegLock 1 1
+	CfgRegInstID 16 23
+mmDF_PIE_AON0_DfGlobalClkGater 0 0xfc 1 0 0
+	MGCGMode 0 3
+mmDF_CS_UMC_AON0_DfGlobalCtrl 0 0xfe 3 0 0
+	GlbHashIntlvCtl64K 20 20
+	GlbHashIntlvCtl2M 21 21
+	GlbHashIntlvCtl1G 22 22
+mmDF_CS_UMC_AON0_DramBaseAddress0 0 0x44 5 0 0
+	AddrRngVal 0 0
+	LgcyMmioHoleEn 1 1
+	IntLvNumChan 2 5
+	IntLvAddrSel 9 11
+	DramBaseAddr 12 31

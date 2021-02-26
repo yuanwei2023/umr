@@ -295,7 +295,8 @@ struct umr_options {
 		*scanblock,
 		dev_name[32],
 		hub_name[32],
-		ring_name[32];
+		ring_name[32],
+		database_path[256];
 	struct {
 		unsigned domain,
 		    bus,
@@ -850,170 +851,6 @@ struct field_info {
 
 int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
 
-/* ip block constructors for soc15 */
-int umr_transfer_soc15_to_reg(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst);
-int umr_transfer_soc15_to_reg_ex(struct umr_options *options, struct umr_ip_offsets_soc15 *ip, char *ipname, const struct umr_reg_soc15 *regs, struct umr_ip_block *dst, int inst);
-struct umr_ip_block *umr_create_gfx90(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_gfx91(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_gfx921(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_uvd70(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_vce40(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dce120(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dcn10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_hdp40(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_nbio61(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_nbio70(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_oss400(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_oss401(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_oss420(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma040(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma140(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma042(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma142(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma041(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mmhub10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mmhub91(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mmhub930(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mp90(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mp100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_thm90(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_pwr1000(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_smuio1200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_vcn10(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_ex_umc60(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
-struct umr_ip_block *umr_create_ex_umc611(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
-struct umr_ip_block *umr_create_ex_umc612(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
-
-// renoir
-struct umr_ip_block *umr_create_mp1200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_clk1002(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dcn210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dpcs210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-
-// arcturus
-struct umr_ip_block *umr_create_mmhub941(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_ex_vcn250(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
-struct umr_ip_block *umr_create_sdma0422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma1422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma2422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma3422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma4422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma5422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma6422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_sdma7422(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-
-// navi10
-struct umr_ip_block *umr_create_athub200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_clk1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_smu1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_gfx1010(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_hdp500(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mmhub200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mp1100(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_nbio230(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_oss500(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_thm1102(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_vcn200(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-
-// sienna_cichlid
-struct umr_ip_block *umr_create_athub210(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dcn300(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_gfx1030(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_ex_umc870(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
-struct umr_ip_block *umr_create_ex_vcn300(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options, int inst);
-
-// vangogh
-struct umr_ip_block *umr_create_clk1150(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_dcn301(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mmhub230(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_mp1150(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-struct umr_ip_block *umr_create_nbio720(struct umr_ip_offsets_soc15 *soc15_offsets, struct umr_options *options);
-
-/* ip block constructors */
-struct umr_ip_block *umr_create_uvd40(struct umr_options *options);
-struct umr_ip_block *umr_create_uvd42(struct umr_options *options);
-struct umr_ip_block *umr_create_uvd5(struct umr_options *options);
-struct umr_ip_block *umr_create_uvd6(struct umr_options *options);
-struct umr_ip_block *umr_create_vce1(struct umr_options *options);
-struct umr_ip_block *umr_create_vce2(struct umr_options *options);
-struct umr_ip_block *umr_create_vce3(struct umr_options *options);
-struct umr_ip_block *umr_create_gmc60(struct umr_options *options);
-struct umr_ip_block *umr_create_gmc70(struct umr_options *options);
-struct umr_ip_block *umr_create_gmc71(struct umr_options *options);
-struct umr_ip_block *umr_create_gmc81(struct umr_options *options);
-struct umr_ip_block *umr_create_gmc82(struct umr_options *options);
-struct umr_ip_block *umr_create_dce60(struct umr_options *options);
-struct umr_ip_block *umr_create_dce80(struct umr_options *options);
-struct umr_ip_block *umr_create_dce100(struct umr_options *options);
-struct umr_ip_block *umr_create_dce110(struct umr_options *options);
-struct umr_ip_block *umr_create_dce112(struct umr_options *options);
-struct umr_ip_block *umr_create_gfx60(struct umr_options *options);
-struct umr_ip_block *umr_create_gfx70(struct umr_options *options);
-struct umr_ip_block *umr_create_gfx72(struct umr_options *options);
-struct umr_ip_block *umr_create_gfx80(struct umr_options *options);
-struct umr_ip_block *umr_create_gfx81(struct umr_options *options);
-struct umr_ip_block *umr_create_sdma30(struct umr_options *options);
-struct umr_ip_block *umr_create_sdma30x2(struct umr_options *options);
-struct umr_ip_block *umr_create_tonga_ih(struct umr_options *options);
-struct umr_ip_block *umr_create_smu60(struct umr_options *options);
-struct umr_ip_block *umr_create_smu700(struct umr_options *options);
-struct umr_ip_block *umr_create_smu701(struct umr_options *options);
-struct umr_ip_block *umr_create_smu710(struct umr_options *options);
-struct umr_ip_block *umr_create_smu711(struct umr_options *options);
-struct umr_ip_block *umr_create_smu712(struct umr_options *options);
-struct umr_ip_block *umr_create_smu713(struct umr_options *options);
-struct umr_ip_block *umr_create_smu80(struct umr_options *options);
-struct umr_ip_block *umr_create_oss10(struct umr_options *options);
-struct umr_ip_block *umr_create_oss20(struct umr_options *options);
-struct umr_ip_block *umr_create_oss30(struct umr_options *options);
-struct umr_ip_block *umr_create_bif30(struct umr_options *options);
-struct umr_ip_block *umr_create_bif41(struct umr_options *options);
-struct umr_ip_block *umr_create_bif50(struct umr_options *options);
-struct umr_ip_block *umr_create_bif51(struct umr_options *options);
-
-/* asic constructor API */
-struct umr_asic *umr_create_asic_helper(char *name, int family, ...);
-int umr_add_ip_block(struct umr_asic *asic, struct umr_ip_block *ip);
-struct umr_asic *umr_create_asic_from_script(struct umr_options *options, char *name);
-
-/* ASIC constructors */
-struct umr_asic *umr_create_arcturus(struct umr_options *options);
-struct umr_asic *umr_create_bonaire(struct umr_options *options);
-struct umr_asic *umr_create_carrizo(struct umr_options *options);
-struct umr_asic *umr_create_fiji(struct umr_options *options);
-struct umr_asic *umr_create_hainan(struct umr_options *options);
-struct umr_asic *umr_create_hawaii(struct umr_options *options);
-struct umr_asic *umr_create_kabini(struct umr_options *options);
-struct umr_asic *umr_create_kaveri(struct umr_options *options);
-struct umr_asic *umr_create_mullins(struct umr_options *options);
-struct umr_asic *umr_create_navi10(struct umr_options *options);
-struct umr_asic *umr_create_navi12(struct umr_options *options);
-struct umr_asic *umr_create_navi14(struct umr_options *options);
-struct umr_asic *umr_create_sienna_cichlid(struct umr_options *options);
-struct umr_asic *umr_create_navy_flounder(struct umr_options *options);
-struct umr_asic *umr_create_dimgrey_cavefish(struct umr_options *options);
-struct umr_asic *umr_create_vangogh(struct umr_options *options);
-struct umr_asic *umr_create_oland(struct umr_options *options);
-struct umr_asic *umr_create_pitcairn(struct umr_options *options);
-struct umr_asic *umr_create_polaris10(struct umr_options *options);
-struct umr_asic *umr_create_polaris11(struct umr_options *options);
-struct umr_asic *umr_create_polaris12(struct umr_options *options);
-struct umr_asic *umr_create_raven1(struct umr_options *options);
-struct umr_asic *umr_create_picasso(struct umr_options *options);
-struct umr_asic *umr_create_renoir(struct umr_options *options);
-struct umr_asic *umr_create_green_sardine(struct umr_options *options);
-struct umr_asic *umr_create_stoney(struct umr_options *options);
-struct umr_asic *umr_create_tahiti(struct umr_options *options);
-struct umr_asic *umr_create_tonga(struct umr_options *options);
-struct umr_asic *umr_create_topaz(struct umr_options *options);
-struct umr_asic *umr_create_vega10(struct umr_options *options);
-struct umr_asic *umr_create_vega12(struct umr_options *options);
-struct umr_asic *umr_create_vega20(struct umr_options *options);
-struct umr_asic *umr_create_vegam(struct umr_options *options);
-struct umr_asic *umr_create_verde(struct umr_options *options);
-
-
 /* discover */
 struct umr_asic *umr_discover_asic(struct umr_options *options);
 struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did);
@@ -1378,3 +1215,17 @@ void umr_gfxoff_read(struct umr_asic *asic);
 struct json_object *umr_process_json_request(struct json_object *request);
 void umr_run_gui(const char *url);
 #endif
+
+// database
+struct umr_soc15_database {
+	char ipname[64];
+	uint64_t off[8][8];
+	struct umr_soc15_database *next;
+};
+
+FILE *umr_database_open(char *path, char *filename);
+struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename);
+void umr_database_free_soc15(struct umr_soc15_database *soc15);
+struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst);
+struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename);
+

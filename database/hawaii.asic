@@ -1,0 +1,22 @@
+hawaii null 1 8 2
+uvd420 null 0 ip/uvd_4_2_0.reg
+vce200 null 0 ip/vce_2_0_0.reg
+gmc700 null 0 ip/gmc_7_0_0.reg
+dce800 null 0 ip/dce_8_0_0.reg
+gfx720 null 0 ip/gfx_7_2_0.reg
+smu701 null 0 ip/smu_7_0_1.reg
+oss200 null 0 ip/oss_2_0_0.reg
+bif410 null 0 ip/bif_4_1_0.reg
+
+
+arcturus arcturus.soc15 3 21 2
+gfx90 GC 0 ip/gc_9_0_0.reg
+		umr_create_asic_helper("hawaii", FAMILY_CIK,
+			umr_create_uvd42(options),
+			umr_create_vce2(options),
+			umr_create_gmc70(options),
+			umr_create_dce80(options),
+			umr_create_gfx72(options),
+			umr_create_smu701(options),
+			umr_create_oss20(options),
+			umr_create_bif41(options),

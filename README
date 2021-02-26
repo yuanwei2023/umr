@@ -25,6 +25,7 @@ mailing list at:
 
     : https://lists.freedesktop.org/mailman/listinfo/amd-gfx
 
+
 Building
 ---------
 
@@ -76,7 +77,6 @@ environment.  e.g.,
     $ cmake -DUMR_GUI=ON ../
 
 
-
 Running umr
 ------------
 
@@ -101,6 +101,30 @@ or
 Options can be stacked with commas.  For instance:
 
     $ umr -O bits,follow,empty_log -ls
+
+
+Database files 
+---------------
+
+umr now uses a database of text files for registers, IP, ans ASIC
+modelling information.  If umr is installed properly this shouldn't
+be apparent to the user.  If you do however see an error message such as:
+
+'[ERROR]: Cannot find asic file [%s] see README for more information'
+
+That means umr cannot find the ASIC model database file (and likely any
+other file under it).  In that case make sure there is a umr/database directory
+installed in the share directory relative to where the binary is for example if the
+binary is in /usr/local/bin/ then the database is expected to be in 
+/usr/local/share/umr/.
+
+If for whatever reason this isn't the case and cannot be installed then you can
+use the UMR_DATABASE_PATH environment variable to point to the base of the
+database tree.
+
+If you want to override the umr provided database with your own content you can
+use the command line option --database-path (-dbp) to specify a path (which will
+be searched before UMR_DATABASE_PATH and before the default install directory).
 
 
 Running umr GUI

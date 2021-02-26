@@ -193,7 +193,15 @@ int main(int argc, char **argv)
 	options.scanblock = "";
 
 	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
+		if (!strcmp(argv[i], "--database-path") || !strcmp(argv[i], "-dbp")) {
+			if (i + 1 < argc) {
+				strcpy(options.database_path, argv[i+1]);
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --database-path requires at least one parameter\n");
+				return EXIT_FAILURE;
+			}
+		} else if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
 			if (i + 1 < argc) {
 				char *s;
 				s = strstr(argv[i+1], "@");
@@ -722,19 +730,6 @@ int main(int argc, char **argv)
 			}
 			if (asic)
 					asic->options = options;
-		} else if (!strcmp(argv[i], "--update") || !strcmp(argv[i], "-u")) {
-			if (!asic)
-				asic = get_asic();
-			if (i + 1 < argc) {
-				if (argv[i+1][0] == '@')
-					umr_update_string(asic, &argv[i+1][1]);
-				else
-					umr_update(asic, argv[i+1]);
-				++i;
-			} else {
-				fprintf(stderr, "[ERROR]: --update requires one parameter\n");
-				return EXIT_FAILURE;
-			}
 		} else if (!strcmp(argv[i], "--header-dump") || !strcmp(argv[i], "-hd")) {
 			if (!asic)
 				asic = get_asic();
@@ -831,8 +826,10 @@ int main(int argc, char **argv)
 			ih_self_test(asic);
 #endif
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2020, AMD Inc.\n"
+			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2021, AMD Inc.\n"
 "\n*** Device Selection ***\n"
+"\n\t--database-path, -dbp <path>"
+	"\n\t\tSpecify a database path for register, ip, and asic model data.\n"
 "\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
 	"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib,"
 	"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
@@ -848,12 +845,6 @@ int main(int argc, char **argv)
 	"\n\t\tForce a specific PCI device using the domain:bus:slot.function format in hex."
 	"\n\t\tThis is useful when more than one GPU is available. If the amdgpu driver is"
 	"\n\t\tloaded the corresponding instance will be automatically detected.\n"
-"\n\t--update, -u <filename>"
-	"\n\t\tSpecify update file to add, change, or delete registers from the register"
-	"\n\t\tdatabase.  Can also use \'@\' prefix to specify update commands on the command line.  For"
-	"\n\t\tinstance '@add reg raven1.gfx91.mmFoo 0x1234' would add a gfx mmio register.  Useful for"
-	"\n\t\tadding registers that are not including in the kernel headers.  See the content under"
-	"\n\t\tdemo/update/ for an example.\n"
 "\n\t--gfxoff, -go <0 | 1>"
 	"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
 	"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"

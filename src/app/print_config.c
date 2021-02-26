@@ -105,6 +105,7 @@ void umr_print_config(struct umr_asic *asic)
 
 	printf("\tasic.instance == %d\n", asic->instance);
 	printf("\tasic.devname == %s\n", asic->options.pci.name);
+	printf("\tasic.family == %d\n", (int)asic->family);
 
 	printf("\n\tasic.gtt_size == %llu\n", (unsigned long long)asic->config.gtt_size);
 	printf("\tasic.vis_vram_size == %llu\n", (unsigned long long)asic->config.vis_vram_size);

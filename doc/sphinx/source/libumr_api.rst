@@ -6,7 +6,6 @@ libumrcore.a: API Documentation
    :caption: Contents:
 
    create_asic
-   update_asic
    close_asic
    libregister_access
    bank_selection

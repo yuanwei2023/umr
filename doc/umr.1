@@ -7,6 +7,8 @@ is a tool to read and display, as well as write to AMDGPU device
 MMIO, PCIE, SMC, and DIDT registers via userspace.  It can autodetect
 and scan AMDGPU devices (SI and up).
 .SH Device Selection
+.IP "--database-path, -dbp <path>"
+Specify a database path for register, ip, and asic model data.
 .IP "--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 Select a gpu by ASIC name and either the instance number or the PCI bus identifier.  For instance,
 "raven1@1" would pick the raven1 device in the 2nd DRI instance slot.  Similarly,
@@ -18,19 +20,13 @@ refers to a directory under
 where 0 is the first card probed.
 .IP "--force, -f <number>"
 Force a PCIE Device ID in hex or by asic name.  This is used in case the amdgpu driver
-is not yet loaded or a display is not yet attached.  A '@' prefix will specify a path to
- an NPI script, for instance, '@/home/user/device.npi'.  A '.' prefix will specify a virtual
+is not yet loaded or a display is not yet attached.  A '.' prefix will specify a virtual
 device which is handy for looking up register decodings for a device not present in the system,
 for instance, '.vega10'.
 .IP "--pci <device>"
 Force a specific PCI device using the domain:bus:slot.function format in hex.
 This is useful when more than one GPU is available. If the amdgpu driver is
 loaded the corresponding instance will be automatically detected.
-.IP "--update, -u <filename>"
-Specify update file to add, change, or delete registers from the register
-database.  Can also use '@' prefix to specify update commands on the command line.
-For instance '@add reg raven1.gfx91.mmFoo 0x1234' would add a gfx mmio register.
-Useful for adding registers that are not including in the kernel headers.
 .IP "--gfxoff, -go <0 | 1>"
 Turn on or off GFXOFF on select hardware.  A non-zero value enables the GFXOFF feature and
 a zero value disables it.
@@ -304,3 +300,6 @@ GPU hangs occur frequently.  When PG is enabled it will read a constant 0.
 
 .B UMR_LOGGER
     Directory to output "umr.log" file when capturing samples with the --top command.
+
+.B UMR_DATABASE_PATH
+    Directory start of database tree used for register, ip, and asic model data.

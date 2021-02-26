@@ -24,70 +24,24 @@
  */
 #include "umr.h"
 
-static const struct {
-	char *name;
-	struct umr_asic *(*create)(struct umr_options *option);
-} devices[] = {
-	{ "arcturus", &umr_create_arcturus },
-	{ "bonaire", &umr_create_bonaire },
-	{ "carrizo", &umr_create_carrizo },
-	{ "dimgrey_cavefish", &umr_create_dimgrey_cavefish },
-	{ "fiji", &umr_create_fiji   },
-	{ "green_sardine", &umr_create_green_sardine },
-	{ "hainan", &umr_create_hainan },
-	{ "hawaii", &umr_create_hawaii },
-	{ "kabini", &umr_create_kabini },
-	{ "kaveri", &umr_create_kaveri },
-	{ "mullins", &umr_create_mullins },
-	{ "navi10", &umr_create_navi10 },
-	{ "navi12", &umr_create_navi12 },
-	{ "navi14", &umr_create_navi14 },
-	{ "navy_flounder", &umr_create_navy_flounder },
-	{ "oland", &umr_create_oland },
-	{ "picasso", &umr_create_picasso },
-	{ "polaris10", &umr_create_polaris10 },
-	{ "polaris11", &umr_create_polaris11 },
-	{ "polaris12", &umr_create_polaris12 },
-	{ "pitcairn", &umr_create_pitcairn },
-	{ "raven1", &umr_create_raven1 },
-	{ "renoir", &umr_create_renoir },
-	{ "sienna_cichlid", &umr_create_sienna_cichlid },
-	{ "stoney", &umr_create_stoney },
-	{ "tahiti", &umr_create_tahiti },
-	{ "tonga", &umr_create_tonga  },
-	{ "topaz", &umr_create_topaz },
-	{ "vangogh", &umr_create_vangogh },
-	{ "vega10", &umr_create_vega10 },
-	{ "vega12", &umr_create_vega12 },
-	{ "vega20", &umr_create_vega20 },
-	{ "vegam", &umr_create_vegam },
-	{ "verde", &umr_create_verde },
-};
-
 /**
  * umr_discover_asic_by_name - Discover an ASIC by common name
  *
  * @options:  The options to bind to the ASIC
  * @name: Name of the ASIC to look for
  *
- * If the @name begins with an '@' then the device is created on
- * they fly from an NPI script specified in the name.
- *
- * Otherwise, the first instance of a device that matches the name
+ * The first instance of a device that matches the name
  * specified is found and returned.
  */
 struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name)
 {
 	unsigned x;
 	struct umr_asic *asic, *tmp;
-
-	if (name[0] == '@')
-		return umr_create_asic_from_script(options, name + 1);
+	char tmpname[256];
 
 	asic = NULL;
-	for (x = 0; x < (sizeof(devices)/sizeof(devices[0])); x++)
-		if (!strcmp(devices[x].name, name))
-			asic = devices[x].create(options);
+	sprintf(tmpname, "%s.asic", name);
+	asic = umr_database_read_asic(options, tmpname);
 
 	if (asic) {
 		asic->did = 0;

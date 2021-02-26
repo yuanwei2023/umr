@@ -1,0 +1,69 @@
+/*
+ * Copyright 2021 Advanced Micro Devices, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Authors: Tom St Denis <tom.stdenis@amd.com>
+ */
+
+#include "umr.h"
+
+struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename)
+{
+	struct umr_soc15_database *s, *os;
+	FILE *f;
+	char linebuf[256];
+	int x;
+
+	f = umr_database_open(path, filename);
+	if (!f) {
+		fprintf(stderr, "[ERROR]: SOC15 offset file [%s] not found\n", filename);
+		return NULL;
+	}
+
+	os = s = calloc(1, sizeof *s);
+
+	while (fgets(linebuf, sizeof(linebuf), f)) {
+		linebuf[strlen(linebuf)-1] = 0; // chomp
+		strcpy(s->ipname, linebuf);
+		for (x = 0; x < 8; x++) {
+			fgets(linebuf, sizeof(linebuf), f);
+			if (sscanf(linebuf, "\t0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64,
+					&s->off[x][0], &s->off[x][1], &s->off[x][2], &s->off[x][3],
+					&s->off[x][4], &s->off[x][5], &s->off[x][6], &s->off[x][7]) != 8) {
+						fprintf(stderr, "[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
+			}
+		}
+		s->next = calloc(1, sizeof *s);
+		s = s->next;
+	}
+	fclose(f);
+	return os;
+}
+
+void umr_database_free_soc15(struct umr_soc15_database *soc15)
+{
+	struct umr_soc15_database *s;
+
+	while (soc15) {
+		s = soc15->next;
+		free(soc15);
+		soc15 = s;
+	}
+}
