@@ -683,8 +683,14 @@ static int run_gui(const char *url)
 
 		ImGui::BeginTabBar("asics", ImGuiTabBarFlags_None);
 
-		if (asics.empty() && url) {
-			ImGui::Text("No answer from %s yet...", url);
+		if (asics.empty()) {
+			if (url)
+				ImGui::Text("No answer from %s yet...", url);
+			else if (getuid() != 0 && geteuid() != 0) {
+				ImGui::Text("No amdgpu devices found. Try running umr as root/sudo.");
+			} else {
+				ImGui::Text("No amdgpu devices found");
+			}
 		}
 
 		for (int i = 0; i < asics.size(); i++) {
