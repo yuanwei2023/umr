@@ -3074,12 +3074,12 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, ImVec2 pos, ImU32 col
             memcpy(tmp, s + 1, 6);
             tmp[6] = '\0';
             unsigned val;
-            IM_ASSERT(sscanf(tmp, "%x", &val) == 1);
-            current_color = ImColor(
-                (val >> 16) & 0xff,
-                (val >> 8) & 0xff,
-                (val >> 0) & 0xff,
-                255);
+            if(sscanf(tmp, "%x", &val) == 1)
+                current_color = ImColor(
+                    (val >> 16) & 0xff,
+                    (val >> 8) & 0xff,
+                    (val >> 0) & 0xff,
+                    255);
             s += 7;
             continue;
         }
