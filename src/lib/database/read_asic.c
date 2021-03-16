@@ -96,7 +96,7 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 		if (sscanf(linebuf, "%s %s %d %s", ipcmnname, ipsocname, &instance, regfile) != 4) {
 			fprintf(stderr, "[ERROR]: Invalid IP header line [%s]\n", linebuf);
 			umr_database_free_soc15(soc15);
-			umr_free_asic(asic);
+			umr_free_asic_blocks(asic);
 			fclose(f);
 			return NULL;
 		}
