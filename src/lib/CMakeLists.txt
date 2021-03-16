@@ -5,6 +5,8 @@ add_subdirectory(lowlevel)
 
 add_library(umrcore STATIC
   add_ip_block.c
+  apply_bank_address.c
+  apply_callbacks.c
   bitfield_print.c
   close_asic.c
   create_mmio_accel.c
@@ -14,20 +16,18 @@ add_library(umrcore STATIC
   dump_ib.c
   find_reg.c
   free_asic_blocks.c
+  ih_decode_vectors.c
   mmio.c
+  pm4_decode_opcodes.c
+  read_pm4_stream.c
+  read_sdma_stream.c
   read_vram.c
   ring_decode.c
   scan_config.c
   scan_waves.c
+  sdma_decode_opcodes.c
   shader_disasm.c
   sq_cmd_halt_waves.c
-  umr_apply_bank_address.c
-  umr_apply_callbacks.c
-  umr_ih_decode_vectors.c
-  umr_read_pm4_stream.c
-  umr_read_sdma_stream.c
-  umr_pm4_decode_opcodes.c
-  umr_sdma_decode_opcodes.c
   version.c
   $<TARGET_OBJECTS:database>
 )
