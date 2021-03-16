@@ -855,6 +855,7 @@ int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
 struct umr_asic *umr_discover_asic(struct umr_options *options);
 struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did);
 struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name);
+void umr_free_asic_blocks(struct umr_asic *asic);
 void umr_free_asic(struct umr_asic *asic);
 void umr_free_maps(struct umr_asic *asic);
 void umr_close_asic(struct umr_asic *asic); // call this to close a fully open asic

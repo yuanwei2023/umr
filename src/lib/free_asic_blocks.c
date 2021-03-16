@@ -27,12 +27,24 @@
 /**
  * umr_free_asic - Free memory associated with an asic device
  */
-void umr_free_asic(struct umr_asic *asic)
+void umr_free_asic_blocks(struct umr_asic *asic)
 {
-	if (asic->pci.mem != NULL) {
-		// free PCI mapping
-		pci_device_unmap_range(asic->pci.pdevice, asic->pci.mem, asic->pci.pdevice->regions[asic->pci.region].size);
-		pci_system_cleanup();
+	int x, y, z;
+	for (x = 0; x < asic->no_blocks; x++) {
+		for (y = 0; y < asic->blocks[x]->no_regs; y++) {
+			free(asic->blocks[x]->regs[y].regname);
+			for (z = 0; z < asic->blocks[x]->regs[y].no_bits; z++) {
+				free(asic->blocks[x]->regs[y].bits[z].regname);
+			}
+			free(asic->blocks[x]->regs[y].bits);
+		}
+		free(asic->blocks[x]->ipname);
+		free(asic->blocks[x]->regs);
+		free(asic->blocks[x]);
 	}
-	umr_free_asic_blocks(asic);
+	free(asic->blocks);
+	free(asic->mmio_accel.reglist);
+	free(asic->mmio_accel.iplist);
+	free(asic->asicname);
+	free(asic);
 }

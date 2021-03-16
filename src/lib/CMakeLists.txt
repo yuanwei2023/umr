@@ -13,6 +13,7 @@ add_library(umrcore STATIC
   discover_by_name.c
   dump_ib.c
   find_reg.c
+  free_asic_blocks.c
   mmio.c
   read_vram.c
   ring_decode.c
