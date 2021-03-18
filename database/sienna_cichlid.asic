@@ -1,4 +1,4 @@
-sienna_cichlid sienna_cichlid.soc15 4 11 2
+sienna_cichlid sienna_cichlid.soc15 4 12 2
 athub210 ATHUB 0 ip/athub_2_1_0.reg
 gfx1030 GC 0 ip/gc_10_3_0.reg
 hdp500 HDP 0 ip/hdp_5_0_0.reg
@@ -9,3 +9,5 @@ umc870 UMC 0 ip/umc_8_7_0.reg
 vcn300{0} VCN 0 ip/vcn_3_0_0.reg
 vcn300{1} VCN 1 ip/vcn_3_0_0.reg
 dcn300 DCN 0 ip/dcn_3_0_0.reg
+nbio230 NBIO 0 ip/nbio_2_3_0.reg
+smuio1106 SMUIO 0 ip/smuio_11_0_6.reg
