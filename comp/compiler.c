@@ -311,15 +311,6 @@ struct soc15 {
 	struct soc15 *next;
 };
 
-/*
-#define UMC_BASE__INST1_SEG0                       0
-#define UMC_BASE__INST1_SEG1                       0
-#define UMC_BASE__INST1_SEG2                       0
-#define UMC_BASE__INST1_SEG3                       0
-#define UMC_BASE__INST1_SEG4                       0
-#define UMC_BASE__INST1_SEG5                       0
-*/
-
 struct soc15 *find_soc(struct soc15 **soc, char *ipname)
 {
 	if (!*soc) {
@@ -386,7 +377,10 @@ int main(int argc, char **argv)
 	int x, y;
 
 	if (argc != 3 && argc != 2) {
-		fprintf(stderr, "[ERROR]: Usage:\n\t%s offset_header sh_mask_header\n\t%s ipoffset_header\n", argv[0], argv[0]);
+		fprintf(stderr, "Usage:\n"
+"\tTo compile a register file:\n\t\t%s offset_header sh_mask_header\n\n"
+"\tTo compile a SOC15 ASIC offset file:\n\t\t%s ipoffset_header\n\n\n"
+"\tBoth commands output the compiled output to 'stdout' and messages/errors to 'stderr'.\n", argv[0], argv[0]);
 		return EXIT_FAILURE;
 	}
 
