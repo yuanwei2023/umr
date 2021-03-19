@@ -8,6 +8,6 @@ mmhub200 MMHUB 0 ip/mmhub_2_0_0.reg
 mp1100 MP0 0 ip/mp_11_0_0.reg
 nbio230 NBIO 0 ip/nbio_2_3_0.reg
 oss500 OSSSYS 0 ip/osssys_5_0_0.reg
-smu1100 SMUIO 0 ip/smuio_11_0_0.reg
+smuio1100 SMUIO 0 ip/smuio_11_0_0.reg
 thm1102 THM 0 ip/thm_11_0_2.reg
 vcn200 VCN 0 ip/vcn_2_0_0.reg
