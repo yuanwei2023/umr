@@ -8,6 +8,11 @@ parse_reg_bits() {
 	unset UMR_NO_SOC15
 }
 
+cd ${pk}
+git checkout amd-staging-drm-next
+git reset --hard origin/amd-staging-drm-next
+cd -
+
 # random bits
 UMR_NO_SOC15=1 ../comp/compiler ${pk}/gca/gfx_7_0_d.h ${pk}/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
 
