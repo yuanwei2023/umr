@@ -187,7 +187,7 @@ struct umr_shaders_pgm *umr_find_shader_in_stream(
 		if (stream->ib) {
 			p = umr_find_shader_in_stream(stream->ib, vmid, addr);
 			if (p)
-				break;
+				return p;
 		}
 		stream = stream->next;
 	}
