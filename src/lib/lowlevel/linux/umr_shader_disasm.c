@@ -63,16 +63,33 @@ int umr_shader_disasm(struct umr_asic *asic,
 
 	// cpuname based on mesa usage
 	cpuname = asic->asicname;
-	if (asic->family == FAMILY_NV)
-		cpuname = "gfx1010";
-	else if (!strcmp(cpuname, "renoir") || !strcmp(cpuname, "raven1") || !strcmp(cpuname, "picasso"))
+	if (!strcmp(cpuname, "raven1") || !strcmp(cpuname, "picasso"))
 		cpuname = "gfx902";
-	else if (asic->family > FAMILY_VI)
-		cpuname = "gfx900";
 	else if (!strcmp(cpuname, "polaris12") || !strcmp(cpuname, "vegam"))
 		cpuname = "polaris11";
 	else if (!strcmp(cpuname, "vega12"))
-		cpuname = "gfx902";
+		cpuname = "gfx904";
+	else if (!strcmp(cpuname, "vega20"))
+		cpuname = "gfx906";
+	else if (!strcmp(cpuname, "arcturus"))
+		cpuname = "gfx908";
+	else if (!strcmp(cpuname, "renoir"))
+		cpuname = "gfx909";
+	else if (!strcmp(cpuname, "aldebaran"))
+		cpuname = "gfx90a";
+	else if (!strcmp(cpuname, "navi10"))
+		cpuname = "gfx1010";
+	else if (!strcmp(cpuname, "navi12"))
+		cpuname = "gfx1011";
+	else if (!strcmp(cpuname, "navi14"))
+		cpuname = "gfx1012";
+	else if (!strcmp(cpuname, "sienna_cichlid") || !strcmp(cpuname, "navy_flounder") || !strcmp(cpuname, "dimgrey_cavefish") ||
+			 !strcmp(cpuname, "vangogh"))
+		cpuname = "gfx1030";
+	else if (asic->family > FAMILY_VI && asic->family < FAMILY_NV)
+		cpuname = "gfx900";
+	else if (asic->family >= FAMILY_NV)
+		cpuname = "gfx1010";
 
 	// compute features
 	features = "";
