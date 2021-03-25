@@ -90,7 +90,7 @@ int define(char **p)
 
 uint64_t number(char **p)
 {
-	uint64_t v;
+	uint64_t v = 0;
 
 	whitespace(p);
 	if (**p && sscanf(*p, "0x%" SCNx64, &v) != 1) {
