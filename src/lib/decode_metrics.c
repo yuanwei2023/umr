@@ -62,6 +62,38 @@
 	__FIELD(pcie_link_width),	\
 	__FIELD(pcie_link_speed),
 
+#define METRICS_INFO_V1_1_LIST(__FIELD) \
+	__FIELD(temperature_edge),	\
+	__FIELD(temperature_hotspot),	\
+	__FIELD(temperature_mem),	\
+	__FIELD(temperature_vrgfx),	\
+	__FIELD(temperature_vrsoc),	\
+	__FIELD(temperature_vrmem),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_umc_activity),	\
+	__FIELD(average_mm_activity),	\
+	__FIELD(average_socket_power),	\
+	__FIELD(energy_accumulator),	\
+	__FIELD(system_clock_counter),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_vclk0_frequency),	\
+	__FIELD(average_dclk0_frequency),	\
+	__FIELD(average_vclk1_frequency),	\
+	__FIELD(average_dclk1_frequency),	\
+	__FIELD(current_gfxclk),	\
+	__FIELD(current_socclk),	\
+	__FIELD(current_uclk),	\
+	__FIELD(current_vclk0),	\
+	__FIELD(current_dclk0),	\
+	__FIELD(current_vclk1),	\
+	__FIELD(current_dclk1),	\
+	__FIELD(throttle_status),	\
+	__FIELD(current_fan_speed),	\
+	__FIELD(pcie_link_width),	\
+	__FIELD(pcie_link_speed),
+
 #define METRICS_INFO_V2_0_LIST(__FIELD) \
 	__FIELD(system_clock_counter),	\
 	__FIELD(temperature_gfx),	\
@@ -115,6 +147,59 @@
 	__FIELD(throttle_status),	\
 	__FIELD(fan_pwm),
 
+#define METRICS_INFO_V2_1_LIST(__FIELD) \
+	__FIELD(temperature_gfx),	\
+	__FIELD(temperature_soc),	\
+	__FIELD(temperature_core[0]),	\
+	__FIELD(temperature_core[1]),	\
+	__FIELD(temperature_core[2]),	\
+	__FIELD(temperature_core[3]),	\
+	__FIELD(temperature_core[4]),	\
+	__FIELD(temperature_core[5]),	\
+	__FIELD(temperature_core[6]),	\
+	__FIELD(temperature_core[7]),	\
+	__FIELD(temperature_l3[0]),	\
+	__FIELD(temperature_l3[1]),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_mm_activity),	\
+	__FIELD(system_clock_counter),	\
+	__FIELD(average_socket_power),	\
+	__FIELD(average_cpu_power),	\
+	__FIELD(average_soc_power),	\
+	__FIELD(average_gfx_power),	\
+	__FIELD(average_core_power[0]),	\
+	__FIELD(average_core_power[1]),	\
+	__FIELD(average_core_power[2]),	\
+	__FIELD(average_core_power[3]),	\
+	__FIELD(average_core_power[4]),	\
+	__FIELD(average_core_power[5]),	\
+	__FIELD(average_core_power[6]),	\
+	__FIELD(average_core_power[7]),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_fclk_frequency),	\
+	__FIELD(average_vclk_frequency),	\
+	__FIELD(average_dclk_frequency),	\
+	__FIELD(current_gfxclk),	\
+	__FIELD(current_socclk),	\
+	__FIELD(current_uclk),	\
+	__FIELD(current_fclk),	\
+	__FIELD(current_vclk),	\
+	__FIELD(current_dclk),	\
+	__FIELD(current_coreclk[0]),	\
+	__FIELD(current_coreclk[1]),	\
+	__FIELD(current_coreclk[2]),	\
+	__FIELD(current_coreclk[3]),	\
+	__FIELD(current_coreclk[4]),	\
+	__FIELD(current_coreclk[5]),	\
+	__FIELD(current_coreclk[6]),	\
+	__FIELD(current_coreclk[7]),	\
+	__FIELD(current_l3clk[0]),	\
+	__FIELD(current_l3clk[1]),	\
+	__FIELD(throttle_status),	\
+	__FIELD(fan_pwm),
+
 static struct field_info metrics_header[] = {
 #define METRICS_HEADER_INFO(MEMBER)	FIELD_INFO(struct umr_metrics_table_header, MEMBER)
 	METRICS_HEADER_LIST(METRICS_HEADER_INFO)
@@ -125,9 +210,19 @@ static struct field_info metrics_v1_0[] = {
 	METRICS_INFO_V1_0_LIST(METRICS_V1_0_INFO)
 };
 
+static struct field_info metrics_v1_1[] = {
+#define METRICS_V1_1_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_1, MEMBER)
+	METRICS_INFO_V1_1_LIST(METRICS_V1_1_INFO)
+};
+
 static struct field_info metrics_v2_0[] = {
 #define METRICS_V2_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_0, MEMBER)
 	METRICS_INFO_V2_0_LIST(METRICS_V2_0_INFO)
+};
+
+static struct field_info metrics_v2_1[] = {
+#define METRICS_V2_1_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_1, MEMBER)
+	METRICS_INFO_V2_1_LIST(METRICS_V2_1_INFO)
 };
 
 static void umr_dump_field_info(FILE *stream, const struct field_info *info,
@@ -170,12 +265,20 @@ int umr_dump_metrics(FILE *stream, const void *table, uint32_t size)
 
 	umr_dump_field_info(stream, metrics_header, ARRAY_SIZE(metrics_header), " hdr.", table);
 
-	switch (header->format_revision) {
-	case 1:
+#define METRICS_VERSION(a, b)	((a << 16) | b )
+
+	switch (METRICS_VERSION(header->format_revision, header->content_revision)) {
+	case METRICS_VERSION(1, 0):
 		umr_dump_field_info(stream, metrics_v1_0, ARRAY_SIZE(metrics_v1_0), "v1_0.", table);
 		break;
-	case 2:
+	case METRICS_VERSION(1, 1):
+		umr_dump_field_info(stream, metrics_v1_1, ARRAY_SIZE(metrics_v1_1), "v1_1.", table);
+		break;
+	case METRICS_VERSION(2, 0):
 		umr_dump_field_info(stream, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table);
+		break;
+	case METRICS_VERSION(2, 1):
+		umr_dump_field_info(stream, metrics_v2_1, ARRAY_SIZE(metrics_v2_1), "v2_1.", table);
 		break;
 	default:
 		fprintf(stderr, "[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);
