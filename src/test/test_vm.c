@@ -73,6 +73,9 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct8(struct umr_asic* asic)
 }
 
 DEFINE_TESTS(vm_tests)
+#if 0
+TEST(test_can_read_from_vm_memory_direct1, "direct_vm_test1.envdef", "raven1"),
+#endif
 #if 1
 TEST(test_can_read_from_vm_memory_direct0, "direct_vm_test0.envdef", "raven1"),
 TEST(test_can_read_from_vm_memory_direct1, "direct_vm_test1.envdef", "raven1"),
@@ -81,6 +84,6 @@ TEST(test_can_read_from_vm_memory_direct3, "direct_vm_test3.envdef", "navi10"),
 TEST(test_can_read_from_vm_memory_direct5, "direct_vm_test5.envdef", "navi10"),
 TEST(test_can_read_from_vm_memory_direct6, "direct_vm_test6.envdef", "navi10"),
 TEST(test_can_read_from_vm_memory_direct7, "direct_vm_test7.envdef", "navi10"),
-#endif
 TEST(test_can_read_from_vm_memory_direct8, "direct_vm_test8.envdef", "navi10"),
+#endif
 END_TESTS(vm_tests);

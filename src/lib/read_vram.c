@@ -624,11 +624,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 			current_depth = page_table_depth;
 			while (current_depth) {
-				// PDE selectors are 9 bits and they start from the top PDE2 down to PDE0 (or sooner if PDE-is-PTE is asserted)
-				// So we drop from 48 down to PDE0 and then add back 9 bits for every level above that we are.
-				pde_idx = address >> ((48 - (9 * page_table_depth)) + (9 * (current_depth - 1)));
+				pde_idx = address >> (9 * (current_depth - 1) + page_table_block_size + 12);
 				// mask only 9 bits
-				pde_idx &= (1ULL << 9) - 1;
+				if (current_depth != page_table_depth)
+					pde_idx &= (1ULL << 9) - 1;
+
 
 				// TODO: redo va_mask
 				va_mask = ((uint64_t)511 << ((page_table_depth - pde_cnt)*9 + (12 + pde0_block_fragment_size + page_table_block_size)));
