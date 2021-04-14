@@ -166,6 +166,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 	struct json_object *waves = json_object_new_array();
 	while (wd) {
 		uint64_t pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo);
+		unsigned vmid;
 
 		struct json_object *wave = json_object_new_object();
 		json_object_object_add(wave, "se", json_object_new_int(wd->se));
@@ -215,6 +216,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 			json_object_object_add(hw_id, "tg_id", json_object_new_int(wd->ws.hw_id.tg_id));
 			json_object_object_add(hw_id, "state_id", json_object_new_int(wd->ws.hw_id.state_id));
 			json_object_object_add(hw_id, "vm_id", json_object_new_int(wd->ws.hw_id.vm_id));
+			vmid = wd->ws.hw_id.vm_id;
 		} else {
 			json_object_object_add(hw_id, "value", json_object_new_int(wd->ws.hw_id1.value));
 			json_object_object_add(hw_id, "wave_id", json_object_new_int(wd->ws.hw_id1.wave_id));
@@ -229,6 +231,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 			json_object_object_add(hw_id, "wg_id", json_object_new_int(wd->ws.hw_id2.wg_id));
 			json_object_object_add(hw_id, "compat_level", json_object_new_int(wd->ws.hw_id2.compat_level));
 			json_object_object_add(hw_id, "vm_id", json_object_new_int(wd->ws.hw_id2.vm_id));
+			vmid = wd->ws.hw_id2.vm_id;
 		}
 		json_object_object_add(wave, "hw_id", hw_id);
 
@@ -272,7 +275,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 
 			/* */
 			if (include_shaders && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
-				struct umr_shaders_pgm *shader = umr_find_shader_in_stream(stream, wd->ws.hw_id.vm_id, pgm_addr);
+				struct umr_shaders_pgm *shader = umr_find_shader_in_stream(stream, vmid, pgm_addr);
 				uint32_t shader_size;
 				uint64_t shader_addr;
 				if (shader) {
@@ -286,7 +289,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 					#undef NUM_OPCODE_WORDS
 				}
 				char **disassembly;
-				int r = umr_vm_disasm_to_str(asic, wd->ws.hw_id.vm_id,
+				int r = umr_vm_disasm_to_str(asic, vmid,
 											 shader_addr, pgm_addr, shader_size,
 											 0,
 											 &disassembly);
