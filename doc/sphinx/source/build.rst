@@ -80,6 +80,14 @@ At this point umr should be installed and can be invoked by running the command 
 Optional Packages
 -----------------
 
+umr now features a GUI component as well which is optional and can be enabled with the UMR_GUI define:
+
+::
+
+	$ cmake -DUMR_GUI=ON .
+
+The GUI adds library dependencies on glew/gl related libraries.
+
 You may disable LLVM dependencies by adding UMR_NO_LLVM to your shell environment:
 
 ::

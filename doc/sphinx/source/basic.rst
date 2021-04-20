@@ -60,22 +60,25 @@ yet loaded the *--pci* flag can be used.
 Would issue a command typically on the first integrated GPU found
 on a system.
 
-''''''''''''''''
-Selecting by NPI
-''''''''''''''''
+''''''''''''''''''''''''''''''''''
+Selecting by name and instance/pci
+''''''''''''''''''''''''''''''''''
 
-NPI scripts can be used in place of built-in devices with the
---forced command using a name prefix of \@.
+To simplify the selection of a device even further you can compound the
+asic model and instance/pci device selection into one command with the *--gpu* flag.
 
 ::
 
-	umr --force @/home/user/newdevice.npi
+	umr --gpu vega10@0
 
-Would pick up the IP blocks and register/bits data indicated by the
-file 'newdevice.npi'.
+For instance, will tell umr that the 0'th instanced DRI device is a vega10.
 
-Note that the '--pci' option is typically used with NPI scripts as the
-device IDs are not found in the umr source code (for obvious reasons).
+::
+
+	umr --gpu vega10=0000:00:01.0
+
+For instance, will tell umr that the PCI device at bus address 0000:00:01.0 is a
+vega10 asic.
 
 ''''''''''''''''''''''''''
 Selecting a virtual device
@@ -145,6 +148,8 @@ The options available are:
 |                   | every page decoded.                                                     |
 +-------------------+-------------------------------------------------------------------------+
 | no_scan_waves     | Disable scaning for wave data during --ring output                      |
++-------------------+-------------------------------------------------------------------------+
+| full_shader       | Always print the full shader in --waves and --ring output               |
 +-------------------+-------------------------------------------------------------------------+
 
 ------------------

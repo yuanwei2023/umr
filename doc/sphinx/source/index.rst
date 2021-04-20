@@ -20,7 +20,6 @@ UMR: User Mode Register Debugger
    ring
    top
    power
-   npi_scripting
    
    libumr_api
 
