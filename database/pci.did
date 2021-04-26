@@ -182,6 +182,7 @@
 0x7319 navi10.asic
 0x731A navi10.asic
 0x731B navi10.asic
+0x731E navi10.asic
 0x731F navi10.asic
 0x7340 navi14.asic
 0x7341 navi14.asic
@@ -194,10 +195,12 @@
 0x738E arcturus.asic
 0x7390 arcturus.asic
 0x73A0 sienna_cichlid.asic
+0x73A1 sienna_cichlid.asic
 0x73A2 sienna_cichlid.asic
 0x73A3 sienna_cichlid.asic
 0x73AB sienna_cichlid.asic
 0x73AE sienna_cichlid.asic
+0x73AF sienna_cichlid.asic
 0x73BF sienna_cichlid.asic
 0x73C0 navy_flounder.asic
 0x73C1 navy_flounder.asic
