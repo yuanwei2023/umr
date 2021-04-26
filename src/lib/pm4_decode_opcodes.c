@@ -444,10 +444,10 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			}
 			break;
 		case 0x37: // WRITE_DATA
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", 0, op_37_engines[BITS(stream->words[0], 30, 32)], 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(stream->words[0], 30, 32), op_37_engines[BITS(stream->words[0], 30, 32)], 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "WR_CONFIRM", BITS(stream->words[0], 20, 21), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "WR_ONE_ADDR", BITS(stream->words[0], 16, 17), NULL, 10);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", 0, op_37_dst_sel[BITS(stream->words[0], 8, 12)],  0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", BITS(stream->words[0], 8, 12), op_37_dst_sel[BITS(stream->words[0], 8, 12)],  10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_LO", BITS(stream->words[1], 2, 32) << 2, NULL, 16);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_HI", stream->words[2], NULL, 16);
 			if (BITS(stream->words[0], 8, 12) == 0) { // mem-mapped reg
@@ -460,10 +460,10 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			}
 			break;
 		case 0x3C: // WAIT_REG_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", 0, BITS(stream->words[0], 8, 9) ? "PFP" : "ME", 0);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "MEMSPACE", 0, BITS(stream->words[0], 4, 5) ? "MEM" : "REG", 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(stream->words[0], 8, 9), BITS(stream->words[0], 8, 9) ? "PFP" : "ME", 10);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "MEMSPACE", BITS(stream->words[0], 4, 5), BITS(stream->words[0], 4, 5) ? "MEM" : "REG", 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "OPERATION", BITS(stream->words[0], 6, 8), NULL, 10);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "FUNCTION", 0, op_3c_functions[BITS(stream->words[0], 0, 4)], 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "FUNCTION", BITS(stream->words[0], 0, 4), op_3c_functions[BITS(stream->words[0], 0, 4)], 10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_ADDRESS_LO", BITS(stream->words[1], 2, 32) << 2, NULL, 16);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "SWAP", BITS(stream->words[1], 0, 2), NULL, 16);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "POLL_ADDRESS_HI", stream->words[2], NULL, 16);
@@ -472,8 +472,8 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL INTERVAL", stream->words[5], NULL, 16);
 			break;
 		case 0x40: // PKT3_COPY_DATA
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_SEL", 0, op_40_mem_sel[BITS(stream->words[0], 0, 4)], 0);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", 0, op_40_mem_sel[BITS(stream->words[0], 8, 12)], 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_SEL", BITS(stream->words[0], 0, 4), op_40_mem_sel[BITS(stream->words[0], 0, 4)], 10);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", BITS(stream->words[0], 8, 12), op_40_mem_sel[BITS(stream->words[0], 8, 12)], 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_CACHE_POLICY", BITS(stream->words[0], 13, 15), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COUNT_SEL", BITS(stream->words[0], 16, 17), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "WR_CONFIRM", BITS(stream->words[0], 20, 21), NULL, 10);
@@ -481,7 +481,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "PQ_EXE_STATUS", BITS(stream->words[0], 29, 30), NULL, 10);
 
 			switch (BITS(stream->words[0], 0, 4)) {
-				case 0: ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_REG_OFFSET", 0, umr_reg_name(asic, BITS(stream->words[1], 0, 18)), 0); break;
+				case 0: ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_REG_OFFSET", BITS(stream->words[1], 0, 18), umr_reg_name(asic, BITS(stream->words[1], 0, 18)), 16); break;
 				case 5: ui->add_field(ui, ib_addr + 8, ib_vmid, "IMM_DATA", stream->words[1], NULL, 16); break;
 				default: ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_LO", BITS(stream->words[1], 2, 32) << 2, NULL, 16); break;
 			}
@@ -492,13 +492,13 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_DATA_HI", stream->words[2], NULL, 16);
 
 			switch (BITS(stream->words[0], 0, 4)) {
-				case 0: ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_REG_OFFSET", 0, umr_reg_name(asic, BITS(stream->words[3], 0, 18)), 0); break;
+				case 0: ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_REG_OFFSET", BITS(stream->words[3], 0, 18), umr_reg_name(asic, BITS(stream->words[3], 0, 18)), 16); break;
 				default: ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_LO", stream->words[3], NULL, 16); break;
 			}
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", stream->words[4], NULL, 16);
 			break;
 		case 0x43: // SURFACE_SYNC
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", 0, BITS(stream->words[0], 31, 32) ? "ME" : "PFP", 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(stream->words[0], 31, 32), BITS(stream->words[0], 31, 32) ? "ME" : "PFP", 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(stream->words[0], 0, 29), NULL, 10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "COHER_SIZE", stream->words[1], NULL, 10);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "COHER_BASE", stream->words[2], NULL, 16);
@@ -609,12 +609,12 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(stream->words[5], 31, 32), NULL, 10);
 			break;
 		case 0x51: // CONTEXT_REG_RMW
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "REG", 0, umr_reg_name(asic, stream->words[0]), 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "REG", stream->words[0], umr_reg_name(asic, stream->words[0]), 16);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "MASK", stream->words[1], NULL, 16);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "DATA", stream->words[2], NULL, 16);
 			break;
 		case 0x58: // ACQUIRE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", 0, BITS(stream->words[0], 31, 32) ? "ME" : "PFP", 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(stream->words[0], 31, 32), BITS(stream->words[0], 31, 32) ? "ME" : "PFP", 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(stream->words[0], 0, 30), NULL, 10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "CP_COHER_SIZE", stream->words[1], NULL, 16);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", BITS(stream->words[2], 0, 8), NULL, 16);
@@ -690,7 +690,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			{
 				uint64_t addr = BITS(stream->words[0], 0, 16) + 0xC000;
 				uint32_t n;
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", 0, op_7a_index_str[BITS(stream->words[0], 28, 32)], 0);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", BITS(stream->words[0], 28, 32), op_7a_index_str[BITS(stream->words[0], 28, 32)], 10);
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", stream->words[n], umr_reg_name(asic, addr), 16);
 					addr += 1;
@@ -718,7 +718,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			break;
 		case 0x83: // DUMP_CONST_RAM
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "OFFSET", BITS(stream->words[0], 0, 16), NULL, 10);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_POLICY", 0, BITS(stream->words[0], 25, 26) ? "stream" : "lru", 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_POLICY", BITS(stream->words[0], 25, 26), BITS(stream->words[0], 25, 26) ? "stream" : "lru", 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "INC_CE", BITS(stream->words[0], 30, 31), NULL, 10);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "INC_CS", BITS(stream->words[0], 31, 32), NULL, 10);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "NUM_DW", BITS(stream->words[1], 0, 15), NULL, 10);
@@ -726,7 +726,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "ADDR_HI", stream->words[3], NULL, 16);
 			break;
 		case 0x84: // INCREMENT_CE_COUNTER
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "CNTRSEL", 0, op_84_cntr_sel[BITS(stream->words[0], 0, 2)], 0);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CNTRSEL", BITS(stream->words[0], 0, 2), op_84_cntr_sel[BITS(stream->words[0], 0, 2)], 10);
 			break;
 		case 0x86: // WAIT_ON_CE_COUNTER
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COND_ACQUIRE_MEM", BITS(stream->words[0], 0, 1), NULL, 10);
@@ -782,7 +782,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				else
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "MEM_ADDR_HI", stream->words[1], NULL, 16);
 				if (BITS(stream->words[2], 31, 32))
-					ui->add_field(ui, ib_addr + 12, ib_vmid, "REG", 0, umr_reg_name(asic, 0xA000 + BITS(stream->words[2], 0, 16)), 0);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "REG", 0xA000 + BITS(stream->words[2], 0, 16), umr_reg_name(asic, 0xA000 + BITS(stream->words[2], 0, 16)), 16);
 				ui->add_field(ui, ib_addr + 16, ib_vmid, "NUM_DWORDS", BITS(stream->words[3], 0, 14), NULL, 10);
 				if (BITS(stream->words[2], 31, 32)) {
 					uint32_t n;
