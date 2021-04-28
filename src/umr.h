@@ -973,7 +973,6 @@ void umr_free_asic(struct umr_asic *asic);
 void umr_free_maps(struct umr_asic *asic);
 void umr_close_asic(struct umr_asic *asic); // call this to close a fully open asic
 int umr_query_drm(struct umr_asic *asic, int field, void *ret, int size);
-int umr_query_drm_vbios(struct umr_asic *asic, int field, int type, void *ret, int size);
 void umr_enumerate_devices(void);
 int umr_update(struct umr_asic *asic, char *script);
 int umr_update_string(struct umr_asic *asic, char *sdata);
@@ -1336,20 +1335,6 @@ struct umr_soc15_database {
 	char ipname[64];
 	uint64_t off[8][8];
 	struct umr_soc15_database *next;
-};
-
-// vbios
-struct umr_vbios_info {
-	uint8_t name[64];
-	uint32_t dbdf;
-	uint8_t vbios_pn[64];
-	uint32_t version;
-	uint8_t date[32];
-	uint8_t serial[16];
-	uint32_t dev_id;
-	uint32_t rev_id;
-	uint32_t sub_dev_id;
-	uint32_t sub_ved_id;
 };
 
 FILE *umr_database_open(char *path, char *filename);

@@ -35,7 +35,6 @@ add_library(umrapp STATIC
   pp_table.c
   navi10_ppt.c
   read_metrics.c
-  vbios.c
   ${GUI_SOURCE}
 )
 
