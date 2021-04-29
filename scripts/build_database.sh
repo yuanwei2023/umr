@@ -2,9 +2,9 @@
 make -C ../comp/
 
 parse_reg_bits() {
-	if [ -e ${pk}/$1_offset.h ]; then suf="offset"; fi
-	if [ -e ${pk}/$1_d.h ]; then suf="d"; export UMR_NO_SOC15=1; fi
-	../comp/compiler ${pk}/$1_${suf}.h ${pk}/$1_sh_mask.h > ../database/ip/$2
+	if [ -e ${pk}/include/asic_reg/$1_offset.h ]; then suf="offset"; fi
+	if [ -e ${pk}/include/asic_reg/$1_d.h ]; then suf="d"; export UMR_NO_SOC15=1; fi
+	../comp/compiler ${pk}/include/asic_reg/$1_${suf}.h ${pk}/include/asic_reg/$1_sh_mask.h > ../database/ip/$2
 	unset UMR_NO_SOC15
 }
 
@@ -14,7 +14,7 @@ git reset --hard origin/amd-staging-drm-next
 cd -
 
 # random bits
-UMR_NO_SOC15=1 ../comp/compiler ${pk}/gca/gfx_7_0_d.h ${pk}/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
+UMR_NO_SOC15=1 ../comp/compiler ${pk}/include/asic_reg/gca/gfx_7_0_d.h ${pk}/include/asic_reg/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
 
 # regular headers
 parse_reg_bits athub/athub_1_0 athub_1_0_0.reg
@@ -164,16 +164,16 @@ parse_reg_bits vcn/vcn_2_0_0 vcn_2_0_0.reg
 parse_reg_bits vcn/vcn_2_5 vcn_2_5_0.reg
 parse_reg_bits vcn/vcn_3_0_0 vcn_3_0_0.reg
 
-../comp/compiler ${pk}/../arct_ip_offset.h > ../database/arcturus.soc15
-../comp/compiler ${pk}/../dimgrey_cavefish_ip_offset.h > ../database/dimgrey_cavefish.soc15
-../comp/compiler ${pk}/../navi10_ip_offset.h > ../database/navi10.soc15
-../comp/compiler ${pk}/../navi12_ip_offset.h > ../database/navi12.soc15
-../comp/compiler ${pk}/../navi14_ip_offset.h > ../database/navi14.soc15
-../comp/compiler ${pk}/../renoir_ip_offset.h > ../database/renoir.soc15
-../comp/compiler ${pk}/../sienna_cichlid_ip_offset.h > ../database/sienna_cichlid.soc15
-../comp/compiler ${pk}/../vega10_ip_offset.h > ../database/vega10.soc15
-../comp/compiler ${pk}/../vega20_ip_offset.h > ../database/vega20.soc15
-../comp/compiler ${pk}/../vangogh_ip_offset.h > ../database/vangogh.soc15
+../comp/compiler ${pk}/include/arct_ip_offset.h > ../database/arcturus.soc15
+../comp/compiler ${pk}/include/dimgrey_cavefish_ip_offset.h > ../database/dimgrey_cavefish.soc15
+../comp/compiler ${pk}/include/navi10_ip_offset.h > ../database/navi10.soc15
+../comp/compiler ${pk}/include/navi12_ip_offset.h > ../database/navi12.soc15
+../comp/compiler ${pk}/include/navi14_ip_offset.h > ../database/navi14.soc15
+../comp/compiler ${pk}/include/renoir_ip_offset.h > ../database/renoir.soc15
+../comp/compiler ${pk}/include/sienna_cichlid_ip_offset.h > ../database/sienna_cichlid.soc15
+../comp/compiler ${pk}/include/vega10_ip_offset.h > ../database/vega10.soc15
+../comp/compiler ${pk}/include/vega20_ip_offset.h > ../database/vega20.soc15
+../comp/compiler ${pk}/include/vangogh_ip_offset.h > ../database/vangogh.soc15
 
 make -C ../comp clean
 
