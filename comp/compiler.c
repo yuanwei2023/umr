@@ -119,8 +119,11 @@ void symbol(char **p, char *dest)
 struct regs *find_reg(struct regs *or, struct regs *r, char *name)
 {
 	int try = 0;
+	struct regs *pr = r;
 retry:
 	while (r) {
+		if (try && pr == r)
+			return NULL;
 		if (!memcmp(r->name, "mm", 2) && !strcmp(r->name + 2, name))
 			break;
 		if (!memcmp(r->name, "ix", 2) && !strcmp(r->name + 2, name))
