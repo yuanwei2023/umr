@@ -869,11 +869,20 @@ next_page:
 			chunk_size = size;
 		}
 		if (asic->options.verbose) {
-			asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 " (reading: %" PRIu32 " bytes)\n",
-										&indentation[15-pde_cnt*3-3],
-										pte_fields.system ? "sys" : "vram",
-										start_addr,
-										chunk_size);
+			if (pte_fields.system == 1) {
+				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 ", (reading: %" PRIu32 " bytes)\n",
+											&indentation[15-pde_cnt*3-3],
+											"sys",
+											start_addr,
+											chunk_size);
+			} else {
+				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 " (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes)\n",
+											&indentation[15-pde_cnt*3-3],
+											"vram",
+											start_addr,
+											start_addr + vm_fb_offset,
+											chunk_size);
+			}
 		}
 		// allow destination to be NULL to simply use decoder
 		if (pte_fields.valid) {
