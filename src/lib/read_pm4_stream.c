@@ -24,7 +24,7 @@
  */
 #include "umr.h"
 
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords);
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
 
 /**
  * parse_pm4 - Parse a PM4 packet looking for pointers to shaders or IBs
@@ -124,7 +124,7 @@ static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps
 				if (umr_read_vram(asic, tvmid, addr, size, buf) < 0) {
 					fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, tvmid, buf, size / 4);
+					ps->ib = umr_pm4_decode_stream(asic, tvmid, buf, size / 4, ps->ring_type);
 					ps->ib_source.addr = addr;
 					ps->ib_source.vmid = tvmid;
 				}
@@ -227,7 +227,7 @@ void umr_free_pm4_stream(struct umr_pm4_stream *stream)
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords)
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	struct {
@@ -244,6 +244,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 		fprintf(stderr, "[ERROR]: Out of memory\n");
 		return NULL;
 	}
+	ps->ring_type = rt;
 
 	memset(&uvd_ib, 0, sizeof uvd_ib);
 
@@ -312,7 +313,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
 				if (umr_read_vram(asic, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
 					fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4);
+					ps->ib = umr_pm4_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4, ps->ring_type);
 					ps->ib_source.addr = uvd_ib.addr;
 					ps->ib_source.vmid = uvd_ib.vmid;
 				}
@@ -372,6 +373,21 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 {
 	void *ps = NULL;
 	uint32_t *ringdata, ringsize;
+	enum umr_ring_type rt;
+
+	// try to determine ring type from name
+	if (strstr(ringname, "comp"))
+		rt = UMR_RING_COMP;
+	else if (strstr(ringname, "gfx"))
+		rt = UMR_RING_GFX;
+	else if (strstr(ringname, "vcn") || strstr(ringname, "uvd") || strstr(ringname, "jpeg"))
+		rt = UMR_RING_VCN;
+	else if (strstr(ringname, "kiq"))
+		rt = UMR_RING_KIQ;
+	else if (strstr(ringname, "sdma"))
+		rt = UMR_RING_SDMA;
+	else
+		rt = UMR_RING_UNK;
 
 	if (!no_halt && asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
@@ -399,7 +415,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 				ringdata[0] = (ringdata[0] + 1) % ringsize;
 			}
 
-			ps = umr_pm4_decode_stream(asic, 0, lineardata, linearsize);
+			ps = umr_pm4_decode_stream(asic, 0, lineardata, linearsize, rt);
 			free(lineardata);
 		}
 	}

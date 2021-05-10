@@ -76,7 +76,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		} else {
 			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
 			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)
-				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4);
+				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4, UMR_RING_UNK);
 			else
 				stream = NULL;
 			free(ib);
@@ -388,7 +388,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 		} else {
 			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
 			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)
-				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4);
+				stream = umr_pm4_decode_stream(asic, ib_addr.vmid, ib, ib_addr.size / 4, UMR_RING_UNK);
 			else
 				stream = NULL;
 			free(ib);

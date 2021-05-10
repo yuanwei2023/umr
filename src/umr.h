@@ -1043,6 +1043,16 @@ int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uin
 int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mode);
 
 /* IB/ring decoding/dumping/etc */
+enum umr_ring_type {
+	UMR_RING_GFX=0,
+	UMR_RING_COMP,
+	UMR_RING_VCN,
+	UMR_RING_KIQ,
+	UMR_RING_SDMA,
+
+	UMR_RING_UNK=0xFF, // if unknown
+};
+
 struct umr_pm4_stream {
 	uint32_t	 pkttype,				// packet type (0==simple write, 3 == packet)
 			 pkt0off,				// base address for PKT0 writes
@@ -1060,11 +1070,13 @@ struct umr_pm4_stream {
 	} ib_source;                            // where did an IB if any come from?
 
 	struct umr_shaders_pgm *shader; // shader program if any
+
+	enum umr_ring_type ring_type;
 };
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
 struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt);
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords);
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
@@ -1123,7 +1135,7 @@ struct umr_pm4_stream_decode_ui {
 };
 
 struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
-int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow);
+int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt);
 
 /* SDMA decoding */
 struct umr_sdma_stream {

@@ -1070,9 +1070,10 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
  * 	from_vmid: The VMID of the opcode that points to this stream
  * 	opcodes:  The number of PM4 opcodes to decode (~0UL for max)
  * 	follow: Boolean controlling whether IBs found in the stream will be followed
+ * 	rt: a value from the set umr_ring_type
  *
  */
-int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow)
+int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt)
 {
 	uint32_t *data;
 	struct umr_pm4_stream *stream;
@@ -1080,7 +1081,7 @@ int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decod
 	data = calloc(sizeof(*data), nwords);
 	if (data) {
 		if (umr_read_vram(asic, ib_vmid, ib_addr, nwords * sizeof(*data), data) == 0) {
-			stream = umr_pm4_decode_stream(asic, ib_vmid, data, nwords);
+			stream = umr_pm4_decode_stream(asic, ib_vmid, data, nwords, rt);
 			if (stream) {
 				umr_pm4_decode_stream_opcodes(asic, ui, stream, ib_addr, ib_vmid, from_addr, from_ib, opcodes, follow);
 				umr_free_pm4_stream(stream);
