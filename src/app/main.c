@@ -988,7 +988,7 @@ printf(
 	}
 
 	if (!asic) {
-		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2020, AMD Inc.\n\n"
+		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2021, AMD Inc.\n\n"
 			   "Use '--help' for a list of commands and options.\n",
 			    UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH);
 	}
