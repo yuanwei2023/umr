@@ -430,17 +430,38 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			break;
 		case 0x33: // INDIRECT_BUFFER_CONST
 		case 0x3F: // INDIRECT_BUFFER_CIK
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "IB_BASE_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "SWAP", BITS(stream->words[0], 0, 2), NULL, 10);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "IB_BASE_HI", BITS(stream->words[1], 0, 16), NULL, 16);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_SIZE", BITS(stream->words[2], 0, 20), NULL, 10);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_VMID", BITS(stream->words[2], 24, 28), NULL, 10);
-			if (asic->family >= FAMILY_AI) {
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "CHAIN", BITS(stream->words[2], 20, 21), NULL, 10);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "PRE_ENA", BITS(stream->words[2], 21, 22), NULL, 10);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "CACHE_POLICY", BITS(stream->words[2], 28, 30), NULL, 10);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "PRE_RESUME", BITS(stream->words[2], 30, 31), NULL, 10);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "PRIV", BITS(stream->words[2], 31, 32), NULL, 10);
+			if (stream->opcode == 0x3F && stream->n_words == 13) {
+				// COND packet
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "MODE", BITS(stream->words[0], 0, 2), NULL, 10);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "FUNCTION", BITS(stream->words[0], 8, 11), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "COMPARE_ADDR_LO", BITS(stream->words[1], 3, 32), NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "COMPARE_ADDR_HI", stream->words[2], NULL, 16);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "MASK_LO", stream->words[3], NULL, 16);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "MASK_HI", stream->words[4], NULL, 16);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "REFERENCE_LO", stream->words[5], NULL, 16);
+				ui->add_field(ui, ib_addr + 28, ib_vmid, "REFERENCE_HI", stream->words[6], NULL, 16);
+				ui->add_field(ui, ib_addr + 32, ib_vmid, "IB_BASE1_LO", BITS(stream->words[7], 2, 32), NULL, 16);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "IB_BASE1_HI", stream->words[8], NULL, 16);
+				ui->add_field(ui, ib_addr + 40, ib_vmid, "IB_SIZE1", BITS(stream->words[9], 0, 20), NULL, 16);
+				ui->add_field(ui, ib_addr + 40, ib_vmid, "CACHE_POLICY1", BITS(stream->words[9], 28, 30), NULL, 10);
+				ui->add_field(ui, ib_addr + 44, ib_vmid, "IB_BASE2_LO", BITS(stream->words[10], 2, 32), NULL, 16);
+				ui->add_field(ui, ib_addr + 48, ib_vmid, "IB_BASE2_HI", stream->words[11], NULL, 16);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "IB_SIZE2", BITS(stream->words[12], 0, 20), NULL, 16);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "CACHE_POLICY2", BITS(stream->words[12], 28, 30), NULL, 10);
+			} else {
+				// not COND packet
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "IB_BASE_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "SWAP", BITS(stream->words[0], 0, 2), NULL, 10);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "IB_BASE_HI", BITS(stream->words[1], 0, 16), NULL, 16);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_SIZE", BITS(stream->words[2], 0, 20), NULL, 10);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_VMID", BITS(stream->words[2], 24, 28), NULL, 10);
+				if (asic->family >= FAMILY_AI) {
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "CHAIN", BITS(stream->words[2], 20, 21), NULL, 10);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PRE_ENA", BITS(stream->words[2], 21, 22), NULL, 10);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "CACHE_POLICY", BITS(stream->words[2], 28, 30), NULL, 10);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PRE_RESUME", BITS(stream->words[2], 30, 31), NULL, 10);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PRIV", BITS(stream->words[2], 31, 32), NULL, 10);
+				}
 			}
 			break;
 		case 0x37: // WRITE_DATA
@@ -1027,6 +1048,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 {
 	uint32_t nwords, ncodes;
 	struct umr_pm4_stream *s;
+	const char *opcode_name;
 
 	s = stream;
 	nwords = 0;
@@ -1039,7 +1061,22 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, nwords, 4);
 	ncodes = opcodes;
 	while (stream && ncodes--) {
-		ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, stream->n_words, stream->pkttype == 3 ? pm4_pkt3_opcode_names[stream->opcode] : "PKT0", stream->header, stream->words);
+		if (stream->pkttype != 3) {
+			opcode_name = "PKT0";
+		} else {
+			switch (stream->opcode) {
+				case 0x33: // INDIRECT_BUFFER_CONST and COND_INDIRECT_BUFFER_CONST
+					opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER_CONST" : "PKT3_COND_INDIRECT_BUFFER_CONST";
+					break;
+				case 0x3F: // INDIRECT_BUFFER and COND_INDIRECT_BUFFER
+					opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER" : "PKT3_COND_INDIRECT_BUFFER";
+					break;
+				default:
+					opcode_name = pm4_pkt3_opcode_names[stream->opcode];
+			}
+		}
+
+		ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, stream->n_words, opcode_name, stream->header, stream->words);
 
 		if (stream->pkttype == 3)
 			decode_pkt3(asic, ui, stream, ib_addr, ib_vmid);
@@ -1162,7 +1199,7 @@ int umr__demo(struct umr_asic *asic)
 	// assign our opaque structure
 	myui.data = calloc(1, sizeof(struct demo_ui_data));
 
-	stream = umr_pm4_decode_ring(asic, "gfx", 0);
+	stream = umr_pm4_decode_ring(asic, "gfx_0.0.0", 0);
 	sstream = umr_pm4_decode_stream_opcodes(asic, &myui, stream, 0, 0, 0, 0, 3, 1); // ~0UL);
 	printf("\nand now the rest...\n");
 	umr_pm4_decode_stream_opcodes(asic, &myui, sstream, 0, 0, 0, 0, ~0UL, 1);
