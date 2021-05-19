@@ -1,4 +1,4 @@
-4
+5
 mmFabricConfigAccessControl 0 0x410 3 0 0
 	CfgRegInstAccEn 0 0
 	CfgRegInstAccRegLock 1 1
@@ -15,3 +15,4 @@ mmDF_CS_UMC_AON0_DramBaseAddress0 0 0x44 5 0 0
 	IntLvNumChan 2 5
 	IntLvAddrSel 9 11
 	DramBaseAddr 12 31
+mmDF_GCM_AON0_DramMegaBaseAddress0 0 0x64 0 0 0
