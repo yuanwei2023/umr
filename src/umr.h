@@ -295,7 +295,7 @@ struct umr_options {
 	long forcedid;
 	char
 		*scanblock,
-		dev_name[32],
+		dev_name[64],
 		hub_name[32],
 		ring_name[32],
 		database_path[256];
