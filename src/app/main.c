@@ -835,6 +835,11 @@ int main(int argc, char **argv)
 				asic = get_asic();
 			ih_self_test(asic);
 #endif
+		} else if (!strcmp(argv[i], "--vbios_info") || !strcmp(argv[i], "-vi")) {
+			if (!asic)
+				asic = get_asic();
+			if (umr_print_vbios_info(asic) != 0)
+				fprintf(stderr, "[ERROR]: Cannot print vbios info.\n");
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s]), Copyright (c) 2021, AMD Inc.\n"
 "\n*** Device Selection ***\n"
@@ -963,6 +968,9 @@ printf(
 	"\n\t\tPrint the GPU metrics table for the device."
 "\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
 	"\n\t\toptions 'use_colour' to colourize output \n");
+printf(
+"\n*** Video BIOS Information ***\n"
+"\n\t--vbios_info, -vi \n\t\tPrint Video BIOS information\n");
 
 #if UMR_GUI
 printf(

@@ -49,7 +49,18 @@ int umr_query_drm(struct umr_asic *asic, int field, void *ret, int size)
 	inf.return_size = size;
 	inf.query = field;
 	return ioctl(asic->fd.drm, DRM_IOC(DRM_IOC_WRITE, DRM_IOCTL_BASE, DRM_COMMAND_BASE + DRM_AMDGPU_INFO, sizeof(inf)), &inf);
+}
 
+int umr_query_drm_vbios(struct umr_asic *asic, int field, int type, void *ret, int size)
+{
+	struct drm_amdgpu_info inf;
+
+	memset(&inf, 0, sizeof inf);
+	inf.return_pointer = (uintptr_t)ret;
+	inf.return_size = size;
+	inf.query = field;
+	inf.vbios_info.type = type;
+	return ioctl(asic->fd.drm, DRM_IOC(DRM_IOC_WRITE, DRM_IOCTL_BASE, DRM_COMMAND_BASE + DRM_AMDGPU_INFO, sizeof(inf)), &inf);
 }
 
 #else

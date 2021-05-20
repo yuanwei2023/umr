@@ -36,6 +36,7 @@ add_library(umrapp STATIC
   navi10_ppt.c
   read_metrics.c
   ring_stream_read.c
+  vbios.c
   ${GUI_SOURCE}
 )
 
