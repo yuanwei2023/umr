@@ -43,6 +43,7 @@ parse_reg_bits dcn/dcn_2_1_0 dcn_2_1_0.reg
 parse_reg_bits dcn/dcn_3_0_0 dcn_3_0_0.reg
 parse_reg_bits dcn/dcn_3_0_1 dcn_3_0_1.reg
 parse_reg_bits dcn/dcn_3_0_2 dcn_3_0_2.reg
+parse_reg_bits dcn/dcn_3_0_3 dcn_3_0_3.reg
 parse_reg_bits dcn/dpcs_3_0_0 dpcs_3_0_0.reg
 
 parse_reg_bits df/df_1_7 df_1_7_0.reg
@@ -174,6 +175,7 @@ parse_reg_bits vcn/vcn_3_0_0 vcn_3_0_0.reg
 ../comp/compiler ${pk}/include/vega10_ip_offset.h > ../database/vega10.soc15
 ../comp/compiler ${pk}/include/vega20_ip_offset.h > ../database/vega20.soc15
 ../comp/compiler ${pk}/include/vangogh_ip_offset.h > ../database/vangogh.soc15
+../comp/compiler ${pk}/include/beige_goby_ip_offset.h > ../database/beige_goby.soc15
 
 make -C ../comp clean
 
