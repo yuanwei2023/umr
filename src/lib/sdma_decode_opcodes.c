@@ -452,7 +452,7 @@ int umr__demo(struct umr_asic *asic)
 
 //while (1) {
 	memset(myui.data, 0, sizeof(struct demo_ui_data));
-//	stream = umr_sdma_decode_ring(asic, "sdma0");
+//	stream = umr_sdma_decode_ring(asic, "sdma0", -1, -1);
 stream = umr_sdma_decode_stream(asic, 0, &gcr_data[0], sizeof(gcr_data)/sizeof(gcr_data[0]));
 	if (stream) {
 		sstream = umr_sdma_decode_stream_opcodes(asic, &myui, stream, 0, 0, 0, 0, ~0UL, 1);

@@ -33,7 +33,7 @@
  *
  * Return a sdma stream if successful.
  */
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname)
+struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop)
 {
 	void *ps;
 	uint32_t *ringdata, ringsize;
@@ -45,18 +45,23 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
 	ringdata[0] %= ringsize;
 	ringdata[1] %= ringsize;
 
+	if (start == -1)
+		start = ringdata[0];
+	if (stop == -1)
+		stop = ringdata[1];
+
 	// only proceed if there is data to read
 	// and then linearize it so that the stream
 	// decoder can do it's thing
-	if (ringdata[0] != ringdata[1]) { // rptr != wptr
+	if (start != stop) { // rptr != wptr
 		uint32_t *lineardata, linearsize;
 
 		// copy ring data into linear array
 		lineardata = calloc(ringsize, sizeof(*lineardata));
 		linearsize = 0;
-		while (ringdata[0] != ringdata[1]) {
-			lineardata[linearsize++] = ringdata[3 + ringdata[0]];  // first 3 words are rptr/wptr/dwptr
-			ringdata[0] = (ringdata[0] + 1) % ringsize;
+		while (start != stop) {
+			lineardata[linearsize++] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
+			start = (start + 1) % ringsize;
 		}
 
 		ps = umr_sdma_decode_stream(asic, 0, lineardata, linearsize);

@@ -1154,7 +1154,7 @@ struct umr_sdma_stream {
 	struct umr_sdma_stream *next, *next_ib;
 };
 
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname);
+struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop);
 struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords);
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
