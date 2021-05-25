@@ -157,7 +157,7 @@ static void init_asics() {
 }
 
 static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shaders, struct json_object *out) {
-	struct umr_pm4_stream *stream = umr_pm4_decode_ring(asic, asic->options.ring_name , 1);
+	struct umr_pm4_stream *stream = umr_pm4_decode_ring(asic, asic->options.ring_name, 1, -1, -1);
 
 	struct umr_wave_data *wd = umr_scan_wave_data(asic);
 

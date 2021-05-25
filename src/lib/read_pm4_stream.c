@@ -150,7 +150,7 @@ struct umr_shaders_pgm *umr_find_shader_in_ring(struct umr_asic *asic, char *rin
 	struct umr_pm4_stream *stream;
 	void *p;
 
-	stream = umr_pm4_decode_ring(asic, ringname, no_halt);
+	stream = umr_pm4_decode_ring(asic, ringname, no_halt, -1, -1);
 	p = umr_find_shader_in_stream(stream, vmid, addr);
 	umr_free_pm4_stream(stream);
 	return p;
@@ -366,10 +366,11 @@ int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname)
  *
  * @ringname - Common name of the ring, e.g., 'gfx' or 'comp_1.0.0'
  * @no_halt - Set to 0 to issue an SQ_CMD halt command
+ * @start, @stop - Where in the ring to start/stop or leave -1 to use rptr/wptr
  *
  * Return a PM4 stream if successful.
  */
-struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt)
+struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop)
 {
 	void *ps = NULL;
 	uint32_t *ringdata, ringsize;
@@ -401,18 +402,23 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 		ringdata[0] %= ringsize;
 		ringdata[1] %= ringsize;
 
+		if (start == -1)
+			start = ringdata[0]; // use rptr
+		if (stop == -1)
+			stop = ringdata[1]; // use wptr
+
 		// only proceed if there is data to read
 		// and then linearize it so that the stream
 		// decoder can do it's thing
-		if (ringdata[0] != ringdata[1]) { // rptr != wptr
+		if (start != stop) { // rptr != wptr
 			uint32_t *lineardata, linearsize;
 
 			// copy ring data into linear array
 			lineardata = calloc(ringsize, sizeof(*lineardata));
 			linearsize = 0;
-			while (ringdata[0] != ringdata[1]) {
-				lineardata[linearsize++] = ringdata[3 + ringdata[0]];  // first 3 words are rptr/wptr/dwptr
-				ringdata[0] = (ringdata[0] + 1) % ringsize;
+			while (start != stop) {
+				lineardata[linearsize++] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
+				start = (start + 1) % ringsize;
 			}
 
 			ps = umr_pm4_decode_stream(asic, 0, lineardata, linearsize, rt);

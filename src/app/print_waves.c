@@ -72,7 +72,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
+			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1, -1, -1);
 		} else {
 			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
 			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)
@@ -384,7 +384,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1);
+			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1, -1, -1);
 		} else {
 			uint32_t *ib = calloc(sizeof(*ib), ib_addr.size/4);
 			if (umr_read_vram(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size, ib) == 0)

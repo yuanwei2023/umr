@@ -134,7 +134,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 		// processor is also halted so we can grab the
 		// stream.  This isn't 100% though it seems so race
 		// conditions might occur.
-		stream = umr_pm4_decode_ring(asic, ringname, 1);
+		stream = umr_pm4_decode_ring(asic, ringname, 1, -1, -1);
 
 		// loop through data ...
 		sample_hit = 0;

@@ -1075,7 +1075,7 @@ struct umr_pm4_stream {
 };
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
-struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt);
+struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
 struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
