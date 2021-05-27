@@ -375,6 +375,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 	void *ps = NULL;
 	uint32_t *ringdata, ringsize;
 	enum umr_ring_type rt;
+	int only_active = 1;
 
 	// try to determine ring type from name
 	if (strstr(ringname, "comp"))
@@ -404,13 +405,17 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 
 		if (start == -1)
 			start = ringdata[0]; // use rptr
+		else
+			only_active = 0;
 		if (stop == -1)
 			stop = ringdata[1]; // use wptr
+		else
+			only_active = 0;
 
 		// only proceed if there is data to read
 		// and then linearize it so that the stream
 		// decoder can do it's thing
-		if (start != stop) { // rptr != wptr
+		if (!only_active || start != stop) { // rptr != wptr
 			uint32_t *lineardata, linearsize;
 
 			// copy ring data into linear array

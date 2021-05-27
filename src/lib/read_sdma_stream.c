@@ -37,6 +37,7 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
 {
 	void *ps;
 	uint32_t *ringdata, ringsize;
+	int only_active = 1;
 
 	// read ring data and reduce indeices modulo ring size
 	// since the kernel returned values might be unwrapped.
@@ -47,13 +48,17 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
 
 	if (start == -1)
 		start = ringdata[0];
+	else
+		only_active = 0;
 	if (stop == -1)
 		stop = ringdata[1];
+	else
+		only_active = 0;
 
 	// only proceed if there is data to read
 	// and then linearize it so that the stream
 	// decoder can do it's thing
-	if (start != stop) { // rptr != wptr
+	if (!only_active || start != stop) { // rptr != wptr
 		uint32_t *lineardata, linearsize;
 
 		// copy ring data into linear array
