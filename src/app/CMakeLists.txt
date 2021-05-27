@@ -35,6 +35,7 @@ add_library(umrapp STATIC
   pp_table.c
   navi10_ppt.c
   read_metrics.c
+  ring_stream_read.c
   ${GUI_SOURCE}
 )
 

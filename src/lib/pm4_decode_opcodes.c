@@ -868,6 +868,8 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			}
 			break;
 		case 0xA2: // PKT3_MAP_QUEUES
+// TODO: MQD.1 handle more than 1 MQD per packet
+// TODO: MQD.2 capture MQD_ADDR in stream
 			if (asic->family <= FAMILY_VI) {
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(stream->words[0], 4, 6), NULL, 10);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(stream->words[0], 8, 12), NULL, 10);
@@ -1085,6 +1087,8 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 
 		if (stream->shader)
 			ui->add_shader(ui, asic, ib_addr, ib_vmid, stream->shader);
+
+		// TODO: MQD.3 add callback for all MQD packets 
 
 		if (follow && stream->ib)
 			umr_pm4_decode_stream_opcodes(asic, ui, stream->ib, stream->ib_source.addr, stream->ib_source.vmid, ib_addr, ib_vmid, ~0UL, follow);

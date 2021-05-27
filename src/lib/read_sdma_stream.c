@@ -69,7 +69,7 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
 			start = (start + 1) % ringsize;
 		}
 
-		ps = umr_sdma_decode_stream(asic, 0, lineardata, linearsize);
+		ps = umr_sdma_decode_stream(asic, 0, 0, lineardata, linearsize);
 		free(lineardata);
 		free(ringdata);
 	} else {
@@ -88,11 +88,10 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
  *
  * Returns a sdma stream if successfully decoded.
  */
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords)
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, int from_vmid, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
-
-(void)vmid;
+	uint32_t *ostream = stream;
 
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
@@ -157,8 +156,11 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, 
 
 				{
 					uint32_t *data = calloc(sizeof(*data), ps->ib.size);
-					if (umr_read_vram(asic, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0)
-						ps->next_ib = umr_sdma_decode_stream(asic, ps->ib.vmid, data, ps->ib.size);
+					if (umr_read_vram(asic, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0) {
+						ps->next_ib = umr_sdma_decode_stream(asic, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
+						ps->next_ib->from.addr = from_addr + (((intptr_t)(stream - ostream)) << 2);
+						ps->next_ib->from.vmid = from_vmid;
+					}
 					free(data);
 				}
 				break;

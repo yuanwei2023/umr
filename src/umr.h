@@ -1054,20 +1054,20 @@ enum umr_ring_type {
 };
 
 struct umr_pm4_stream {
-	uint32_t	 pkttype,				// packet type (0==simple write, 3 == packet)
+	uint32_t pkttype,				// packet type (0==simple write, 3 == packet)
 			 pkt0off,				// base address for PKT0 writes
 			 opcode,
 			 header,				// header DWORD of packet
 			 n_words,				// number of words ignoring header
 			 *words;				// words following header word
 
-	struct umr_pm4_stream *next,		// adjacent PM4 packet if any
-			      *ib;		// IB this packet might point to
+	struct umr_pm4_stream *next,	// adjacent PM4 packet if any
+			      *ib;				// IB this packet might point to
 
 	struct {
 		uint64_t addr;
 		uint32_t vmid;
-	} ib_source;                            // where did an IB if any come from?
+	} ib_source;					// where did an IB if any come from?
 
 	struct umr_shaders_pgm *shader; // shader program if any
 
@@ -1151,11 +1151,16 @@ struct umr_sdma_stream {
 		uint64_t addr;
 	} ib;
 
+	struct {
+		int vmid;
+		uint64_t addr;
+	} from;
+
 	struct umr_sdma_stream *next, *next_ib;
 };
 
 struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop);
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords);
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, int from_vmid, uint32_t *stream, uint32_t nwords);
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
 struct umr_sdma_stream_decode_ui {
@@ -1173,7 +1178,7 @@ struct umr_sdma_stream_decode_ui {
 	 * nwords: number of DWORDS in this opcode
 	 * opcode_name: Printable string name of opcode
 	 */
-	void (*start_opcode)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t sub_opcode, uint32_t nwords, char *opcode_name);
+	void (*start_opcode)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t sub_opcode, uint32_t nwords, char *opcode_name, uint32_t header_dw, uint32_t *raw_data);
 
 	/** add_field -- Add a decoded field to a specific DWORD
 	 * ib_addr/ib_vmid:  Address of the word from which the field comes
@@ -1307,10 +1312,19 @@ void umr_free_test_harness(struct umr_test_harness *th);
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic);
 
 #define RED     (asic->options.use_colour ? "\x1b[31;1m" : "")
-#define YELLOW  (asic->options.use_colour ? "\x1b[33;1m" : "")
 #define GREEN   (asic->options.use_colour ? "\x1b[32;1m" : "")
+#define YELLOW  (asic->options.use_colour ? "\x1b[33;1m" : "")
 #define BLUE    (asic->options.use_colour ? "\x1b[34;1m" : "")
+#define MAGENTA (asic->options.use_colour ? "\x1b[35;1m" : "")
 #define CYAN    (asic->options.use_colour ? "\x1b[36;1m" : "")
+#define WHITE   (asic->options.use_colour ? "\x1b[37;1m" : "")
+#define BRED     (asic->options.use_colour ? "\x1b[91;1m" : "")
+#define BGREEN   (asic->options.use_colour ? "\x1b[92;1m" : "")
+#define BYELLOW  (asic->options.use_colour ? "\x1b[93;1m" : "")
+#define BBLUE    (asic->options.use_colour ? "\x1b[94;1m" : "")
+#define BMAGENTA (asic->options.use_colour ? "\x1b[95;1m" : "")
+#define BCYAN    (asic->options.use_colour ? "\x1b[96;1m" : "")
+#define BWHITE   (asic->options.use_colour ? "\x1b[97;1m" : "")
 #define RST     (asic->options.use_colour ? "\x1b[0m" : "")
 
 void umr_bitfield_default(struct umr_asic *asic, char *asicname, char *ipname, char *regname, char *bitname, int start, int stop, uint32_t value);

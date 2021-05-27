@@ -248,6 +248,12 @@ prints [wptr-16, wptr] words of the SDMA0 ring, and
 "-R sdma1[.:32]" prints [rptr, rptr+32] double-words of the
 SDMA1 ring. The contents of the ring is always interpreted,
 if it can be interpreted.
+.IP "--ring-stream, -RS <string>[range]"
+Read the contents of the ring named by the string
+.B amdgpu_ring_<string>,
+i.e. without the
+.B amdgpu_ring
+prefix.  This decoder is to replace the older --ring decoder.
 .IP "--dump-ib, -di [vmid@]address length [pm]"
 Dump an IB packet at an address with an optional VMID.  The length is specified
 in bytes.  The type of decoder <pm> is optional and defaults to PM4 packets.
