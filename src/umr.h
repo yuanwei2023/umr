@@ -1119,6 +1119,14 @@ struct umr_pm4_stream_decode_ui {
 	 */
 	void (*add_shader)(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader);
 
+	/** add_data -- Add a reference to a data buffer found in the IB stream
+	 * ib_addr/ib_vmid:  Address of where reference comes from
+	 * asic:  The ASIC the IB stream and shader are bound to
+	 * data_addr/data_vmid: A GPUVM reference to the object
+	 * type: The type of object
+	 */
+	void (*add_data)(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype);
+
 	/** unhandled -- Decoder for unhandled (private) opcodes
 	 * asic: The ASIC the IB stream is bound to
 	 * ib_addr:ib_vmid: The address where the PM4 opcode comes from

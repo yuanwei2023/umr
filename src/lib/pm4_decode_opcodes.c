@@ -868,7 +868,6 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			}
 			break;
 		case 0xA2: // PKT3_MAP_QUEUES
-// TODO: MQD.2 capture MQD_ADDR in stream
 			if (asic->family <= FAMILY_VI) {
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(stream->words[0], 4, 6), NULL, 10);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(stream->words[0], 8, 12), NULL, 10);
@@ -885,6 +884,11 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 						ui->add_field(ui, ib_addr + 16 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_HI", stream->words[n + 1], NULL, 16);
 						ui->add_field(ui, ib_addr + 20 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_LO", stream->words[n + 2], NULL, 16);
 						ui->add_field(ui, ib_addr + 24 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_HI", stream->words[n + 3], NULL, 16);
+						if (ui->add_data)
+							ui->add_data(ui, asic,
+										 ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid,
+										 ((uint64_t)stream->words[n]) | (((uint64_t)stream->words[n + 1]) << 32), BITS(stream->words[0], 8, 12),
+										 UMR_DATABLOCK_MQD_VI, BITS(stream->words[0], 26, 29));
 					}
 				}
 			} else if (asic->family <= FAMILY_NV) {
@@ -904,6 +908,11 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 						ui->add_field(ui, ib_addr + 16 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_HI", stream->words[n + 1], NULL, 16);
 						ui->add_field(ui, ib_addr + 20 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_LO", stream->words[n + 2], NULL, 16);
 						ui->add_field(ui, ib_addr + 24 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_HI", stream->words[n + 3], NULL, 16);
+						if (ui->add_data)
+							ui->add_data(ui, asic,
+										 ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid,
+										 ((uint64_t)stream->words[n]) | (((uint64_t)stream->words[n + 1]) << 32), BITS(stream->words[0], 8, 12),
+										 UMR_DATABLOCK_MQD_NV, BITS(stream->words[0], 26, 29));
 					}
 				}
 			}
@@ -1096,8 +1105,6 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 
 		if (stream->shader)
 			ui->add_shader(ui, asic, ib_addr, ib_vmid, stream->shader);
-
-		// TODO: MQD.3 add callback for all MQD packets 
 
 		if (follow && stream->ib)
 			umr_pm4_decode_stream_opcodes(asic, ui, stream->ib, stream->ib_source.addr, stream->ib_source.vmid, ib_addr, ib_vmid, ~0UL, follow);
