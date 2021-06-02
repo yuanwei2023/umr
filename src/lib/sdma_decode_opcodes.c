@@ -39,6 +39,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 		n += os->nwords;
 		os = os->next;
 	}
+	const uint32_t z_mask = asic->family >= FAMILY_NV ? 0x1FFF : 0x7FF;
 
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, n);
 	while (stream && opcodes--) {
@@ -75,37 +76,293 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR_LO", stream->words[0], NULL, 16);
 						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_HI", stream->words[1], NULL, 16);
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_Z", (stream->words[3] >> 0) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_Y", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_Z", (stream->words[3] >> 0) & z_mask, NULL, 10);
 						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_PITCH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_SLICE_PITCH", stream->words[4] & 0xFFFFFFF, NULL, 10);
 
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "DST_ADDR_LO", stream->words[5], NULL, 16);
 						ui->add_field(ui, ib_addr + 28, ib_vmid, "DST_ADDR_HI", stream->words[6], NULL, 16);
 						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_X", (stream->words[7] >> 0) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_X", (stream->words[7] >> 0) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_Z", (stream->words[8] >> 0) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_Y", (stream->words[7] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_Z", (stream->words[8] >> 0) & z_mask, NULL, 10);
 						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_PITCH", (stream->words[8] >> 16) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_SLICE_PITCH", stream->words[9] & 0xFFFFFFF, NULL, 10);
 
 						ui->add_field(ui, ib_addr + 44, ib_vmid, "RECT_X", (stream->words[10] >> 0) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 44, ib_vmid, "RECT_Y", (stream->words[10] >> 16) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "RECT_Z", (stream->words[11] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "RECT_Z", (stream->words[11] >> 0) & z_mask, NULL, 10);
 						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_SW", (stream->words[11] >> 16) & 0x3, NULL, 10);
 						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_HA", (stream->words[11] >> 22) & 0x1, NULL, 10);
 						ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_SW", (stream->words[11] >> 24) & 0x3, NULL, 10);
 						ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_HA", (stream->words[11] >> 30) & 0x1, NULL, 10);
 						break;
-					case 5: // TILED_SUB_WINDOW (TODO bitfields)
+					case 5: // TILED_SUB_WINDOW
 						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (TILED_SUB_WINDOW)", stream->header_dw, stream->words);
-						ui->add_field(ui, ib_addr + 0, ib_vmid, "DETILED", stream->header_dw >> 31, NULL, 16);
+						if (asic->family == FAMILY_AI) {
+							ui->add_field(ui, ib_addr + 0, ib_vmid, "MIP_MAX", (stream->words[0] >> 20) & 0xF, NULL, 16);
+							ui->add_field(ui, ib_addr + 0, ib_vmid, "MIP_ID", (stream->words[0] >> 24) & 0xF, NULL, 16);
+						}
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "DETILE", stream->header_dw >> 31, NULL, 16);
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "TILED_ADDR_LO", stream->words[0], NULL, 16);
 						ui->add_field(ui, ib_addr + 8, ib_vmid, "TILED_ADDR_HI", stream->words[1], NULL, 16);
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "TILED_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "TILED_Y", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "TILED_Z", (stream->words[3] >> 0) & z_mask, NULL, 10);
+						if (asic->family <= FAMILY_VI) {
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "TILED_PITCH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "PITCH_IN_TILE", stream->words[4] & 0xFFFFFFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "ELEMENT_SIZE", (stream->words[5] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "ARRAY_MODE", (stream->words[5] >> 3) & 0xF, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "MIT_MODE", (stream->words[5] >> 8) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "TILESPLIT_SIZE", (stream->words[5] >> 11) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "BANK_W", (stream->words[5] >> 15) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "BANK_H", (stream->words[5] >> 18) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "NUM_BANK", (stream->words[5] >> 21) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "MAT_ASPT", (stream->words[5] >> 24) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "PIPE_CONFIG", (stream->words[5] >> 26) & 0x1F, NULL, 10);
+						} else {
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "WIDTH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "HEIGHT", (stream->words[4] >> 0) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "DEPTH", (stream->words[4] >> 16) & z_mask, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "ELEMENT_SIZE", (stream->words[5] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SWIZZLE_MODE", (stream->words[5] >> 3) & 0x1F, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "DIMENSION", (stream->words[5] >> 9) & 0x3, NULL, 10);
+							if (asic->family == FAMILY_AI) {
+								ui->add_field(ui, ib_addr + 24, ib_vmid, "EPITCH", (stream->words[5] >> 16) & 0xFFFF, NULL, 10);
+							} else {
+								ui->add_field(ui, ib_addr + 24, ib_vmid, "MIP_MAX", (stream->words[5] >> 16) & 0xF, NULL, 10);
+								ui->add_field(ui, ib_addr + 24, ib_vmid, "MIP_ID", (stream->words[5] >> 20) & 0xF, NULL, 10);
+							}
+						}
+
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "LINEAR_ADDR_LO", stream->words[6], NULL, 16);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "LINEAR_ADDR_HI", stream->words[7], NULL, 16);
+
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "LINEAR_X", (stream->words[8] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "LINEAR_Y", (stream->words[8] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "LINEAR_Z", (stream->words[9] >> 0) & z_mask, NULL, 10);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "LINEAR_PITCH", (stream->words[9] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "LINEAR_SLICE_PITCH", stream->words[10] & 0xFFFFFFF, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "RECT_X", (stream->words[11] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "RECT_Y", (stream->words[11] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 52, ib_vmid, "RECT_Z", (stream->words[12] >> 0) & z_mask, NULL, 10);
+						ui->add_field(ui, ib_addr + 52, ib_vmid, "LINEAR_SW", (stream->words[12] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 52, ib_vmid, "TILE_SW", (stream->words[12] >> 22) & 0x3, NULL, 10);
+						break;
+					case 6: // T2T_SUB_WINDOW
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (T2T_SUB_WINDOW)", stream->header_dw, stream->words);
+						if (asic->family == FAMILY_AI) {
+							ui->add_field(ui, ib_addr + 0, ib_vmid, "MIP_MAX", (stream->words[0] >> 20) & 0xF, NULL, 16);
+						}
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_Y", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_Z", (stream->words[3] >> 0) & z_mask, NULL, 10);
+						if (asic->family <= FAMILY_VI) {
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_PITCH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_SLICE_PITCH", stream->words[4] & 0xFFFFFFF, NULL, 10);
+
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_ELEMENT_SIZE", (stream->words[5] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_ARRAY_MODE", (stream->words[5] >> 3) & 0xF, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_MIT_MODE", (stream->words[5] >> 8) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_TILESPLIT_SIZE", (stream->words[5] >> 11) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_BANK_W", (stream->words[5] >> 15) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_BANK_H", (stream->words[5] >> 18) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_NUM_BANKS", (stream->words[5] >> 21) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_MAT_ASPT", (stream->words[5] >> 24) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_PIPE_CONFIG", (stream->words[5] >> 26) & 0x1F, NULL, 10);
+						} else {
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_WIDTH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_HEIGHT", (stream->words[4] >> 0) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_DEPTH", (stream->words[4] >> 16) & z_mask, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_ELEMENT_SIZE", (stream->words[5] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_SWIZZLE_MODE", (stream->words[5] >> 3) & 0x1F, NULL, 10);
+							ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_DIMENSION", (stream->words[5] >> 9) & 0x3, NULL, 10);
+							if (asic->family == FAMILY_AI) {
+								ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_EPITCH", (stream->words[5] >> 16) & 0xFFFF, NULL, 10);
+							} else {
+								ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_MIP_MAX", (stream->words[5] >> 16) & 0xF, NULL, 10);
+								ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_MIP_ID", (stream->words[5] >> 20) & 0xF, NULL, 10);
+							}
+						}
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "DST_ADDR_LO", stream->words[6], NULL, 16);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_ADDR_HI", stream->words[7], NULL, 16);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_X", (stream->words[8] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_Y", (stream->words[8] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_Z", (stream->words[9] >> 0) & z_mask, NULL, 10);
+						if (asic->family <= FAMILY_VI) {
+							ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_PITCH", (stream->words[9] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 44, ib_vmid, "DST_SLICE_PITCH", stream->words[10] & 0xFFFFFFF, NULL, 10);
+
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_ARRAY_MODE", (stream->words[11] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_ARRAY_MODE", (stream->words[11] >> 3) & 0xF, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_MIT_MODE", (stream->words[11] >> 8) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_TILESPLIT_SIZE", (stream->words[11] >> 11) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_BANK_W", (stream->words[11] >> 15) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_BANK_H", (stream->words[11] >> 18) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_NUM_BANKS", (stream->words[11] >> 21) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_MAT_ASPT", (stream->words[11] >> 24) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_PIPE_CONFIG", (stream->words[11] >> 26) & 0x1F, NULL, 10);
+						} else {
+							ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_WIDTH", (stream->words[9] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 44, ib_vmid, "DST_HEIGHT", (stream->words[10] >> 0) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 44, ib_vmid, "DST_DEPTH", (stream->words[10] >> 16) & z_mask, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_ELEMENT_SIZE", (stream->words[11] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_SWIZZLE_MODE", (stream->words[11] >> 3) & 0x1F, NULL, 10);
+							ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_DIMENSION", (stream->words[11] >> 9) & 0x3, NULL, 10);
+							if (asic->family == FAMILY_AI) {
+								ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_EPITCH", (stream->words[11] >> 16) & 0xFFFF, NULL, 10);
+							} else {
+								ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_MIP_MAX", (stream->words[11] >> 16) & 0xF, NULL, 10);
+								ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_MIP_ID", (stream->words[11] >> 20) & 0xF, NULL, 10);
+							}
+						}
+						ui->add_field(ui, ib_addr + 52, ib_vmid, "RECT_X", (stream->words[12] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 52, ib_vmid, "RECT_Y", (stream->words[12] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 56, ib_vmid, "RECT_Z", (stream->words[13] >> 0) & z_mask, NULL, 10);
+						ui->add_field(ui, ib_addr + 56, ib_vmid, "DST_SW", (stream->words[13] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 56, ib_vmid, "SRC_SW", (stream->words[13] >> 22) & 0x3, NULL, 10);
+						break;
+					case 7: // DIRTY_PAGE
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (DIRTY_PAGE)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "ALL", stream->header_dw >> 31, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "COUNT", (stream->words[0] >> 0) & 0x3FFFFF, NULL, 10);
+						if (asic->family >= FAMILY_NV) {
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_MTYPE", (stream->words[1] >> 3) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_L2_POLICY", (stream->words[1] >> 6) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_MTYPE", (stream->words[1] >> 11) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_L2_POLICY", (stream->words[1] >> 14) & 0x3, NULL, 10);
+						}
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SW", (stream->words[1] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_GCC", (stream->words[1] >> 19) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SYS", (stream->words[1] >> 20) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SNOOP", (stream->words[1] >> 22) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_GPA", (stream->words[1] >> 23) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SW", (stream->words[1] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SYS", (stream->words[1] >>28) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SNOOP", (stream->words[1] >> 30) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_GPA", (stream->words[1] >> 31) & 0x1, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_ADDR_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_ADDR_HI", stream->words[3], NULL, 16);
+
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_LO", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "DST_ADDR_HI", stream->words[5], NULL, 16);
+						break;
+					case 8: // LINEAR_PHY
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (LINEAR_PHY)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "COUNT", (stream->words[0] >> 0) & 0x3FFFFF, NULL, 10);
+						if (asic->family >= FAMILY_NV) {
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_MTYPE", (stream->words[1] >> 3) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_L2_POLICY", (stream->words[1] >> 6) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_MTYPE", (stream->words[1] >> 11) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_L2_POLICY", (stream->words[1] >> 14) & 0x3, NULL, 10);
+						}
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SW", (stream->words[1] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_GCC", (stream->words[1] >> 19) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SYS", (stream->words[1] >> 20) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_LOG", (stream->words[1] >> 21) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SNOOP", (stream->words[1] >> 22) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_GPA", (stream->words[1] >> 23) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SW", (stream->words[1] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_GCC", (stream->words[1] >> 27) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SYS", (stream->words[1] >>28) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SNOOP", (stream->words[1] >> 30) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_GPA", (stream->words[1] >> 31) & 0x1, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_ADDR_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_ADDR_HI", stream->words[3], NULL, 16);
+
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_LO", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "DST_ADDR_HI", stream->words[5], NULL, 16);
+						break;
+					case 16: // LINEAR_BC
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (LINEAR_BC)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "COUNT", (stream->words[0] >> 0) & 0x3FFFFF, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SW", (stream->words[1] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_HA", (stream->words[1] >> 19) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_SW", (stream->words[1] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_HA", (stream->words[1] >> 27) & 0x1, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_ADDR_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_ADDR_HI", stream->words[3], NULL, 16);
+
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_LO", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "DST_ADDR_HI", stream->words[5], NULL, 16);
+						break;
+					case 17: // TILED_BC
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (TILED_BC)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "DETILE", stream->header_dw >> 31, NULL, 16);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "TILED_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "TILED_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "WIDTH", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "HEIGHT", (stream->words[3] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "DEPTH", (stream->words[3] >> 16) & 0x7FF, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "ELEMENT_SIZE", (stream->words[4] >> 0) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "ARRAY_MODE", (stream->words[4] >> 3) & 0xF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MIT_MODE", (stream->words[4] >> 8) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "TIMESPLIT_SIZE", (stream->words[4] >> 11) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "BANK_W", (stream->words[4] >> 15) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "BANK_H", (stream->words[4] >> 18) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "NUM_BANK", (stream->words[4] >> 21) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MAT_ASPT", (stream->words[4] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "PIPE_CONFIG", (stream->words[4] >> 26) & 0x1F, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "X", (stream->words[5] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "Y", (stream->words[5] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "Z", (stream->words[6] >> 0) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "LINEAR_SW", (stream->words[6] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "TILE_SW", (stream->words[6] >> 24) & 0x3, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "LINEAR_ADDR_LO", stream->words[7], NULL, 16);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "LINEAR_ADDR_HI", stream->words[8], NULL, 16);
+
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "LINEAR_PITCH", (stream->words[9] >> 0) & 0x7FFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "COUNT", (stream->words[10] >> 2) & 0xFFFFF, NULL, 10);
+						break;
+					case 20: // LINEAR_SUB_WINDOW_BC
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (LINEAR_SUB_WINDOW_BC)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "ELEMENTSIZE", (stream->header_dw >> 29) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_Y", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_Z", (stream->words[3] >> 0) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_PITCH", (stream->words[3] >> 13) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_SLICE_PITCH", (stream->words[4] >> 0) & 0xFFFFFFF, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "DST_ADDR_LO", stream->words[5], NULL, 16);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "DST_ADDR_HI", stream->words[6], NULL, 16);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_X", (stream->words[7] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_Y", (stream->words[7] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_Z", (stream->words[8] >> 0) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_PITCH", (stream->words[8] >> 13) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_SLICE_PITCH", (stream->words[9] >> 0) & 0xFFFFFFF, NULL, 10);
+
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "RECT_X", (stream->words[10] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "RECT_Y", (stream->words[10] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "RECT_Z", (stream->words[11] >> 0) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_SW", (stream->words[11] >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_HA", (stream->words[11] >> 19) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_SW", (stream->words[11] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "SRC_HA", (stream->words[11] >> 27) & 0x1, NULL, 10);
+						break;
+					case 21: // TILED_SUB_WINDOW_BC
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (TILED_SUB_WINDOW_BC)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "DETILE", stream->header_dw >> 31, NULL, 16);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "TILED_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "TILED_ADDR_HI", stream->words[1], NULL, 16);
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "TILED_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "TILED_Y", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 16, ib_vmid, "TILED_Z", (stream->words[3] >> 0) & 0x7FF, NULL, 10);
-						ui->add_field(ui, ib_addr + 16, ib_vmid, "TILED_PITCH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 20, ib_vmid, "PITCH_IN_TILE", stream->words[4] & 0xFFFFFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "WIDTH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "HEIGHT", (stream->words[3] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "DEPTH", (stream->words[3] >> 16) & 0x7FF, NULL, 10);
 
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "ELEMENT_SIZE", (stream->words[5] >> 0) & 0x7, NULL, 10);
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "ARRAY_MODE", (stream->words[5] >> 3) & 0xF, NULL, 10);
@@ -130,17 +387,18 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 48, ib_vmid, "RECT_Y", (stream->words[11] >> 16) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 52, ib_vmid, "RECT_Z", (stream->words[12] >> 0) & 0x7FF, NULL, 10);
 						ui->add_field(ui, ib_addr + 52, ib_vmid, "LINEAR_SW", (stream->words[12] >> 16) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 52, ib_vmid, "TILE_SW", (stream->words[12] >> 22) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 52, ib_vmid, "TILE_SW", (stream->words[12] >> 24) & 0x3, NULL, 10);
 						break;
-					case 6: // T2T_SUB_WINDOW
-						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (T2T_SUB_WINDOW)", stream->header_dw, stream->words);
+					case 22: // T2T_SUB_WINDOW_BC
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (T2T_SUB_WINDOW_BC)", stream->header_dw, stream->words);
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR_LO", stream->words[0], NULL, 16);
 						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_HI", stream->words[1], NULL, 16);
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_X", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_Y", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_Z", (stream->words[3] >> 0) & 0x7FF, NULL, 10);
-						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_PITCH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_SLICE_PITCH", stream->words[4] & 0xFFFFFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "SRC_WIDTH", (stream->words[3] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_HEIGHT", (stream->words[4] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "SRC_DEPTH", (stream->words[4] >> 16) & 0x7FF, NULL, 10);
 
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_ELEMENT_SIZE", (stream->words[5] >> 0) & 0x7, NULL, 10);
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_ARRAY_MODE", (stream->words[5] >> 3) & 0xF, NULL, 10);
@@ -148,26 +406,28 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_TILESPLIT_SIZE", (stream->words[5] >> 11) & 0x7, NULL, 10);
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_BANK_W", (stream->words[5] >> 15) & 0x3, NULL, 10);
 						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_BANK_H", (stream->words[5] >> 18) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 24, ib_vmid, "NUM_BANKS", (stream->words[5] >> 21) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 24, ib_vmid, "MAT_ASPT", (stream->words[5] >> 24) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 24, ib_vmid, "PIPE_CONFIG", (stream->words[5] >> 26) & 0x1F, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_NUM_BANKS", (stream->words[5] >> 21) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_MAT_ASPT", (stream->words[5] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "SRC_PIPE_CONFIG", (stream->words[5] >> 26) & 0x1F, NULL, 10);
 
 						ui->add_field(ui, ib_addr + 28, ib_vmid, "DST_ADDR_LO", stream->words[6], NULL, 16);
 						ui->add_field(ui, ib_addr + 32, ib_vmid, "DST_ADDR_HI", stream->words[7], NULL, 16);
-						ui->add_field(ui, ib_addr + 36, ib_vmid, "DW9", stream->words[8], NULL, 16);
-
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_X", (stream->words[8] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DST_Y", (stream->words[8] >> 16) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_Z", (stream->words[9] >> 0) & 0x7FF, NULL, 10);
-						ui->add_field(ui, ib_addr + 40, ib_vmid, "DST_PITCH", (stream->words[9] >> 16) & 0x3FFF, NULL, 10);
-						ui->add_field(ui, ib_addr + 44, ib_vmid, "DST_SLICE_PITCH", stream->words[10] & 0xFFFFFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "SRC_WIDTH", (stream->words[9] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "SRC_HEIGHT", (stream->words[10] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "SRC_DEPTH", (stream->words[10] >> 16) & 0xFFF, NULL, 10);
 
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "ARRAY_MODE", (stream->words[11] >> 3) & 0xF, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "MIT_MODE", (stream->words[11] >> 8) & 0x7, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "TILESPLIT_SIZE", (stream->words[11] >> 11) & 0x7, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "BANK_W", (stream->words[11] >> 15) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "BANK_H", (stream->words[11] >> 18) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "NUM_BANK", (stream->words[11] >> 21) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "MAT_ASPT", (stream->words[11] >> 24) & 0x3, NULL, 10);
-						ui->add_field(ui, ib_addr + 48, ib_vmid, "PIPE_CONFIG", (stream->words[11] >> 26) & 0x1F, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_ELEMENT_SIZE", (stream->words[11] >> 0) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_ARRAY_MODE", (stream->words[11] >> 3) & 0xF, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_MIT_MODE", (stream->words[11] >> 8) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_TILESPLIT_SIZE", (stream->words[11] >> 11) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_BANK_W", (stream->words[11] >> 15) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_BANK_H", (stream->words[11] >> 18) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_NUM_BANK", (stream->words[11] >> 21) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_MAT_ASPT", (stream->words[11] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "DST_PIPE_CONFIG", (stream->words[11] >> 26) & 0x1F, NULL, 10);
 
 						ui->add_field(ui, ib_addr + 52, ib_vmid, "RECT_X", (stream->words[12] >> 0) & 0x3FFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 52, ib_vmid, "RECT_Y", (stream->words[12] >> 16) & 0x3FFF, NULL, 10);
@@ -191,16 +451,69 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						for (n = 3; n < stream->nwords; n++)
 							ui->add_field(ui, ib_addr + 16 + 4 * (n - 3), ib_vmid, "DATA", stream->words[n], NULL, 16);
 						break;
-					case 1: // TILED (TODO bit decodings...)
+					case 1: // TILED
 						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "WRITE (TILED)", stream->header_dw, stream->words);
+						if (asic->family >= FAMILY_AI) {
+							ui->add_field(ui, ib_addr + 0, ib_vmid, "ENCRYPT", (stream->header_dw >> 16) & 0x1, NULL, 10);
+							ui->add_field(ui, ib_addr + 0, ib_vmid, "TMZ", (stream->header_dw >> 18) & 0x1, NULL, 10);
+						}
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_ADDR_LO", stream->words[0], NULL, 16);
 						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_HI", stream->words[1], NULL, 16);
-						ui->add_field(ui, ib_addr + 12, ib_vmid, "DW3", stream->words[2], NULL, 16);
-						ui->add_field(ui, ib_addr + 16, ib_vmid, "DW4", stream->words[3], NULL, 16);
-						ui->add_field(ui, ib_addr + 20, ib_vmid, "DW5", stream->words[4], NULL, 16);
-						ui->add_field(ui, ib_addr + 24, ib_vmid, "DW6", stream->words[5], NULL, 16);
-						ui->add_field(ui, ib_addr + 28, ib_vmid, "DW7", stream->words[6], NULL, 16);
+						if (asic->family <= FAMILY_VI) {
+							ui->add_field(ui, ib_addr + 12, ib_vmid, "PITCH_IN_TILE", (stream->words[2] >> 0) & 0x7FF, NULL, 10);
+							ui->add_field(ui, ib_addr + 12, ib_vmid, "HEIGHT", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "SLICE_PITCH", (stream->words[3] >> 0) & 0x3FFFFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "ELEMENT_SIZE", (stream->words[4] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "ARRAY_MODE", (stream->words[4] >> 3) & 0xF, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "MIT_MODE", (stream->words[4] >> 8) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "TILESPLIT_SIZE", (stream->words[4] >> 11) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "BANK_W", (stream->words[4] >> 15) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "BANK_H", (stream->words[4] >> 18) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "NUM_BANK", (stream->words[4] >> 21) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "MAT_ASPT", (stream->words[4] >> 24) & 0x3, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "PIPE_CONFIG", (stream->words[4] >> 26) & 0x1F, NULL, 10);
+						} else {
+							ui->add_field(ui, ib_addr + 12, ib_vmid, "WIDTH", (stream->words[2] >> 16) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "HEIGHT", (stream->words[3] >> 0) & 0x3FFF, NULL, 10);
+							ui->add_field(ui, ib_addr + 16, ib_vmid, "DEPTH", (stream->words[3] >> 16) & z_mask, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "ELEMENT_SIZE", (stream->words[4] >> 0) & 0x7, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "SWIZZLE_MODE", (stream->words[4] >> 3) & 0x1F, NULL, 10);
+							ui->add_field(ui, ib_addr + 20, ib_vmid, "DIMENSION", (stream->words[4] >> 9) & 0x3, NULL, 10);
+							if (asic->family == FAMILY_AI) {
+								ui->add_field(ui, ib_addr + 20, ib_vmid, "EPITCH", (stream->words[4] >> 16) & 0xFFFF, NULL, 10);
+							} else {
+								ui->add_field(ui, ib_addr + 20, ib_vmid, "MIP_MAX", (stream->words[4] >> 16) & 0xF, NULL, 10);
+							}
+						}
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "X", (stream->words[5] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "Y", (stream->words[5] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "Z", (stream->words[6] >> 0) & z_mask, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "SW", (stream->words[6] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "COUNT", (stream->words[7] >> 0) & 0xFFFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DATA0", stream->words[8], NULL, 10);
 						break;
+					case 17: // TILED_BC
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "WRITE (TILED_BC)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "WIDTH", (stream->words[2] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "HEIGHT", (stream->words[3] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "DEPTH", (stream->words[3] >> 16) & 0x7FF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "ELEMENT_SIZE", (stream->words[4] >> 0) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "ARRAY_MODE", (stream->words[4] >> 3) & 0xF, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MIT_MODE", (stream->words[4] >> 8) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "TILESPLIT_SIZE", (stream->words[4] >> 11) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "BANK_W", (stream->words[4] >> 15) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "BANK_H", (stream->words[4] >> 18) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "NUM_BANK", (stream->words[4] >> 21) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MAT_ASPT", (stream->words[4] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "PIPE_CONFIG", (stream->words[4] >> 26) & 0x1F, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "X", (stream->words[5] >> 0) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "Y", (stream->words[5] >> 16) & 0x3FFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "Z", (stream->words[6] >> 0) & z_mask, NULL, 10);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "SW", (stream->words[6] >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "COUNT", (stream->words[7] >> 0) & 0xFFFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "DATA0", stream->words[8], NULL, 10);
 					default:
 						if (ui->unhandled_subop)
 							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
@@ -229,20 +542,34 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "TRAP_INT_CONTEXT", stream->words[0] & 0xFFFFFF, NULL, 16);
 				break;
 			case 7: // SEM
-				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "SEM", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "WRITE_ONE", (stream->header_dw >> 29) & 1, NULL, 16);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "SIGNAL", (stream->header_dw >> 30) & 1, NULL, 16);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "MAILBOX", (stream->header_dw >> 31) & 1, NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "SEMAPHORE_ADDR_LO", stream->words[0], NULL, 16);
-				ui->add_field(ui, ib_addr + 8, ib_vmid, "SEMAPHORE_ADDR_HI", stream->words[1], NULL, 16);
+				switch (stream->sub_opcode) {
+					case 0: // SEM
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "SEM", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "WRITE_ONE", (stream->header_dw >> 29) & 1, NULL, 16);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "SIGNAL", (stream->header_dw >> 30) & 1, NULL, 16);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "MAILBOX", (stream->header_dw >> 31) & 1, NULL, 16);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "SEMAPHORE_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SEMAPHORE_ADDR_HI", stream->words[1], NULL, 16);
+						break;
+					case 1: // MEM_INCR
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "SEM (MEM_INCR)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDR_HI", stream->words[1], NULL, 16);
+						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
+						break;
+				}
+
 				break;
 			case 8: // POLL_REGMEM
-				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "WAIT_REG_MEM", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "HDP_FLUSH", (stream->header_dw >> 26) & 1, NULL, 16);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "FUNCTION", 0, poll_regmem_funcs[(stream->header_dw >> 28) & 7], 0);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "MEM_POLL", (stream->header_dw >> 31) & 1, NULL, 16);
 				switch (stream->sub_opcode) {
-					case 0: // WAIT_REG_MEM
+					case 0: // POLL_REGMEM
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "POLL_REGMEM", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "HDP_FLUSH", (stream->header_dw >> 26) & 1, NULL, 16);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "FUNCTION", 0, poll_regmem_funcs[(stream->header_dw >> 28) & 7], 0);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "MEM_POLL", (stream->header_dw >> 31) & 1, NULL, 16);
 						if (!(stream->header_dw & (1UL << 31))) {
 							ui->add_field(ui, ib_addr + 4, ib_vmid, "REGISTER", BITS(stream->words[0], 2, 20), umr_reg_name(asic, BITS(stream->words[0], 2, 20)), 16);
 							if (((stream->header_dw >> 26) & 3) == 1) { // if HDP_FLUSH, the write register is provided
@@ -258,10 +585,45 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_REGMEM_ADDR_MASK", stream->words[3], NULL, 16);
 						ui->add_field(ui, ib_addr + 20, ib_vmid, "POLL_REGMEM_ADDR_DW5", stream->words[4], NULL, 16);
 						break;
-					case 1: // WRITE WAIT_REG_MEM
+					case 1: // POLL_REG_WRITE_MEM
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "POLL_REG_WRITE_MEM", stream->header_dw, stream->words);
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR", stream->words[0], NULL, 16);
 						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_LO", stream->words[1], NULL, 16);
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_HI", stream->words[2], NULL, 16);
+						break;
+					case 2: // POLL_DBIT_WRITE_MEM
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "POLL_DBIT_WRITE_MEM", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "EA", (stream->header_dw >> 16) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "START_PAGE", (stream->words[2] >> 4) & 0xFFFFFFF, NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "PAGE_NUM", stream->words[3], NULL, 16);
+						break;
+					case 3: // MEM_VERIFY
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "MEM_VERIFY", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "MODE", (stream->header_dw >> 31) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "PATTERN", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "CMP0_ADDR_START_LO", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "CMP0_ADDR_START_HI", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "CMP0_ADDR_END_LO", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "CMP0_ADDR_END_HI", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "CMP1_ADDR_START_LO", stream->words[5], NULL, 16);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "CMP1_ADDR_START_HI", stream->words[6], NULL, 16);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "CMP1_ADDR_END_LO", stream->words[7], NULL, 16);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "CMP1_ADDR_END_HI", stream->words[8], NULL, 16);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "REC_ADDR_LO", stream->words[9], NULL, 16);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "REC_ADDR_HI", stream->words[10], NULL, 16);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "RESERVED", stream->words[11], NULL, 10);
+						break;
+					case 4: // INVALIDATION
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "INVALIDATION", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "INVALIDATEREQ", stream->words[0], NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESSRANGELO", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "INVALIDATEACK", (stream->words[2] >> 0) & 0xFFFF, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESSRANGEHI", (stream->words[2] >> 16) & 0x1F, NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "INVALIDATEGFXHUB", (stream->words[2] >> 21) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "INVALIDATEMMHUB", (stream->words[2] >> 22) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "RESERVED", (stream->words[2] >> 23) & 0x1FF, NULL, 10);
 						break;
 					default:
 						if (ui->unhandled_subop)
@@ -289,23 +651,113 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				ui->add_field(ui, ib_addr + 28, ib_vmid, "LOOP_INTERVAL", stream->words[6] & 0x1FFF, NULL, 16);
 				break;
 			case 11: // CONST_FILL
-				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "CONST_FILL", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "CONST_FILL_DST_LO", stream->words[0], NULL, 16);
-				ui->add_field(ui, ib_addr + 8, ib_vmid, "CONST_FILL_DST_HI", stream->words[1], NULL, 16);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "CONST_FILL_DATA", stream->words[2], NULL, 16);
-				ui->add_field(ui, ib_addr + 16, ib_vmid, "CONST_FILL_BYTE_COUNT", stream->words[3], NULL, 10);
+				switch (stream->sub_opcode) {
+					case 0: // CONST_FILL
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "CONST_FILL", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "CONST_FILL_DST_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "CONST_FILL_DST_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "CONST_FILL_DATA", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "CONST_FILL_BYTE_COUNT", stream->words[3], NULL, 10);
+						break;
+					case 1: // CONST_FILL (DATA_FILL_MULTI)
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "CONST_FILL (DATA_FILL_MULTI)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "MEMLOG_CLR", (stream->header_dw >> 31) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "BYTE_STRIDE", stream->words[0], NULL, 10);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "DMA_COUNT", stream->words[1], NULL, 10);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_HI", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "COUNT", (stream->words[4] >> 0) & 0x3FFFFFF, NULL, 10);
+						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
+						break;
+				}
 				break;
 			case 12: // GEN_PTEPDE
-				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GEN_PTEPDE", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "GEN_PTEPDE_PE_ADDR_LO", stream->words[0], NULL, 16);
-				ui->add_field(ui, ib_addr + 8, ib_vmid, "GEN_PTEPDE_PE_ADDR_HI", stream->words[1], NULL, 16);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "GEN_PTEPDE_FLAGS_LO", stream->words[2], NULL, 16);
-				ui->add_field(ui, ib_addr + 16, ib_vmid, "GEN_PTEPDE_FLAGS_HI", stream->words[3], NULL, 16);
-				ui->add_field(ui, ib_addr + 20, ib_vmid, "GEN_PTEPDE_ADDR_LO", stream->words[4], NULL, 16);
-				ui->add_field(ui, ib_addr + 24, ib_vmid, "GEN_PTEPDE_ADDR_HI", stream->words[5], NULL, 16);
-				ui->add_field(ui, ib_addr + 28, ib_vmid, "GEN_PTEPDE_INC_SIZE", stream->words[6], NULL, 16);
-				ui->add_field(ui, ib_addr + 32, ib_vmid, "GEN_PTEPDE_DW8", stream->words[7], NULL, 16);
-				ui->add_field(ui, ib_addr + 36, ib_vmid, "GEN_PTEPDE_COUNT", stream->words[8], NULL, 10);
+				switch (stream->sub_opcode) {
+					case 0: // GEN_PTEPDE
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GEN_PTEPDE", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "GEN_PTEPDE_PE_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "GEN_PTEPDE_PE_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "GEN_PTEPDE_FLAGS_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "GEN_PTEPDE_FLAGS_HI", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "GEN_PTEPDE_ADDR_LO", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "GEN_PTEPDE_ADDR_HI", stream->words[5], NULL, 16);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "GEN_PTEPDE_INC_SIZE", stream->words[6], NULL, 16);
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "GEN_PTEPDE_DW8", stream->words[7], NULL, 16);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "GEN_PTEPDE_COUNT", stream->words[8], NULL, 10);
+						break;
+					case 1: // COPY
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GEN_PTEPDE (COPY)", stream->header_dw, stream->words);
+						if (asic->family >= FAMILY_NV) {
+							ui->add_field(ui, ib_addr + 0, ib_vmid, "TMZ", (stream->header_dw >> 18) & 0x1, NULL, 10);
+						}
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "PTEPDE_OP", (stream->header_dw >> 31) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_HI", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MASK_DW0", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "MASK_DW1", stream->words[5], NULL, 16);
+						ui->add_field(ui, ib_addr + 28, ib_vmid, "COUNT", (stream->words[6] >> 0) & 0x7FFFF, NULL, 10);
+						break;
+					case 2: // RMW
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GEN_PTEPDE (RMW)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "MTYPE", (stream->header_dw >> 16) & 0x7, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "GCC", (stream->header_dw >> 19) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "SYS", (stream->header_dw >> 20) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "SNP", (stream->header_dw >> 22) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "GPA", (stream->header_dw >> 23) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "L2_POLICY", (stream->header_dw >> 24) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "MASK_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "MASK_HI", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "VALUE_LO", stream->words[4], NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "VALUE_HI", stream->words[5], NULL, 16);
+						break;
+					case 3: // COPY_BACKWARDS
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GEN_PTEPDE (COPY_BACKWARDS)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "PTE_SIZE", (stream->header_dw >> 28) & 0x3, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "DIRECTION", (stream->header_dw >> 30) & 0x1, NULL, 10);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "PTEPDE_OP", (stream->header_dw >> 31) & 0x1, NULL, 16);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_HI", stream->words[1], NULL, 16);
+						ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_LO", stream->words[2], NULL, 16);
+						ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_HI", stream->words[3], NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MASK_FIRST_XFER", (stream->words[4] >> 0) & 0xFF, NULL, 16);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "MASK_LAST_XFER", (stream->words[4] >> 8) & 0xFF, NULL, 16);
+						ui->add_field(ui, ib_addr + 24, ib_vmid, "COUNT_IN_32B_XFER", (stream->words[5] >> 0) & 0x1FFFF, NULL, 10);
+						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
+						break;
+				}
+				break;
+			case 13: // TIMESTAMP
+				switch (stream->sub_opcode) {
+					case 0: // TIMESTAMP_SET
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "TIMESTAMP (SET)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "INIT_DATA_LO", stream->words[0], NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "INIT_DATA_HI", stream->words[1], NULL, 16);
+						break;
+					case 1: // TIMESTAMP_GET
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "TIMESTAMP (GET)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "WRITE_ADDR_LO", (stream->words[0] >> 3) & 0x1FFFFFFF, NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "WRITE_ADDR_HI", stream->words[1], NULL, 16);
+						break;
+					case 2: // TIMESTAMP_GET_GLOBAL
+						ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "TIMESTAMP (GET_GLOBAL)", stream->header_dw, stream->words);
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "WRITE_ADDR_LO", (stream->words[0] >> 3) & 0x1FFFFFFF, NULL, 16);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "WRITE_ADDR_HI", stream->words[1], NULL, 16);
+						break;
+					default:
+						if (ui->unhandled_subop)
+							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
+						break;
+				}
 				break;
 			case 14: // SRBM_WRITE
 				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "SRBM_WRITE", stream->header_dw, stream->words);
@@ -321,24 +773,29 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 				ui->add_field(ui, ib_addr + 0, ib_vmid, "DEV_SEL", (stream->header_dw >> 16) & 0xFF, NULL, 10);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "EXEC_COUNT", stream->words[0] & 0x3FFF, NULL, 10);
 				break;
-			case 16: // GPUVM_INV
-				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GPUVM_INV", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "PER_VMID_INV_REQ", stream->words[0], NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "FLUSH_TYPE", BITS(stream->words[0], 16, 19), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PTES", BITS(stream->words[0], 19, 20), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE0", BITS(stream->words[0], 20, 21), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE1", BITS(stream->words[0], 21, 22), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE2", BITS(stream->words[0], 22, 23), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L1_PTES", BITS(stream->words[0], 23, 24), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "CLEAR_PROTECTION_FAULT_STATUS_ADDR", BITS(stream->words[0], 24, 25), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "LOG_REQUEST", BITS(stream->words[0], 25, 26), NULL, 16);
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "4KB", BITS(stream->words[0], 26, 27), NULL, 16);
-				ui->add_field(ui, ib_addr + 8, ib_vmid, "S_BIT", BITS(stream->words[1], 0, 1), NULL, 16);
-				ui->add_field(ui, ib_addr + 8, ib_vmid, "PAGE_VM_ADDR_LO", BITS(stream->words[1], 1, 32), NULL, 16);
-				ui->add_field(ui, ib_addr + 12, ib_vmid, "PAGE_VM_ADDR_HI", BITS(stream->words[2], 0, 6), NULL, 16);
+			case 16: // DUMMY_TRAP (pre-NV), GPUVM_INV (NV and beyond)
+				if (asic->family < FAMILY_NV) {
+					ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "DUMMY_TRAP", stream->header_dw, stream->words);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INT_CONTEXT", (stream->words[0] >> 0) & 0xFFFFFFF, NULL, 10);
+				} else {
+					ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GPUVM_INV", stream->header_dw, stream->words);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "PER_VMID_INV_REQ", stream->words[0], NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "FLUSH_TYPE", BITS(stream->words[0], 16, 19), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PTES", BITS(stream->words[0], 19, 20), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE0", BITS(stream->words[0], 20, 21), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE1", BITS(stream->words[0], 21, 22), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2_PDE2", BITS(stream->words[0], 22, 23), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L1_PTES", BITS(stream->words[0], 23, 24), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "CLEAR_PROTECTION_FAULT_STATUS_ADDR", BITS(stream->words[0], 24, 25), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "LOG_REQUEST", BITS(stream->words[0], 25, 26), NULL, 16);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "4KB", BITS(stream->words[0], 26, 27), NULL, 16);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "S_BIT", BITS(stream->words[1], 0, 1), NULL, 16);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "PAGE_VM_ADDR_LO", BITS(stream->words[1], 1, 32), NULL, 16);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PAGE_VM_ADDR_HI", BITS(stream->words[2], 0, 6), NULL, 16);
+				}
 				break;
-			case 17: // GRC
-				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GRC", stream->header_dw, stream->words);
+			case 17: // GCR
+				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "GCR", stream->header_dw, stream->words);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_VA_LO", BITS(stream->words[0], 7, 32) << 7, NULL, 16);
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VA_HI", BITS(stream->words[1], 0, 16), NULL, 16);
 				n = stream->words[1] >> 16;
@@ -362,6 +819,10 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 
 				ui->add_field(ui, ib_addr + 16, ib_vmid, "LIMIT_VA_HI", BITS(stream->words[3], 0, 16), NULL, 16);
 				ui->add_field(ui, ib_addr + 16, ib_vmid, "VMID", BITS(stream->words[3], 24, 28), NULL, 10);
+				break;
+			case 32: // DUMMY_TRAP (NV and beyond)
+				ui->start_opcode(ui, ib_addr, ib_vmid, stream->opcode, stream->sub_opcode, stream->nwords + 1, "DUMMY_TRAP", stream->header_dw, stream->words);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "INT_CONTEXT", (stream->words[0] >> 0) & 0xFFFFFFF, NULL, 10);
 				break;
 			default:
 				if (ui->unhandled)
