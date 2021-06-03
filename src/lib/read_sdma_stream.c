@@ -153,7 +153,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t f
 				if (asic->family >= FAMILY_AI)
 					ps->ib.vmid |= UMR_MM_HUB;
 				ps->nwords = 5;
-				{
+				if (!asic->options.no_follow_ib) {
 					uint32_t *data = calloc(sizeof(*data), ps->ib.size);
 					if (umr_read_vram(asic, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0) {
 						ps->next_ib = umr_sdma_decode_stream(asic, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
