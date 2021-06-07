@@ -40,7 +40,8 @@ FILE *umr_database_open(char *path, char *filename)
 
 	// 2. if there is a path option used try that
 	if (*path && strlen(path)) {
-		sprintf(p, "%s%s", path, filename);
+		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
+		sprintf(p, "%s%s%s", path, s, filename);
 		f = fopen(p, "r");
 		if (f)
 			return f;
@@ -49,7 +50,8 @@ FILE *umr_database_open(char *path, char *filename)
 	// 3. try using an environment path
 	path = getenv("UMR_DATABASE_PATH");
 	if (path) {
-		sprintf(p, "%s%s", path, filename);
+		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
+		sprintf(p, "%s%s%s", path, s, filename);
 		f = fopen(p, "r");
 		if (f)
 			return f;
