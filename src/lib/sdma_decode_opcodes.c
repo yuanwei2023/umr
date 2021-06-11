@@ -33,13 +33,13 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 	uint32_t n;
 	struct umr_sdma_stream *os = stream;
 	static char *poll_regmem_funcs[] = { "always", "<", "<=", "==", "!=", ">=", ">", "N/A" };
+	const uint32_t z_mask = asic->family >= FAMILY_NV ? 0x1FFF : 0x7FF;
 
 	n = 0;
 	while (os) {
 		n += os->nwords;
 		os = os->next;
 	}
-	const uint32_t z_mask = asic->family >= FAMILY_NV ? 0x1FFF : 0x7FF;
 
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, n);
 	while (stream && opcodes--) {
@@ -514,6 +514,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						ui->add_field(ui, ib_addr + 28, ib_vmid, "SW", (stream->words[6] >> 24) & 0x3, NULL, 10);
 						ui->add_field(ui, ib_addr + 32, ib_vmid, "COUNT", (stream->words[7] >> 0) & 0xFFFFF, NULL, 10);
 						ui->add_field(ui, ib_addr + 36, ib_vmid, "DATA0", stream->words[8], NULL, 10);
+						break;
 					default:
 						if (ui->unhandled_subop)
 							ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream);
