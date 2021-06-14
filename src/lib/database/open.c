@@ -60,8 +60,12 @@ FILE *umr_database_open(char *path, char *filename)
 	// 4. try using UMR_DB_DIR define
 #ifdef UMR_DB_DIR
 	sprintf(p, "%s%s", UMR_DB_DIR, filename);
-	return fopen(p, "r");
-#else
-	return NULL;
+	f = fopen(p, "r");
+	if (f)
+		return f;
 #endif
+
+	// 5. try using CMAKE_SOURCE_DIR/database
+	sprintf(p, "%s/database/%s", UMR_SOURCE_DIR, filename);
+	return fopen(p, "r");
 }
