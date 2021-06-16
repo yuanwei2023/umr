@@ -211,10 +211,6 @@
 0x73E1 dimgrey_cavefish.asic
 0x73E2 dimgrey_cavefish.asic
 0x73FF dimgrey_cavefish.asic
-0x7408 yellow_carp.asic
-0x740C yellow_carp.asic
-0x740F yellow_carp.asic
-0x7410 yellow_carp.asic
 0x9830 kabini.asic
 0x9831 kabini.asic
 0x9832 kabini.asic
