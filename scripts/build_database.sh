@@ -56,6 +56,7 @@ parse_reg_bits gc/gc_9_0 gc_9_0_0.reg
 parse_reg_bits gc/gc_9_1 gc_9_1_0.reg
 parse_reg_bits gc/gc_9_2_1 gc_9_2_1.reg
 parse_reg_bits gc/gc_9_4_1 gc_9_4_1.reg
+parse_reg_bits gc/gc_9_4_2 gc_9_4_2.reg
 parse_reg_bits gc/gc_10_1_0 gc_10_1_0.reg
 parse_reg_bits gc/gc_10_3_0 gc_10_3_0.reg
 
@@ -77,6 +78,7 @@ parse_reg_bits mmhub/mmhub_9_1 mmhub_9_1_0.reg
 parse_reg_bits mmhub/mmhub_9_3_0 mmhub_9_3_0.reg
 parse_reg_bits mmhub/mmhub_9_4_1 mmhub_9_4_1.reg
 parse_reg_bits mmhub/mmhub_1_0 mmhub_1_0_0.reg
+parse_reg_bits mmhub/mmhub_1_7 mmhub_1_7_0.reg
 parse_reg_bits mmhub/mmhub_2_0_0 mmhub_2_0_0.reg
 parse_reg_bits mmhub/mmhub_2_3_0 mmhub_2_3_0.reg
 
@@ -85,6 +87,7 @@ parse_reg_bits mp/mp_10_0 mp_10_0_0.reg
 parse_reg_bits mp/mp_11_0 mp_11_0_0.reg
 parse_reg_bits mp/mp_11_5_0 mp_11_5_0.reg
 parse_reg_bits mp/mp_12_0_0 mp_12_0_0.reg
+parse_reg_bits mp/mp_13_0_2 mp_13_0_2.reg
 
 parse_reg_bits nbif/nbif_6_1 nbif_6_1_0.reg
 
@@ -108,6 +111,8 @@ parse_reg_bits oss/osssys_5_0_0 osssys_5_0_0.reg
 parse_reg_bits pwr/pwr_10_0 pwr_10_0_0.reg
 
 parse_reg_bits rsmu/rsmu_0_0_2 rsmu_0_0_2.reg
+
+parse_reg_bits sdma/sdma_4_4_0 sdma_4_4_0.reg
 
 parse_reg_bits sdma0/sdma0_4_0 sdma0_4_0_0.reg
 parse_reg_bits sdma0/sdma0_4_1 sdma0_4_1_0.reg
@@ -138,14 +143,17 @@ parse_reg_bits smuio/smuio_9_0 smuio_9_0_0.reg
 parse_reg_bits smuio/smuio_11_0_0 smuio_11_0_0.reg
 parse_reg_bits smuio/smuio_11_0_6 smuio_11_0_6.reg
 parse_reg_bits smuio/smuio_12_0_0 smuio_12_0_0.reg
+parse_reg_bits smuio/smuio_13_0_2 smuio_13_0_2.reg
 
 parse_reg_bits thm/thm_9_0 thm_9_0_0.reg
 parse_reg_bits thm/thm_10_0 thm_10_0_0.reg
 parse_reg_bits thm/thm_11_0_2 thm_11_0_2.reg
+parse_reg_bits thm/thm_13_0_2 thm_13_0_2.reg
 
 parse_reg_bits umc/umc_6_0 umc_6_0_0.reg
 parse_reg_bits umc/umc_6_1_1 umc_6_1_1.reg
 parse_reg_bits umc/umc_6_1_2 umc_6_1_2.reg
+parse_reg_bits umc/umc_6_7_0 umc_6_7_0.reg
 parse_reg_bits umc/umc_8_7_0 umc_8_7_0.reg
 
 parse_reg_bits uvd/uvd_3_1 uvd_3_1_0.reg
@@ -163,6 +171,7 @@ parse_reg_bits vce/vce_4_0 vce_4_0_0.reg
 parse_reg_bits vcn/vcn_1_0 vcn_1_0_0.reg
 parse_reg_bits vcn/vcn_2_0_0 vcn_2_0_0.reg
 parse_reg_bits vcn/vcn_2_5 vcn_2_5_0.reg
+parse_reg_bits vcn/vcn_2_6_0 vcn_2_6_0.reg
 parse_reg_bits vcn/vcn_3_0_0 vcn_3_0_0.reg
 
 ../comp/compiler ${pk}/include/arct_ip_offset.h > ../database/arcturus.soc15
@@ -177,6 +186,7 @@ parse_reg_bits vcn/vcn_3_0_0 vcn_3_0_0.reg
 ../comp/compiler ${pk}/include/vangogh_ip_offset.h > ../database/vangogh.soc15
 ../comp/compiler ${pk}/include/beige_goby_ip_offset.h > ../database/beige_goby.soc15
 ../comp/compiler ${pk}/include/yellow_carp_offset.h > ../database/yellow_carp.soc15
+../comp/compiler ${pk}/include/aldebaran_ip_offset.h > ../database/aldebaran.soc15
 
 make -C ../comp clean
 
