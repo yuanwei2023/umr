@@ -176,6 +176,7 @@ parse_reg_bits vcn/vcn_3_0_0 vcn_3_0_0.reg
 ../comp/compiler ${pk}/include/vega20_ip_offset.h > ../database/vega20.soc15
 ../comp/compiler ${pk}/include/vangogh_ip_offset.h > ../database/vangogh.soc15
 ../comp/compiler ${pk}/include/beige_goby_ip_offset.h > ../database/beige_goby.soc15
+../comp/compiler ${pk}/include/yellow_carp_offset.h > ../database/yellow_carp.soc15
 
 make -C ../comp clean
 
