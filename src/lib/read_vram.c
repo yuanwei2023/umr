@@ -317,6 +317,104 @@ static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table
 	return vm_bits;
 }
 
+typedef struct {
+	uint64_t
+		frag_size,
+		pte_base_addr,
+		valid,
+		system,
+		coherent,
+		pte,
+		further;
+} pde_fields_ai_t;
+
+typedef struct {
+	uint64_t
+		valid,
+		system,
+		coherent,
+		tmz,
+		execute,
+		read,
+		write,
+		fragment,
+		page_base_addr,
+		prt,
+		pde,
+		further,
+		mtype;
+} pte_fields_ai_t;
+
+/*
+ * PDE format on AI:
+ * 63:59 block fragment size
+ * 58:55 reserved
+ *   But if bit 56 is set, this is a PTE with 'further' set,
+ *   which makes it act like a PDE.
+ * 54 pde-is-pte
+ * 53:48 reserved
+ * 47:6 physical base address of PTE
+ * 2 cache coherent/snoop
+ * 1 system
+ * 0 valid
+ */
+static pde_fields_ai_t decode_pde_entry_ai(uint64_t pde_entry)
+{
+	pde_fields_ai_t pde_fields;
+	pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
+	pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
+	pde_fields.valid         = pde_entry & 1;
+	pde_fields.system        = (pde_entry >> 1) & 1;
+	pde_fields.coherent      = (pde_entry >> 2) & 1;
+	pde_fields.pte           = (pde_entry >> 54) & 1;
+	pde_fields.further       = (pde_entry >> 56) & 1;
+	return pde_fields;
+}
+
+/*
+ * PTE format on AI and PI:
+ * 58:57 mtype
+ * 56 further
+ * 54 reserved
+ *   But if it is set, then this is actually a PDE with 'P'
+ *   bit set, which makes the PDE act like a PTE.
+ * 51 prt
+ * 47:12 4k physical page base address
+ * 11:7 fragment
+ * 6 write
+ * 5 read
+ * 4 exe
+ * 3 tmz (PI+)
+ * 2 snooped / coherent
+ * 1 system
+ * 0 valid
+ */
+static pte_fields_ai_t decode_pte_entry_ai(uint64_t pte_entry)
+{
+	pte_fields_ai_t pte_fields;
+	pte_fields.valid          = pte_entry & 1;
+	pte_fields.system         = (pte_entry >> 1) & 1;
+	pte_fields.coherent       = (pte_entry >> 2) & 1;
+	pte_fields.tmz            = (pte_entry >> 3) & 1;
+	pte_fields.execute        = (pte_entry >> 4) & 1;
+	pte_fields.read           = (pte_entry >> 5) & 1;
+	pte_fields.write          = (pte_entry >> 6) & 1;
+	pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
+	pte_fields.prt            = (pte_entry >> 51) & 1;
+	pte_fields.pde            = (pte_entry >> 54) & 1;
+	pte_fields.further        = (pte_entry >> 56) & 1;
+	pte_fields.mtype          = (pte_entry >> 57) & 3;
+
+	// PTEs hold physical address in 47:12
+	// PDEs hold physical address in 47:6, so if this is a PTE-as-PDE (further), need a differnt mask
+	if (pte_fields.further)
+		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFFC0ULL;
+	else
+		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL;
+
+	return pte_fields;
+}
+
 /**
  * umr_access_vram_ai - Access GPU mapped memory for GFX9+ platforms
  */
@@ -352,24 +450,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			mmMC_VM_AGP_BOT,
 			mmMC_VM_AGP_TOP;
 	} registers;
-	struct {
-		uint64_t
-			frag_size,
-			pte_base_addr,
-			valid,
-			system,
-			cache,
-			pte;
-	} pde_fields, pde_array[8];
-	struct {
-		uint64_t
-			page_base_addr,
-			fragment,
-			system,
-			valid,
-			prt,
-			further;
-	} pte_fields;
+
+	pde_fields_ai_t pde_fields, pde_array[8];
+	pte_fields_ai_t pte_fields;
 	char buf[64];
 	unsigned char *pdst = dst;
 	char *hub, *vm0prefix, *regprefix;
@@ -378,27 +461,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 	memset(&registers, 0, sizeof registers);
 	memset(&pde_array, 0xff, sizeof pde_array);
-
-	/*
-	 * PTE format on AI:
-	 * 47:12 4k physical page base address
-	 * 11:7 fragment
-	 * 6 write
-	 * 5 read
-	 * 4 exe
-	 * 3 reserved
-	 * 2 snooped
-	 * 1 system
-	 * 0 valid
-	 *
-	 * PDE format on AI:
-	 * 63:59 block fragment size
-	 * 58:40 reserved
-	 * 47:6 physical base address of PTE
-	 * 2 cache coherent/snoop
-	 * 1 system
-	 * 0 valid
-	 */
 
 	hubid = vmid & 0xFF00;
 	vmid &= 0xFF;
@@ -627,13 +689,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		further = 0;
 
 		if (page_table_depth >= 1) {
-			// decode PDE values
-			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
-			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFF000ULL;
-			pde_fields.valid         = pde_entry & 1;
-			pde_fields.system        = (pde_entry >> 1) & 1;
-			pde_fields.cache         = (pde_entry >> 2) & 1;
-			pde_fields.pte           = (pde_entry >> 54) & 1;
+			pde_fields = decode_pde_entry_ai(pde_entry);
 
 			// AI+ supports more than 1 level of PDEs so we iterate for all of the depths
 			pde_address = pde_fields.pte_base_addr;
@@ -663,7 +719,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 						pde_fields.pte_base_addr,
 						pde_fields.valid,
 						pde_fields.system,
-						pde_fields.cache,
+						pde_fields.coherent,
 						pde_fields.pte);
 			memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 
@@ -712,13 +768,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 					}
 				}
 
-				// decode PDE values
-				pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
-				pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFF000ULL;
-				pde_fields.valid         = pde_entry & 1;
-				pde_fields.system        = (pde_entry >> 1) & 1;
-				pde_fields.cache         = (pde_entry >> 2) & 1;
-				pde_fields.pte           = (pde_entry >> 54) & 1;
+				pde_fields = decode_pde_entry_ai(pde_entry);
 				if (current_depth == 1) {
 					pde0_block_fragment_size = pde_fields.frag_size;
 					/*
@@ -751,7 +801,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 								pde_fields.pte_base_addr,
 								pde_fields.valid,
 								pde_fields.system,
-								pde_fields.cache,
+								pde_fields.coherent,
 								pde_fields.pte,
 								pde_fields.frag_size);
 						memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
@@ -817,14 +867,8 @@ pte_further:
 					return -1;
 			}
 
-			// decode PTE values
 pde_is_pte:
-			pte_fields.fragment       = (pte_entry >> 7)  & 0x1F;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.valid          = pte_entry & 1;
-			pte_fields.prt            = (pte_entry >> 61) & 1;
-			pte_fields.further        = (pte_entry >> 56) & 1;
-			pte_fields.page_base_addr = pte_entry & (pte_fields.further ? 0xFFFFFFFFFFC0ULL : 0xFFFFFFFFF000ULL);
+			pte_fields = decode_pte_entry_ai(pte_entry);
 
 			if (asic->options.verbose)
 				asic->mem_funcs.vm_message("%s %s@{0x%" PRIx64 "/%" PRIx64"}==0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 ", F=%" PRIu64 "\n",
@@ -901,12 +945,7 @@ pde_is_pte:
 				va_mask &= (upper_mask & ~pte_page_mask);
 
 				// grab PTE base address and other data from the PTE that has the F bit set.
-				pde_fields.frag_size     = (pte_entry >> 59) & 0x1F;
-				pde_fields.pte_base_addr = pte_entry & 0xFFFFFFFFFFC0ULL;
-				pde_fields.valid         = pte_entry & 1;
-				pde_fields.system        = (pte_entry >> 1) & 1;
-				pde_fields.cache         = (pte_entry >> 2) & 1;
-				pde_fields.pte            = 0;
+				pde_fields = decode_pde_entry_ai(pte_entry);
 				further = 1;
 				goto pte_further;
 			}
@@ -928,12 +967,9 @@ pde_is_pte:
 		} else {
 			// in AI+ the BASE_ADDR is treated like a PDE entry...
 			// decode PDE values
-			pde_fields.frag_size     = (page_table_base_addr >> 59) & 0x1F;
+			pde_fields = decode_pde_entry_ai(pde_entry);
 			pde0_block_fragment_size = pde_fields.frag_size;
 			pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
-			pde_fields.pte_base_addr = page_table_base_addr & 0xFFFFFFFFF000ULL;
-			pde_fields.system        = (page_table_base_addr >> 1) & 1;
-			pde_fields.valid         = page_table_base_addr & 1;
 
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_array[0], &pde_fields, sizeof pde_fields)) && asic->options.verbose)
 				asic->mem_funcs.vm_message("PDE=0x%016" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", FS=%" PRIu64 "\n",
@@ -953,12 +989,7 @@ pde_is_pte:
 			if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
 				return -1;
 
-			// decode PTE values
-			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL;
-			pte_fields.fragment       = (pte_entry >> 7)  & 0x1F;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.valid          = pte_entry & 1;
-			pte_fields.prt            = 0;
+			pte_fields = decode_pte_entry_ai(pte_entry);
 
 			if (asic->options.verbose)
 				asic->mem_funcs.vm_message("\\-> PTE=0x%016" PRIx64 ", VA=0x%016" PRIx64 ", PBA==0x%012" PRIx64 ", F=%" PRIu64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
