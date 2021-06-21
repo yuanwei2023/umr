@@ -415,6 +415,112 @@ static pte_fields_ai_t decode_pte_entry_ai(uint64_t pte_entry)
 	return pte_fields;
 }
 
+static void print_pde_fields_ai(struct umr_asic *asic,
+				pde_fields_ai_t pde_fields)
+{
+	asic->mem_funcs.vm_message(
+			", PBA==0x%012" PRIx64 ", V=%" PRIu64
+			", S=%" PRIu64 ", C=%" PRIu64
+			", P=%" PRIu64 ", FS=%" PRIu64 "\n",
+			pde_fields.pte_base_addr,
+			pde_fields.valid,
+			pde_fields.system,
+			pde_fields.coherent,
+			pde_fields.pte,
+			pde_fields.frag_size);
+}
+static void print_base_ai(struct umr_asic *asic,
+			  uint64_t pde_entry, uint64_t address,
+			  uint64_t va_mask, pde_fields_ai_t pde_fields,
+			  int is_base_not_pde)
+{
+	if (is_base_not_pde)
+		asic->mem_funcs.vm_message("BASE");
+	else
+		asic->mem_funcs.vm_message("PDE");
+	asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64,
+			pde_entry,
+			address & va_mask);
+	print_pde_fields_ai(asic, pde_fields);
+}
+
+static void print_pde_ai(struct umr_asic *asic,
+		const char * indentation, int pde_cnt,
+		int page_table_depth, uint64_t prev_addr,
+		uint64_t pde_idx, uint64_t pde_entry, uint64_t address,
+		uint64_t va_mask, pde_fields_ai_t pde_fields)
+{
+	asic->mem_funcs.vm_message("%s ", &indentation[18-pde_cnt*3]);
+	if (pde_fields.further)
+		asic->mem_funcs.vm_message("PTE-FURTHER");
+	else
+		asic->mem_funcs.vm_message("PDE%d", page_table_depth - pde_cnt);
+
+	asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64
+			"}=0x%016" PRIx64 ", VA=0x%012" PRIx64,
+			prev_addr,
+			pde_idx,
+			pde_entry,
+			address & va_mask);
+	print_pde_fields_ai(asic, pde_fields);
+}
+
+static void print_pte_ai(struct umr_asic *asic,
+		const char * indentation, int pde_cnt, uint64_t prev_addr,
+		uint64_t pte_idx, uint64_t pte_entry, uint64_t address,
+		uint64_t va_mask, pte_fields_ai_t pte_fields)
+{
+	if (asic == NULL) {
+		asic->mem_funcs.vm_message("\\-> PTE");
+	} else {
+		asic->mem_funcs.vm_message("%s ",
+				&indentation[18-pde_cnt*3]);
+		if (pte_fields.pde)
+			asic->mem_funcs.vm_message("PDE0-as-PTE");
+		else
+			asic->mem_funcs.vm_message("PTE");
+		asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64"}",
+				prev_addr,
+				pte_idx);
+	}
+	asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
+			", PBA==0x%012" PRIx64 ", V=%" PRIu64
+			", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
+			", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
+			", FS=%" PRIu64 ", T=%" PRIu64 ", MTYPE=",
+			pte_entry,
+			address & va_mask,
+			pte_fields.page_base_addr,
+			pte_fields.valid,
+			pte_fields.system,
+			pte_fields.coherent,
+			pte_fields.tmz,
+			pte_fields.execute,
+			pte_fields.read,
+			pte_fields.write,
+			pte_fields.fragment,
+			pte_fields.prt,
+			pte_fields.mtype);
+	switch (pte_fields.mtype) {
+		case 0:
+			asic->mem_funcs.vm_message("NC\n");
+			break;
+		case 1:
+			asic->mem_funcs.vm_message("RW\n");
+			break;
+		case 2:
+			asic->mem_funcs.vm_message("CC\n");
+			break;
+		case 3:
+			asic->mem_funcs.vm_message("UC\n");
+			break;
+		default:
+			asic->mem_funcs.vm_message("Unknown (%" PRIu64")\n",
+					pte_fields.mtype);
+			break;
+	}
+}
+
 /**
  * umr_access_vram_ai - Access GPU mapped memory for GFX9+ platforms
  */
@@ -457,7 +563,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	unsigned char *pdst = dst;
 	char *hub, *vm0prefix, *regprefix;
 	unsigned hubid;
-	static const char *indentation = "               \\->";
+	static const char *indentation = "                  \\->";
 
 	memset(&registers, 0, sizeof registers);
 	memset(&pde_array, 0xff, sizeof pde_array);
@@ -713,14 +819,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 			va_mask <<= (total_vm_bits - top_pdb_bits);
 
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose)
-				asic->mem_funcs.vm_message("BASE=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 "\n",
-						pde_entry,
-						address & va_mask,
-						pde_fields.pte_base_addr,
-						pde_fields.valid,
-						pde_fields.system,
-						pde_fields.coherent,
-						pde_fields.pte);
+				print_base_ai(asic, pde_entry, address, va_mask, pde_fields, 1);
 			memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 
 			current_depth = page_table_depth;
@@ -783,27 +882,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 					log2_ptb_entries = (9 + (page_table_block_size - pde0_block_fragment_size));
 					ptb_mask = (1ULL << log2_ptb_entries) - 1;
 					pte_page_mask = (1ULL << (pde0_block_fragment_size + 12)) - 1;
-					if (asic->options.verbose)
-						asic->mem_funcs.vm_message("pde0.pte = %u\npde0.block_fragment_size = %u\npage_table_block_size = %u\n",
-							(unsigned)pde_fields.pte,
-							(unsigned)pde0_block_fragment_size,
-							(unsigned)page_table_block_size);
 				}
 				if (!pde_fields.pte) {
 					if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose) {
-						asic->mem_funcs.vm_message("%s PDE%d@{0x%" PRIx64 "/%" PRIx64 "}=0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", C=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 "\n",
-								&indentation[15-pde_cnt*3],
-								page_table_depth - pde_cnt,
-								prev_addr,
-								pde_idx,
-								pde_entry,
-								address & va_mask,
-								pde_fields.pte_base_addr,
-								pde_fields.valid,
-								pde_fields.system,
-								pde_fields.coherent,
-								pde_fields.pte,
-								pde_fields.frag_size);
+						print_pde_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr,
+								pde_idx, pde_entry, address, va_mask, pde_fields);
 						memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 					}
 				} else {
@@ -870,21 +953,6 @@ pte_further:
 pde_is_pte:
 			pte_fields = decode_pte_entry_ai(pte_entry);
 
-			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("%s %s@{0x%" PRIx64 "/%" PRIx64"}==0x%016" PRIx64 ", VA=0x%012" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", P=%" PRIu64 ", FS=%" PRIu64 ", F=%" PRIu64 "\n",
-					&indentation[15-pde_cnt*3],
-					(pte_fields.further) ? "PTE-FURTHER" : "PTE",
-					prev_addr,
-					pte_idx,
-					pte_entry,
-					address & (((1ULL << page_table_block_size) - 1) << (12 + pde0_block_fragment_size)),
-					pte_fields.page_base_addr,
-					pte_fields.valid,
-					pte_fields.system,
-					pte_fields.prt,
-					pte_fields.fragment,
-					pte_fields.further);
-
 			// How many bits in the address are used to index into the PTB?
 			// If further is set, that means we jumped back to pde_is_pte,
 			// and the va_mask was properly set down there.
@@ -920,6 +988,17 @@ pde_is_pte:
 				va_mask = va_mask & ~mask_to_ignore;
 			}
 
+			if (asic->options.verbose) {
+				if (pte_fields.further) {
+					pde_fields = decode_pde_entry_ai(pte_entry);
+					print_pde_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr,
+							pte_idx, pte_entry, address, va_mask, pde_fields);
+				} else {
+					print_pte_ai(asic, indentation, pde_cnt, prev_addr, pte_idx,
+							pte_entry, address, va_mask, pte_fields);
+				}
+			}
+
 			uint32_t pte_block_fragment_size = 0;
 			if (pte_fields.further) {
 				// Going to go one more layer deep, so now we need the Further-PTE's
@@ -946,6 +1025,7 @@ pde_is_pte:
 
 				// grab PTE base address and other data from the PTE that has the F bit set.
 				pde_fields = decode_pde_entry_ai(pte_entry);
+				pde_cnt++;
 				further = 1;
 				goto pte_further;
 			}
@@ -972,12 +1052,7 @@ pde_is_pte:
 			pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
 
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_array[0], &pde_fields, sizeof pde_fields)) && asic->options.verbose)
-				asic->mem_funcs.vm_message("PDE=0x%016" PRIx64 ", PBA==0x%012" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 ", FS=%" PRIu64 "\n",
-						page_table_base_addr,
-						pde_fields.pte_base_addr,
-						pde_fields.valid,
-						pde_fields.system,
-						pde_fields.frag_size);
+				print_base_ai(asic, page_table_base_addr, address, -1, pde_fields, 0);
 			memcpy(&pde_array[0], &pde_fields, sizeof pde_fields);
 
 			if (!pde_fields.valid)
@@ -992,13 +1067,8 @@ pde_is_pte:
 			pte_fields = decode_pte_entry_ai(pte_entry);
 
 			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("\\-> PTE=0x%016" PRIx64 ", VA=0x%016" PRIx64 ", PBA==0x%012" PRIx64 ", F=%" PRIu64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
-					pte_entry,
-					address & ~((uint64_t)0xFFF),
-					pte_fields.page_base_addr,
-					pte_fields.fragment,
-					pte_fields.valid,
-					pte_fields.system);
+				print_pte_ai(asic, NULL, 0, 0, 0, pte_entry, address,
+						~((uint64_t)0xFFF), pte_fields);
 
 			if (pdst && !pte_fields.valid)
 				goto invalid_page;
@@ -1018,13 +1088,13 @@ next_page:
 		if (asic->options.verbose) {
 			if (pte_fields.system == 1) {
 				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 ", (reading: %" PRIu32 " bytes)\n",
-											&indentation[15-pde_cnt*3-3],
+											&indentation[18-pde_cnt*3-3],
 											"sys",
 											start_addr,
 											chunk_size);
 			} else {
 				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 " (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes)\n",
-											&indentation[15-pde_cnt*3-3],
+											&indentation[18-pde_cnt*3-3],
 											"vram",
 											start_addr,
 											start_addr + vm_fb_offset,
