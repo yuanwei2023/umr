@@ -158,7 +158,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 				"mmMC_VM_FB_OFFSET=0x%" PRIx32 "\n",
 			vmid ? 1 : 0,
 			registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR,
-			vmid ? 1 : 0,
+			vmid,
 			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR,
 			vmid ? 1 : 0,
 			registers.mmVM_CONTEXTx_CNTL,
@@ -191,7 +191,9 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFF000ULL;
 			pde_fields.valid         = pde_entry & 1;
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_copy, &pde_fields, sizeof pde_fields)) && asic->options.verbose)
-				asic->mem_funcs.vm_message("PDE=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 "\n",
+				asic->mem_funcs.vm_message("PDE{0x%"PRIx64"/0x%"PRIx64"}=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 "\n",
+						page_table_base_addr + pde_idx * 8 - vm_fb_base,
+						pde_idx,
 						pde_entry,
 						address & pde_mask,
 						pde_fields.pte_base_addr,
@@ -218,7 +220,9 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.valid          = pte_entry & 1;
 			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("\\-> PTE=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
+				asic->mem_funcs.vm_message("\\-> PTE{0x%"PRIx64"/0x%"PRIx64"}=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
+					pde_fields.pte_base_addr + pte_idx*8 - vm_fb_base,
+					pte_idx,
 					pte_entry,
 					address & pte_mask,
 					pte_fields.page_base_addr,
@@ -247,7 +251,9 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.valid          = pte_entry & 1;
 			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("PTE=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
+				asic->mem_funcs.vm_message("PTE{0x%" PRIx64 "/0x%" PRIx64"}=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
+					page_table_base_addr + pte_idx * 8 - vm_fb_base,
+					pte_idx,
 					pte_entry,
 					address & ~((uint64_t)0xFFF),
 					pte_fields.page_base_addr,

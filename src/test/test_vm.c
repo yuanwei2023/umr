@@ -108,6 +108,25 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct12(struct umr_asic* asic)
     return TEST_SUCCESS;
 }
 
+// VMID=0 read on gfx8
+enum TEST_RESULT test_can_read_from_vm_memory_direct13(struct umr_asic* asic)
+{
+    uint64_t read_data = 0;
+    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|0, 0xff00402000ULL, sizeof(read_data), &read_data));
+    ASSERT_EQ(read_data, 0x0706050403020100);
+    return TEST_SUCCESS;
+}
+
+// VMID>0 read on gfx8
+enum TEST_RESULT test_can_read_from_vm_memory_direct14(struct umr_asic* asic)
+{
+    uint64_t read_data = 0;
+    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|6, 0x00233000ULL, sizeof(read_data), &read_data));
+    ASSERT_EQ(read_data, 0x0706050403020100);
+    return TEST_SUCCESS;
+}
+
+
 DEFINE_TESTS(vm_tests)
 #if 0
 TEST(test_can_read_from_vm_memory_direct1, "direct_vm_test1.envdef", "raven1"),
@@ -125,5 +144,7 @@ TEST(test_can_read_from_vm_memory_direct9, "direct_vm_test9.envdef", "vega10"),
 TEST(test_can_read_from_vm_memory_direct10, "direct_vm_test10.envdef", "vega10"),
 TEST(test_can_read_from_vm_memory_direct11, "direct_vm_test11.envdef", "vega10"),
 TEST(test_can_read_from_vm_memory_direct12, "direct_vm_test12.envdef", "vega10"),
+TEST(test_can_read_from_vm_memory_direct13, "direct_vm_test13.envdef", "polaris11"),
+TEST(test_can_read_from_vm_memory_direct14, "direct_vm_test14.envdef", "polaris11"),
 #endif
 END_TESTS(vm_tests);
