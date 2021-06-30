@@ -125,17 +125,9 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 								asic->blocks[i]->regs[j].value |= (uint64_t)v32 << 32;
 							}
 						} else if (asic->blocks[i]->regs[j].type == REG_MMIO || asic->blocks[i]->regs[j].type == REG_SMC) {
-							if (asic->options.use_bank == 1)
-								umr_grbm_select_index(asic, asic->options.bank.grbm.se, asic->options.bank.grbm.sh, asic->options.bank.grbm.instance);
-							if (asic->options.use_bank == 2)
-								umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
-							asic->blocks[i]->regs[j].value = umr_read_reg(asic, asic->blocks[i]->regs[j].addr * (asic->blocks[i]->regs[j].type == REG_MMIO ? 4 : 1), asic->blocks[i]->regs[j].type);
+							asic->blocks[i]->regs[j].value = umr_read_reg(asic, umr_apply_bank_selection_address(asic) | (asic->blocks[i]->regs[j].addr * (asic->blocks[i]->regs[j].type == REG_MMIO ? 4 : 1)), asic->blocks[i]->regs[j].type);
 							if (asic->blocks[i]->regs[j].bit64)
-								asic->blocks[i]->regs[j].value |= (uint64_t)umr_read_reg(asic, (asic->blocks[i]->regs[j].addr + 1) * (asic->blocks[i]->regs[j].type == REG_MMIO ? 4 : 1), asic->blocks[i]->regs[j].type) << 32;
-							if (asic->options.use_bank == 1)
-								umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
-							if (asic->options.use_bank == 2)
-								umr_srbm_select_index(asic, 0, 0, 0, 0);
+								asic->blocks[i]->regs[j].value |= (uint64_t)umr_read_reg(asic, umr_apply_bank_selection_address(asic) | ((asic->blocks[i]->regs[j].addr + 1) * (asic->blocks[i]->regs[j].type == REG_MMIO ? 4 : 1)), asic->blocks[i]->regs[j].type) << 32;
 						}
 						if (regname[0]) {
 							printf("%s%s.%s%s => ", CYAN, asic->blocks[i]->ipname,  asic->blocks[i]->regs[j].regname, RST);

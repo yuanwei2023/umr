@@ -172,13 +172,23 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 {
 	uint32_t value=0;
 	uint64_t mmio_addr = addr & 0xFFFFFF;
+	int use_bank = 0;
 
 	if (addr == 0xFFFFFFFF)
 		fprintf(stderr, "[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
 
 	// lop off top bits in no-kernel mode
-	if (asic->options.no_kernel)
+	if (type == REG_MMIO && asic->options.no_kernel) {
+		// if bit 62/61 set do bank switch
+		if (addr & (1ULL << 62)) {
+			use_bank = 1;
+			umr_grbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023);
+		} else if (addr & (1ULL << 61)) {
+			use_bank = 2;
+			umr_srbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023, (addr >> 54) & 1023);
+		}
 		addr &= 0xFFFFFF;
+	}
 
 	// apply context banking
 	if ((mmio_addr >= (0xA000*4)) && (mmio_addr < (0xB000*4)))
@@ -204,6 +214,16 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 			fprintf(stderr, "[BUG]: Unsupported register type in umr_read_reg().\n");
 			return 0;
 	}
+
+	switch (use_bank) {
+		case 1:
+			umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+			break;
+		case 2:
+			umr_srbm_select_index(asic, 0, 0, 0, 0);
+			break;
+	}
+
 }
 
 /**
@@ -214,13 +234,23 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum regclass type)
 {
 	uint64_t mmio_addr = addr & 0xFFFFFF;
+	int use_bank = 0;
 
 	if (addr == 0xFFFFFFFF)
 		fprintf(stderr, "[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
 
 	// lop off top bits in no-kernel mode
-	if (asic->options.no_kernel)
+	if (type == REG_MMIO && asic->options.no_kernel) {
+		// if bit 62/61 set do bank switch
+		if (addr & (1ULL << 62)) {
+			use_bank = 1;
+			umr_grbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023);
+		} else if (addr & (1ULL << 61)) {
+			use_bank = 2;
+			umr_srbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023, (addr >> 54) & 1023);
+		}
 		addr &= 0xFFFFFF;
+	}
 
 	// apply context banking
 	if ((mmio_addr >= (0xA000*4)) && (mmio_addr < (0xB000*4)))
@@ -249,5 +279,15 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 			fprintf(stderr, "[BUG]: Unsupported register type in umr_write_reg().\n");
 			return -1;
 	}
+
+	switch (use_bank) {
+		case 1:
+			umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+			break;
+		case 2:
+			umr_srbm_select_index(asic, 0, 0, 0, 0);
+			break;
+	}
+
 	return 0;
 }

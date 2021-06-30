@@ -33,8 +33,8 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 {
 	char asicname[128], ipname[128], regname[128], bitname[128];
 	int i, j, k, fd;
-	uint32_t value, mask, copy;
-	uint64_t addr, scale;
+	uint32_t value;
+	uint64_t addr, scale, copy, mask;
 
 	if (sscanf(regpath, "%[^.].%[^.].%[^.].%[^.]", asicname, ipname, regname, bitname) != 4) {
 		fprintf(stderr, "[ERROR]: Invalid regpath for bit write\n");
@@ -51,9 +51,10 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 							if (!strcmp(bitname, asic->blocks[i]->regs[j].bits[k].regname)) {
 								sscanf(regvalue, "%"SCNx32, &value);
 
-								mask = (1UL<<((1+asic->blocks[i]->regs[j].bits[k].stop)-asic->blocks[i]->regs[j].bits[k].start))-1;
+								mask = (1ULL<<((1+asic->blocks[i]->regs[j].bits[k].stop)-asic->blocks[i]->regs[j].bits[k].start))-1;
 								mask <<= asic->blocks[i]->regs[j].bits[k].start;
 								if (asic->pci.mem == NULL) {
+									int size;
 									// set this register
 									switch (asic->blocks[i]->regs[j].type){
 									case REG_MMIO: fd = asic->fd.mmio; scale = 4; break;
@@ -74,18 +75,19 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 										addr = 0;
 
 									lseek(fd, addr | (asic->blocks[i]->regs[j].addr*scale), SEEK_SET);
-									if (read(fd, &copy, 4) != 4)
+									size = asic->blocks[i]->regs[j].bit64 ? 8 : 4;
+									if (read(fd, &copy, size) != size)
 										return -1;
 
 									// read-modify-write value back
 									copy &= ~mask;
-									value = (value << asic->blocks[i]->regs[j].bits[k].start) & mask;
+									value = ((uint64_t)value << asic->blocks[i]->regs[j].bits[k].start) & mask;
 									copy |= value;
 
 									lseek(fd, addr | (asic->blocks[i]->regs[j].addr<<2), SEEK_SET);
-									if (write(fd, &copy, 4) != 4)
+									if (write(fd, &copy, size) != size)
 										return -1;
-									if (!asic->options.quiet) printf("%s <= 0x%08lx\n", regpath, (unsigned long)copy);
+									if (!asic->options.quiet) printf("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
 
 									if (asic->blocks[i]->release) {
 										if (asic->blocks[i]->release(asic)) {
@@ -94,18 +96,18 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 									}
 								} else if (asic->blocks[i]->regs[j].type == REG_MMIO) {
 									// using pci mapping implies no_kernel
-									if (asic->options.use_bank == 1)
-										umr_grbm_select_index(asic, asic->options.bank.grbm.se, asic->options.bank.grbm.sh, asic->options.bank.grbm.instance);
-									if (asic->options.use_bank == 2)
-										umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
-									copy = asic->pci.mem[asic->blocks[i]->regs[j].addr] & ~mask;
-									copy |= (value << asic->blocks[i]->regs[j].bits[k].start) & mask;
-									asic->pci.mem[asic->blocks[i]->regs[j].addr] = copy;
-									if (asic->options.use_bank == 1)
-										umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
-									if (asic->options.use_bank == 2)
-										umr_srbm_select_index(asic, 0, 0, 0, 0);
-									if (!asic->options.quiet) printf("%s <= 0x%08lx\n", regpath, (unsigned long)copy);
+									uint64_t addr = umr_apply_bank_selection_address(asic) + (asic->blocks[i]->regs[j].addr * 4);
+
+									copy = umr_read_reg(asic, addr, REG_MMIO);
+									if (asic->blocks[i]->regs[j].bit64)
+										copy |= ((uint64_t)umr_read_reg(asic, addr + 4, REG_MMIO)) << 32;
+									copy &= ~mask;
+									copy |= ((uint64_t)value << asic->blocks[i]->regs[j].bits[k].start) & mask;
+									umr_write_reg(asic, addr, copy & 0xFFFFFFFF, REG_MMIO);
+									if (asic->blocks[i]->regs[j].bit64)
+										umr_write_reg(asic, addr + 4, copy >> 32, REG_MMIO);
+
+									if (!asic->options.quiet) printf("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
 								}
 								return 0;
 							}
