@@ -55,7 +55,7 @@ separated strings.  Options should be specified before --update or --force comma
      exiting.
 
 .B no_follow_ib
-     Instruct the --ring command to not attempt to follow IBs pointed to by the packets
+     Instruct the --ring-stream command to not attempt to follow IBs pointed to by the packets
      in the ring.
 
 .B use_pci
@@ -105,7 +105,7 @@ separated strings.  Options should be specified before --update or --force comma
     PDEs for every page decoded.
 
 .B no_scan_waves
-   Disable scanning wave data during --ring output.
+   Disable scanning wave data during --ring-stream output.
 
 .SH Bank Selection
 .IP "--bank, -b <se> <sh> <instance>"
@@ -224,7 +224,7 @@ Disassemble 'size' bytes (in hex) from a given address (in hex).  The size can b
 specified as zero to have umr try and compute the shader size.
 
 .SH Ring and PM4 Decoding
-.IP "--ring, -R <string>[range]"
+.IP "--ring-stream, -RS <string>[range]"
 Read the contents of the ring named by the string
 .B amdgpu_ring_<string>,
 i.e. without the
@@ -248,12 +248,6 @@ prints [wptr-16, wptr] words of the SDMA0 ring, and
 "-R sdma1[.:32]" prints [rptr, rptr+32] double-words of the
 SDMA1 ring. The contents of the ring is always interpreted,
 if it can be interpreted.
-.IP "--ring-stream, -RS <string>[range]"
-Read the contents of the ring named by the string
-.B amdgpu_ring_<string>,
-i.e. without the
-.B amdgpu_ring
-prefix.  This decoder is to replace the older --ring decoder.
 .IP "--dump-ib, -di [vmid@]address length [pm]"
 Dump an IB packet at an address with an optional VMID.  The length is specified
 in bytes.  The type of decoder <pm> is optional and defaults to PM4 packets.

@@ -123,7 +123,8 @@ The options available are:
 +-------------------+-------------------------------------------------------------------------+
 | follow            | Tells --logscan to continually read the MMIO tracer                     |
 +-------------------+-------------------------------------------------------------------------+
-| no_follow_ib      | Instructs the --ring command to not follow IBs pointed to by the ring   |
+| no_follow_ib      | Instructs the --ring-stream  command to not follow IBs pointed to by    |
+|                   | the ring                                                                |
 +-------------------+-------------------------------------------------------------------------+
 | use_pci           | Enables direct PCI access bypassing the kernels debugfs entries.        |
 +-------------------+-------------------------------------------------------------------------+
@@ -147,9 +148,9 @@ The options available are:
 |                   | This option disables this and will print the full chain of PDEs for     |
 |                   | every page decoded.                                                     |
 +-------------------+-------------------------------------------------------------------------+
-| no_scan_waves     | Disable scaning for wave data during --ring output                      |
+| no_scan_waves     | Disable scaning for wave data during --ring-stream  output              |
 +-------------------+-------------------------------------------------------------------------+
-| full_shader       | Always print the full shader in --waves and --ring output               |
+| full_shader       | Always print the full shader in --waves and --ring-stream  output       |
 +-------------------+-------------------------------------------------------------------------+
 
 ------------------

@@ -8,7 +8,7 @@ read command has the following form:
 
 ::
 
-	umr --ring <name>([from:to])
+	umr --ring-stream <name>([from:to])
 
 The command reads from a ring with the specified name.  The names
 come from the debugfs entries without the amdgpu\_ring\_ prefix.  The
@@ -24,19 +24,19 @@ words.  For instance:
 
 ::
 
-	umr --ring gfx[.:k]
+	umr --ring-stream gfx[.:k]
 
 Will read from the read pointer for 'k' words.  Alternatively,
 
 ::
 
-	umr --ring gfx[k:.]
+	umr --ring-stream gfx[k:.]
 
 will read from 'k' words before the write pointer.  Finally,
 
 ::
 
-	umr --ring gfx[0:9]
+	umr --ring-stream gfx[0:9]
 
 Will read the first 10 words of the gfx ring.
 
@@ -47,27 +47,32 @@ the decoder between those ranges.  For instance,
 
 ::
 
-	umr --ring gfx[.]
+	umr --ring-stream gfx[.]
 
 Might produce output similar to:
 
 ::
 
-	polaris11.gfx.rptr == 512
-	polaris11.gfx.wptr == 768
-	polaris11.gfx.drv_wptr == 768
-	polaris11.gfx.ring[ 512] == 0xc0032200    r.. PKT3, COUNT:4, PREDICATE:0, SHADER_TYPE:0, OPCODE:22[PKT3_COND_EXEC]
-	polaris11.gfx.ring[ 513] == 0x00400060    ... |---+ PKT3 OPCODE 0x22, word 0: GPU_ADDR_LO32: 0x00400060
-	polaris11.gfx.ring[ 514] == 0x00000000    ... |---+ PKT3 OPCODE 0x22, word 1: GPU_ADDR_HI32: 0x00000000
-	polaris11.gfx.ring[ 515] == 0x00000000    ... |---+ PKT3 OPCODE 0x22, word 2: TEST_VALUE: 0x00000000
-	polaris11.gfx.ring[ 516] == 0x00000023    ... \---+ PKT3 OPCODE 0x22, word 3: PATCH_VALUE: 0x00000023
-	polaris11.gfx.ring[ 517] == 0xc0053c00    ... PKT3, COUNT:6, PREDICATE:0, SHADER_TYPE:0, OPCODE:3c[PKT3_WAIT_REG_MEM]
-	polaris11.gfx.ring[ 518] == 0x00000143    ... |---+ PKT3 OPCODE 0x3c, word 0: ENGINE:PFP, MEMSPACE:MEM, FUNC:[==]
-	polaris11.gfx.ring[ 519] == 0x00001537    ... |---+ PKT3 OPCODE 0x3c, word 1: POLL_ADDRESS_LO: 0x0000054d, SWAP: 3
-	polaris11.gfx.ring[ 520] == 0x00001538    ... |---+ PKT3 OPCODE 0x3c, word 2: POLL_ADDRESS_HI: 0x00001538
-	polaris11.gfx.ring[ 521] == 0x00000001    ... |---+ PKT3 OPCODE 0x3c, word 3: REFERENCE: 0x00000001
-	polaris11.gfx.ring[ 522] == 0x00000001    ... |---+ PKT3 OPCODE 0x3c, word 4: MASK: 0x00000001
-	polaris11.gfx.ring[ 523] == 0x00000020    ... \---+ PKT3 OPCODE 0x3c, word 5: POLL INTERVAL: 0x00000020
+	Decoding IB at 0@0x0 from 0@0x0 of 257 words (type 4)
+	[0@0x00000000 + 0x0000]	[0xffff1000]	Opcode 0x10 [PKT3_NOP] (0 words, type: 3, hdr: 0xffff1000)
+	[0@0x00000000 + 0x0004]	[0xc0032200]	Opcode 0x22 [PKT3_COND_EXEC] (4 words, type: 3, hdr: 0xc0032200)
+	[0@0x00000000 + 0x0008]	[0x00400080]	|---> GPU_ADDR_LO32=0x400080
+	[0@0x00000000 + 0x000c]	[0x000000ff]	|---> GPU_ADDR_HI32=0xff
+	[0@0x00000000 + 0x0010]	[0x00000000]	|---> TEST_VALUE=0x0
+	[0@0x00000000 + 0x0014]	[0x0000002f]	|---> PATCH_VALUE=0x2f
+	[0@0x00000000 + 0x0018]	[0xc0053c00]	Opcode 0x3c [PKT3_WAIT_REG_MEM] (6 words, type: 3, hdr: 0xc0053c00)
+	[0@0x00000000 + 0x001c]	[0x00000143]	|---> ENGINE=[PFP]/1, MEMSPACE=[REG]/0, OPERATION=1, FUNCTION=[==]/3
+	[0@0x00000000 + 0x0020]	[0x00001537]	|---> POLL_ADDRESS_LO=0x1534, SWAP=0x3
+	[0@0x00000000 + 0x0024]	[0x00001538]	|---> POLL_ADDRESS_HI=0x1538
+	[0@0x00000000 + 0x0028]	[0x00000001]	|---> REFERENCE=0x1
+	[0@0x00000000 + 0x002c]	[0x00000001]	|---> MASK=0x1
+	[0@0x00000000 + 0x0030]	[0x00000020]	|---> POLL INTERVAL=0x20
+	[0@0x00000000 + 0x0034]	[0xc0004600]	Opcode 0x46 [PKT3_EVENT_WRITE] (1 words, type: 3, hdr: 0xc0004600)
+	[0@0x00000000 + 0x0038]	[0x0000040f]	|---> EVENT_TYPE=15, EVENT_INDEX=4
+	[0@0x00000000 + 0x003c]	[0xc0004600]	Opcode 0x46 [PKT3_EVENT_WRITE] (1 words, type: 3, hdr: 0xc0004600)
+	[0@0x00000000 + 0x0040]	[0x00000024]	|---> EVENT_TYPE=36, EVENT_INDEX=0
+	[0@0x00000000 + 0x0044]	[0xc0012800]	Opcode 0x28 [PKT3_CONTEXT_CONTROL] (2 words, type: 3, hdr: 0xc0012800)
+	[0@0x00000000 + 0x0048]	[0x81018003]	|---> LOAD_EN=1, LOAD_CS=1, LOAD_GFX=1, LOAD_MULTI=1, LOAD_SINGLE=1
 	...<snip>...
 
 This mode useful for examining live traffic or traffic that has resulted
@@ -87,33 +92,25 @@ order of appearance.  An example decoding is:
 
 ::
 
-	Dumping IB at (gfxhub) VMID:5 0x101ff7000 of 7376 words from ring[1549]
-	IB[5@0x101ff7000 + 0x0   ] = 0xc0023f00 ... PKT3, COUNT:3, PREDICATE:0, SHADER_TYPE:0, OPCODE:3f[PKT3_INDIRECT_BUFFER_CIK]
-	IB[5@0x101ff7000 + 0x4   ] = 0x00000800 ... |---+ PKT3 OPCODE 0x3f, word 0: IB_BASE_LO: 0x00000800, SWAP:0
-	IB[5@0x101ff7000 + 0x8   ] = 0x00000001 ... |---+ PKT3 OPCODE 0x3f, word 1: IB_BASE_HI: 0x00000001
-	IB[5@0x101ff7000 + 0xc   ] = 0x00000030 ... \---+ PKT3 OPCODE 0x3f, word 2: IB_SIZE:48, VMID: 0
-	IB[5@0x101ff7000 + 0x10  ] = 0xc0024600 ... PKT3, COUNT:3, PREDICATE:0, SHADER_TYPE:0, OPCODE:46[PKT3_EVENT_WRITE]
-	IB[5@0x101ff7000 + 0x14  ] = 0x0000021e ... |---+ PKT3 OPCODE 0x46, word 0: EVENT_TYPE: 0x1e, EVENT_INDEX: 0x2
-	IB[5@0x101ff7000 + 0x18  ] = 0x2a790cb8 ... |---+ PKT3 OPCODE 0x46, word 1: ADDRESS_LO: 0x2a790cb8
-	IB[5@0x101ff7000 + 0x1c  ] = 0x00000001 ... \---+ PKT3 OPCODE 0x46, word 2: ADDRESS_HI: 0x00000001
-	IB[5@0x101ff7000 + 0x20  ] = 0xc0004600 ... PKT3, COUNT:1, PREDICATE:0, SHADER_TYPE:0, OPCODE:46[PKT3_EVENT_WRITE]
-	IB[5@0x101ff7000 + 0x24  ] = 0x00000410 ... \---+ PKT3 OPCODE 0x46, word 0: EVENT_TYPE: 0x10, EVENT_INDEX: 0x4
-	IB[5@0x101ff7000 + 0x28  ] = 0xc0004200 ... PKT3, COUNT:1, PREDICATE:0, SHADER_TYPE:0, OPCODE:42[PKT3_PFP_SYNC_ME]
-	IB[5@0x101ff7000 + 0x2c  ] = 0x00000000 ... \---+ PKT3 OPCODE 0x42, word 0: PKT3 DATA
+	Decoding IB at 7@0x223000 from 0@0x8c of 512 words (type 4)
+	[7@0x00223000 + 0x0000] [0xc0012800]    Opcode 0x28 [PKT3_CONTEXT_CONTROL] (2 words, type: 3, hdr: 0xc0012800)
+	[7@0x00223000 + 0x0004] [0x80000000]    |---> LOAD_EN=1, LOAD_CS=0, LOAD_GFX=0, LOAD_MULTI=0, LOAD_SINGLE=0
+	[7@0x00223000 + 0x0008] [0x80000000]    |---> SHADOW_EN=1, SHADOW_CS=0, SHADOW_GFX=0, SHADOW_MULTI=0, SHADOW_SINGLE=0
+	[7@0x00223000 + 0x000c] [0xc0001200]    Opcode 0x12 [PKT3_CLEAR_STATE] (1 words, type: 3, hdr: 0xc0001200)
+	[7@0x00223000 + 0x0010] [0x00000000]    |---> CMD=0
+	[7@0x00223000 + 0x0014] [0xc0026900]    Opcode 0x69 [PKT3_SET_CONTEXT_REG] (3 words, type: 3, hdr: 0xc0026900)
+	[7@0x00223000 + 0x001c] [0x80000000]    |---> gfx800.mmPA_SC_GENERIC_SCISSOR_TL=0x80000000
+	[7@0x00223000 + 0x0020] [0x40004000]    |---> gfx800.mmPA_SC_GENERIC_SCISSOR_BR=0x40004000
+	[7@0x00223000 + 0x0024] [0xc0016900]    Opcode 0x69 [PKT3_SET_CONTEXT_REG] (2 words, type: 3, hdr: 0xc0016900)
+	[7@0x00223000 + 0x002c] [0x42800000]    |---> gfx800.mmVGT_HOS_MAX_TESS_LEVEL=0x42800000
+	[7@0x00223000 + 0x0030] [0xc0026900]    Opcode 0x69 [PKT3_SET_CONTEXT_REG] (3 words, type: 3, hdr: 0xc0026900)
+	[7@0x00223000 + 0x0038] [0x01000600]    |---> gfx800.mmTA_BC_BASE_ADDR=0x1000600
+	[7@0x00223000 + 0x003c] [0x00000000]    |---> gfx800.mmTA_BC_BASE_ADDR_HI=0x0
 	...<snip>...
 
 The first line of every IB decoding indicates it's VM placement with
 both the hub name (currently gfx or mm) and VMID/offset pair.  Followed
-by the number of words and where it came from.  IBs that are pointed
-to from other IBs resembles:
-
-::
-
-	Dumping IB at (gfxhub) VMID:5 0x100000800 of 48 words from IB[5@0x101fe5000 + 0xc]
-
-Where in this case this IB came from VMID 5 at offset 0x101FE5000 and
-the 0xC'th byte.  The location is in fact a pointer to the last
-word of the PKT3_INDIRECT_BUFFER_* opcode that indicated the IB.
+by the number of words and where it came from.
 
 The ring decoder can also detect shader programs and disassemble
 them as well.  If the UMD uses the quintuple 0xBF9F0000 opcode
@@ -124,24 +121,23 @@ first 's_endpgm' opcode is found.  Shader disassemblies resemble:
 
 ::
 
-	Disassembly of shader 5@0x1000e0800 of length 60 bytes from IB[5@0x101ff7000 + 0x45c]
-	   pgm[5@0x1000e0800 + 0x0   ] = 0x7e020203             v_mov_b32_e32 v1, s3
-	   pgm[5@0x1000e0800 + 0x4   ] = 0x7e040202             v_mov_b32_e32 v2, s2
-	   pgm[5@0x1000e0800 + 0x8   ] = 0x7d980082             v_cmp_gt_u32_e32 vcc, 2, v0
-	   pgm[5@0x1000e0800 + 0xc   ] = 0x00060501             v_cndmask_b32_e32 v3, v1, v2, vcc
-	   pgm[5@0x1000e0800 + 0x10  ] = 0x7d940081             v_cmp_eq_u32_e32 vcc, 1, v0
-	   pgm[5@0x1000e0800 + 0x14  ] = 0x00000302             v_cndmask_b32_e32 v0, v2, v1, vcc
-	   pgm[5@0x1000e0800 + 0x18  ] = 0x7e020af9             v_cvt_f32_i32_sdwa v1, sext(v3) dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_0
-	   pgm[5@0x1000e0800 + 0x1c  ] = 0x000c0603     ;;
-	   pgm[5@0x1000e0800 + 0x20  ] = 0x7e000af9             v_cvt_f32_i32_sdwa v0, sext(v0) dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1
-	   pgm[5@0x1000e0800 + 0x24  ] = 0x000d0600     ;;
+	Shader from 1@[0x231800 + 0x3d0] at 1@0x100000b00, type 1, size 124
+		pgm[1@0x231bd0 + 0x0   ] = 0xc0047600               s_load_dwordx2 s[88:89], s[0:1], s72
+		pgm[1@0x231bd0 + 0x4   ] = 0x00000048       ;;
+		pgm[1@0x231bd0 + 0x8   ] = 0x0100000b               v_cndmask_b32_e32 v128, s11, v0, vcc
+		pgm[1@0x231bd0 + 0xc   ] = 0x00000000               v_cndmask_b32_e32 v0, s0, v0, vcc
+		pgm[1@0x231bd0 + 0x10  ] = 0x002c0081               v_cndmask_b32_e32 v22, 1, v0, vcc
+		pgm[1@0x231bd0 + 0x14  ] = 0x00000020               v_cndmask_b32_e32 v0, s32, v0, vcc
+		pgm[1@0x231bd0 + 0x18  ] = 0xc0016900               s_load_dword s36, s[0:1], v195 glc
+		pgm[1@0x231bd0 + 0x1c  ] = 0x000001c3       ;;
+		pgm[1@0x231bd0 + 0x20  ] = 0x00000004               v_cndmask_b32_e32 v0, s4, v0, vcc
+		pgm[1@0x231bd0 + 0x24  ] = 0xc0016900               s_load_dword s36, s[0:1], s6 glc
 	   ...<snip>...
 
 Which indicates the VMID and address of the shader, how many bytes it
 is and where it was found.  In this case this shader was indicated
-by an IB at VMID 5 offset 0x101FF7000 with a byte offset of 0x45C.  The
-byte offset indicates the last PM4 packet word indicating the address
-of the shader.
+by an IB at VMID 1 offset 0x231800 + 0x3d0.  The byte offset indicates
+the last PM4 packet word indicating the address of the shader.
 
 Each line of disassembly includes the address of the shader opcode,
 followed by the opcode in hex, followed by the disassembly provided

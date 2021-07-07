@@ -447,7 +447,7 @@ int main(int argc, char **argv)
 				umr_read_ring_stream(asic, argv[i+1]);
 				++i;
 			} else {
-				fprintf(stderr, "[ERROR]: --ring requires one parameter\n");
+				fprintf(stderr, "[ERROR]: --ring-stream requires one parameter\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--dump-ib") || !strcmp(argv[i], "-di")) {
@@ -931,14 +931,12 @@ printf(
 	"\n\t\tDisassemble 'size' bytes (in hex) from a given address (in hex).  The size can"
 	"\n\t\tbe specified as zero to have umr try and compute the shader size.\n"
 "\n*** Ring and PM4 decoding ***\n"
-"\n\t--ring, -R <string>([from:to])\n\t\tRead the contents of a ring named by the string without the amdgpu_ring_ prefix. "
+"\n\t--ring-stream, -RS <string>([from:to])\n\t\tRead the contents of a ring named by the string without the amdgpu_ring_ prefix. "
 	"\n\t\tBy default it will read and display the entire ring.  A starting and ending "
 	"\n\t\taddress can be specified in decimal or a '.' can be used to indicate relative "
 	"\n\t\tto the current wptr pointer.  For example, \"-R gfx\" would read the entire gfx "
 	"\n\t\tring, \"-R gfx[0:16]\" would display the contents from 0 to 16 inclusively, and "
 	"\n\t\t\"-R gfx[.]\" or \"-R gfx[.:.]\" would display the last 32 words relative to rptr.\n"
-"\n\t--ring-stream, -RS <string>([from:to])\n\t\tRead the contents of a ring named by the string without the amdgpu_ring_ prefix. "
-	"\n\t\tThis is the new ring decoder that will eventually replace --ring.  It is meant to work the same.\n"
 "\n\t--dump-ib, -di [vmid@]address length [pm]"
 	"\n\t\tDump an IB packet at an address with an optional VMID.  The length is specified"
 	"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
