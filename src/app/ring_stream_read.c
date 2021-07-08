@@ -1252,6 +1252,7 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 	uint32_t vmid, nwords;
 	uint64_t addr;
 
+	start = end = 0;
 	nwords = 0;
 	if (sscanf(ringpath, "P%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 4;

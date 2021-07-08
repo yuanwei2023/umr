@@ -196,20 +196,23 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 
 	switch (type) {
 		case REG_PCIE:
-			return umr_pcie_read(asic, addr);
+			value = umr_pcie_read(asic, addr);
+			break;
 		case REG_MMIO:
 			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) { // only use pci if enabled and not using high bits
-				return asic->pci.mem[addr/4];
+				value = asic->pci.mem[addr/4];
+				break;
 			} else {
 				if (lseek(asic->fd.mmio, addr, SEEK_SET) < 0)
 					perror("Cannot seek to MMIO address");
 				if (read(asic->fd.mmio, &value, 4) != 4)
 					perror("Cannot read from MMIO reg");
-				return value;
+				break;
 			}
 			break;
 		case REG_SMC:
-			return umr_smc_read(asic, addr);
+			value = umr_smc_read(asic, addr);
+			break;
 		default:
 			fprintf(stderr, "[BUG]: Unsupported register type in umr_read_reg().\n");
 			return 0;
@@ -224,6 +227,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 			break;
 	}
 
+	return value;
 }
 
 /**
@@ -234,7 +238,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum regclass type)
 {
 	uint64_t mmio_addr = addr & 0xFFFFFF;
-	int use_bank = 0;
+	int use_bank = 0, r = 0;
 
 	if (addr == 0xFFFFFFFF)
 		fprintf(stderr, "[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
@@ -258,23 +262,24 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 
 	switch (type) {
 		case REG_PCIE:
-			return umr_pcie_write(asic, addr, value);
+			r = umr_pcie_write(asic, addr, value);
+			break;
 		case REG_MMIO:
 			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) {
 				asic->pci.mem[addr/4] = value;
 			} else {
 				if (lseek(asic->fd.mmio, addr, SEEK_SET) < 0) {
 					perror("Cannot seek to MMIO address");
-					return -1;
-				}
-				if (write(asic->fd.mmio, &value, 4) != 4) {
+					r = -1;
+				} else if (write(asic->fd.mmio, &value, 4) != 4) {
 					perror("Cannot write to MMIO reg");
-					return -1;
+					r = -1;
 				}
 			}
 			break;
 		case REG_SMC:
-			return umr_smc_write(asic, addr, value);
+			r = umr_smc_write(asic, addr, value);
+			break;
 		default:
 			fprintf(stderr, "[BUG]: Unsupported register type in umr_write_reg().\n");
 			return -1;
@@ -289,5 +294,5 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 			break;
 	}
 
-	return 0;
+	return r;
 }
