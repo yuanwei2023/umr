@@ -1077,7 +1077,8 @@ struct umr_pm4_stream {
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
 struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
+struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
@@ -1169,7 +1170,8 @@ struct umr_sdma_stream {
 };
 
 struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop);
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, int from_vmid, uint32_t *stream, uint32_t nwords);
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
 struct umr_sdma_stream_decode_ui {

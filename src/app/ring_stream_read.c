@@ -1053,11 +1053,14 @@ static void pm4_done(struct umr_pm4_stream_decode_ui *ui)
 static struct umr_pm4_stream_decode_ui pm4_ui = { pm4_start_ib, pm4_start_opcode, pm4_add_field, pm4_add_shader, pm4_add_data, pm4_unhandled, pm4_done, NULL };
 
 // top level present pm4
-static void present_pm4(struct umr_asic *asic, char *ringname, int start, int end)
+static void present_pm4(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
 {
 	struct umr_pm4_stream *str;
 
-	str = umr_pm4_decode_ring(asic, ringname, 0, start, end);
+	if (ringname)
+		str = umr_pm4_decode_ring(asic, ringname, 0, start, end);
+	else
+		str = umr_pm4_decode_stream_vm(asic, vmid, addr, nwords, UMR_RING_GFX);
 	if (str) {
 		struct umr_pm4_stream_decode_ui ui;
 		int x;
@@ -1203,11 +1206,15 @@ static void sdma_done(struct umr_sdma_stream_decode_ui *ui)
 
 static struct  umr_sdma_stream_decode_ui sdma_ui = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_subop, sdma_done, NULL };
 
-static void present_sdma(struct umr_asic *asic, char *ringname, int start, int end)
+static void present_sdma(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
 {
 	struct umr_sdma_stream *stream;
 
-	stream = umr_sdma_decode_ring(asic, ringname, start, end);
+	if (ringname)
+		stream = umr_sdma_decode_ring(asic, ringname, start, end);
+	else
+		stream = umr_sdma_decode_stream_vm(asic, vmid, addr, nwords, UMR_RING_SDMA);
+
 	if (stream) {
 		struct umr_sdma_stream_decode_ui myui;
 		struct sdma_ui_data *data;
@@ -1242,71 +1249,80 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 {
 	char ringname[32], from[32], to[32];
 	int  enable_decoder, start, end;
+	uint32_t vmid, nwords;
+	uint64_t addr;
 
-	memset(ringname, 0, sizeof ringname);
-	memset(from, 0, sizeof from);
-	memset(to, 0, sizeof to);
-	if (sscanf(ringpath, "%[a-z0-9._][%[.0-9]:%[.0-9]]", ringname, from, to) < 1) {
-		printf("Invalid ringpath\n");
-		return;
-	}
-
-	// only decode PM4 packets on certain rings
-	if (!memcmp(ringname, "gfx", 3) ||
-	    !memcmp(ringname, "uvd", 3) ||
-	    !memcmp(ringname, "vcn_dec", 7) ||
-	    !memcmp(ringname, "vcn_enc", 7) ||
-	    !memcmp(ringname, "kiq", 3) ||
-	    !memcmp(ringname, "comp", 4)) {
+	nwords = 0;
+	if (sscanf(ringpath, "P%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 4;
-	} else if (!memcmp(ringname, "sdma", 4) ||
-		   !memcmp(ringname, "page", 4)) {
+	} else if (sscanf(ringpath, "S%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 3;
 	} else {
-		enable_decoder = 0;
-	}
+		memset(ringname, 0, sizeof ringname);
+		memset(from, 0, sizeof from);
+		memset(to, 0, sizeof to);
+		if (sscanf(ringpath, "%[a-z0-9._][%[.0-9]:%[.0-9]]", ringname, from, to) < 1) {
+			printf("Invalid ringpath\n");
+			return;
+		}
 
-	/* default to reading entire ring */
-	if (!from[0]) {
-		start = 0;
-		end   = 10000;
-	} else {
-		if (from[0] == '.') {
-			if (to[0] == 0 || to[0] == '.') {
-				/* Notation: [.] or [.:.], meaning
-				 * [rptr, wptr].
-				 */
-				start = -1;
-				end = -1;
-			} else {
-				/* Notation: [.:k], k >=0, meaning
-				 * [rptr, rtpr+k] double-words.
-				 */
-				start = -1;
-				sscanf(to, "%d", &end);
-			}
+		// only decode PM4 packets on certain rings
+		if (!memcmp(ringname, "gfx", 3) ||
+			!memcmp(ringname, "uvd", 3) ||
+			!memcmp(ringname, "vcn_dec", 7) ||
+			!memcmp(ringname, "vcn_enc", 7) ||
+			!memcmp(ringname, "kiq", 3) ||
+			!memcmp(ringname, "comp", 4)) {
+			enable_decoder = 4;
+		} else if (!memcmp(ringname, "sdma", 4) ||
+			       !memcmp(ringname, "page", 4)) {
+			enable_decoder = 3;
 		} else {
-			sscanf(from, "%d", &start);
-			start *= 4;
+			enable_decoder = 0;
+		}
 
-			if (to[0] != 0 && to[0] != '.') {
-				/* [k:r] ==> absolute [k, r].
-				 */
-				sscanf(to, "%d", &end);
+		/* default to reading entire ring */
+		if (!from[0]) {
+			start = 0;
+			end   = 10000;
+		} else {
+			if (from[0] == '.') {
+				if (to[0] == 0 || to[0] == '.') {
+					/* Notation: [.] or [.:.], meaning
+					 * [rptr, wptr].
+					 */
+					start = -1;
+					end = -1;
+				} else {
+					/* Notation: [.:k], k >=0, meaning
+					 * [rptr, rtpr+k] double-words.
+					 */
+					start = -1;
+					sscanf(to, "%d", &end);
+				}
 			} else {
-				/* to[0] is 0 or '.',
-				 * [k] or [k:.] ==> [wptr - k, wptr]
-				 */
-				end = -1;
+				sscanf(from, "%d", &start);
+				start *= 4;
+
+				if (to[0] != 0 && to[0] != '.') {
+					/* [k:r] ==> absolute [k, r].
+					 */
+					sscanf(to, "%d", &end);
+				} else {
+					/* to[0] is 0 or '.',
+					 * [k] or [k:.] ==> [wptr - k, wptr]
+					 */
+					end = -1;
+				}
 			}
 		}
 	}
 
 	/* pm4 streams */
 	if (enable_decoder == 4) {
-		present_pm4(asic, ringname, start, end);
+		present_pm4(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
 	} else if (enable_decoder == 3) {
-		present_sdma(asic, ringname, start, end);
+		present_sdma(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
 	} else {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
 	}

@@ -455,6 +455,7 @@ int main(int argc, char **argv)
 				uint64_t address;
 				uint32_t vmid, len;
 				int pm;
+				char str[128];
 
 				if (!asic)
 					asic = get_asic();
@@ -474,7 +475,8 @@ int main(int argc, char **argv)
 					pm = 4;
 					i += 2;
 				}
-				umr_ib_read(asic, vmid, address, len, pm);
+				sprintf(str, "%c0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, pm == 4 ? 'P' : 'S', vmid, address, len);
+				umr_read_ring_stream(asic, str);
 			} else {
 				fprintf(stderr, "[ERROR]: --dump-ib requires three parameters\n");
 				return EXIT_FAILURE;

@@ -24,8 +24,6 @@
  */
 #include "umr.h"
 
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
-
 /**
  * parse_pm4 - Parse a PM4 packet looking for pointers to shaders or IBs
  *
@@ -36,7 +34,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, ui
  * SET_SH_REG packet or further IBs indicated by INDIRECT_BUFFER
  * packets.
  */
-static void parse_pm4(struct umr_asic *asic, int vmid, struct umr_pm4_stream *ps)
+static void parse_pm4(struct umr_asic *asic, uint32_t vmid, struct umr_pm4_stream *ps)
 {
 	uint64_t addr;
 	uint32_t size, tvmid, rsrc1, rsrc2;
@@ -227,7 +225,7 @@ void umr_free_pm4_stream(struct umr_pm4_stream *stream)
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt)
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	struct {
@@ -436,5 +434,24 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
 
 	return ps;
+}
+
+struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+{
+	uint32_t *words;
+	struct umr_pm4_stream *str;
+
+	words = calloc(sizeof *words, nwords);
+	if (!words) {
+		fprintf(stderr, "[ERROR]: Out of memory\n");
+		return NULL;
+	}
+	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
+		fprintf(stderr, "[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
+		return NULL;
+	}
+	str = umr_pm4_decode_stream(asic, vmid, words, nwords, rt);
+	free(words);
+	return str;
 }
 

@@ -88,7 +88,7 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
  *
  * Returns a sdma stream if successfully decoded.
  */
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, int from_vmid, uint32_t *stream, uint32_t nwords)
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
 	uint32_t *ostream = stream;
@@ -246,6 +246,27 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t f
 		}
 	}
 	return ops;
+}
+
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+{
+	uint32_t *words;
+	struct umr_sdma_stream *str;
+
+	(void)rt;
+
+	words = calloc(sizeof *words, nwords);
+	if (!words) {
+		fprintf(stderr, "[ERROR]: Out of memory\n");
+		return NULL;
+	}
+	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
+		fprintf(stderr, "[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
+		return NULL;
+	}
+	str = umr_sdma_decode_stream(asic, addr, vmid, words, nwords);
+	free(words);
+	return str;
 }
 
 /**
