@@ -262,6 +262,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, uint32_
 	}
 	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
 		fprintf(stderr, "[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
+		free(words);
 		return NULL;
 	}
 	str = umr_sdma_decode_stream(asic, addr, vmid, words, nwords);

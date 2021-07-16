@@ -448,6 +448,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t 
 	}
 	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
 		fprintf(stderr, "[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
+		free(words);
 		return NULL;
 	}
 	str = umr_pm4_decode_stream(asic, vmid, words, nwords, rt);
