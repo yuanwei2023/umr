@@ -1303,7 +1303,6 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 				}
 			} else {
 				sscanf(from, "%d", &start);
-				start *= 4;
 
 				if (to[0] != 0 && to[0] != '.') {
 					/* [k:r] ==> absolute [k, r].
