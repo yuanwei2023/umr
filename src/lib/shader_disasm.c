@@ -83,7 +83,7 @@ int umr_vm_disasm_to_str(struct umr_asic *asic, unsigned vmid, uint64_t addr, ui
 		goto error;
 	}
 
-	umr_shader_disasm(asic, (uint8_t *)opcodes, size, addr + start_offset, &opcode_strs);
+	asic->shader_disasm_funcs.disasm(asic, (uint8_t *)opcodes, size, addr + start_offset, &opcode_strs);
 
 	for (y = 0, x = start_offset / 4; x < (start_offset + size)/4; x++, y++) {
 		snprintf(linebuf, sizeof(linebuf) - 1, "%s pgm[%s%u%s@%s0x%" PRIx64 "%s + %s0x%-4x%s] = %s0x%08" PRIx32 "%s\t%s%-60s%s\t",

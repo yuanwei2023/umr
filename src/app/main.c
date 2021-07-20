@@ -74,6 +74,7 @@ static struct umr_asic *get_asic(void)
 
 	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
 	asic->wave_funcs.get_wave_status = umr_get_wave_status;
+	asic->shader_disasm_funcs.disasm = umr_shader_disasm;
 
 	// default shader options
 	if (asic->family <= FAMILY_VI) { // on gfx9+ hs/gs are opaque

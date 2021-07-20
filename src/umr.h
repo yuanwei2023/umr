@@ -389,6 +389,24 @@ struct umr_wave_access_funcs {
 	void *data;
 };
 
+struct umr_shader_disasm_funcs {
+	/** disasm -- Disassemble a block of shader text into human readable text
+	 * @asic: The device the shader text is for
+	 * @inst: pointer to array of shader text
+	 * @inst_bytes: number of bytes (should be multiple of 4)
+	 * @PC: The current PC value for the wave
+	 * @disasm_text: Pointer to an array of char arrays that will contain the human readable output.
+	 *
+	 * Each entry of **disasm_text and *disasm_text itself must be freed with free().
+	 */
+	int (*disasm)(struct umr_asic *asic,
+						  uint8_t *inst, unsigned inst_bytes,
+						  uint64_t PC,
+						  char ***disasm_text);
+
+	void *data;
+};
+
 struct umr_asic {
 	char *asicname;
 	int no_blocks;
@@ -448,6 +466,7 @@ struct umr_asic {
 	struct umr_memory_access_funcs mem_funcs;
 	struct umr_register_access_funcs reg_funcs;
 	struct umr_wave_access_funcs wave_funcs;
+	struct umr_shader_disasm_funcs shader_disasm_funcs;
 };
 
 struct umr_wave_status {
