@@ -48,6 +48,10 @@ int umr_shader_disasm(struct umr_asic *asic,
 	char tmp[256], *cpuname, *features;
 
 	*disasm_text = calloc(inst_bytes/4, sizeof(**disasm_text));
+	if (!*disasm_text) {
+		fprintf(stderr, "[ERROR]: Out of memory\n");
+		return -1;
+	}
 
 	if (asic->options.no_disasm) {
 		for (x = 0; x < inst_bytes; x += 4) {
@@ -150,6 +154,10 @@ int umr_shader_disasm(struct umr_asic *asic,
 	unsigned x;
 
 	*disasm_text = calloc(inst_bytes/4, sizeof(**disasm_text));
+	if (!*disasm_text) {
+		fprintf(stderr, "[ERROR]: Out of memory\n");
+		return -1;
+	}
 
 	for (x = 0; x < inst_bytes; x += 4) {
 		(*disasm_text)[x/4] = strdup("...");
