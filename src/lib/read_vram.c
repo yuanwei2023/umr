@@ -476,7 +476,7 @@ static void print_pte_ai(struct umr_asic *asic,
 		uint64_t pte_idx, uint64_t pte_entry, uint64_t address,
 		uint64_t va_mask, pte_fields_ai_t pte_fields)
 {
-	if (asic == NULL) {
+	if (indentation == NULL) {
 		asic->mem_funcs.vm_message("\\-> PTE");
 	} else {
 		asic->mem_funcs.vm_message("%s ",
