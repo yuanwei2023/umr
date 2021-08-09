@@ -27,7 +27,7 @@
 
 
 #if 0
-#define DEBUG(...) fprintf(stderr, "DEBUG:" __VA_ARGS__)
+#define DEBUG(...) asic->err_msg("DEBUG:" __VA_ARGS__)
 #else
 #define DEBUG(...)
 #endif
@@ -42,7 +42,7 @@
 		// removed in newer kernels
 		lseek(asic->fd.iova, dma_addr & ~0xFFFULL, SEEK_SET);
 		if (read(asic->fd.iova, &phys, 8) != 8) {
-			fprintf(stderr, "[ERROR]: Could not read from debugfs iova file for address %" PRIx64 "\n", dma_addr);
+			asic->err_msg("[ERROR]: Could not read from debugfs iova file for address %" PRIx64 "\n", dma_addr);
 			return 0;
 		}
 	} else {
@@ -83,7 +83,7 @@ retry:
 			memset(dst, 0xFF, size);
 			if ((r = read(fd, dst, size)) != size) {
 				perror("Cannot read from system memory");
-				fprintf(stderr, "[ERROR]: Accessing system memory returned: %d\n", r);
+				asic->err_msg("[ERROR]: Accessing system memory returned: %d\n", r);
 				if (need_close)
 					close(fd);
 				if (fd == asic->fd.iomem)
@@ -93,7 +93,7 @@ retry:
 		} else {
 			if ((r = write(fd, dst, size)) != size) {
 				perror("Cannot write to system memory");
-				fprintf(stderr, "[ERROR]: Accessing system memory returned: %d\n", r);
+				asic->err_msg("[ERROR]: Accessing system memory returned: %d\n", r);
 				if (need_close)
 					close(fd);
 				if (fd == asic->fd.iomem)
@@ -116,12 +116,12 @@ int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t siz
 	lseek(asic->fd.vram, address, SEEK_SET);
 	if (write_en == 0) {
 		if (read(asic->fd.vram, data, size) != size) {
-			fprintf(stderr, "[ERROR]: Could not read from VRAM at address 0x%" PRIx64 "\n", address);
+			asic->err_msg("[ERROR]: Could not read from VRAM at address 0x%" PRIx64 "\n", address);
 			return -1;
 		}
 	} else {
 		if (write(asic->fd.vram, data, size) != size) {
-			fprintf(stderr, "[ERROR]: Could not write to VRAM at address 0x%" PRIx64 "\n", address);
+			asic->err_msg("[ERROR]: Could not write to VRAM at address 0x%" PRIx64 "\n", address);
 			return -1;
 		}
 	}

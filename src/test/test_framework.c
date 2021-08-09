@@ -1,4 +1,6 @@
 #include "test_framework.h"
+#include <stdio.h>
+#include <stdarg.h>
 
 struct registered_tests
 {
@@ -12,6 +14,18 @@ static struct registered_tests* registered_tests = NULL;
 static void error(char* str)
 {
     fputs(str, stderr);
+}
+
+static int vm_printf(const char *fmt, ...)
+{
+	va_list ap;
+	int r;
+
+	va_start(ap, fmt);
+	r = vfprintf(stderr, fmt, ap);
+	fflush(stderr);
+	va_end(ap);
+	return r;
 }
 
 void register_tests(struct test_table_entry* tests, size_t ntests)
@@ -56,7 +70,7 @@ static enum TEST_RESULT run_test(struct global_config* global_config, struct tes
 
     memset(&options, 0, sizeof(options));
     options.verbose = global_config->verbose;
-    asic = umr_discover_asic_by_name(&options, test_config->asic_name);
+    asic = umr_discover_asic_by_name(&options, test_config->asic_name, vm_printf);
     asic->options.verbose = global_config->verbose;
 
     umr_attach_test_harness(th, asic);

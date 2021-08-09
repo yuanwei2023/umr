@@ -71,7 +71,7 @@ int umr_vm_disasm_to_str(struct umr_asic *asic, unsigned vmid, uint64_t addr, ui
 	*out = calloc(size/4 + 1, sizeof(**out));
 
 	if (!*out || !opcodes) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		r = -1;
 		goto error;
 	}

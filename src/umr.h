@@ -467,7 +467,11 @@ struct umr_asic {
 	struct umr_register_access_funcs reg_funcs;
 	struct umr_wave_access_funcs wave_funcs;
 	struct umr_shader_disasm_funcs shader_disasm_funcs;
+	int (*err_msg)(const char *fmt, ...);
 };
+
+typedef	int (*umr_err_output)(const char *, ...);
+
 
 struct umr_wave_status {
 	struct {
@@ -984,16 +988,15 @@ struct field_info {
 int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
 
 /* discover */
-struct umr_asic *umr_discover_asic(struct umr_options *options);
-struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did);
-struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name);
+struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout);
+struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout);
+struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name, umr_err_output errout);
 void umr_free_asic_blocks(struct umr_asic *asic);
 void umr_free_asic(struct umr_asic *asic);
 void umr_free_maps(struct umr_asic *asic);
 void umr_close_asic(struct umr_asic *asic); // call this to close a fully open asic
 int umr_query_drm(struct umr_asic *asic, int field, void *ret, int size);
 int umr_query_drm_vbios(struct umr_asic *asic, int field, int type, void *ret, int size);
-void umr_enumerate_devices(void);
 int umr_update(struct umr_asic *asic, char *script);
 int umr_update_string(struct umr_asic *asic, char *sdata);
 
@@ -1404,8 +1407,8 @@ struct umr_vbios_info {
 };
 
 FILE *umr_database_open(char *path, char *filename);
-struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename);
+struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, umr_err_output errout);
+struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst, umr_err_output errout);
+struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename, umr_err_output errout);
 void umr_database_free_soc15(struct umr_soc15_database *soc15);
-struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst);
-struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename);
 

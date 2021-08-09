@@ -120,7 +120,7 @@ static void parse_pm4(struct umr_asic *asic, uint32_t vmid, struct umr_pm4_strea
 					tvmid = vmid;
 				buf = calloc(1, size);
 				if (umr_read_vram(asic, tvmid, addr, size, buf) < 0) {
-					fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
+					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
 				} else {
 					ps->ib = umr_pm4_decode_stream(asic, tvmid, buf, size / 4, ps->ring_type);
 					ps->ib_source.addr = addr;
@@ -239,7 +239,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmi
 
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	ps->ring_type = rt;
@@ -309,7 +309,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmi
 				void *buf;
 				buf = calloc(1, uvd_ib.size);
 				if (umr_read_vram(asic, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
-					fprintf(stderr, "[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
+					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
 				} else {
 					ps->ib = umr_pm4_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4, ps->ring_type);
 					ps->ib_source.addr = uvd_ib.addr;
@@ -443,11 +443,11 @@ struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t 
 
 	words = calloc(sizeof *words, nwords);
 	if (!words) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
-		fprintf(stderr, "[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
+		asic->err_msg("[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
 		free(words);
 		return NULL;
 	}

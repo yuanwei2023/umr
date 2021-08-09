@@ -52,7 +52,7 @@ static int vm_printf(const char *fmt, ...)
 static struct umr_asic *get_asic(void)
 {
 	struct umr_asic *asic;
-	asic = umr_discover_asic(&options);
+	asic = umr_discover_asic(&options, vm_printf);
 	if (!asic) {
 		printf("ASIC not found (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
 		exit(EXIT_FAILURE);
@@ -60,6 +60,7 @@ static struct umr_asic *get_asic(void)
 	umr_scan_config(asic, 1);
 
 	// assign linux callbacks
+	asic->err_msg = vm_printf;
 	asic->mem_funcs.vm_message = vm_printf;
 	asic->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
 	asic->mem_funcs.access_sram = umr_access_sram;
@@ -534,7 +535,7 @@ int main(int argc, char **argv)
 				asic = get_asic();
 			umr_top(asic);
 		} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
-			umr_enumerate_devices();
+			umr_enumerate_devices(vm_printf);
 			return 0;
 		} else if (!strcmp(argv[i], "-mm")) {
 			if (i + 1 < argc) {

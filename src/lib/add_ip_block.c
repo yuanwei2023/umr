@@ -30,7 +30,7 @@ int umr_add_ip_block(struct umr_asic *asic, struct umr_ip_block *ip)
 	void *tmp;
 	tmp = realloc(asic->blocks, (asic->no_blocks + 1) * sizeof(*ip));
 	if (!tmp) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return -1;
 	}
 	asic->blocks = tmp;

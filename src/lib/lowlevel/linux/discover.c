@@ -35,7 +35,7 @@ static int is_did_match(struct umr_asic *asic, unsigned did)
 	q = asic->options.quiet;
 	asic->options.quiet = 1;
 
-	tmp = umr_discover_asic_by_did(&asic->options, did);
+	tmp = umr_discover_asic_by_did(&asic->options, did, asic->err_msg);
 	if (tmp) {
 		if (!strcmp(tmp->asicname, asic->asicname)) {
 			asic->did = did;
@@ -118,7 +118,7 @@ static int find_pci_instance(const char* pci_string)
  * 5.  A name can be specified in @options->dev_name which will then
  * search for the first intance of a device with that public name.
  */
-struct umr_asic *umr_discover_asic(struct umr_options *options)
+struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout)
 {
 	char driver[512], name[256], fname[256];
 	FILE *f;
@@ -129,7 +129,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options)
 
 	// virtual device
 	if (options->dev_name[0] == '.') {
-		asic = umr_discover_asic_by_name(options, options->dev_name + 1);
+		asic = umr_discover_asic_by_name(options, options->dev_name + 1, errout);
 		if (asic)
 			asic->options = *options;
 		return asic;
@@ -232,15 +232,16 @@ struct umr_asic *umr_discover_asic(struct umr_options *options)
 			if (!options->quiet) printf("Could not read device id");
 			return NULL;
 		}
-		asic = umr_discover_asic_by_did(options, did);
+		asic = umr_discover_asic_by_did(options, did, errout);
 	} else {
 		if (options->dev_name[0])
-			asic = umr_discover_asic_by_name(options, options->dev_name);
+			asic = umr_discover_asic_by_name(options, options->dev_name, errout);
 		else
-			asic = umr_discover_asic_by_did(options, trydid);
+			asic = umr_discover_asic_by_did(options, trydid, errout);
 	}
 
 	if (asic) {
+		asic->err_msg = errout;
 		memcpy(&asic->options, options, sizeof(*options));
 		if (!asic->options.no_kernel) {
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs", asic->instance);
@@ -293,7 +294,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options)
 			pci_system_init();
 			pci_iter = pci_id_match_iterator_create(NULL);
 			if (!pci_iter) {
-				fprintf(stderr, "[ERROR]: Cannot create PCI iterator");
+				errout("[ERROR]: Cannot create PCI iterator");
 				goto err_pci;
 			}
 			do {
@@ -316,7 +317,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options)
 			} while (asic->pci.pdevice && !(busmatch || (asic->pci.pdevice->vendor_id == 0x1002 && is_did_match(asic, asic->pci.pdevice->device_id))));
 
 			if (!asic->pci.pdevice) {
-				fprintf(stderr, "[ERROR]: Could not find ASIC with DID of %04lx\n", (unsigned long)asic->did);
+				errout("[ERROR]: Could not find ASIC with DID of %04lx\n", (unsigned long)asic->did);
 				goto err_pci;
 			}
 			pci_iterator_destroy(pci_iter);
@@ -357,14 +358,14 @@ struct umr_asic *umr_discover_asic(struct umr_options *options)
 			}
 
 			if (use_region == 6) {
-				fprintf(stderr, "[ERROR]: Could not find PCI region (debugfs mode might still work)\n");
+				errout("[ERROR]: Could not find PCI region (debugfs mode might still work)\n");
 				goto err_pci;
 			}
 			asic->pci.region = use_region;
 
 			pci_region_addr = asic->pci.pdevice->regions[use_region].base_addr;
 			if (pci_device_map_range(asic->pci.pdevice, pci_region_addr, asic->pci.pdevice->regions[use_region].size, PCI_DEV_MAP_FLAG_WRITABLE, &pcimem_v)) {
-				fprintf(stderr, "[ERROR]: Could not map PCI memory\n");
+				errout("[ERROR]: Could not map PCI memory\n");
 				goto err_pci;
 			}
 			asic->pci.mem = pcimem_v;

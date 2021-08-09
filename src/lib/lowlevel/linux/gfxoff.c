@@ -31,6 +31,6 @@ void umr_gfxoff_read(struct umr_asic *asic)
 		read(asic->fd.gfxoff, &value, sizeof(uint32_t));
 		printf("gfxoff status : %s \n", (value == 0)?"enable":"disable");
 	} else {
-		fprintf(stderr, "[ERROR]: can't check gfxoff status on this asic\n");
+		asic->err_msg("[ERROR]: can't check gfxoff status on this asic\n");
 	}
 }

@@ -95,7 +95,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t f
 
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 
@@ -215,7 +215,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t f
 				ps->nwords = 4;
 				break;
 			default:
-				fprintf(stderr, "[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
+				asic->err_msg("[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
 				umr_free_sdma_stream(ops);
 				return NULL;
 		}
@@ -257,11 +257,11 @@ struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, uint32_
 
 	words = calloc(sizeof *words, nwords);
 	if (!words) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
-		fprintf(stderr, "[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
+		asic->err_msg("[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
 		free(words);
 		return NULL;
 	}

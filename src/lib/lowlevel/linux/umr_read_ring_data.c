@@ -46,9 +46,9 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 	snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_ring_%s", asic->instance, ringname);
 	fd = open(fname, O_RDWR);
 	if (fd < 0) {
-		fprintf(stderr, "[ERROR]: Could not open ring debugfs file '%s'\n", fname);
+		asic->err_msg("[ERROR]: Could not open ring debugfs file '%s'\n", fname);
 		if (asic->family >= FAMILY_NV && !strcmp(ringname, "gfx"))
-			fprintf(stderr, "[WARNING]: On Navi and later ASICs the gfx ring name has changed, for instance: 'gfx_0.0.0'\n");
+			asic->err_msg("[WARNING]: On Navi and later ASICs the gfx ring name has changed, for instance: 'gfx_0.0.0'\n");
 		return NULL;
 	}
 
@@ -59,7 +59,7 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 	ring_data = calloc(1, *ringsize + 12);
 	if (!ring_data) {
 		close(fd);
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	r = read(fd, ring_data, *ringsize + 12);

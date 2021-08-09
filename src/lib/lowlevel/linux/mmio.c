@@ -46,7 +46,7 @@ static uint32_t umr_pcie_read(struct umr_asic *asic, uint64_t addr)
 				return umr_read_reg_by_name(asic, "mmMP0PUB_IND_DATA_1");
 #endif
 			default:
-				fprintf(stderr, "[BUG]: Unsupported family type in umr_pcie_read()\n");
+				asic->err_msg("[BUG]: Unsupported family type in umr_pcie_read()\n");
 				return 0;
 		}
 	} else {
@@ -79,7 +79,7 @@ static uint32_t umr_pcie_write(struct umr_asic *asic, uint64_t addr, uint32_t va
 				return umr_write_reg_by_name(asic, "mmMP0PUB_IND_DATA_1", value);
 #endif
 			default:
-				fprintf(stderr, "[BUG]: Unsupported family type in umr_pcie_write()\n");
+				asic->err_msg("[BUG]: Unsupported family type in umr_pcie_write()\n");
 				return -1;
 		}
 	} else {
@@ -115,7 +115,7 @@ static uint32_t umr_smc_read(struct umr_asic *asic, uint64_t addr)
 				umr_write_reg_by_name(asic, "mmMP0PUB_IND_INDEX_1", addr);
 				return umr_read_reg_by_name(asic, "mmMP0PUB_IND_DATA_1");
 			default:
-				fprintf(stderr, "[BUG]: Unsupported family type in umr_smc_read()\n");
+				asic->err_msg("[BUG]: Unsupported family type in umr_smc_read()\n");
 				return 0;
 		}
 	} else {
@@ -147,7 +147,7 @@ static uint32_t umr_smc_write(struct umr_asic *asic, uint64_t addr, uint32_t val
 				umr_write_reg_by_name(asic, "mmMP0PUB_IND_INDEX_1", addr);
 				return umr_write_reg_by_name(asic, "mmMP0PUB_IND_DATA_1", value);
 			default:
-				fprintf(stderr, "[BUG]: Unsupported family type in umr_smc_write()\n");
+				asic->err_msg("[BUG]: Unsupported family type in umr_smc_write()\n");
 				return -1;
 		}
 	} else {
@@ -175,7 +175,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 	int use_bank = 0;
 
 	if (addr == 0xFFFFFFFF)
-		fprintf(stderr, "[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
+		asic->err_msg("[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
 
 	// lop off top bits in no-kernel mode
 	if (type == REG_MMIO && asic->options.no_kernel) {
@@ -214,7 +214,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 			value = umr_smc_read(asic, addr);
 			break;
 		default:
-			fprintf(stderr, "[BUG]: Unsupported register type in umr_read_reg().\n");
+			asic->err_msg("[BUG]: Unsupported register type in umr_read_reg().\n");
 			return 0;
 	}
 
@@ -241,7 +241,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 	int use_bank = 0, r = 0;
 
 	if (addr == 0xFFFFFFFF)
-		fprintf(stderr, "[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
+		asic->err_msg("[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
 
 	// lop off top bits in no-kernel mode
 	if (type == REG_MMIO && asic->options.no_kernel) {
@@ -281,7 +281,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 			r = umr_smc_write(asic, addr, value);
 			break;
 		default:
-			fprintf(stderr, "[BUG]: Unsupported register type in umr_write_reg().\n");
+			asic->err_msg("[BUG]: Unsupported register type in umr_write_reg().\n");
 			return -1;
 	}
 

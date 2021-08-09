@@ -88,7 +88,7 @@ struct umr_find_reg_iter* umr_find_reg_wild_first(struct umr_asic* asic, const c
 
 	iter = calloc(1, sizeof(*iter));
 	if (!iter) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	iter->asic = asic;
@@ -178,7 +178,7 @@ retry:
 	}
 
 	if (!k)
-		fprintf(stderr, "[BUG]: reg [%s] not found on asic [%s]\n", oregname, asic->asicname);
+		asic->err_msg("[BUG]: reg [%s] not found on asic [%s]\n", oregname, asic->asicname);
 	return NULL;
 }
 

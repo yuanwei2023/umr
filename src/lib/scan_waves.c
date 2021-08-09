@@ -42,7 +42,7 @@ int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, uns
 		(((uint64_t)cu) << 44);
 
 	if (!index || !data) {
-		fprintf(stderr, "[BUG]: Cannot find SQ indirect registers on this asic!\n");
+		asic->err_msg("[BUG]: Cannot find SQ indirect registers on this asic!\n");
 		return -1;
 	}
 
@@ -74,7 +74,7 @@ static uint32_t wave_read_ind(struct umr_asic *asic, uint32_t simd, uint32_t wav
 		umr_write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
 		return umr_read_reg(asic, ind_data->addr * 4, REG_MMIO);
 	} else {
-		fprintf(stderr, "[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
+		asic->err_msg("[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
 		return -1;
 	}
 }
@@ -93,7 +93,7 @@ static uint32_t wave_read_ind_nv(struct umr_asic *asic, uint32_t wave, uint32_t 
 		umr_write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
 		return umr_read_reg(asic, ind_data->addr * 4, REG_MMIO);
 	} else {
-		fprintf(stderr, "[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
+		asic->err_msg("[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
 		return -1;
 	}
 }
@@ -158,7 +158,7 @@ static int umr_parse_wave_data_gfx_8(struct umr_asic *asic, struct umr_wave_stat
 	int x;
 
 	if (buf[0] != 0) {
-		fprintf(stderr, "[ERROR]: Was expecting type 0 wave data on a CZ/VI part!\n");
+		asic->err_msg("[ERROR]: Was expecting type 0 wave data on a CZ/VI part!\n");
 		return -1;
 	}
 
@@ -252,7 +252,7 @@ static int umr_parse_wave_data_gfx_9(struct umr_asic *asic, struct umr_wave_stat
 	int x;
 
 	if (buf[0] != 1) {
-		fprintf(stderr, "[ERROR]: Was expecting type 1 wave data on a FAMILY_AI part!\n");
+		asic->err_msg("[ERROR]: Was expecting type 1 wave data on a FAMILY_AI part!\n");
 		return -1;
 	}
 
@@ -342,7 +342,7 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 	int x;
 
 	if (buf[0] != 2) {
-		fprintf(stderr, "[ERROR]: Was expecting type 2 wave data on a FAMILY_NV part!\n");
+		asic->err_msg("[ERROR]: Was expecting type 2 wave data on a FAMILY_NV part!\n");
 		return -1;
 	}
 
@@ -541,7 +541,7 @@ static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 		if ((r = umr_scan_wave_slot(asic, se, sh, cu, simd, wave, pwd)) == 1) {
 			pwd->next = calloc(1, sizeof(*pwd));
 			if (!pwd->next) {
-				fprintf(stderr, "[ERROR]: Out of memory\n");
+				asic->err_msg("[ERROR]: Out of memory\n");
 				return -1;
 			}
 			*pppwd = &pwd->next;
@@ -565,7 +565,7 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 
 	ohead = head = calloc(1, sizeof *head);
 	if (!head) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	ptail = &head;

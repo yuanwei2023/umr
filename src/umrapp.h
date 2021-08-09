@@ -61,3 +61,5 @@ int umr_print_gpu_metrics(struct umr_asic *asic);
 int umr_print_vbios_info(struct umr_asic *asic);
 
 void run_server_loop(const char *url, struct umr_asic * asic);
+
+void umr_enumerate_devices(umr_err_output errout);

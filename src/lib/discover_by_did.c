@@ -73,7 +73,7 @@ static int find_first_did(long did, long start_instance)
  * instance that matches.  Optionally @options->instance can be set
  * to indicate which device you want to look for.
  */
-struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did)
+struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout)
 {
 	struct umr_asic *asic;
 	FILE *f;
@@ -82,7 +82,7 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did)
 
 	f = umr_database_open(options->database_path, "pci.did");
 	if (!f) {
-		fprintf(stderr, "[ERROR]: Can't find pci.did file in database\n");
+		errout("[ERROR]: Can't find pci.did file in database\n");
 		return NULL;
 	}
 
@@ -90,7 +90,7 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did)
 	while (fgets(linebuf, sizeof linebuf, f)) {
 		sscanf(linebuf, "%"SCNx32" %s", &ldid, lname);
 		if (ldid == did) {
-			asic = umr_database_read_asic(options, lname);
+			asic = umr_database_read_asic(options, lname, errout);
 			break;
 		}
 	}
@@ -116,7 +116,7 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did)
 		asic->fd.gfxoff = -1;
 	} else {
 		if (!options->quiet && !options->dev_name[0])
-			printf("ERROR: Device 0x%04lx not found in UMR device table\n", did);
+			errout("ERROR: Device 0x%04lx not found in UMR device table\n", did);
 	}
 
 	return asic;

@@ -32,7 +32,7 @@ struct gpus {
 	int instance;
 };
 
-void umr_enumerate_devices(void)
+void umr_enumerate_devices(umr_err_output errout)
 {
 	struct gpus asics[MAX_DEV];
 	struct umr_options options;
@@ -51,7 +51,7 @@ void umr_enumerate_devices(void)
 	pci_system_init();
 	pci_iter = pci_id_match_iterator_create(NULL);
 	if (!pci_iter) {
-		fprintf(stderr, "[ERROR]: Cannot create PCI iterator");
+		errout("[ERROR]: Cannot create PCI iterator");
 		return;
 	}
 	do {
@@ -59,7 +59,7 @@ void umr_enumerate_devices(void)
 			pdevice = pci_device_next(pci_iter);
 		} while (pdevice && pdevice->vendor_id != 0x1002);
 
-		if (pdevice && (asics[devices].asic = umr_discover_asic_by_did(&options, pdevice->device_id))) {
+		if (pdevice && (asics[devices].asic = umr_discover_asic_by_did(&options, pdevice->device_id, errout))) {
 			asics[devices].instance = -1;
 			asics[devices].asic->pci.pdevice = &asics[devices].pcopy;
 			asics[devices++].pcopy = *pdevice;

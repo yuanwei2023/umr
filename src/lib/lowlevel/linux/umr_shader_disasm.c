@@ -49,7 +49,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 
 	*disasm_text = calloc(inst_bytes/4, sizeof(**disasm_text));
 	if (!*disasm_text) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return -1;
 	}
 
@@ -105,7 +105,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 			NULL, NULL);
 
 	if (!disasm_ref) {
-		fprintf(stderr, "[ERROR]:  Could not create disassembler context\n");
+		asic->err_msg("[ERROR]:  Could not create disassembler context\n");
 		free(*disasm_text);
 		return -1;
 	}
@@ -155,7 +155,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 
 	*disasm_text = calloc(inst_bytes/4, sizeof(**disasm_text));
 	if (!*disasm_text) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+		asic->err_msg("[ERROR]: Out of memory\n");
 		return -1;
 	}
 

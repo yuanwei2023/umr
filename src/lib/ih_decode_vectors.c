@@ -80,7 +80,7 @@ int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, ui
 			case FAMILY_SI:
 			case FAMILY_CIK:
 			case FAMILY_NPI:
-				fprintf(stderr, "[BUG]: unhandled family case in umr_ih_decode_vectors()\n");
+				asic->err_msg("[BUG]: unhandled family case in umr_ih_decode_vectors()\n");
 				return -1;
 	}
 	return 0;
@@ -116,7 +116,7 @@ void ih_self_test(struct umr_asic *asic)
 	};
 
 	if (umr_ih_decode_vectors(asic, &myui, kat, sizeof(kat)) != (sizeof(kat) / 32))
-		fprintf(stderr, "[ERROR]: Wrong number of vectors returned\n");
+		asic->err_msg("[ERROR]: Wrong number of vectors returned\n");
 }
 
 #endif

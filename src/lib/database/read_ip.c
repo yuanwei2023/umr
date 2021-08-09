@@ -24,7 +24,7 @@
 
 #include "umr.h"
 
-struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst)
+struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst, umr_err_output errout)
 {
 	struct umr_ip_block *ip;
 	FILE *f;
@@ -39,14 +39,14 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 			soc15 = soc15->next;
 		}
 		if (!soc15) {
-			fprintf(stderr, "[ERROR]: Cannot find IP name [%s] in the SOC15 table\n", soc15name);
+			errout("[ERROR]: Cannot find IP name [%s] in the SOC15 table\n", soc15name);
 			return NULL;
 		}
 	}
 
 	f = umr_database_open(path, filename);
 	if (!f) {
-		fprintf(stderr, "[ERROR]: IP file [%s] not found\n", filename);
+		errout("[ERROR]: IP file [%s] not found\n", filename);
 		return NULL;
 	}
 
@@ -77,7 +77,7 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 		if (sscanf(linebuf, "%s %d 0x%"PRIx64" %"PRIu32" %"PRIu32" %"PRIu32, 
 			reg_fields.name, &reg_fields.type, &reg_fields.addr,
 			&reg_fields.nobits, &reg_fields.is64, &reg_fields.idx) != 6) {
-				fprintf(stderr, "[ERROR]: Invalid regfile line [%s]\n", linebuf);
+				errout("[ERROR]: Invalid regfile line [%s]\n", linebuf);
 		}
 
 		ip->regs[x].regname = strdup(reg_fields.name);

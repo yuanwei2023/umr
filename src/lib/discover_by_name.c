@@ -33,7 +33,7 @@
  * The first instance of a device that matches the name
  * specified is found and returned.
  */
-struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name)
+struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name, umr_err_output errout)
 {
 	unsigned x;
 	struct umr_asic *asic, *tmp;
@@ -41,7 +41,7 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 
 	asic = NULL;
 	sprintf(tmpname, "%s.asic", name);
-	asic = umr_database_read_asic(options, tmpname);
+	asic = umr_database_read_asic(options, tmpname, errout);
 
 	if (asic) {
 		asic->did = 0;
@@ -53,7 +53,7 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 				tmp_opt.quiet = 1;
 				tmp_opt.forcedid = -1;
 				tmp_opt.instance = x;
-				tmp = umr_discover_asic(&tmp_opt);
+				tmp = umr_discover_asic(&tmp_opt, errout);
 				if (tmp) {
 					if (!strcmp(tmp->asicname, name)) {
 						asic->instance = x;
@@ -68,7 +68,7 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 		}
 		umr_scan_config(asic, 0);
 	} else {
-		printf("ERROR: Device %s not found in UMR device table\n", name);
+		errout("ERROR: Device %s not found in UMR device table\n", name);
 	}
 
 	return asic;

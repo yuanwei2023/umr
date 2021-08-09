@@ -24,7 +24,7 @@
 
 #include "umr.h"
 
-struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename)
+struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, umr_err_output errout)
 {
 	struct umr_soc15_database *s, *os;
 	FILE *f;
@@ -33,7 +33,7 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename)
 
 	f = umr_database_open(path, filename);
 	if (!f) {
-		fprintf(stderr, "[ERROR]: SOC15 offset file [%s] not found\n", filename);
+		errout("[ERROR]: SOC15 offset file [%s] not found\n", filename);
 		return NULL;
 	}
 
@@ -47,7 +47,7 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename)
 			if (sscanf(linebuf, "\t0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64,
 					&s->off[x][0], &s->off[x][1], &s->off[x][2], &s->off[x][3],
 					&s->off[x][4], &s->off[x][5], &s->off[x][6], &s->off[x][7]) != 8) {
-						fprintf(stderr, "[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
+						errout("[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
 			}
 		}
 		s->next = calloc(1, sizeof *s);

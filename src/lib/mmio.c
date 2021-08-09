@@ -140,7 +140,7 @@ uint64_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitn
 			return regvalue;
 		}
 	}
-	fprintf(stderr, "[BUG]: Bitfield [%s] not found in reg [%s] on asic [%s]\n", bitname, reg->regname, asic->asicname);
+	asic->err_msg("[BUG]: Bitfield [%s] not found in reg [%s] on asic [%s]\n", bitname, reg->regname, asic->asicname);
 	return 0;
 }
 
@@ -162,7 +162,7 @@ uint64_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, 
 			return regvalue;
 		}
 	}
-	fprintf(stderr, "[BUG]: Bitfield [%s] not found in reg [%s] on asic [%s]\n", bitname, reg->regname, asic->asicname);
+	asic->err_msg("[BUG]: Bitfield [%s] not found in reg [%s] on asic [%s]\n", bitname, reg->regname, asic->asicname);
 	return 0;
 }
 

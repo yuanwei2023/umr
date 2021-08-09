@@ -375,7 +375,7 @@ static void add_shader(struct umr_asic *asic, struct umr_ring_decoder *decoder)
 	pshader->src.ib_base = decoder->next_ib_info.ib_addr;
 	return;
 error:
-	fprintf(stderr, "[ERROR]: Out of memory in add_shader()\n");
+	asic->err_msg("[ERROR]: Out of memory in add_shader()\n");
 }
 
 /**
@@ -406,7 +406,7 @@ static void add_ib_pm4(struct umr_ring_decoder *decoder)
 	memset(&decoder->pm4.next_ib_state, 0, sizeof(decoder->pm4.next_ib_state));
 }
 
-static void add_data_block_pm4(struct umr_ring_decoder *decoder, enum UMR_DATABLOCK_ENUM type)
+static void add_data_block_pm4(struct umr_asic *asic, struct umr_ring_decoder *decoder, enum UMR_DATABLOCK_ENUM type)
 {
 	struct umr_pm4_data_block *p = decoder->datablock;
 
@@ -414,7 +414,7 @@ static void add_data_block_pm4(struct umr_ring_decoder *decoder, enum UMR_DATABL
 		// start list
 		decoder->datablock = p = calloc(1, sizeof(*p));
 		if (!p) {
-			fprintf(stderr, "[ERROR]: Out of memory in add_data_block_pm4()\n");
+			asic->err_msg("[ERROR]: Out of memory in add_data_block_pm4()\n");
 			return;
 		}
 	} else {
@@ -425,7 +425,7 @@ static void add_data_block_pm4(struct umr_ring_decoder *decoder, enum UMR_DATABL
 		p->next = calloc(1, sizeof(*p));
 		p = p->next;
 		if (!p) {
-			fprintf(stderr, "[ERROR]: Out of memory in add_data_block_pm4()\n");
+			asic->err_msg("[ERROR]: Out of memory in add_data_block_pm4()\n");
 			return;
 		}
 	}
@@ -1412,7 +1412,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 										print(" [%sUNMAPPED%s]", RED, RST);
 									} else {
 										print(" [%sMAPPED%s]", GREEN, RST);
-										add_data_block_pm4(decoder, UMR_DATABLOCK_MQD_VI);
+										add_data_block_pm4(asic, decoder, UMR_DATABLOCK_MQD_VI);
 									}
 								}
 								break;
@@ -1456,7 +1456,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 										print(" [%sUNMAPPED%s]", RED, RST);
 									} else {
 										print(" [%sMAPPED%s]", GREEN, RST);
-										add_data_block_pm4(decoder, UMR_DATABLOCK_MQD_NV);
+										add_data_block_pm4(asic, decoder, UMR_DATABLOCK_MQD_NV);
 									}
 								}
 								break;

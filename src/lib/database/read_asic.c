@@ -24,19 +24,6 @@
 
 #include "umr.h"
 
-#if 0
-struct umr_asic {
-	char *asicname;
-	int no_blocks;
-	int instance;
-	enum chipfamily family;
-	unsigned did;
-	struct umr_ip_block **blocks;
-	struct {
-		unsigned vgpr_granularity;
-	} parameters;
-#endif
-
 /* format of asic script
 
 cmnname, soc15fname, FAMILY_%d, numblocks, vgpr_granulariy
@@ -46,7 +33,7 @@ ipcmnname, ipsocname, instance, regfile
 ...
 
 */
-struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename)
+struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename, umr_err_output errout)
 {
 	char linebuf[256], cmnname[256], soc15fname[256], ipcmnname[256], ipsocname[256], regfile[256];
 	struct umr_asic *asic;
@@ -59,20 +46,21 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 
 	f = umr_database_open(options->database_path, filename);
 	if (!f) {
-		fprintf(stderr, "[ERROR]: Cannot find asic file [%s] in database see README for more information\n", filename);
+		errout("[ERROR]: Cannot find asic file [%s] in database see README for more information\n", filename);
 		return NULL;
 	}
 
 	asic = calloc(1, sizeof *asic);
+	asic->err_msg = errout;
 	fgets(linebuf, sizeof linebuf, f);
 	if (sscanf(linebuf, "%s %s %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity) != 5) {
-		fprintf(stderr, "[ERROR]: Invalid ASIC header line [%s]\n", linebuf);
+		asic->err_msg("[ERROR]: Invalid ASIC header line [%s]\n", linebuf);
 		free(asic);
 		return NULL;
 	}
 
 	if (strcmp(soc15fname, "null")) {
-		soc15 = umr_database_read_soc15(options->database_path, soc15fname);
+		soc15 = umr_database_read_soc15(options->database_path, soc15fname, errout);
 		if (!soc15) {
 			fclose(f);
 			free(asic);
@@ -94,13 +82,13 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 		int instance;
 		fgets(linebuf, sizeof linebuf, f);
 		if (sscanf(linebuf, "%s %s %d %s", ipcmnname, ipsocname, &instance, regfile) != 4) {
-			fprintf(stderr, "[ERROR]: Invalid IP header line [%s]\n", linebuf);
+			asic->err_msg("[ERROR]: Invalid IP header line [%s]\n", linebuf);
 			umr_database_free_soc15(soc15);
 			umr_free_asic_blocks(asic);
 			fclose(f);
 			return NULL;
 		}
-		asic->blocks[x] = umr_database_read_ipblock(soc15, options->database_path, regfile, ipcmnname, ipsocname, instance);
+		asic->blocks[x] = umr_database_read_ipblock(soc15, options->database_path, regfile, ipcmnname, ipsocname, instance, errout);
 	}
 
 	umr_database_free_soc15(soc15);

@@ -85,7 +85,7 @@ int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value)
 	}
 
 	if (!input_flag)
-		fprintf(stderr, "[ERROR]: Invalid input clock name!\n");
+		asic->err_msg("[ERROR]: Invalid input clock name!\n");
 
 	return ret;
 }
@@ -109,7 +109,7 @@ void umr_set_clock_performance(struct umr_asic *asic, const char* operation)
 		close(fd);
 	}
 	if (str_len != strlen(oper_string))
-		fprintf(stderr, "[ERROR]: Operate clock failed!\n");
+		asic->err_msg("[ERROR]: Operate clock failed!\n");
 }
 
 /**
