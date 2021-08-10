@@ -11,7 +11,7 @@ Typically, this is accomplished through the following function:
 
 ::
 
-	struct umr_asic *umr_discover_asic(struct umr_options *options);
+	struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout);
 
 Where the options control how the instance is created.  The options are
 as follows:
@@ -47,6 +47,7 @@ as follows:
 			full_shader,
 			context_reg_bank,
 			no_fold_vm_decode;
+
 		// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 		struct {
 			int
@@ -59,6 +60,7 @@ as follows:
 				enable_es_ls_swap,
 				enable_comp_shader;
 		} shader_enable;
+
 		union {
 			struct {
 				unsigned
@@ -74,12 +76,14 @@ as follows:
 					vmid;
 			} srbm;
 		} bank;
+
 		long forcedid;
 		char
 			*scanblock,
-			dev_name[32],
+			dev_name[64],
 			hub_name[32],
-			ring_name[32];
+			ring_name[32],
+			database_path[256];
 		struct {
 			unsigned domain,
 				bus,
@@ -95,10 +99,12 @@ Where the following parameters are relevant to creating an ASIC instance:
 	* use_pci (default: 0)
 	* no_kernel (default: 0)
 	* dev_name (default: empty string)
+	* database_path
 	* The 'pci' structure (default to all 0, empty string)
 
-In a default state the function will attempt to create an ASIC
-based on the debugfs files found in:
+The 'database_path' string instructs umr where to search for
+IP and SOC15 files.  In a default state the function will
+attempt to create an ASIC based on the debugfs files found in:
 
 ::
 
@@ -118,11 +124,27 @@ a '.' which indicates a virtual device is desired.  For instance:
 
 	memset(&options, 0, sizeof options);
 	strcpy(options.dev_name, ".vega10");
-	asic = umr_discover_asic(&options);
+	asic = umr_discover_asic(&options, err_printf);
 
 will create a virtual ASIC device for the vega10 ASIC.  Virtual
 ASICs can only be used with a subset of all supported commands
-since no debugfs file handles or PCI mappings are created.
+since no debugfs file handles or PCI mappings are created.  The API
+uses a callback for error messages that is essentially based on the
+printf() format.  Here is an example callback:
+
+::
+
+	int err_printf(const char *fmt, ...)
+	{
+		va_list ap;
+		int r;
+
+		va_start(ap, fmt);
+		r = vfprintf(stderr, fmt, ap);
+		fflush(stderr);
+		va_end(ap);
+		return r;
+	}
 
 --------------------------------------
 Creating a device based on PCI mapping
@@ -150,11 +172,13 @@ An example usage is:
 	options.pci.bus    = 0x00;
 	options.pci.slot   = 0x01;
 	options.pci.func   = 0x00; // look for 0000:00:01.0
-	asic = umr_discover_asic(&options);
+	asic = umr_discover_asic(&options, err_printf);
 
 Which on an APU system (like a Carrizo) would typically point
-to the Carrizo GPU.  The following can be added before the call to
-umr_discover_asic() to request PCI MMIO access:
+to the Carrizo GPU.
+
+The following can be added before the call to umr_discover_asic()
+to request PCI MMIO access:
 
 ::
 
@@ -182,7 +206,7 @@ An example usage is:
 
 	memset(&options, 0, sizeof options);
 	options.instance = 3; // use the 4'th GPU
-	asic = umr_discover_asic(&options);
+	asic = umr_discover_asic(&options, err_printf);
 
 ------------------------------------------
 Creating a device based on a PCI Device ID
@@ -202,5 +226,5 @@ An example usage is:
 	memset(&options, 0, sizeof options);
 	options.instance = -1;
 	options.forcedid = 0x9874;  // find the first device which is a Carrizo
-	asic = umr_discover_asic(&options);
+	asic = umr_discover_asic(&options, err_printf);
 
