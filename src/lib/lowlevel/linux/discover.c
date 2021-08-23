@@ -244,8 +244,15 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 		asic->err_msg = errout;
 		memcpy(&asic->options, options, sizeof(*options));
 		if (!asic->options.no_kernel) {
-			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs", asic->instance);
-			asic->fd.mmio = open(fname, O_RDWR);
+			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs2", asic->instance);
+			asic->fd.mmio2 = open(fname, O_RDWR);
+			if (asic->fd.mmio2 >= 0) {
+				asic->fd.mmio = -1;
+			} else {
+				// only open this if regs2 is not found
+				snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs", asic->instance);
+				asic->fd.mmio = open(fname, O_RDWR);
+			}
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs_didt", asic->instance);
 			asic->fd.didt = open(fname, O_RDWR);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs_pcie", asic->instance);
@@ -270,6 +277,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			// if appending to the fd list remember to update close_asic() and discover_by_did()...
 		} else {
 			// no files open!
+			asic->fd.mmio2 = -1;
 			asic->fd.mmio = -1;
 			asic->fd.didt = -1;
 			asic->fd.pcie = -1;

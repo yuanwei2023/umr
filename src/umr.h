@@ -167,8 +167,6 @@ struct umr_ip_block {
 	char *ipname;
 	int no_regs;
 	struct umr_reg *regs;
-	int (*grant)(struct umr_asic *asic);
-	int (*release)(struct umr_asic *asic);
 };
 
 struct umr_find_reg_iter_result {
@@ -261,7 +259,8 @@ struct umr_options {
 	    wave64,
 	    full_shader,
 	    context_reg_bank,
-	    no_fold_vm_decode;
+	    no_fold_vm_decode,
+	    pg_lock;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
@@ -278,13 +277,13 @@ struct umr_options {
 
 	union {
 		struct {
-			unsigned
+			uint32_t
 				instance,
 				se,
 				sh;
 		} grbm;
 		struct {
-			unsigned
+			uint32_t
 				me,
 				queue,
 				pipe,
@@ -440,6 +439,7 @@ struct umr_asic {
 	} config;
 	struct {
 		int mmio,
+		    mmio2,
 		    didt,
 		    pcie,
 		    smc,

@@ -32,9 +32,9 @@
 int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 {
 	char asicname[128], ipname[128], regname[128], bitname[128];
-	int i, j, k, fd;
+	int i, j, k;
 	uint32_t value;
-	uint64_t addr, scale, copy, mask;
+	uint64_t scale, copy, mask;
 
 	if (sscanf(regpath, "%[^.].%[^.].%[^.].%[^.]", asicname, ipname, regname, bitname) != 4) {
 		fprintf(stderr, "[ERROR]: Invalid regpath for bit write\n");
@@ -53,62 +53,30 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 
 								mask = (1ULL<<((1+asic->blocks[i]->regs[j].bits[k].stop)-asic->blocks[i]->regs[j].bits[k].start))-1;
 								mask <<= asic->blocks[i]->regs[j].bits[k].start;
-								if (asic->pci.mem == NULL) {
-									int size;
-									// set this register
-									switch (asic->blocks[i]->regs[j].type){
-									case REG_MMIO: fd = asic->fd.mmio; scale = 4; break;
-									case REG_DIDT: fd = asic->fd.didt; scale = 1; break;
-									case REG_PCIE: fd = asic->fd.pcie; scale = 1; break;
-									case REG_SMC:  fd = asic->fd.smc;  scale = 1; break;
+
+								// set this register
+								switch (asic->blocks[i]->regs[j].type){
+									case REG_MMIO: scale = 4; break;
+									case REG_DIDT: scale = 1; break;
+									case REG_PCIE: scale = 1; break;
+									case REG_SMC:  scale = 1; break;
 									default: return -1;
-									}
-									if (asic->blocks[i]->grant) {
-										if (asic->blocks[i]->grant(asic)) {
-											return -1;
-										}
-									}
-
-									if (asic->blocks[i]->regs[j].type == REG_MMIO)
-										addr = umr_apply_bank_selection_address(asic);
-									else
-										addr = 0;
-
-									lseek(fd, addr | (asic->blocks[i]->regs[j].addr*scale), SEEK_SET);
-									size = asic->blocks[i]->regs[j].bit64 ? 8 : 4;
-									if (read(fd, &copy, size) != size)
-										return -1;
-
-									// read-modify-write value back
-									copy &= ~mask;
-									value = ((uint64_t)value << asic->blocks[i]->regs[j].bits[k].start) & mask;
-									copy |= value;
-
-									lseek(fd, addr | (asic->blocks[i]->regs[j].addr<<2), SEEK_SET);
-									if (write(fd, &copy, size) != size)
-										return -1;
-									if (!asic->options.quiet) printf("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
-
-									if (asic->blocks[i]->release) {
-										if (asic->blocks[i]->release(asic)) {
-											return -1;
-										}
-									}
-								} else if (asic->blocks[i]->regs[j].type == REG_MMIO) {
-									// using pci mapping implies no_kernel
-									uint64_t addr = umr_apply_bank_selection_address(asic) + (asic->blocks[i]->regs[j].addr * 4);
-
-									copy = umr_read_reg(asic, addr, REG_MMIO);
-									if (asic->blocks[i]->regs[j].bit64)
-										copy |= ((uint64_t)umr_read_reg(asic, addr + 4, REG_MMIO)) << 32;
-									copy &= ~mask;
-									copy |= ((uint64_t)value << asic->blocks[i]->regs[j].bits[k].start) & mask;
-									umr_write_reg(asic, addr, copy & 0xFFFFFFFF, REG_MMIO);
-									if (asic->blocks[i]->regs[j].bit64)
-										umr_write_reg(asic, addr + 4, copy >> 32, REG_MMIO);
-
-									if (!asic->options.quiet) printf("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
 								}
+
+								copy = asic->reg_funcs.read_reg(asic, asic->blocks[i]->regs[j].addr*scale, asic->blocks[i]->regs[j].type);
+								if (asic->blocks[i]->regs[j].bit64) {
+									copy |= (uint64_t)asic->reg_funcs.read_reg(asic, (asic->blocks[i]->regs[j].addr+1)*scale, asic->blocks[i]->regs[j].type) << 32;
+								}
+								// read-modify-write value back
+								copy &= ~mask;
+								value = ((uint64_t)value << asic->blocks[i]->regs[j].bits[k].start) & mask;
+								copy |= value;
+								asic->reg_funcs.write_reg(asic, asic->blocks[i]->regs[j].addr*scale, copy & 0xFFFFFFFFUL, asic->blocks[i]->regs[j].type);
+								if (asic->blocks[i]->regs[j].bit64) {
+									asic->reg_funcs.write_reg(asic, (asic->blocks[i]->regs[j].addr+1)*scale, copy>>32UL, asic->blocks[i]->regs[j].type);
+								}
+
+								if (!asic->options.quiet) printf("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
 								return 0;
 							}
 						}

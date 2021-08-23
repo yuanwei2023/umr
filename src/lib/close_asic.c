@@ -32,6 +32,7 @@
 void umr_close_asic(struct umr_asic *asic)
 {
 	if (asic) {
+		cond_close(asic->fd.mmio2);
 		cond_close(asic->fd.mmio);
 		cond_close(asic->fd.didt);
 		cond_close(asic->fd.pcie);

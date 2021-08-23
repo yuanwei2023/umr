@@ -27,6 +27,8 @@
 #include <ncurses.h>
 #include <time.h>
 
+#define REG_USE_PG_LOCK (1UL)
+
 static struct {
 	int quit,
 	    wide,
@@ -646,9 +648,12 @@ static void parse_bits(struct umr_asic *asic, uint32_t addr, struct umr_bitfield
 		} else if (!addr_mask && asic->pci.mem) {
 			value = asic->pci.mem[addr>>2];
 		} else {
-			lseek(asic->fd.mmio, addr | addr_mask, SEEK_SET);
-			if (read(asic->fd.mmio, &value, 4) != 4)
-				value = 0;
+			if (addr_mask & REG_USE_PG_LOCK)
+				asic->options.pg_lock = 1;
+
+			value = asic->reg_funcs.read_reg(asic, addr, REG_MMIO);
+
+			asic->options.pg_lock = 0;
 		}
 		for (j = 0; bits[j].regname; j++)
 			if (bits[j].start != 255) {
@@ -743,9 +748,12 @@ static void parse_iov(struct umr_asic *asic, uint32_t addr, struct umr_bitfield 
 		} else if (!addr_mask && asic->pci.mem) {
 			value = asic->pci.mem[addr>>2];
 		} else {
-			lseek(asic->fd.mmio, addr | addr_mask, SEEK_SET);
-			if (read(asic->fd.mmio, &value, 4) != 4)
-				value = 0;
+			if (addr_mask & REG_USE_PG_LOCK)
+				asic->options.pg_lock = 1;
+
+			value = asic->reg_funcs.read_reg(asic, addr, REG_MMIO);
+
+			asic->options.pg_lock = 0;
 		}
 		for (j = 0; bits[j].regname; j++)
 			if (bits[j].start != 255) {
@@ -1025,7 +1033,7 @@ static void top_build_vi_program(struct umr_asic *asic)
 		ENTRY(i++, "mmUVD_CGC_STATUS", &stat_uvdclk_bits[0], &top_options.vi.uvd, "UVD");
 		// set PG flag for all UVD registers
 		for (; k < i; k++) {
-			stat_counters[k].addr_mask = (1ULL << 23);  // UVD requires PG lock
+			stat_counters[k].addr_mask = REG_USE_PG_LOCK;  // UVD requires PG lock
 		}
 
 		k = j = i;
@@ -1041,7 +1049,7 @@ static void top_build_vi_program(struct umr_asic *asic)
 		for (; j < i; j++) {
 			stat_counters[j].cmp[0] = 0;
 			stat_counters[j].mask[0] = 3;
-			stat_counters[j].addr_mask = (1ULL << 23);  // require PG lock
+			stat_counters[j].addr_mask = REG_USE_PG_LOCK;  // require PG lock
 		}
 
 	// VCE registers
@@ -1051,7 +1059,7 @@ static void top_build_vi_program(struct umr_asic *asic)
 
 		// set PG flag for all VCE registers
 		for (; k < i; k++) {
-			stat_counters[k].addr_mask = (1ULL << 23);  // VCE requires PG lock
+			stat_counters[k].addr_mask = REG_USE_PG_LOCK;  // VCE requires PG lock
 		}
 
 	// memory hub
@@ -1128,9 +1136,7 @@ int get_active_vf(struct umr_asic *asic, uint32_t addr)
 		if (asic->pci.mem) {
 			value = asic->pci.mem[addr>>2];
 		} else {
-			lseek(asic->fd.mmio, addr, SEEK_SET);
-			if (read(asic->fd.mmio, &value, 4) != 4)
-				return 0;
+			value = asic->reg_funcs.read_reg(asic, addr, REG_MMIO);
 		}
 		value &= 0xF;
 	}

@@ -32,8 +32,8 @@
 int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 {
 	char asicname[128], ipname[128], regname[128];
-	int i, j, fd;
-	uint64_t value, addr, scale;
+	int i, j;
+	uint64_t value, scale;
 	uint32_t v32;
 
 	if (sscanf(regpath, "%[^.].%[^.].%[^.]", asicname, ipname, regname) != 3) {
@@ -49,54 +49,29 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 					if (!strcmp(regname, asic->blocks[i]->regs[j].regname)) {
 						sscanf(regvalue, "%"SCNx64, &value);
 
-						if (asic->pci.mem == NULL) {
-							// set this register
-							switch (asic->blocks[i]->regs[j].type){
-							case REG_MMIO: fd = asic->fd.mmio; scale = 4; break;
-							case REG_DIDT: fd = asic->fd.didt; scale = 1; break;
-							case REG_PCIE: fd = asic->fd.pcie; scale = 1; break;
-							case REG_SMC:  fd = asic->fd.smc; scale = 1; break;
+						// set this register
+						switch (asic->blocks[i]->regs[j].type){
+							case REG_MMIO: scale = 4; break;
+							case REG_DIDT: scale = 1; break;
+							case REG_PCIE: scale = 1; break;
+							case REG_SMC:  scale = 1; break;
 							default: return -1;
-							}
-
-							if (asic->blocks[i]->grant) {
-								if (asic->blocks[i]->grant(asic)) {
-									return -1;
-								}
-							}
-
-							if (asic->blocks[i]->regs[j].type == REG_MMIO)
-								addr = umr_apply_bank_selection_address(asic);
-							else
-								addr = 0;
-
-							v32 = value & 0xFFFFFFFF;
-							lseek(fd, addr | (asic->blocks[i]->regs[j].addr*scale), SEEK_SET);
-							if (write(fd, &v32, 4) != 4)
-								return -1;
-
-							if (asic->blocks[i]->regs[j].bit64) {
-								v32 = value >> 32;
-								if (write(fd, &v32, 4) != 4)
-									return -1;
-							}
-
-							if (asic->blocks[i]->release) {
-								if (asic->blocks[i]->release(asic)) {
-									return -1;
-								}
-							}
-						} else if (asic->blocks[i]->regs[j].type == REG_MMIO) {
-							umr_write_reg(asic, umr_apply_bank_selection_address(asic) | (asic->blocks[i]->regs[j].addr * 4), value & 0xFFFFFFFF, REG_MMIO);
-							if (asic->blocks[i]->regs[j].bit64)
-								umr_write_reg(asic, umr_apply_bank_selection_address(asic) | ((asic->blocks[i]->regs[j].addr + 1) * 4), value >> 32, REG_MMIO);
 						}
+
+						v32 = value & 0xFFFFFFFF;
+						asic->reg_funcs.write_reg(asic, asic->blocks[i]->regs[j].addr*scale, v32, asic->blocks[i]->regs[j].type);
+						if (asic->blocks[i]->regs[j].bit64) {
+							v32 = value >> 32;
+							asic->reg_funcs.write_reg(asic, (asic->blocks[i]->regs[j].addr+1)*scale, v32, asic->blocks[i]->regs[j].type);
+						}
+
 						return 0;
 					}
 				}
 			}
 		}
 	}
+
 	if (!memcmp(regname, "reg", 3)) {
 		fprintf(stderr, "[ERROR]: Path <%s> not found on this ASIC\n", regpath);
 		return -1;

@@ -32,18 +32,22 @@
  */
 uint64_t umr_apply_bank_selection_address(struct umr_asic *asic)
 {
-	if (asic->options.use_bank == 1) {
-		return 	(1ULL << 62) |
-				(((uint64_t)asic->options.bank.grbm.se) << 24) |
-				(((uint64_t)asic->options.bank.grbm.sh) << 34) |
-				(((uint64_t)asic->options.bank.grbm.instance) << 44);
-	} else if (asic->options.use_bank == 2) {
-		return 	(1ULL << 61) |
-				(((uint64_t)asic->options.bank.srbm.me) << 24) |
-				(((uint64_t)asic->options.bank.srbm.pipe) << 34) |
-				(((uint64_t)asic->options.bank.srbm.queue) << 44) |
-				(((uint64_t)asic->options.bank.srbm.vmid) << 54);
-	} else {
-		return 0;
+	// only apply bank selection if we're using the old debugfs
+	if (asic->fd.mmio2 < 0) {
+		if (asic->options.use_bank == 1) {
+			return 	(1ULL << 62) |
+					(((uint64_t)asic->options.bank.grbm.se) << 24) |
+					(((uint64_t)asic->options.bank.grbm.sh) << 34) |
+					(((uint64_t)asic->options.bank.grbm.instance) << 44);
+		} else if (asic->options.use_bank == 2) {
+			return 	(1ULL << 61) |
+					(((uint64_t)asic->options.bank.srbm.me) << 24) |
+					(((uint64_t)asic->options.bank.srbm.pipe) << 34) |
+					(((uint64_t)asic->options.bank.srbm.queue) << 44) |
+					(((uint64_t)asic->options.bank.srbm.vmid) << 54);
+		} else {
+			return 0;
+		}
 	}
+	return 0;
 }

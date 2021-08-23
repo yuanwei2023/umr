@@ -237,12 +237,12 @@ int main(int argc, char **argv)
 			if (!asic)
 				asic = get_asic();
 			if (i + 3 < argc) {
-				options.bank.grbm.se = argv[i+1][0] == 'x' ? 0x3FF : atoi(argv[i+1]);
-				options.bank.grbm.sh = argv[i+2][0] == 'x' ? 0x3FF : atoi(argv[i+2]);
-				options.bank.grbm.instance = argv[i+3][0] == 'x' ? 0x3FF : atoi(argv[i+3]);
+				options.bank.grbm.se = argv[i+1][0] == 'x' ? 0xFFFFFFFFUL : (uint32_t)atoi(argv[i+1]);
+				options.bank.grbm.sh = argv[i+2][0] == 'x' ? 0xFFFFFFFFUL : (uint32_t)atoi(argv[i+2]);
+				options.bank.grbm.instance = argv[i+3][0] == 'x' ? 0xFFFFFFFFUL : (uint32_t)atoi(argv[i+3]);
 				if (!options.no_kernel) {
-					if ((options.bank.grbm.se != 0x3FF && options.bank.grbm.se >= asic->config.gfx.max_shader_engines) ||
-						(options.bank.grbm.sh != 0x3FF && options.bank.grbm.sh >= asic->config.gfx.max_sh_per_se)) {
+					if ((options.bank.grbm.se != 0xFFFFFFFFUL && options.bank.grbm.se >= asic->config.gfx.max_shader_engines) ||
+						(options.bank.grbm.sh != 0xFFFFFFFFUL && options.bank.grbm.sh >= asic->config.gfx.max_sh_per_se)) {
 						printf("Invalid bank selection for specific ASIC\n");
 						return EXIT_FAILURE;
 					}

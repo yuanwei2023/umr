@@ -23,6 +23,35 @@
  *
  */
 #include "umr.h"
+#include <linux/ioctl.h>
+#include <linux/types.h>
+#include <asm/ioctl.h>
+#include <sys/ioctl.h>
+
+struct amdgpu_debugfs_regs2_iocdata {
+	__u32 use_srbm, use_grbm, pg_lock;
+	struct {
+		__u32 se, sh, instance;
+	} grbm;
+	struct {
+		__u32 me, pipe, queue, vmid;
+	} srbm;
+};
+
+struct amdgpu_debugfs_regs2_data {
+	struct amdgpu_device *adev;
+	struct {
+		struct amdgpu_debugfs_regs2_iocdata id;
+		__u32 offset;
+	} state;
+};
+
+enum AMDGPU_DEBUGFS_REGS2_CMDS {
+	AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE=0,
+};
+
+#define AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE _IOWR(0x20, AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE, struct amdgpu_debugfs_regs2_iocdata)
+
 
 /**
  * umr_pcie_read - Read a PCIE register
@@ -163,6 +192,35 @@ static uint32_t umr_smc_write(struct umr_asic *asic, uint64_t addr, uint32_t val
 	return 0;
 }
 
+// this sends the grbm/srbm data up based on flags...
+static int mmio2_apply_bank(struct umr_asic *asic)
+{
+	struct amdgpu_debugfs_regs2_iocdata id;
+
+	memset(&id, 0, sizeof id);
+
+	if (asic->options.pg_lock) {
+		id.pg_lock = 1;
+	}
+
+	if (asic->options.use_bank == 1) {
+		id.grbm.se = asic->options.bank.grbm.se;
+		id.grbm.sh = asic->options.bank.grbm.sh;
+		id.grbm.instance = asic->options.bank.grbm.instance;
+		id.use_grbm = 1;
+	}
+
+	if (asic->options.use_bank == 2) {
+		id.srbm.me    = asic->options.bank.srbm.me;
+		id.srbm.pipe  = asic->options.bank.srbm.pipe;
+		id.srbm.queue = asic->options.bank.srbm.queue;
+		id.srbm.vmid  = asic->options.bank.srbm.vmid;
+		id.use_srbm = 1;
+	}
+
+	return ioctl(asic->fd.mmio2, AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE, &id);
+}
+
 /**
  * umr_read_reg - Read a register
  *
@@ -171,23 +229,20 @@ static uint32_t umr_smc_write(struct umr_asic *asic, uint64_t addr, uint32_t val
 uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 {
 	uint32_t value=0;
-	uint64_t mmio_addr = addr & 0xFFFFFF;
+	uint64_t mmio_addr = addr & 0xFFFFFFFF;
 	int use_bank = 0;
 
 	if (addr == 0xFFFFFFFF)
 		asic->err_msg("[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
 
-	// lop off top bits in no-kernel mode
+	// apply bank bits
 	if (type == REG_MMIO && asic->options.no_kernel) {
-		// if bit 62/61 set do bank switch
-		if (addr & (1ULL << 62)) {
-			use_bank = 1;
-			umr_grbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023);
-		} else if (addr & (1ULL << 61)) {
-			use_bank = 2;
-			umr_srbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023, (addr >> 54) & 1023);
+		use_bank = asic->options.use_bank;
+		if (use_bank == 1) {
+			umr_grbm_select_index(asic, asic->options.bank.grbm.se, asic->options.bank.grbm.sh, asic->options.bank.grbm.instance);
+		} else if (use_bank == 2) {
+			umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
 		}
-		addr &= 0xFFFFFF;
 	}
 
 	// apply context banking
@@ -203,10 +258,27 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 				value = asic->pci.mem[addr/4];
 				break;
 			} else {
-				if (lseek(asic->fd.mmio, addr, SEEK_SET) < 0)
-					perror("Cannot seek to MMIO address");
-				if (read(asic->fd.mmio, &value, 4) != 4)
-					perror("Cannot read from MMIO reg");
+				if (asic->fd.mmio2 >= 0) {
+					// use new interface
+					if (mmio2_apply_bank(asic)) {
+						asic->err_msg("[ERROR]: Could not set register IOCTL state\n");
+						return 0;
+					}
+					if (lseek(asic->fd.mmio2, addr, SEEK_SET) < 0) {
+						perror("Cannot seek to MMIO address");
+						return 0;
+					}
+					if (read(asic->fd.mmio2, &value, 4) != 4) {
+						perror("Cannot read from MMIO reg");
+						return 0;
+					}
+				} else {
+					// this is the older debugfs route and will be deprecated eventually
+					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0)
+						perror("Cannot seek to MMIO address");
+					if (read(asic->fd.mmio, &value, 4) != 4)
+						perror("Cannot read from MMIO reg");
+				}
 				break;
 			}
 			break;
@@ -237,23 +309,20 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
  */
 int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum regclass type)
 {
-	uint64_t mmio_addr = addr & 0xFFFFFF;
+	uint64_t mmio_addr = addr & 0xFFFFFFFF;
 	int use_bank = 0, r = 0;
 
 	if (addr == 0xFFFFFFFF)
 		asic->err_msg("[BUG]: reading from addr==0xFFFFFFFF is likely a bug\n");
 
-	// lop off top bits in no-kernel mode
+	// apply bank bits
 	if (type == REG_MMIO && asic->options.no_kernel) {
-		// if bit 62/61 set do bank switch
-		if (addr & (1ULL << 62)) {
-			use_bank = 1;
-			umr_grbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023);
-		} else if (addr & (1ULL << 61)) {
-			use_bank = 2;
-			umr_srbm_select_index(asic, (addr >> 24) & 1023, (addr >> 34) & 1023, (addr >> 44) & 1023, (addr >> 54) & 1023);
+		use_bank = asic->options.use_bank;
+		if (use_bank == 1) {
+			umr_grbm_select_index(asic, asic->options.bank.grbm.se, asic->options.bank.grbm.sh, asic->options.bank.grbm.instance);
+		} else if (use_bank == 2) {
+			umr_srbm_select_index(asic, asic->options.bank.srbm.me, asic->options.bank.srbm.pipe, asic->options.bank.srbm.queue, asic->options.bank.srbm.vmid);
 		}
-		addr &= 0xFFFFFF;
 	}
 
 	// apply context banking
@@ -268,12 +337,28 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) {
 				asic->pci.mem[addr/4] = value;
 			} else {
-				if (lseek(asic->fd.mmio, addr, SEEK_SET) < 0) {
-					perror("Cannot seek to MMIO address");
-					r = -1;
-				} else if (write(asic->fd.mmio, &value, 4) != 4) {
-					perror("Cannot write to MMIO reg");
-					r = -1;
+				if (asic->fd.mmio2 >= 0) {
+					// use new interface
+					if (mmio2_apply_bank(asic)) {
+						asic->err_msg("[ERROR]: Could not set register IOCTL state\n");
+						return 0;
+					}
+					if (lseek(asic->fd.mmio2, addr, SEEK_SET) < 0) {
+						perror("Cannot seek to MMIO address");
+						r = -1;
+					} else if (write(asic->fd.mmio2, &value, 4) != 4) {
+						perror("Cannot write to MMIO reg");
+						r = -1;
+					}
+				} else {
+					// this is the older debugfs route and will be deprecated eventually
+					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0) {
+						perror("Cannot seek to MMIO address");
+						r = -1;
+					} else if (write(asic->fd.mmio, &value, 4) != 4) {
+						perror("Cannot write to MMIO reg");
+						r = -1;
+					}
 				}
 			}
 			break;
