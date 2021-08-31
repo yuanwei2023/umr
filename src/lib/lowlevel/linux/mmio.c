@@ -38,14 +38,6 @@ struct amdgpu_debugfs_regs2_iocdata {
 	} srbm;
 };
 
-struct amdgpu_debugfs_regs2_data {
-	struct amdgpu_device *adev;
-	struct {
-		struct amdgpu_debugfs_regs2_iocdata id;
-		__u32 offset;
-	} state;
-};
-
 enum AMDGPU_DEBUGFS_REGS2_CMDS {
 	AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE=0,
 };
