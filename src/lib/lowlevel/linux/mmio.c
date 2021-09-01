@@ -292,6 +292,10 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 			break;
 	}
 
+	if (asic->options.test_log && asic->fd.test_log) {
+		fprintf(asic->fd.test_log, "MMIO@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", mmio_addr, value, umr_reg_name(asic, mmio_addr>>2));
+	}
+
 	return value;
 }
 

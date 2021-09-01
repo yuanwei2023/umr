@@ -185,6 +185,7 @@ int main(int argc, char **argv)
 	struct umr_asic *asic;
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
+	struct umr_test_harness *th = NULL;
 
 	memset(&options, 0, sizeof options);
 
@@ -844,6 +845,28 @@ int main(int argc, char **argv)
 				asic = get_asic();
 			if (umr_print_vbios_info(asic) != 0)
 				fprintf(stderr, "[ERROR]: Cannot print vbios info.\n");
+		} else if (!strcmp(argv[i], "--test-log") || !strcmp(argv[i], "-tl")) {
+			if (i + 1 < argc) {
+				if (!asic)
+					asic = get_asic();
+				asic->fd.test_log = fopen(argv[i + 1], "w");
+				asic->options.test_log = 1;
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --test-log requires one parameter\n");
+				return EXIT_FAILURE;
+			}
+		} else if (!strcmp(argv[i], "--test-harness") || !strcmp(argv[i], "-th")) {
+			if (i + 1 < argc) {
+				if (!asic)
+					asic = get_asic();
+				th = umr_create_test_harness_file(argv[i + 1]);
+				umr_attach_test_harness(th, asic);
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
+				return EXIT_FAILURE;
+			}
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2021, AMD Inc.\n"
 "\n*** Device Selection ***\n"
@@ -969,10 +992,12 @@ printf(
 "\n\t--gpu_metrics, -gm"
 	"\n\t\tPrint the GPU metrics table for the device."
 "\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
-	"\n\t\toptions 'use_colour' to colourize output \n");
-printf(
+	"\n\t\toptions 'use_colour' to colourize output \n"
 "\n*** Video BIOS Information ***\n"
-"\n\t--vbios_info, -vi \n\t\tPrint Video BIOS information\n");
+	"\n\t--vbios_info, -vi \n\t\tPrint Video BIOS information\n"
+"\n*** Test Vector Generation ***\n"
+	"\n\t--test-log, -tl <filename>\n\t\tLog all MMIO/memory reads to a file\n"
+	"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n");
 
 #if UMR_GUI
 printf(
@@ -1022,5 +1047,9 @@ printf(
 			umr_close_asic(asic->config.xgmi.nodes[n].asic);
 	} else {
 		umr_close_asic(asic);
+	}
+
+	if (th) {
+		umr_free_test_harness(th);
 	}
 }

@@ -28,6 +28,7 @@ add_library(umrcore STATIC
   sdma_decode_opcodes.c
   shader_disasm.c
   sq_cmd_halt_waves.c
+  testing_harness.c
   version.c
   $<TARGET_OBJECTS:database>
 )

@@ -90,6 +90,15 @@ retry:
 					goto retry;
 				return -1;
 			}
+			if (asic->options.test_log && asic->fd.test_log) {
+				uint8_t *tlp = (uint8_t *)dst;
+				unsigned x;
+				fprintf(asic->fd.test_log, "SYSRAM@0x%"PRIx64" = {", address);
+				for (x = 0; x < size; x++) {
+					fprintf(asic->fd.test_log, "%02"PRIx8, tlp[x]);
+				}
+				fprintf(asic->fd.test_log, "}\n");
+			}
 		} else {
 			if ((r = write(fd, dst, size)) != size) {
 				perror("Cannot write to system memory");
@@ -118,6 +127,15 @@ int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t siz
 		if (read(asic->fd.vram, data, size) != size) {
 			asic->err_msg("[ERROR]: Could not read from VRAM at address 0x%" PRIx64 "\n", address);
 			return -1;
+		}
+		if (asic->options.test_log && asic->fd.test_log) {
+			uint8_t *tlp = (uint8_t *)data;
+			unsigned x;
+			fprintf(asic->fd.test_log, "VRAM@0x%"PRIx64" = {", address);
+			for (x = 0; x < size; x++) {
+				fprintf(asic->fd.test_log, "%02"PRIx8, tlp[x]);
+			}
+			fprintf(asic->fd.test_log, "}\n");
 		}
 	} else {
 		if (write(asic->fd.vram, data, size) != size) {

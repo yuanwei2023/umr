@@ -3,10 +3,8 @@
 project(umrtestapp)
 
 add_executable(umrtest
-  testing_harness.c
   test_framework.c
   main.c
-
   test_mmio.c
   test_vm.c
 )

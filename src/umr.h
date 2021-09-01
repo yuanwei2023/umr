@@ -260,7 +260,8 @@ struct umr_options {
 	    full_shader,
 	    context_reg_bank,
 	    no_fold_vm_decode,
-	    pg_lock;
+	    pg_lock,
+	    test_log;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
@@ -451,6 +452,7 @@ struct umr_asic {
 		    iova,
 		    iomem,
 		    gfxoff;
+		FILE *test_log;
 	} fd;
 	struct {
 		struct pci_device *pdevice;
