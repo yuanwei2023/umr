@@ -512,7 +512,7 @@ static int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 	pwd->wave = wave;
 
 	if (!asic->options.skip_gprs) {
-		umr_read_sgprs(asic, &pwd->ws, &pwd->sgprs[0]);
+		asic->gpr_read_funcs.read_sgprs(asic, &pwd->ws, &pwd->sgprs[0]);
 
 		if (asic->family <= FAMILY_AI)
 			num_threads = 64;
@@ -522,7 +522,7 @@ static int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 		pwd->have_vgprs = 1;
 		pwd->num_threads = num_threads;
 		for (thread = 0; thread < num_threads; ++thread) {
-			if (umr_read_vgprs(asic, &pwd->ws, thread,
+			if (asic->gpr_read_funcs.read_vgprs(asic, &pwd->ws, thread,
 					   &pwd->vgprs[256 * thread]) < 0) {
 				pwd->have_vgprs = 0;
 				break;

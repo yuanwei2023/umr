@@ -407,6 +407,14 @@ struct umr_shader_disasm_funcs {
 	void *data;
 };
 
+struct umr_read_gpr_funcs {
+	/** read_vgprs -- Read VGPR data for a given wave and thread */
+	int (*read_vgprs)(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst);
+
+	/** read_sgprs -- Read VGPR data for a given wave */
+	int (*read_sgprs)(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst);
+};
+
 struct umr_asic {
 	char *asicname;
 	int no_blocks;
@@ -469,6 +477,7 @@ struct umr_asic {
 	struct umr_register_access_funcs reg_funcs;
 	struct umr_wave_access_funcs wave_funcs;
 	struct umr_shader_disasm_funcs shader_disasm_funcs;
+	struct umr_read_gpr_funcs gpr_read_funcs;
 	int (*err_msg)(const char *fmt, ...);
 };
 
