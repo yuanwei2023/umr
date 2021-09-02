@@ -79,11 +79,34 @@ static int umr_read_sgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 		if (r < 0)
 			return r;
 
+		if (asic->options.test_log && asic->fd.test_log) {
+			int x;
+			fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+			for (x = 0; x < r; x += 4) {
+				fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+				if (x < (r - 4))
+					fprintf(asic->fd.test_log, ", ");
+			}
+			fprintf(asic->fd.test_log, "}\n");
+		}
+
 		// read trap if any
 		if (ws->wave_status.trap_en || ws->wave_status.priv) {
 			addr += 4 * 0x6C; // address in bytes, kernel adds 0x200 to request
 			lseek(asic->fd.gpr, addr, SEEK_SET);
 			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
+			if (r > 0) {
+				if (asic->options.test_log && asic->fd.test_log) {
+					int x;
+					fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+					for (x = 0; x < r; x += 4) {
+						fprintf(asic->fd.test_log, "0x%"PRIx32, dst[0x6C + x/4]);
+						if (x < (r - 4))
+							fprintf(asic->fd.test_log, ", ");
+					}
+					fprintf(asic->fd.test_log, "}\n");
+				}
+			}
 		}
 		return r;
 	} else {
@@ -142,11 +165,34 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 		if (r < 0)
 			return r;
 
+		if (asic->options.test_log && asic->fd.test_log) {
+			int x;
+			fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+			for (x = 0; x < r; x += 4) {
+				fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+				if (x < (r - 4))
+					fprintf(asic->fd.test_log, ", ");
+			}
+			fprintf(asic->fd.test_log, "}\n");
+		}
+
 		// read trap if any
 		if (ws->wave_status.trap_en || ws->wave_status.priv) {
 			addr += 4 * 0x6C;  // byte offset, kernel adds 0x200 to address
 			lseek(asic->fd.gpr, addr, SEEK_SET);
 			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
+			if (r > 0) {
+				if (asic->options.test_log && asic->fd.test_log) {
+					int x;
+					fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+					for (x = 0; x < r; x += 4) {
+						fprintf(asic->fd.test_log, "0x%"PRIx32, dst[0x6C + x/4]);
+						if (x < (r - 4))
+							fprintf(asic->fd.test_log, ", ");
+					}
+					fprintf(asic->fd.test_log, "}\n");
+				}
+			}
 		}
 		return r;
 	} else {
@@ -170,6 +216,7 @@ static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 {
 	uint64_t addr;
 	unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 registers
+	int r;
 
 	// reading VGPR is not supported on pre GFX9 devices
 	if (asic->family < FAMILY_AI)
@@ -187,7 +234,20 @@ static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 			((uint64_t)thread << 52);
 
 		lseek(asic->fd.gpr, addr, SEEK_SET);
-		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
+		r = read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
+		if (r > 0) {
+			if (asic->options.test_log && asic->fd.test_log) {
+				int x;
+				fprintf(asic->fd.test_log, "VGPR@0x%"PRIx64" = { ", addr);
+				for (x = 0; x < r; x += 4) {
+					fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+					if (x < (r - 4))
+						fprintf(asic->fd.test_log, ", ");
+				}
+				fprintf(asic->fd.test_log, "}\n");
+			}
+		}
+		return r;
 	} else {
 		umr_grbm_select_index(asic, ws->hw_id.se_id, ws->hw_id.sh_id, ws->hw_id.cu_id);
 		wave_read_regs_via_mmio(asic, ws->hw_id.simd_id, ws->hw_id.wave_id, thread, 0x400,
@@ -201,6 +261,7 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 {
 	uint64_t addr;
 	unsigned granularity = asic->parameters.vgpr_granularity;
+	int r;
 
 	if (!asic->options.no_kernel) {
 		addr =
@@ -213,7 +274,20 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 			((uint64_t)thread << 52);
 
 		lseek(asic->fd.gpr, addr, SEEK_SET);
-		return read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
+		r = read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
+		if (r > 0) {
+			if (asic->options.test_log && asic->fd.test_log) {
+				int x;
+				fprintf(asic->fd.test_log, "VGPR@0x%"PRIx64" = { ", addr);
+				for (x = 0; x < r; x += 4) {
+					fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+					if (x < (r - 4))
+						fprintf(asic->fd.test_log, ", ");
+				}
+				fprintf(asic->fd.test_log, "}\n");
+			}
+		}
+		return r;
 	} else {
 		umr_grbm_select_index(asic, ws->hw_id1.se_id, ws->hw_id1.sa_id, ((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id));
 		wave_read_regs_via_mmio_nv(asic, ws->hw_id1.wave_id, thread, 0x400,

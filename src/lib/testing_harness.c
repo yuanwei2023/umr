@@ -256,7 +256,7 @@ static int expect_word(const char **ptr, char *token)
 void umr_free_test_harness(struct umr_test_harness *th)
 {
 	struct umr_ram_blocks *sram, *vram;
-	struct umr_mmio_blocks *mmio;
+	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave;
 	struct umr_sq_blocks *sq;
 	void *t;
 
@@ -267,10 +267,16 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	vram = th->vram.next;
 	mmio = th->mmio.next;
 	sq   = th->sq.next;
+	vgpr = th->vgpr.next;
+	sgpr = th->sgpr.next;
+	wave = th->wave.next;
 
 	free(th->sysram.contents);
 	free(th->vram.contents);
 	free(th->mmio.values);
+	free(th->vgpr.values);
+	free(th->sgpr.values);
+	free(th->wave.values);
 	free(th->sq.values);
 
 	while (sram) {
@@ -294,6 +300,27 @@ void umr_free_test_harness(struct umr_test_harness *th)
 		mmio = t;
 	}
 
+	while (vgpr) {
+		t = vgpr->next;
+		free(vgpr->values);
+		free(vgpr);
+		vgpr = t;
+	}
+
+	while (sgpr) {
+		t = sgpr->next;
+		free(sgpr->values);
+		free(sgpr);
+		sgpr = t;
+	}
+
+	while (wave) {
+		t = wave->next;
+		free(wave->values);
+		free(wave);
+		wave = t;
+	}
+
 	while (sq) {
 		t = sq->next;
 		free(sq->values);
@@ -307,7 +334,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 {
 	struct umr_test_harness *th;
 	struct umr_ram_blocks *sram, *vram;
-	struct umr_mmio_blocks *mmio;
+	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave;
 	struct umr_sq_blocks *sq;
 	int r;
 
@@ -317,6 +344,9 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 	vram = &th->vram;
 	mmio = &th->mmio;
 	sq   = &th->sq;
+	vgpr = &th->vgpr;
+	sgpr = &th->sgpr;
+	wave = &th->wave;
 
 	while (*script) {
 		consume_whitespace(&script);
@@ -353,9 +383,44 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			mmio->values = consume_words(&script, &mmio->no_values);
 			if (!mmio->no_values)
 				goto error;
-//			printf("MMIO %lx == %lx\n", (unsigned long)mmio->mmio_address, (unsigned long)mmio->values[0]);
 			mmio->next = calloc(1, sizeof *mmio);
 			mmio = mmio->next;
+		}
+		if (consume_word(&script, "VGPR@")) {
+			vgpr->mmio_address = consume_xint64(&script, &r);
+			if (!r)
+				goto error;
+			if (!expect_word(&script, "="))
+				goto error;
+			vgpr->values = consume_words(&script, &vgpr->no_values);
+			if (!vgpr->no_values)
+				goto error;
+			vgpr->next = calloc(1, sizeof *vgpr);
+			vgpr = vgpr->next;
+		}
+		if (consume_word(&script, "SGPR@")) {
+			sgpr->mmio_address = consume_xint64(&script, &r);
+			if (!r)
+				goto error;
+			if (!expect_word(&script, "="))
+				goto error;
+			sgpr->values = consume_words(&script, &sgpr->no_values);
+			if (!sgpr->no_values)
+				goto error;
+			sgpr->next = calloc(1, sizeof *sgpr);
+			sgpr = sgpr->next;
+		}
+		if (consume_word(&script, "WAVESTATUS@")) {
+			wave->mmio_address = consume_xint64(&script, &r);
+			if (!r)
+				goto error;
+			if (!expect_word(&script, "="))
+				goto error;
+			wave->values = consume_words(&script, &wave->no_values);
+			if (!wave->no_values)
+				goto error;
+			wave->next = calloc(1, sizeof *wave);
+			wave = wave->next;
 		}
 		if (consume_word(&script, "SQ@")) {
 			sq->sq_address = consume_xint32(&script, &r);
@@ -465,10 +530,9 @@ static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass typ
 		// find in SQ list
 		sq = &th->sq;
 		while (sq) {
-			if (sq->sq_address == th->sq_ind_index) {
+			if (sq->sq_address == th->sq_ind_index && sq->cur_slot < sq->no_values) {
 				v = sq->values[sq->cur_slot];
-				if (sq->cur_slot < (sq->no_values - 1))
-					++(sq->cur_slot);
+				++(sq->cur_slot);
 				return v;
 			}
 			sq = sq->next;
@@ -503,10 +567,9 @@ static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass typ
 		// read from MMIO list
 		mm = &th->mmio;
 		while (mm) {
-			if (mm->mmio_address == addr) {
+			if (mm->mmio_address == addr && mm->cur_slot != mm->no_values) {
 				v = mm->values[mm->cur_slot];
-				if (mm->cur_slot < (mm->no_values - 1))
-					++(mm->cur_slot);
+				++(mm->cur_slot);
 				return v;
 			}
 			mm = mm->next;
@@ -573,6 +636,167 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 	}
 }
 
+static int read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
+{
+	uint64_t addr, shift, nr, x;
+	struct umr_test_harness *th = asic->reg_funcs.data;
+	struct umr_mmio_blocks *mm;
+
+	if (asic->family >= FAMILY_NV) {
+		addr =
+			(1ULL << 60)                             | // reading SGPRs
+			((uint64_t)0)                            | // starting address to read from
+			((uint64_t)ws->hw_id1.se_id << 12)       |
+			((uint64_t)ws->hw_id1.sa_id << 20)       |
+			((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
+			((uint64_t)ws->hw_id1.wave_id << 36)     |
+			(0ULL << 52); // thread_id
+
+		nr = 112;
+	} else {
+		if (asic->family <= FAMILY_CIK)
+			shift = 3;  // on SI..CIK allocations were done in 8-dword blocks
+		else
+			shift = 4;  // on VI allocations are in 16-dword blocks
+
+		addr =
+			(1ULL << 60)                             | // reading SGPRs
+			((uint64_t)0)                            | // starting address to read from
+			((uint64_t)ws->hw_id.se_id << 12)        |
+			((uint64_t)ws->hw_id.sh_id << 20)        |
+			((uint64_t)ws->hw_id.cu_id << 28)        |
+			((uint64_t)ws->hw_id.wave_id << 36)      |
+			((uint64_t)ws->hw_id.simd_id << 44)      |
+			(0ULL << 52); // thread_id
+
+		nr = (ws->gpr_alloc.sgpr_size + 1) << shift;
+	}
+
+	// grab upto 'nr' words into dst[0..nr-1]
+	for (x = 0; x < nr; x++) {
+		// read from SGPR list
+		mm = &th->sgpr;
+		while (mm) {
+			/* because of how reading GPRs is done there could be more than
+			 * one vector entry for this given GPR address so we stop reading
+			 * from a given link when it's been exhausted */
+			if (mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
+				dst[x] = mm->values[mm->cur_slot];
+				++(mm->cur_slot);
+			}
+			mm = mm->next;
+		}
+	}
+
+	// read trap if any
+	if (ws->wave_status.trap_en || ws->wave_status.priv) {
+		addr += 4 * 0x6C;  // byte offset, kernel adds 0x200 to address
+		for (x = 0; x < nr; x++) {
+			// read from VGPR list
+			mm = &th->sgpr;
+			while (mm) {
+				if (mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
+					dst[0x6C + x] = mm->values[mm->cur_slot];
+					++(mm->cur_slot);
+				}
+				mm = mm->next;
+			}
+		}
+	}
+	return 0;
+}
+
+static int read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
+{
+	struct umr_test_harness *th = asic->reg_funcs.data;
+	struct umr_mmio_blocks *mm;
+	uint64_t addr, nr, x;
+	unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 registers
+
+	// reading VGPR is not supported on pre GFX9 devices
+	if (asic->family < FAMILY_AI)
+		return -1;
+
+	if (asic->family >= FAMILY_NV) {
+		addr =
+			(0ULL << 60)                             | // reading VGPRs
+			((uint64_t)0)                            | // starting address to read from
+			((uint64_t)ws->hw_id1.se_id << 12)        |
+			((uint64_t)ws->hw_id1.sa_id << 20)        |
+			((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
+			((uint64_t)ws->hw_id1.wave_id << 36)      |
+			((uint64_t)thread << 52);
+
+		nr = (ws->gpr_alloc.vgpr_size + 1) << granularity;
+	} else {
+		addr =
+			(0ULL << 60)                             | // reading VGPRs
+			((uint64_t)0)                            | // starting address to read from
+			((uint64_t)ws->hw_id.se_id << 12)        |
+			((uint64_t)ws->hw_id.sh_id << 20)        |
+			((uint64_t)ws->hw_id.cu_id << 28)        |
+			((uint64_t)ws->hw_id.wave_id << 36)      |
+			((uint64_t)ws->hw_id.simd_id << 44)      |
+			((uint64_t)thread << 52);
+
+		nr = (ws->gpr_alloc.vgpr_size + 1) << granularity;
+	}
+
+	// grab upto 'nr' words into dst[0..nr-1]
+	for (x = 0; x < nr; x++) {
+		// read from VGPR list
+		mm = &th->vgpr;
+		while (mm) {
+			/* because of how reading GPRs is done there could be more than
+			 * one vector entry for this given GPR address so we stop reading
+			 * from a given link when it's been exhausted */
+			if (mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
+				dst[x] = mm->values[mm->cur_slot];
+				++(mm->cur_slot);
+			}
+			mm = mm->next;
+		}
+	}
+	return 0;
+}
+
+static int wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
+{
+	struct umr_test_harness *th = asic->reg_funcs.data;
+	struct umr_mmio_blocks *mm;
+	uint64_t addr, x;
+	uint32_t buf[32];
+
+	memset(buf, 0, sizeof buf);
+
+	addr = 0 |
+		((uint64_t)se << 7) |
+		((uint64_t)sh << 15) |
+		((uint64_t)cu << 23) |
+		((uint64_t)wave << 31) |
+		((uint64_t)simd << 37);
+
+	// find the first unused slot and then read all of the contents
+	mm = &th->vgpr;
+	x = 0;
+	while (mm) {
+		if (mm->mmio_address == addr && mm->cur_slot == 0) {
+			for (x = 0; x < mm->no_values; x++) {
+				buf[x] = mm->values[mm->cur_slot];
+				++(mm->cur_slot);
+			}
+			break;
+		}
+		mm = mm->next;
+	}
+
+	if (x)
+		return umr_parse_wave_data_gfx(asic, ws, buf);
+	else
+		return -1;
+}
+
+
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 {
 	asic->mem_funcs.access_linear_vram = access_linear_vram;
@@ -584,6 +808,11 @@ void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 	asic->reg_funcs.read_reg = read_reg;
 	asic->reg_funcs.write_reg = write_reg;
 	asic->reg_funcs.data = th;
+
+	asic->gpr_read_funcs.read_sgprs = read_sgprs;
+	asic->gpr_read_funcs.read_vgprs = read_vgprs;
+
+	asic->wave_funcs.get_wave_status = wave_status;
 
 	th->asic = asic;
 }

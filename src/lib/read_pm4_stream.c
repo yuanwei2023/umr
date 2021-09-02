@@ -345,6 +345,9 @@ int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname)
 	// since the kernel returned values might be unwrapped.
 	for (n = 0; n < 100; n++) {
 		ringdata = umr_read_ring_data(asic, ringname, &ringsize);
+		if (!ringdata) {
+			return 0;
+		}
 		ringsize /= 4;
 		ringdata[0] %= ringsize;
 		ringdata[1] %= ringsize;

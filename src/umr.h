@@ -463,6 +463,9 @@ struct umr_asic {
 		FILE *test_log;
 	} fd;
 	struct {
+		uint64_t sq_ind_index;
+	} test_harness;
+	struct {
 		struct pci_device *pdevice;
 		uint32_t *mem; // virtual address
 		int region;
@@ -1324,7 +1327,7 @@ struct umr_ram_blocks {
 };
 
 struct umr_mmio_blocks {
-	uint32_t mmio_address;  // dword address
+	uint64_t mmio_address;  // dword address
 	uint32_t *values;       // values for this register
 	uint32_t no_values;     // number of values slotted in this spot
 	uint32_t cur_slot;      // index to current value to return
@@ -1343,7 +1346,7 @@ struct umr_test_harness {
 	struct umr_asic *asic;
 
 	struct umr_ram_blocks vram, sysram;
-	struct umr_mmio_blocks mmio;
+	struct umr_mmio_blocks mmio, ws, vgpr, sgpr, wave;
 	struct umr_sq_blocks sq;
 
 	uint64_t vram_mm_index; // when these are written they are shadowed here

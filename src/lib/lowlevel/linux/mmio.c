@@ -257,7 +257,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 						return 0;
 					}
 					if (lseek(asic->fd.mmio2, addr, SEEK_SET) < 0) {
-						perror("Cannot seek to MMIO address");
+						perror("Cannot seek to MMIO address for read");
 						return 0;
 					}
 					if (read(asic->fd.mmio2, &value, 4) != 4) {
@@ -265,6 +265,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 						return 0;
 					}
 				} else {
+					addr &= 0xFFFFFFUL;
 					// this is the older debugfs route and will be deprecated eventually
 					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0)
@@ -293,7 +294,11 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 	}
 
 	if (asic->options.test_log && asic->fd.test_log) {
-		fprintf(asic->fd.test_log, "MMIO@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", mmio_addr, value, umr_reg_name(asic, mmio_addr>>2));
+		if (strstr(umr_reg_name(asic, addr>>2), "SQ_IND_DATA")) {
+			fprintf(asic->fd.test_log, "SQ@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", asic->test_harness.sq_ind_index, value, umr_reg_name(asic, addr>>2));
+		} else {
+			fprintf(asic->fd.test_log, "MMIO@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", mmio_addr, value, umr_reg_name(asic, addr>>2));
+		}
 	}
 
 	return value;
@@ -348,15 +353,21 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 						r = -1;
 					}
 				} else {
+					addr &= 0xFFFFFFUL;
 					// this is the older debugfs route and will be deprecated eventually
 					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0) {
-						perror("Cannot seek to MMIO address");
+						perror("Cannot seek to MMIO address for write");
 						r = -1;
 					} else if (write(asic->fd.mmio, &value, 4) != 4) {
 						perror("Cannot write to MMIO reg");
 						r = -1;
 					}
+				}
+			}
+			if (asic->options.test_log && asic->fd.test_log) {
+				if (strstr(umr_reg_name(asic, addr>>2), "SQ_IND_INDEX")) {
+					asic->test_harness.sq_ind_index = value;
 				}
 			}
 			break;
