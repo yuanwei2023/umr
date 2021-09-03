@@ -31,23 +31,39 @@
 int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws)
 {
 	uint32_t value;
-	uint64_t index, data, bank;
+	uint64_t index, data;
+	struct {
+		uint32_t se, sh, instance, use_grbm;
+	} grbm;
 
 	index = umr_find_reg(asic, "mmSQ_IND_INDEX") * 4;
 	data = umr_find_reg(asic, "mmSQ_IND_DATA") * 4;
-	bank =
-		(1ULL << 62) |
-		(((uint64_t)se) << 24) |
-		(((uint64_t)sh) << 34) |
-		(((uint64_t)cu) << 44);
+
+	/* copy grbm options to restore later */
+	grbm.use_grbm = asic->options.use_bank;
+	grbm.se       = asic->options.bank.grbm.se;
+	grbm.sh       = asic->options.bank.grbm.sh;
+	grbm.instance = asic->options.bank.grbm.instance;
+
+	/* set GRBM banking options */
+	asic->options.use_bank           = 1;
+	asic->options.bank.grbm.se       = se;
+	asic->options.bank.grbm.sh       = sh;
+	asic->options.bank.grbm.instance = cu;
 
 	if (!index || !data) {
 		asic->err_msg("[BUG]: Cannot find SQ indirect registers on this asic!\n");
 		return -1;
 	}
 
-	umr_write_reg(asic, index|bank, 8 << 16, REG_MMIO);
-	value = umr_read_reg(asic, data|bank, REG_MMIO);
+	asic->reg_funcs.write_reg(asic, index, 8 << 16, REG_MMIO);
+	value = asic->reg_funcs.read_reg(asic, data, REG_MMIO);
+
+	/* restore whatever the user had picked */
+	asic->options.use_bank           = grbm.use_grbm;
+	asic->options.bank.grbm.se       = grbm.se;
+	asic->options.bank.grbm.sh       = grbm.sh;
+	asic->options.bank.grbm.instance = grbm.instance;
 
 	/* Did we try to query a non-existing SQ instance? */
 	if (value == 0xbebebeef)
@@ -71,8 +87,8 @@ static uint32_t wave_read_ind(struct umr_asic *asic, uint32_t simd, uint32_t wav
 		data |= umr_bitslice_compose_value(asic, ind_index, "SIMD_ID", simd);
 		data |= umr_bitslice_compose_value(asic, ind_index, "INDEX", address);
 		data |= umr_bitslice_compose_value(asic, ind_index, "FORCE_READ", 1);
-		umr_write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
-		return umr_read_reg(asic, ind_data->addr * 4, REG_MMIO);
+		asic->reg_funcs.write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
+		return asic->reg_funcs.read_reg(asic, ind_data->addr * 4, REG_MMIO);
 	} else {
 		asic->err_msg("[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
 		return -1;
@@ -90,8 +106,8 @@ static uint32_t wave_read_ind_nv(struct umr_asic *asic, uint32_t wave, uint32_t 
 	if (ind_index && ind_data) {
 		data = umr_bitslice_compose_value(asic, ind_index, "WAVE_ID", wave);
 		data |= umr_bitslice_compose_value(asic, ind_index, "INDEX", address);
-		umr_write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
-		return umr_read_reg(asic, ind_data->addr * 4, REG_MMIO);
+		asic->reg_funcs.write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
+		return asic->reg_funcs.read_reg(asic, ind_data->addr * 4, REG_MMIO);
 	} else {
 		asic->err_msg("[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
 		return -1;

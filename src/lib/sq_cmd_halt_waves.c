@@ -35,6 +35,9 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 	struct umr_reg *reg;
 	uint32_t value;
 	uint64_t addr;
+	struct {
+		uint32_t se, sh, instance, use_grbm;
+	} grbm;
 
 	// SQ_CMD is not present on SI
 	if (asic->family == FAMILY_SI)
@@ -55,13 +58,27 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 	}
 	value |= umr_bitslice_compose_value(asic, reg, "MODE", 1); // BROADCAST
 
+	/* copy grbm options to restore later */
+	grbm.use_grbm = asic->options.use_bank;
+	grbm.se       = asic->options.bank.grbm.se;
+	grbm.sh       = asic->options.bank.grbm.sh;
+	grbm.instance = asic->options.bank.grbm.instance;
+
+	/* set GRBM banking options */
+	asic->options.use_bank           = 1;
+	asic->options.bank.grbm.se       = 0xFFFFFFFF;
+	asic->options.bank.grbm.sh       = 0xFFFFFFFF;
+	asic->options.bank.grbm.instance = 0xFFFFFFFF;
+
 	// compose address
 	addr = reg->addr * 4;
-	addr |= (1ULL << 62) |      // we need to take the lock so we can ensure a broadcast write
-			(0x3FFULL << 24) |
-			(0x3FFULL << 34) |
-			(0x3FFULL << 44);
-	umr_write_reg(asic, addr, value, reg->type);
+	asic->reg_funcs.write_reg(asic, addr, value, reg->type);
+
+	/* restore whatever the user had picked */
+	asic->options.use_bank           = grbm.use_grbm;
+	asic->options.bank.grbm.se       = grbm.se;
+	asic->options.bank.grbm.sh       = grbm.sh;
+	asic->options.bank.grbm.instance = grbm.instance;
 
 	return 0;
 }
