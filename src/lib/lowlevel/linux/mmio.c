@@ -265,7 +265,6 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 						return 0;
 					}
 				} else {
-					addr &= 0xFFFFFFUL;
 					// this is the older debugfs route and will be deprecated eventually
 					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0)
@@ -353,7 +352,6 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 						r = -1;
 					}
 				} else {
-					addr &= 0xFFFFFFUL;
 					// this is the older debugfs route and will be deprecated eventually
 					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0) {

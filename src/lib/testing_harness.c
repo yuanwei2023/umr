@@ -255,7 +255,7 @@ static int expect_word(const char **ptr, char *token)
 
 void umr_free_test_harness(struct umr_test_harness *th)
 {
-	struct umr_ram_blocks *sram, *vram;
+	struct umr_ram_blocks *sram, *vram, *config;
 	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave;
 	struct umr_sq_blocks *sq;
 	void *t;
@@ -263,6 +263,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	if (!th)
 		return;
 
+	config = th->config.next;
 	sram = th->sysram.next;
 	vram = th->vram.next;
 	mmio = th->mmio.next;
@@ -271,6 +272,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	sgpr = th->sgpr.next;
 	wave = th->wave.next;
 
+	free(th->config.contents);
 	free(th->sysram.contents);
 	free(th->vram.contents);
 	free(th->mmio.values);
@@ -278,6 +280,13 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	free(th->sgpr.values);
 	free(th->wave.values);
 	free(th->sq.values);
+
+	while (config) {
+		t = config->next;
+		free(config->contents);
+		free(config);
+		config = t;
+	}
 
 	while (sram) {
 		t = sram->next;
@@ -333,13 +342,14 @@ void umr_free_test_harness(struct umr_test_harness *th)
 struct umr_test_harness *umr_create_test_harness(const char *script)
 {
 	struct umr_test_harness *th;
-	struct umr_ram_blocks *sram, *vram;
+	struct umr_ram_blocks *sram, *vram, *config;
 	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave;
 	struct umr_sq_blocks *sq;
 	int r;
 
 	th = calloc(1, sizeof *th);
 
+	config = &th->config;
 	sram = &th->sysram;
 	vram = &th->vram;
 	mmio = &th->mmio;
@@ -350,6 +360,17 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 
 	while (*script) {
 		consume_whitespace(&script);
+		if (consume_word(&script, "GCACONFIG")) {
+			if (!r)
+				goto error;
+			if (!expect_word(&script, "="))
+				goto error;
+			config->contents = consume_bytes(&script, &config->size);
+			if (!config->size)
+				goto error;
+			config->next = calloc(1, sizeof *config);
+			config = config->next;
+		}
 		if (consume_word(&script, "SYSRAM@")) {
 			sram->base_address = consume_xint64(&script, &r);
 			if (!r)
@@ -795,6 +816,18 @@ static int wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned
 	else
 		return -1;
 }
+
+int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst)
+{
+	int x;
+	struct umr_test_harness *th = asic->reg_funcs.data;
+
+	for (x = 0; x < (int)th->config.size; x++) {
+		dst[x] = th->config.contents[x];
+	}
+	return x;
+}
+
 
 
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)

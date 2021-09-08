@@ -199,14 +199,31 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 
 	/* process GFX block */
 gca_config:
-	snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gca_config", asic->instance);
-	f = fopen(fname, "rb");
-	if (!f)
-		return -1;
-	r = fread(data, 1, sizeof(data), f);
-	fclose(f);
-	if (r < 0)
-		return -1;
+	if (asic->options.test_log && !asic->fd.test_log) {
+		// grab from test harness instead of system
+		r = umr_test_harness_get_config_data(asic, (uint8_t *)data);
+	} else {
+		// grab from system
+		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gca_config", asic->instance);
+		f = fopen(fname, "rb");
+		if (!f)
+			return -1;
+		r = fread(data, 1, sizeof(data), f);
+		fclose(f);
+		if (r < 0)
+			return -1;
+
+		// store in test vector if open
+		if (asic->options.test_log && asic->fd.test_log) {
+			int x;
+			uint8_t *d = (uint8_t *)data;
+			fprintf(asic->fd.test_log, "GCACONFIG = { ");
+			for (x = 0; x < r; x++) {
+				fprintf(asic->fd.test_log, "%02"PRIx8, d[x]);
+			}
+			fprintf(asic->fd.test_log, " }\n");
+		}
+	}
 
 	switch (data[0]) {
 		case 0: parse_rev0(asic, data, &r);

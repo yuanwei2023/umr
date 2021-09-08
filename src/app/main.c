@@ -854,6 +854,7 @@ int main(int argc, char **argv)
 					asic = get_asic();
 				asic->fd.test_log = fopen(argv[i + 1], "w");
 				asic->options.test_log = 1;
+				umr_scan_config(asic, 0);
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --test-log requires one parameter\n");
@@ -863,8 +864,10 @@ int main(int argc, char **argv)
 			if (i + 1 < argc) {
 				if (!asic)
 					asic = get_asic();
+				asic->options.test_log = 1;
 				th = umr_create_test_harness_file(argv[i + 1]);
 				umr_attach_test_harness(th, asic);
+				umr_scan_config(asic, 0);
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
