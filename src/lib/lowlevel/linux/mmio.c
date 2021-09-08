@@ -266,6 +266,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 					}
 				} else {
 					// this is the older debugfs route and will be deprecated eventually
+					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0)
 						perror("Cannot seek to MMIO address");
 					if (read(asic->fd.mmio, &value, 4) != 4)
@@ -344,6 +345,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 					}
 				} else {
 					// this is the older debugfs route and will be deprecated eventually
+					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0) {
 						perror("Cannot seek to MMIO address");
 						r = -1;
