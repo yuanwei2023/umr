@@ -256,7 +256,7 @@ static int expect_word(const char **ptr, char *token)
 void umr_free_test_harness(struct umr_test_harness *th)
 {
 	struct umr_ram_blocks *sram, *vram, *config;
-	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave;
+	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
 	struct umr_sq_blocks *sq;
 	void *t;
 
@@ -271,6 +271,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	vgpr = th->vgpr.next;
 	sgpr = th->sgpr.next;
 	wave = th->wave.next;
+	ring = th->ring.next;
 
 	free(th->config.contents);
 	free(th->sysram.contents);
@@ -279,6 +280,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	free(th->vgpr.values);
 	free(th->sgpr.values);
 	free(th->wave.values);
+	free(th->ring.values);
 	free(th->sq.values);
 
 	while (config) {
@@ -330,6 +332,13 @@ void umr_free_test_harness(struct umr_test_harness *th)
 		wave = t;
 	}
 
+	while (ring) {
+		t = ring->next;
+		free(ring->values);
+		free(ring);
+		ring = t;
+	}
+
 	while (sq) {
 		t = sq->next;
 		free(sq->values);
@@ -343,7 +352,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 {
 	struct umr_test_harness *th;
 	struct umr_ram_blocks *sram, *vram, *config;
-	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave;
+	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
 	struct umr_sq_blocks *sq;
 	int r;
 
@@ -357,12 +366,11 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 	vgpr = &th->vgpr;
 	sgpr = &th->sgpr;
 	wave = &th->wave;
+	ring = &th->ring;
 
 	while (*script) {
 		consume_whitespace(&script);
 		if (consume_word(&script, "GCACONFIG")) {
-			if (!r)
-				goto error;
 			if (!expect_word(&script, "="))
 				goto error;
 			config->contents = consume_bytes(&script, &config->size);
@@ -442,6 +450,15 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 				goto error;
 			wave->next = calloc(1, sizeof *wave);
 			wave = wave->next;
+		}
+		if (consume_word(&script, "RINGDATA")) {
+			if (!expect_word(&script, "="))
+				goto error;
+			ring->values = consume_words(&script, &ring->no_values);
+			if (!ring->no_values)
+				goto error;
+			ring->next = calloc(1, sizeof *ring);
+			ring = ring->next;
 		}
 		if (consume_word(&script, "SQ@")) {
 			sq->sq_address = consume_xint32(&script, &r);
@@ -829,6 +846,18 @@ int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst)
 }
 
 
+void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize)
+{
+	uint32_t x, *rd;
+	struct umr_test_harness *th = asic->reg_funcs.data;
+
+	rd = calloc(th->ring.no_values, sizeof *rd);
+	for (x = 0; x < th->ring.no_values; x++) {
+		rd[x] = th->ring.values[x];
+	}
+	*ringsize = (x * 4) - 12; // return size in bytes minus the rptr/wptr/dev_wptr
+	return rd;
+}
 
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 {

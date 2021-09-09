@@ -43,30 +43,48 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 	void *ring_data;
 	char fname[128];
 
-	snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_ring_%s", asic->instance, ringname);
-	fd = open(fname, O_RDWR);
-	if (fd < 0) {
-		asic->err_msg("[ERROR]: Could not open ring debugfs file '%s'\n", fname);
-		if (asic->family >= FAMILY_NV && !strcmp(ringname, "gfx"))
-			asic->err_msg("[WARNING]: On Navi and later ASICs the gfx ring name has changed, for instance: 'gfx_0.0.0'\n");
-		return NULL;
-	}
+	if (asic->options.test_log && !asic->fd.test_log) {
+		return umr_test_harness_get_ring_data(asic, ringsize);
+	} else {
+		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_ring_%s", asic->instance, ringname);
+		fd = open(fname, O_RDWR);
+		if (fd < 0) {
+			asic->err_msg("[ERROR]: Could not open ring debugfs file '%s'\n", fname);
+			if (asic->family >= FAMILY_NV && !strcmp(ringname, "gfx"))
+				asic->err_msg("[WARNING]: On Navi and later ASICs the gfx ring name has changed, for instance: 'gfx_0.0.0'\n");
+			return NULL;
+		}
 
-	/* determine file size */
-	*ringsize = lseek(fd, 0, SEEK_END) - 12;
-	lseek(fd, 0, SEEK_SET);
+		/* determine file size */
+		*ringsize = lseek(fd, 0, SEEK_END) - 12;
+		lseek(fd, 0, SEEK_SET);
 
-	ring_data = calloc(1, *ringsize + 12);
-	if (!ring_data) {
+		ring_data = calloc(1, *ringsize + 12);
+		if (!ring_data) {
+			close(fd);
+			asic->err_msg("[ERROR]: Out of memory\n");
+			return NULL;
+		}
+		r = read(fd, ring_data, *ringsize + 12);
 		close(fd);
-		asic->err_msg("[ERROR]: Out of memory\n");
-		return NULL;
+		if (r != *ringsize + 12) {
+			free(ring_data);
+			return NULL;
+		}
+
+		// store in test vector if open
+		if (asic->options.test_log && asic->fd.test_log) {
+			uint32_t *rd = ring_data, x;
+			fprintf(asic->fd.test_log, "RINGDATA = { ");
+			for (x = 0; x < (*ringsize + 12); x += 4) {
+				if (x) {
+					fprintf(asic->fd.test_log, ", ");
+				}
+				fprintf(asic->fd.test_log, "0x%"PRIx32, rd[x/4]);
+			}
+			fprintf(asic->fd.test_log, "}\n");
+		}
 	}
-	r = read(fd, ring_data, *ringsize + 12);
-	close(fd);
-	if (r != *ringsize + 12) {
-		free(ring_data);
-		return NULL;
-	}
+
 	return ring_data;
 }

@@ -1346,7 +1346,7 @@ struct umr_test_harness {
 	struct umr_asic *asic;
 
 	struct umr_ram_blocks vram, sysram, config;
-	struct umr_mmio_blocks mmio, ws, vgpr, sgpr, wave;
+	struct umr_mmio_blocks mmio, ws, vgpr, sgpr, wave, ring;
 	struct umr_sq_blocks sq;
 
 	uint64_t vram_mm_index; // when these are written they are shadowed here
@@ -1358,6 +1358,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script);
 void umr_free_test_harness(struct umr_test_harness *th);
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic);
 int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst);
+void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize);
 
 #define RED     (asic->options.use_colour ? "\x1b[31;1m" : "")
 #define GREEN   (asic->options.use_colour ? "\x1b[32;1m" : "")
