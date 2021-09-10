@@ -129,6 +129,10 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 	if (asic->options.no_kernel)
 		return -1;
 
+	// don't read config if virtual and not using a test vector
+	if (!asic->options.test_log && asic->options.is_virtual)
+		return -1;
+
 	// read memory sizes
 	asic->config.gtt_size = read_int(asic->options.pci.name, "mem_info_gtt_total");
 	asic->config.vis_vram_size = read_int(asic->options.pci.name, "mem_info_vis_vram_total");

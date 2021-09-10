@@ -129,6 +129,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 
 	// virtual device
 	if (options->dev_name[0] == '.') {
+		options->is_virtual = 1;
 		asic = umr_discover_asic_by_name(options, options->dev_name + 1, errout);
 		if (asic)
 			asic->options = *options;

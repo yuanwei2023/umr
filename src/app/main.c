@@ -289,12 +289,11 @@ int main(int argc, char **argv)
 			}
 		} else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "-f")) {
 			if (i + 1 < argc) {
-				unsigned long did;
+				unsigned long did = 0;
 				if (sscanf(argv[i+1], "0x%lx", &did) == 0) {
-					options.forcedid = did;
 					strncpy(options.dev_name, argv[i+1], sizeof(options.dev_name) - 1);
-					options.forcedid = 0;
 				}
+				options.forcedid = did;
 				options.instance = -1;
 				++i;
 			} else {
