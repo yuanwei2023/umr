@@ -39,7 +39,7 @@ static int umr_get_wave_status_vi_ai(struct umr_asic *asic, unsigned se, unsigne
 			((uint64_t)cu << 23) |
 			((uint64_t)wave << 31) |
 			((uint64_t)simd << 37);
-		lseek(addr, asic->fd.wave, SEEK_SET);
+		lseek(asic->fd.wave, addr, SEEK_SET);
 		r = read(asic->fd.wave, &buf, 32*4);
 		if (r <= 0)
 			return -1;
