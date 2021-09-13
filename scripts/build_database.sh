@@ -187,6 +187,7 @@ parse_reg_bits vcn/vcn_3_0_0 vcn_3_0_0.reg
 ../comp/compiler ${pk}/include/beige_goby_ip_offset.h > ../database/beige_goby.soc15
 ../comp/compiler ${pk}/include/yellow_carp_offset.h > ../database/yellow_carp.soc15
 ../comp/compiler ${pk}/include/aldebaran_ip_offset.h > ../database/aldebaran.soc15
+../comp/compiler ${pk}/include/cyan_skillfish_ip_offset.h > ../database/cyan_skillfish.soc15
 
 make -C ../comp clean
 
