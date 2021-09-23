@@ -85,6 +85,7 @@ parse_reg_bits mmhub/mmhub_2_3_0 mmhub_2_3_0.reg
 parse_reg_bits mp/mp_9_0 mp_9_0_0.reg
 parse_reg_bits mp/mp_10_0 mp_10_0_0.reg
 parse_reg_bits mp/mp_11_0 mp_11_0_0.reg
+parse_reg_bits mp/mp_11_0_8 mp_11_0_8.reg
 parse_reg_bits mp/mp_11_5_0 mp_11_5_0.reg
 parse_reg_bits mp/mp_12_0_0 mp_12_0_0.reg
 parse_reg_bits mp/mp_13_0_2 mp_13_0_2.reg

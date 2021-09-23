@@ -1,4 +1,4 @@
-5
+7
 mmFabricConfigAccessControl 0 0x410 3 0 0
 	CfgRegInstAccEn 0 0
 	CfgRegInstAccRegLock 1 1
@@ -16,3 +16,69 @@ mmDF_CS_UMC_AON0_DramBaseAddress0 0 0x44 5 0 0
 	IntLvAddrSel 9 11
 	DramBaseAddr 12 31
 mmDF_GCM_AON0_DramMegaBaseAddress0 0 0x64 0 0 0
+mmDF_CS_UMC_AON0_HardwareAssertMaskLow 0 0x67e 32 0 0
+	HWAssertMsk0 0 0
+	HWAssertMsk1 1 1
+	HWAssertMsk2 2 2
+	HWAssertMsk3 3 3
+	HWAssertMsk4 4 4
+	HWAssertMsk5 5 5
+	HWAssertMsk6 6 6
+	HWAssertMsk7 7 7
+	HWAssertMsk8 8 8
+	HWAssertMsk9 9 9
+	HWAssertMsk10 10 10
+	HWAssertMsk11 11 11
+	HWAssertMsk12 12 12
+	HWAssertMsk13 13 13
+	HWAssertMsk14 14 14
+	HWAssertMsk15 15 15
+	HWAssertMsk16 16 16
+	HWAssertMsk17 17 17
+	HWAssertMsk18 18 18
+	HWAssertMsk19 19 19
+	HWAssertMsk20 20 20
+	HWAssertMsk21 21 21
+	HWAssertMsk22 22 22
+	HWAssertMsk23 23 23
+	HWAssertMsk24 24 24
+	HWAssertMsk25 25 25
+	HWAssertMsk26 26 26
+	HWAssertMsk27 27 27
+	HWAssertMsk28 28 28
+	HWAssertMsk29 29 29
+	HWAssertMsk30 30 30
+	HWAssertMsk31 31 31
+mmDF_NCS_PG0_HardwareAssertMaskHigh 0 0x67f 32 0 0
+	HWAssertMsk0 0 0
+	HWAssertMsk1 1 1
+	HWAssertMsk2 2 2
+	HWAssertMsk3 3 3
+	HWAssertMsk4 4 4
+	HWAssertMsk5 5 5
+	HWAssertMsk6 6 6
+	HWAssertMsk7 7 7
+	HWAssertMsk8 8 8
+	HWAssertMsk9 9 9
+	HWAssertMsk10 10 10
+	HWAssertMsk11 11 11
+	HWAssertMsk12 12 12
+	HWAssertMsk13 13 13
+	HWAssertMsk14 14 14
+	HWAssertMsk15 15 15
+	HWAssertMsk16 16 16
+	HWAssertMsk17 17 17
+	HWAssertMsk18 18 18
+	HWAssertMsk19 19 19
+	HWAssertMsk20 20 20
+	HWAssertMsk21 21 21
+	HWAssertMsk22 22 22
+	HWAssertMsk23 23 23
+	HWAssertMsk24 24 24
+	HWAssertMsk25 25 25
+	HWAssertMsk26 26 26
+	HWAssertMsk27 27 27
+	HWAssertMsk28 28 28
+	HWAssertMsk29 29 29
+	HWAssertMsk30 30 30
+	HWAssertMsk31 31 31
