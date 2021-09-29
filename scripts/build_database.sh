@@ -28,6 +28,7 @@ parse_reg_bits bif/bif_5_1 bif_5_1_0.reg
 
 parse_reg_bits clk/clk_10_0_2 clk_10_0_2.reg
 parse_reg_bits clk/clk_11_0_0 clk_11_0_0.reg
+parse_reg_bits clk/clk_11_0_1 clk_11_0_1.reg
 parse_reg_bits clk/clk_11_5_0 clk_11_5_0.reg
 
 parse_reg_bits dce/dce_6_0 dce_6_0_0.reg
@@ -39,6 +40,7 @@ parse_reg_bits dce/dce_12_0 dce_12_0_0.reg
 
 parse_reg_bits dcn/dcn_1_0 dcn_1_0_0.reg
 parse_reg_bits dcn/dcn_2_0_0 dcn_2_0_0.reg
+parse_reg_bits dcn/dcn_2_0_3 dcn_2_0_3.reg
 parse_reg_bits dcn/dcn_2_1_0 dcn_2_1_0.reg
 parse_reg_bits dcn/dcn_3_0_0 dcn_3_0_0.reg
 parse_reg_bits dcn/dcn_3_0_1 dcn_3_0_1.reg
@@ -50,6 +52,7 @@ parse_reg_bits df/df_1_7 df_1_7_0.reg
 parse_reg_bits df/df_3_6 df_3_6_0.reg
 
 parse_reg_bits dpcs/dpcs_2_0_0 dpcs_2_0_0.reg
+parse_reg_bits dpcs/dpcs_2_0_3 dpcs_2_0_3.reg
 parse_reg_bits dpcs/dpcs_2_1_0 dpcs_2_1_0.reg
 
 parse_reg_bits gc/gc_9_0 gc_9_0_0.reg
