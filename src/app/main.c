@@ -439,6 +439,7 @@ int main(int argc, char **argv)
 			if (i + 1 < argc) {
 				if (!asic)
 					asic = get_asic();
+				fprintf(stderr, "[WARNING]: The --ring command is deprecated and will be removed in a future release.  Please use the --ring-stream command.\n");
 				umr_read_ring(asic, argv[i+1]);
 				++i;
 			} else {
