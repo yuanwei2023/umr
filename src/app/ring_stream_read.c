@@ -129,7 +129,7 @@ static void pm4_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic 
 
 	pm4_next_level(ui);
 	fprintf(data->stack[data->sp].f, "Shader from %lu@[0x%"PRIx64" + 0x%"PRIx64"] at %lu@0x%"PRIx64", type %d, size %lu\n", (unsigned long)ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, (unsigned long)shader->vmid, shader->addr, shader->type, (unsigned long)shader->size);
-	umr_vm_disasm_to_str(asic, ib_vmid, ib_addr, 0, shader->size, 0, &str);
+	umr_vm_disasm_to_str(asic, shader->vmid, shader->addr, 0, shader->size, 0, &str);
 	x = 0;
 	while (str[x]) {
 		fprintf(data->stack[data->sp].f, "%s\n", str[x]);
