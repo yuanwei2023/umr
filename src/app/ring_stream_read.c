@@ -1073,7 +1073,7 @@ static void present_pm4(struct umr_asic *asic, char *ringname, int start, int en
 		data = ui.data = calloc(1, sizeof(struct pm4_ui_data));
 		data->sp = -1;
 		data->asic = asic;
-		umr_pm4_decode_stream_opcodes(asic, &ui, str, 0, 0, 0, 0, ~0UL, 1);
+		umr_pm4_decode_stream_opcodes(asic, &ui, str, addr, vmid, 0, 0, ~0UL, 1);
 
 		for (x = 0; x < data->no; x++) {
 			sprintf(tmpname, "/tmp/umr_ring_out.%d", x);

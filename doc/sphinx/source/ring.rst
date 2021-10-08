@@ -78,15 +78,6 @@ Might produce output similar to:
 This mode useful for examining live traffic or traffic that has resulted
 in a GPU hang and has yet to be fully read by the packet processor.
 
-When the read pointer is hit (word 512) it is indicated with a small
-'r' in the middle column.  At this point the packet decoder is enabled
-which begins adding another column of output which includes details
-about the packets as they decoded.
-
-Not visible in this snippet are the terminal lines where the devices
-ring write pointer and kernel pointer are indicated by a 'w' and 'D'
-respectively.  
-
 When an IB is found it will be decoded after the ring in the
 order of appearance.  An example decoding is:
 
@@ -121,22 +112,43 @@ first 's_endpgm' opcode is found.  Shader disassemblies resemble:
 
 ::
 
-	Shader from 1@[0x231800 + 0x3d0] at 1@0x100000b00, type 1, size 124
-		pgm[1@0x231bd0 + 0x0   ] = 0xc0047600               s_load_dwordx2 s[88:89], s[0:1], s72
-		pgm[1@0x231bd0 + 0x4   ] = 0x00000048       ;;
-		pgm[1@0x231bd0 + 0x8   ] = 0x0100000b               v_cndmask_b32_e32 v128, s11, v0, vcc
-		pgm[1@0x231bd0 + 0xc   ] = 0x00000000               v_cndmask_b32_e32 v0, s0, v0, vcc
-		pgm[1@0x231bd0 + 0x10  ] = 0x002c0081               v_cndmask_b32_e32 v22, 1, v0, vcc
-		pgm[1@0x231bd0 + 0x14  ] = 0x00000020               v_cndmask_b32_e32 v0, s32, v0, vcc
-		pgm[1@0x231bd0 + 0x18  ] = 0xc0016900               s_load_dword s36, s[0:1], v195 glc
-		pgm[1@0x231bd0 + 0x1c  ] = 0x000001c3       ;;
-		pgm[1@0x231bd0 + 0x20  ] = 0x00000004               v_cndmask_b32_e32 v0, s4, v0, vcc
-		pgm[1@0x231bd0 + 0x24  ] = 0xc0016900               s_load_dword s36, s[0:1], s6 glc
-	   ...<snip>...
+	Shader from 3@[0x208800 + 0x3d0] at 3@0x100000b00, type 1, size 124
+		pgm[3@0x100000b00 + 0x0   ] = 0x32080005            v_add_u32_e32 v4, vcc, s5, v0
+		pgm[3@0x100000b00 + 0x4   ] = 0xe0042000            buffer_load_format_xy v[0:1], v4, s[12:15], 0 idxen
+		pgm[3@0x100000b00 + 0x8   ] = 0x80030004    ;;
+		pgm[3@0x100000b00 + 0xc   ] = 0xbe800002            s_mov_b32 s0, s2
+		pgm[3@0x100000b00 + 0x10  ] = 0xbe810080            s_mov_b32 s1, 0
+		pgm[3@0x100000b00 + 0x14  ] = 0xbe8300ff            s_mov_b32 s3, 0x27fac
+		pgm[3@0x100000b00 + 0x18  ] = 0x00027fac    ;;
+		pgm[3@0x100000b00 + 0x1c  ] = 0xbe8200a0            s_mov_b32 s2, 32
+		pgm[3@0x100000b00 + 0x20  ] = 0xc02a0100            s_buffer_load_dwordx4 s[4:7], s[0:3], 0x10
+		pgm[3@0x100000b00 + 0x24  ] = 0x00000010    ;;
+		pgm[3@0x100000b00 + 0x28  ] = 0xc02a0000            s_buffer_load_dwordx4 s[0:3], s[0:3], 0x0
+		pgm[3@0x100000b00 + 0x2c  ] = 0x00000000    ;;
+		pgm[3@0x100000b00 + 0x30  ] = 0x7e0402f2            v_mov_b32_e32 v2, 1.0
+		pgm[3@0x100000b00 + 0x34  ] = 0x7e060280            v_mov_b32_e32 v3, 0
+		pgm[3@0x100000b00 + 0x38  ] = 0xbf8c007f            s_waitcnt lgkmcnt(0)
+		pgm[3@0x100000b00 + 0x3c  ] = 0x7e080205            v_mov_b32_e32 v4, s5
+		pgm[3@0x100000b00 + 0x40  ] = 0x7e0a0207            v_mov_b32_e32 v5, s7
+		pgm[3@0x100000b00 + 0x44  ] = 0xbf8c0f70            s_waitcnt vmcnt(0)
+		pgm[3@0x100000b00 + 0x48  ] = 0xd1c10004            v_mad_f32 v4, s4, v0, v4
+		pgm[3@0x100000b00 + 0x4c  ] = 0x04120004    ;;
+		pgm[3@0x100000b00 + 0x50  ] = 0xd1c10005            v_mad_f32 v5, s6, v1, v5
+		pgm[3@0x100000b00 + 0x54  ] = 0x04160206    ;;
+		pgm[3@0x100000b00 + 0x58  ] = 0xc40008cf            exp pos0 v4, v5, v3, v2 done
+		pgm[3@0x100000b00 + 0x5c  ] = 0x02030504    ;;
+		pgm[3@0x100000b00 + 0x60  ] = 0x02000000            v_add_f32_e32 v0, s0, v0
+		pgm[3@0x100000b00 + 0x64  ] = 0x02020201            v_add_f32_e32 v1, s1, v1
+		pgm[3@0x100000b00 + 0x68  ] = 0x0a000002            v_mul_f32_e32 v0, s2, v0
+		pgm[3@0x100000b00 + 0x6c  ] = 0x0a020203            v_mul_f32_e32 v1, s3, v1
+		pgm[3@0x100000b00 + 0x70  ] = 0xc400020f            exp param0 v0, v1, v0, v0
+		pgm[3@0x100000b00 + 0x74  ] = 0x00000100    ;;
+		pgm[3@0x100000b00 + 0x78  ] = 0xbf810000            s_endpgm
+	Done disassembly of shader
 
 Which indicates the VMID and address of the shader, how many bytes it
 is and where it was found.  In this case this shader was indicated
-by an IB at VMID 1 offset 0x231800 + 0x3d0.  The byte offset indicates
+by an IB at VMID 3 offset 0x208800 + 0x3d0.  The byte offset indicates
 the last PM4 packet word indicating the address of the shader.
 
 Each line of disassembly includes the address of the shader opcode,
@@ -161,33 +173,34 @@ decode SDMA IBs the value of '3' can be specified for pm.
 
 ::
 
-	umr --dump-ib 0@0xf500447000 0x20
+	umr --dump-ib 0@0xff00402000 0x10
 
 Might produce:
 
 ::
 
-	Dumping IB at (gfxhub) VMID:0 0xf500447000 of 8 words from ring[0]
-	IB[0@0xf500447000 + 0x0   ] = 0xc0032200 ... PKT3, COUNT:4, PREDICATE:0, SHADER_TYPE:0, OPCODE:22[PKT3_COND_EXEC]
-	IB[0@0xf500447000 + 0x4   ] = 0x00400060 ... |---+ PKT3 OPCODE 0x22, word 0: GPU_ADDR_LO32: 0x00400060
-	IB[0@0xf500447000 + 0x8   ] = 0x000000f5 ... |---+ PKT3 OPCODE 0x22, word 1: GPU_ADDR_HI32: 0x000000f5
-	IB[0@0xf500447000 + 0xc   ] = 0x00000000 ... |---+ PKT3 OPCODE 0x22, word 2: TEST_VALUE: 0x00000000
-	IB[0@0xf500447000 + 0x10  ] = 0x00000027 ... \---+ PKT3 OPCODE 0x22, word 3: PATCH_VALUE: 0x00000027
-	IB[0@0xf500447000 + 0x14  ] = 0xc0053c00 ... PKT3, COUNT:6, PREDICATE:0, SHADER_TYPE:0, OPCODE:3c[PKT3_WAIT_REG_MEM]
-	IB[0@0xf500447000 + 0x18  ] = 0x00000113 ... |---+ PKT3 OPCODE 0x3c, word 0: ENGINE:PFP, MEMSPACE:REG, FUNC:[==]
-	IB[0@0xf500447000 + 0x1c  ] = 0x00400040 ... |---+ PKT3 OPCODE 0x3c, word 1: POLL_ADDRESS_LO: 0x00400040, SWAP: 0
-	End of IB
 
-
------------------
-Colourized Output
------------------
-
-Colourized output can be enabled with the 'use_colour' option before
-the ring read command.  This will colourize various fields in the
-output making it much easier to visually scan quickly.
-
-.. image:: ring_colour.png
+	Decoding IB at 0@0xff00402000 from 0@0x0 of 19 words (type 4)
+	[0@0x00000000 + 0x0000] [0xc0032200]    Opcode 0x22 [PKT3_COND_EXEC] (4 words, type: 3, hdr: 0xc0032200)
+	[0@0x00000000 + 0x0004] [0x00400080]    |---> GPU_ADDR_LO32=0x400080
+	[0@0x00000000 + 0x0008] [0x000000ff]    |---> GPU_ADDR_HI32=0xff
+	[0@0x00000000 + 0x000c] [0x00000000]    |---> TEST_VALUE=0x0
+	[0@0x00000000 + 0x0010] [0x0000002f]    |---> PATCH_VALUE=0x2f
+	[0@0x00000000 + 0x0014] [0xc0053c00]    Opcode 0x3c [PKT3_WAIT_REG_MEM] (6 words, type: 3, hdr: 0xc0053c00)
+	[0@0x00000000 + 0x0018] [0x00000143]    |---> ENGINE=[PFP]/1, MEMSPACE=[REG]/0, OPERATION=1, FUNCTION=[==]/3
+	[0@0x00000000 + 0x001c] [0x00001537]    |---> POLL_ADDRESS_LO=0x1534, SWAP=0x3
+	[0@0x00000000 + 0x0020] [0x00001538]    |---> POLL_ADDRESS_HI=0x1538
+	[0@0x00000000 + 0x0024] [0x00000001]    |---> REFERENCE=0x1
+	[0@0x00000000 + 0x0028] [0x00000001]    |---> MASK=0x1
+	[0@0x00000000 + 0x002c] [0x00000020]    |---> POLL INTERVAL=0x20
+	[0@0x00000000 + 0x0030] [0xc0004600]    Opcode 0x46 [PKT3_EVENT_WRITE] (1 words, type: 3, hdr: 0xc0004600)
+	[0@0x00000000 + 0x0034] [0x0000040f]    |---> EVENT_TYPE=15, EVENT_INDEX=4
+	[0@0x00000000 + 0x0038] [0xc0004600]    Opcode 0x46 [PKT3_EVENT_WRITE] (1 words, type: 3, hdr: 0xc0004600)
+	[0@0x00000000 + 0x003c] [0x00000024]    |---> EVENT_TYPE=36, EVENT_INDEX=0
+	[0@0x00000000 + 0x0040] [0xc0012800]    Opcode 0x28 [PKT3_CONTEXT_CONTROL] (2 words, type: 3, hdr: 0xc0012800)
+	[0@0x00000000 + 0x0044] [0x81018003]    |---> LOAD_EN=1, LOAD_CS=1, LOAD_GFX=1, LOAD_MULTI=1, LOAD_SINGLE=1
+	[0@0x00000000 + 0x0048] [0x00000000]    |---> SHADOW_EN=0, SHADOW_CS=0, SHADOW_GFX=0, SHADOW_MULTI=0, SHADOW_SINGLE=0
+	Done decoding IB
 
 -----------------
 Bitfield Decoding
