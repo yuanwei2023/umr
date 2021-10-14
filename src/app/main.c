@@ -535,9 +535,16 @@ int main(int argc, char **argv)
 				umr_scan_log(asic);
 			}
 		} else if (!strcmp(argv[i], "--top") || !strcmp(argv[i], "-t")) {
+			uint32_t value;
 			if (!asic)
 				asic = get_asic();
+			value = 0;
+			if (asic->fd.gfxoff >= 0)
+				write(asic->fd.gfxoff, &value, sizeof(value));
 			umr_top(asic);
+			value = 1;
+			if (asic->fd.gfxoff >= 0)
+				write(asic->fd.gfxoff, &value, sizeof(value));
 		} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
 			umr_enumerate_devices(vm_printf);
 			return 0;
