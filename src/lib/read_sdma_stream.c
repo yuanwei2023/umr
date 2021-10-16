@@ -119,7 +119,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t f
 						}
 						break;
 					case 1: // TILED
-						ps->nwords = 11;
+						ps->nwords = asic->family >= FAMILY_AI ? 12 : 11;
 						break;
 					case 3: // STRUCTURE/SOA
 						ps->nwords = 7;
@@ -139,7 +139,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t f
 				switch (ps->sub_opcode) {
 					case 0: // LINEAR
 						ps->nwords = 4;
-						ps->nwords += stream[2] - 1;
+						ps->nwords += stream[2] & 0xFFFFF;
 						break;
 					case 1: // TILED
 						ps->nwords = 9;
