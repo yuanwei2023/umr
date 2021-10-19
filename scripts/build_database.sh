@@ -46,6 +46,7 @@ parse_reg_bits dcn/dcn_3_0_0 dcn_3_0_0.reg
 parse_reg_bits dcn/dcn_3_0_1 dcn_3_0_1.reg
 parse_reg_bits dcn/dcn_3_0_2 dcn_3_0_2.reg
 parse_reg_bits dcn/dcn_3_0_3 dcn_3_0_3.reg
+parse_reg_bits dcn/dcn_3_1_2 dcn_3_1_2.reg
 parse_reg_bits dcn/dpcs_3_0_0 dpcs_3_0_0.reg
 
 parse_reg_bits df/df_1_7 df_1_7_0.reg
