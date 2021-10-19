@@ -70,4 +70,9 @@ int umr_query_drm(struct umr_asic *asic, int field, void *ret, int size)
 	return 0;
 }
 
+int umr_query_drm_vbios(struct umr_asic *asic, int field, int type, void *ret, int size)
+{
+	return 0;
+}
+
 #endif
