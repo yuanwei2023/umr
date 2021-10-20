@@ -1,0 +1,39 @@
+#!/bin/bash
+make -C ../comp/
+
+parse_reg_bits() {
+	suf=""
+	if [ -e ${pk}/include/asic_reg/$1_offset.h ]; then suf="offset"; fi
+	if [ -e ${pk}/include/asic_reg/$1_d.h ]; then suf="d"; export UMR_NO_SOC15=1; fi
+	if [ "${suf}" != "" ]; then
+		../comp/compiler ${pk}/include/asic_reg/$1_${suf}.h ${pk}/include/asic_reg/$1_sh_mask.h > ../database/ip/$2
+	fi
+	unset UMR_NO_SOC15
+}
+
+cd ${pk}
+git checkout amd-staging-drm-next
+git reset --hard origin/amd-staging-drm-next
+cd -
+
+# random bits
+UMR_NO_SOC15=1 ../comp/compiler ${pk}/include/asic_reg/gca/gfx_7_0_d.h ${pk}/include/asic_reg/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
+
+for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
+	ipname=`echo ${f} | tr [\/] [\ ] | awk '{ print $(NF); }' | tr [_] [\ ] | awk '{print $1}'`
+	dirname=`echo ${f} | tr [\/] [\ ] | awk '{ print $(NF - 1); }'`
+	ipnamelen=`expr ${#ipname} + 2`
+	revname=`echo ${f} | tr [\/] [\ ] | awk '{ print $NF; }' | cut -b${ipnamelen}- | sed -e 's/\.h//' -e 's/_d//' -e 's/_offset//'`
+	basename=`echo ${f} | sed -e 's/_d//' -e 's/_offset//' -e 's/\.h//'`
+
+
+	#older IP only had 2 parts to the name, add a '_0' in this case
+	revnameparts=`echo ${revname} | tr [_] [\ ] | awk '{ print NF; }'`
+	if [ ${revnameparts} == 2 ]; then
+		revname=${revname}_0
+	fi
+
+	parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${revname}.reg
+done
+
+make -C ../comp clean
