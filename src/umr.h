@@ -110,7 +110,8 @@ enum regclass {
 	REG_MMIO,
 	REG_DIDT,
 	REG_SMC,
-	REG_PCIE
+	REG_PCIE,
+	REG_SMN,
 };
 
 enum UMR_CLOCK_SOURCES {

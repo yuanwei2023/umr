@@ -25,7 +25,7 @@ for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
 	ipnamelen=`expr ${#ipname} + 2`
 	revname=`echo ${f} | tr [\/] [\ ] | awk '{ print $NF; }' | cut -b${ipnamelen}- | sed -e 's/\.h//' -e 's/_d//' -e 's/_offset//'`
 	basename=`echo ${f} | sed -e 's/_d//' -e 's/_offset//' -e 's/\.h//'`
-
+	smnname=`echo ${f} | sed -e 's/_d/_smn/' -e 's/_offset/_smn/'`
 
 	#older IP only had 2 parts to the name, add a '_0' in this case
 	revnameparts=`echo ${revname} | tr [_] [\ ] | awk '{ print NF; }'`
@@ -33,7 +33,13 @@ for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
 		revname=${revname}_0
 	fi
 
-	parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${revname}.reg
+	if [ -e ${smnname} ]; then
+		cat ${smnname} ${f} > /tmp/delme.h
+		../comp/compiler /tmp/delme.h `echo ${f} | sed -e 's/_d/_sh_mask/' -e 's/_offset/_sh_mask/'` > ../database/ip/${ipname}_${revname}.reg
+		rm -f /tmp/delme.h
+	else
+		parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${revname}.reg
+	fi
 done
 
 for f in ${pk}/include/*ip_offset.h; do

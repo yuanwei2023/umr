@@ -45,6 +45,7 @@ enum regtype {
 	REG_DIDT,
 	REG_SMC,
 	REG_PCIE,
+	REG_SMN,
 	REG_ERROR
 };
 
@@ -131,6 +132,8 @@ retry:
 		if (!memcmp(r->name, "reg", 3) && !strcmp(r->name + 3, name))
 			break;
 		if (!memcmp(r->name, "cfg", 3) && !strcmp(r->name + 3, name))
+			break;
+		if (!memcmp(r->name, "smn", 3) && !strcmp(r->name + 3, name))
 			break;
 		r = r->next;
 	}
@@ -241,6 +244,8 @@ struct regs *compile_register(char *s)
 				r->type = REG_SMC;
 			else if (!memcmp(sym, "cfg", 3))
 				r->type = REG_PCIE;
+			else if (!memcmp(sym, "smn", 3))
+				r->type = REG_SMN;
 
 			if (r->type != REG_ERROR) {
 				// is this an IDX define?
