@@ -36,4 +36,12 @@ for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
 	parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${revname}.reg
 done
 
+for f in ${pk}/include/*ip_offset.h; do
+	asicname=`echo ${f} | tr [\/] [\ ] | awk '{ print $(NF); }' | sed -e 's/_ip_offset.h//'`
+	if [ ${asicname} == arct ]; then
+		asicname=arcturus
+	fi
+	../comp/compiler ${f} > ../database/${asicname}.soc15
+done
+
 make -C ../comp clean
