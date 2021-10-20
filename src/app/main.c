@@ -315,10 +315,13 @@ int main(int argc, char **argv)
 				asic = get_asic();
 			umr_print_config(asic);
 		} else if (!strcmp(argv[i], "--list-blocks") || !strcmp(argv[i], "-lb")) {
+			uint32_t rev;
 			if (!asic)
 				asic = get_asic();
-			for (j = 0; j < asic->no_blocks; j++)
-				printf("\t%s.%s\n", asic->asicname, asic->blocks[j]->ipname);
+			for (j = 0; j < asic->no_blocks; j++) {
+				rev = umr_get_ip_revision(asic, asic->blocks[j]->ipname);
+				printf("\t%s.%s (%"PRIu32")\n", asic->asicname, asic->blocks[j]->ipname, rev);
+			}
 		} else if (!strcmp(argv[i], "--list-regs") || !strcmp(argv[i], "-lr")) {
 			if (i + 1 < argc) {
 				if (!asic)

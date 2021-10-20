@@ -17,6 +17,7 @@ add_library(umrcore STATIC
   find_reg.c
   free_asic_blocks.c
   ih_decode_vectors.c
+  get_ip_rev.c
   mmio.c
   pm4_decode_opcodes.c
   read_pm4_stream.c

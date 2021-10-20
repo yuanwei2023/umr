@@ -1016,6 +1016,7 @@ int umr_update(struct umr_asic *asic, char *script);
 int umr_update_string(struct umr_asic *asic, char *sdata);
 
 /* lib helpers */
+uint32_t umr_get_ip_revision(struct umr_asic *asic, const char *ipname);
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws);
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic);
 int umr_read_wave_status_via_mmio_gfx8_9(struct umr_asic *asic, uint32_t simd, uint32_t wave, uint32_t *dst, int *no_fields);
