@@ -1,4 +1,4 @@
-CFLAGS += -Wall -g3 -Os
+CFLAGS += -Wall -g3 -O3
 
 compiler: compiler.o
 	${CC} $^ -o $@
