@@ -1,4 +1,4 @@
-beige_goby beige_goby.soc15 4 11 2
+beige_goby beige_goby.soc15 4 12 2
 athub210 ATHUB 0 ip/athub_2_1_0.reg
 gfx1030 GC 0 ip/gc_10_3_0.reg
 hdp500 HDP 0 ip/hdp_5_0_0.reg
