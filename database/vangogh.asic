@@ -1,4 +1,4 @@
-vangogh vangogh.soc15 4 11 2
+vangogh vangogh.soc15 4 11 2 1
 clk1150 CLK 0 ip/clk_11_5_0.reg
 dcn301 DCN 0 ip/dcn_3_0_1.reg
 smuio1100 SMUIO 0 ip/smuio_11_0_0.reg

@@ -1,4 +1,4 @@
-aldebaran aldebaran.soc15 3 12 3
+aldebaran aldebaran.soc15 3 12 3 0
 vcn260 VCN 0 ip/vcn_2_6_0.reg
 umc670 UMC  0 ip/umc_6_7_0.reg
 sdma0440 SDMA0 0 ip/sdma_4_4_0.reg

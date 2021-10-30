@@ -1,4 +1,4 @@
-vega12 vega10.soc15 3 13 2
+vega12 vega10.soc15 3 13 2 0
 gfx921 GC 0 ip/gc_9_2_1.reg
 uvd700 UVD 0 ip/uvd_7_0_0.reg
 vce400 VCE 0 ip/vce_4_0_0.reg

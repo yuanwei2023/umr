@@ -1,4 +1,4 @@
-arcturus arcturus.soc15 3 21 2
+arcturus arcturus.soc15 3 21 2 0
 gfx90 GC 0 ip/gc_9_0_0.reg
 hdp400 HDP 0 ip/hdp_4_0_0.reg
 oss420 OSSSYS 0 ip/osssys_4_2_0.reg

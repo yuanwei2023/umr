@@ -1,4 +1,4 @@
-renoir renoir.soc15 3 12 2
+renoir renoir.soc15 3 12 2 1
 clk1002 CLK 0 ip/clk_10_0_2.reg
 gfx910  GC 0 ip/gc_9_1_0.reg
 vcn200  UVD0 0 ip/vcn_2_0_0.reg

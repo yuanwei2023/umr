@@ -41,7 +41,7 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 	FILE *f;
 	int x;
 	struct {
-		int family, numblocks, vgpr_granularity;
+		int family, numblocks, vgpr_granularity, is_apu;
 	} asic_fields;
 
 	f = umr_database_open(options->database_path, filename);
@@ -53,7 +53,7 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 	asic = calloc(1, sizeof *asic);
 	asic->err_msg = errout;
 	fgets(linebuf, sizeof linebuf, f);
-	if (sscanf(linebuf, "%s %s %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity) != 5) {
+	if (sscanf(linebuf, "%s %s %d %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity, &asic_fields.is_apu) != 6) {
 		asic->err_msg("[ERROR]: Invalid ASIC header line [%s]\n", linebuf);
 		free(asic);
 		return NULL;
@@ -75,6 +75,7 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 	asic->options   = *options;
 	asic->no_blocks = asic_fields.numblocks;
 	asic->family    = asic_fields.family;
+	asic->is_apu    = asic_fields.is_apu;
 	asic->parameters.vgpr_granularity = asic_fields.vgpr_granularity;
 	asic->blocks    = calloc(asic->no_blocks, sizeof(*(asic->blocks)));
 

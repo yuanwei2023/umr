@@ -422,6 +422,7 @@ struct umr_asic {
 	int no_blocks;
 	int instance;
 	enum chipfamily family;
+	int is_apu;
 	unsigned did;
 	struct umr_ip_block **blocks;
 	struct {
