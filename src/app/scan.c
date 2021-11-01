@@ -29,13 +29,20 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 {
 	int r, i, j, k, count = 0, noipreg = 1;
 	uint64_t scale;
-	char regname_copy[256];
+	char regname_copy[256], ipname_esc[256];
 	uint32_t v32;
 
 	regex_t ip_regex, reg_regex;
 
+	memset(ipname_esc, 0, sizeof ipname_esc);
+	for (i = r = 0; ipname[r]; r++) {
+		if (ipname[r] == '{') { ipname_esc[i++] = '\\'; ipname_esc[i++] = '{'; }
+		else if (ipname[r] == '}') { ipname_esc[i++] = '\\'; ipname_esc[i++] = '}'; }
+		else ipname_esc[i++] = ipname[r];
+	}
+
 	if (strcmp(ipname, "*")) {
-		if (regcomp(&ip_regex, ipname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
+		if (regcomp(&ip_regex, ipname_esc, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
 			fprintf(stderr, "[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
 			return -1;
 		}
