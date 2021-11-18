@@ -115,7 +115,7 @@ static void init_asics() {
 	opt.forcedid = -1;
 	opt.scanblock = "";
 	opt.instance = 0;
-	while ((asics[i] = umr_discover_asic(&opt))) {
+	while ((asics[i] = umr_discover_asic(&opt, NULL))) {
 		// assign linux callbacks
 		asics[i]->mem_funcs.vm_message = NULL;
 		asics[i]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
