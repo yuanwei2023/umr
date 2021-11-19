@@ -19,6 +19,8 @@ cd -
 # random bits
 UMR_NO_SOC15=1 ../comp/compiler ${pk}/include/asic_reg/gca/gfx_7_0_d.h ${pk}/include/asic_reg/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
 
+x=0
+
 for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
 	ipname=`echo ${f} | tr [\/] [\ ] | awk '{ print $(NF); }' | tr [_] [\ ] | awk '{print $1}'`
 	dirname=`echo ${f} | tr [\/] [\ ] | awk '{ print $(NF - 1); }'`
@@ -40,14 +42,20 @@ for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
 	else
 		parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${revname}.reg
 	fi
+	x=`expr ${x} + 1`
 done
 
+echo "Parsed ${x} register files..."
+
+x=0
 for f in ${pk}/include/*ip_offset.h; do
 	asicname=`echo ${f} | tr [\/] [\ ] | awk '{ print $(NF); }' | sed -e 's/_ip_offset.h//'`
 	if [ ${asicname} == arct ]; then
 		asicname=arcturus
 	fi
 	../comp/compiler ${f} > ../database/${asicname}.soc15
+	x=`expr ${x} + 1`
 done
+echo "Parsed ${x} IP offset files..."
 
 make -C ../comp clean
