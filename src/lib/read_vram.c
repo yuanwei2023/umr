@@ -323,34 +323,6 @@ static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table
 	return vm_bits;
 }
 
-typedef struct {
-	uint64_t
-		frag_size,
-		pte_base_addr,
-		valid,
-		system,
-		coherent,
-		pte,
-		further;
-} pde_fields_ai_t;
-
-typedef struct {
-	uint64_t
-		valid,
-		system,
-		coherent,
-		tmz,
-		execute,
-		read,
-		write,
-		fragment,
-		page_base_addr,
-		prt,
-		pde,
-		further,
-		mtype;
-} pte_fields_ai_t;
-
 /*
  * PDE format on AI:
  * 63:59 block fragment size
@@ -1002,6 +974,7 @@ pde_is_pte:
 				} else {
 					print_pte_ai(asic, indentation, pde_cnt, prev_addr, pte_idx,
 							pte_entry, address, va_mask, pte_fields);
+					pte_fields.pte_mask = va_mask;
 				}
 			}
 
@@ -1151,6 +1124,10 @@ next_page:
 	} while (size);
 	if (asic->options.verbose)
 		asic->mem_funcs.vm_message("\n=== Completed VM Decoding ===\n");
+
+	if (asic->mem_funcs.va_addr_decode)
+		asic->mem_funcs.va_addr_decode(pde_array, pde_cnt, pte_fields);
+
 	return 0;
 
 invalid_page:

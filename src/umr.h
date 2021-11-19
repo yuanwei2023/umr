@@ -311,6 +311,35 @@ struct umr_options {
 	} pci;
 };
 
+typedef struct {
+	uint64_t
+		frag_size,
+		pte_base_addr,
+		valid,
+		system,
+		coherent,
+		pte,
+		further;
+} pde_fields_ai_t;
+
+typedef struct {
+	uint64_t
+		valid,
+		system,
+		coherent,
+		tmz,
+		execute,
+		read,
+		write,
+		fragment,
+		page_base_addr,
+		prt,
+		pde,
+		further,
+		mtype,
+		pte_mask;
+} pte_fields_ai_t;
+
 struct umr_memory_access_funcs {
 	/** access_sram -- Access System RAM
 	 * @asic:  The device the memory is bound to
@@ -347,6 +376,8 @@ struct umr_memory_access_funcs {
 	 * @...:  Parameters to print
 	 */
 	int (*vm_message)(const char *fmt, ...);
+
+	void (*va_addr_decode)(pde_fields_ai_t *pdes, int num_pde, pte_fields_ai_t pte);
 
 	/** data -- opaque pointer the callbacks can use for state tracking */
 	void *data;
