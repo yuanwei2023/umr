@@ -1432,3 +1432,7 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename, umr_err_output errout);
 void umr_database_free_soc15(struct umr_soc15_database *soc15);
 
+int umr_discovery_table_is_supported(struct umr_asic *asic);
+int umr_discovery_read_table(struct umr_asic *asic, uint8_t *table, uint32_t *size);
+int umr_discovery_verify_table(uint8_t *table);
+int umr_discovery_dump_table(struct umr_asic *asic, uint8_t *table, FILE *stream);

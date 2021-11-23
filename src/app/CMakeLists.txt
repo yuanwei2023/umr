@@ -37,6 +37,7 @@ add_library(umrapp STATIC
   read_metrics.c
   ring_stream_read.c
   vbios.c
+  discovery.c
   ${GUI_SOURCE}
 )
 

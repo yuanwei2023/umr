@@ -13,6 +13,7 @@ add_library(umrcore STATIC
   decode_metrics.c
   discover_by_did.c
   discover_by_name.c
+  discovery_table.c
   dump_ib.c
   find_reg.c
   free_asic_blocks.c

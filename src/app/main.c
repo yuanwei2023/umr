@@ -883,6 +883,9 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--dump-discovery-table") || !strcmp(argv[i], "-ddt")) {
+			asic = asic ? asic: get_asic();
+			umr_dump_discovery_table_info(asic, NULL);
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2021, AMD Inc.\n"
 "\n*** Device Selection ***\n"
@@ -915,6 +918,7 @@ int main(int argc, char **argv)
 "\n\t--enumerate, -e\n\t\tEnumerate all AMDGPU devices detected.\n"
 "\n\t--list-blocks, -lb\n\t\tList the IP blocks discovered for this device.\n"
 "\n\t--list-regs, -lr <string>\n\t\tList the registers for a given IP block (can use '-O bits' to list bitfields).\n"
+"\n\t--dump-discovery-table, -ddt \n\t\tDump device discovery table information.\n"
 "\n*** Register Access ***\n"
 "\n\t--lookup, -lu <address_or_regname> <value>\n\t\tLook up bit decoding of an MMIO register by address (with 0x prefix) or by register name."
 	"\n\t\tThe register name string must include the ipname, e.g., uvd6.mmUVD_CONTEXT_ID.\n"
