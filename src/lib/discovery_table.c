@@ -132,14 +132,14 @@ static int umr_verify_discovery_table_by_id(uint8_t *table, int table_id)
 	return umr_calculate_discovery_checksum(table + offset, size) == checksum ? 0 : -1;
 }
 
-int umr_discovery_verify_table(uint8_t *table)
+int umr_discovery_verify_table(struct umr_asic *asic, uint8_t *table)
 {
 	struct binary_header *bhdr = (struct binary_header *)table;
 	uint16_t offset, size, checksum;
 
 	/* 1. verify table header */
 	if (le32toh(bhdr->binary_signature) != BINARY_SIGNATURE) {
-		fprintf(stderr, "[ERROR]: invalid discovery table signature: 0x%08x\n",
+		asic->err_msg("[ERROR]: invalid discovery table signature: 0x%08x\n",
 			le32toh(bhdr->binary_signature));
 		return -1;
 	}
@@ -150,23 +150,23 @@ int umr_discovery_verify_table(uint8_t *table)
 	checksum = le16toh(bhdr->binary_checksum);
 
 	if (umr_calculate_discovery_checksum(table + offset, size) != checksum) {
-		fprintf(stderr, "[ERROR]: invalid discovery table checksum\n");
+		asic->err_msg("[ERROR]: invalid discovery table checksum\n");
 		return -1;
 	}
 
 	/* 3. verify discovery tables */
 	if (umr_verify_discovery_table_by_id(table, IP_DISCOVERY)) {
-		fprintf(stderr, "[ERROR]: invalid discovery table: IP_DISCOVERY\n");
+		asic->err_msg("[ERROR]: invalid discovery table: IP_DISCOVERY\n");
 		return -1;
 	}
 
 	if (umr_verify_discovery_table_by_id(table, GC)) {
-		fprintf(stderr, "[ERROR]: invalid discovery table: GC\n");
+		asic->err_msg("[ERROR]: invalid discovery table: GC\n");
 		return -1;
 	}
 
 	if (umr_verify_discovery_table_by_id(table, HARVEST_INFO)) {
-		fprintf(stderr, "[ERROR]: invalid discovery table: HARVEST_INFO\n");
+		asic->err_msg("[ERROR]: invalid discovery table: HARVEST_INFO\n");
 		return -1;
 	}
 
@@ -284,7 +284,7 @@ static const char *hwid2name(uint32_t id)
 	return hwid_name[id];
 }
 
-static int umr_dump_discovery_table__ip_discovery(uint8_t *table, FILE *stream, int level)
+static int umr_dump_discovery_table__ip_discovery(struct umr_asic *asic, uint8_t *table, FILE *stream, int level)
 {
 	struct binary_header *bhdr = (struct binary_header *)table;
 	struct table_info *table_info = &bhdr->table_list[IP_DISCOVERY];
@@ -293,7 +293,7 @@ static int umr_dump_discovery_table__ip_discovery(uint8_t *table, FILE *stream, 
 	uint32_t signature = le32toh(ihdr->signature);
 
 	if (signature != SIGNATURE('I', 'P', 'D', 'S')) {
-		fprintf(stderr, "invalid IP_DISCOVERY signature: 0x%08x\n", signature);
+		asic->err_msg("invalid IP_DISCOVERY signature: 0x%08x\n", signature);
 		return -1;
 	}
 
@@ -338,7 +338,7 @@ static int umr_dump_discovery_table__ip_discovery(uint8_t *table, FILE *stream, 
 
 #define DUMP_GC_INFO_V1_0(field) \
 	lfprintf(level, stream, "%-30s:%-8d (0x%08x) \n", #field, le32toh(v1_0->field), le32toh(v1_0->field))
-static int umr_dump_discovery_table__gc(uint8_t *table, FILE *stream, int level)
+static int umr_dump_discovery_table__gc(struct umr_asic *asic, uint8_t *table, FILE *stream, int level)
 {
 	struct binary_header *bhdr = (struct binary_header *)table;
 	struct table_info *table_info = &bhdr->table_list[GC];
@@ -348,7 +348,7 @@ static int umr_dump_discovery_table__gc(uint8_t *table, FILE *stream, int level)
 	uint32_t version_major, version_minor;
 
 	if (table_id != SIGNATURE('G', 'C', 0, 0)) {
-		fprintf(stderr, "invalid gpu_info_header signature: 0x%08x\n", table_id);
+		asic->err_msg("invalid gpu_info_header signature: 0x%08x\n", table_id);
 		return -1;
 	}
 
@@ -392,7 +392,7 @@ static int umr_dump_discovery_table__gc(uint8_t *table, FILE *stream, int level)
 
 	return 0;
 }
-static int umr_dump_discovery_table__harvest_info(uint8_t *table, FILE *stream, int level)
+static int umr_dump_discovery_table__harvest_info(struct umr_asic *asic, uint8_t *table, FILE *stream, int level)
 {
 	struct binary_header *bhdr = (struct binary_header *)table;
 	struct table_info *table_info = &bhdr->table_list[HARVEST_INFO];
@@ -404,7 +404,7 @@ static int umr_dump_discovery_table__harvest_info(uint8_t *table, FILE *stream, 
 	uint32_t signature = le32toh(hhdr->signature);
 
 	if (signature != SIGNATURE('H', 'A', 'R', 'V')) {
-		fprintf(stderr, "[ERROR]: invalid harvest_table signature: 0x%08x\n", signature);
+		asic->err_msg("[ERROR]: invalid harvest_table signature: 0x%08x\n", signature);
 		return -1;
 	}
 
@@ -452,15 +452,15 @@ int umr_discovery_dump_table(struct umr_asic *asic, uint8_t *table, FILE *stream
 		switch (i) {
 		case IP_DISCOVERY:
 			lfprintf(level, stream, "TABLE: %s (%02d)\n", "IP_DISCOVERY", i);
-			ret = umr_dump_discovery_table__ip_discovery(table, stream, level + 1);
+			ret = umr_dump_discovery_table__ip_discovery(asic, table, stream, level + 1);
 			break;
 		case GC:
 			lfprintf(level, stream, "TABLE: %s (%02d)\n", "GC", i);
-			ret = umr_dump_discovery_table__gc(table, stream, level + 1);
+			ret = umr_dump_discovery_table__gc(asic, table, stream, level + 1);
 			break;
 		case HARVEST_INFO:
 			lfprintf(level, stream, "TABLE: %s (%02d)\n", "HARVEST_INFO", i);
-			ret = umr_dump_discovery_table__harvest_info(table, stream, level + 1);
+			ret = umr_dump_discovery_table__harvest_info(asic, table, stream, level + 1);
 			break;
 		default:
 			break;

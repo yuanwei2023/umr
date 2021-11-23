@@ -31,7 +31,7 @@ int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream)
 	void *table = NULL;
 
 	if (!umr_discovery_table_is_supported(asic)) {
-		fprintf(stream, "umr discovery table is not supported\n");
+		asic->err_msg("umr discovery table is not supported\n");
 		return 0;
 	}
 
@@ -49,7 +49,7 @@ int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream)
 	if (ret)
 		return ret;
 
-	ret = umr_discovery_verify_table(table);
+	ret = umr_discovery_verify_table(asic, table);
 	if (ret)
 		return ret;
 
