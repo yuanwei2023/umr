@@ -751,6 +751,69 @@ struct json_object *umr_process_json_request(struct json_object *request)
 				json_object_object_add(answer, "current", json_object_new_string(""));
 			}
 		}
+	} else if (strcmp(command, "sensors") == 0) {
+		static struct power_bitfield p_info[] = {
+			{"GFX_SCLK", 0, AMDGPU_PP_SENSOR_GFX_SCLK, SENSOR_D100 },
+			{"GFX_MCLK", 0, AMDGPU_PP_SENSOR_GFX_MCLK, SENSOR_D100 },
+			{"AVG_GPU",  0, AMDGPU_PP_SENSOR_GPU_POWER, SENSOR_WAIT },
+			{"GPU_LOAD", 0, AMDGPU_PP_SENSOR_GPU_LOAD, SENSOR_IDENTITY },
+			{"MEM_LOAD", 0, AMDGPU_PP_SENSOR_MEM_LOAD, SENSOR_IDENTITY },
+			{"GPU_TEMP", 0, AMDGPU_PP_SENSOR_GPU_TEMP, SENSOR_D1000 },
+			{NULL, 0, 0, 0},
+		};
+		char fname[256];
+		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_sensors", asic->instance);
+		asic->fd.sensors = open(fname, O_RDWR);
+		answer = json_object_new_object();
+		if (asic->fd.sensors) {
+			uint32_t gpu_power_data[32];
+			struct json_object *values = json_object_new_array();
+			for (int i = 0; p_info[i].regname; i++){
+				int size = 4;
+				p_info[i].value = 0;
+				gpu_power_data[0] = 0;
+				umr_read_sensor(asic, p_info[i].sensor_id, (uint32_t*)&gpu_power_data[0], &size);
+				if (gpu_power_data[0] != 0){
+					p_info[i].value = gpu_power_data[0];
+					p_info[i].value = parse_sensor_value(p_info[i].map, p_info[i].value);
+				}
+				struct json_object *v = json_object_new_object();
+				json_object_object_add(v, "name", json_object_new_string(p_info[i].regname));
+				json_object_object_add(v, "value", json_object_new_int(p_info[i].value));
+
+				/* Determine min/max */
+				{
+					int min, max;
+					if (i == 0) {
+						snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/pp_dpm_sclk", asic->instance);
+						parse_sysfs_clock_file(fname, &min, &max);
+						json_object_object_add(v, "unit", json_object_new_string("MHz"));
+					} else if (i == 1) {
+						snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/pp_dpm_mclk", asic->instance);
+						parse_sysfs_clock_file(fname, &min, &max);
+						json_object_object_add(v, "unit", json_object_new_string("MHz"));
+					} else if (i == 2) {
+						min = 0;
+						max = 300;
+						json_object_object_add(v, "unit", json_object_new_string("W"));
+					} else if (i >= 3 && i <= 4) {
+						min = 0;
+						max = 100;
+						json_object_object_add(v, "unit", json_object_new_string("%"));
+					} else {
+						min = 15;
+						max = 120;
+						json_object_object_add(v, "unit", json_object_new_string("°C"));
+					}
+					json_object_object_add(v, "min", json_object_new_int(min));
+					json_object_object_add(v, "max", json_object_new_int(max));
+				}
+
+				json_object_array_add(values, v);
+			}
+			close(asic->fd.sensors);
+			json_object_object_add(answer, "values", values);
+		}
 	} else {
 		last_error = "unknown command";
 		goto error;
