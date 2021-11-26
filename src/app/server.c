@@ -407,7 +407,6 @@ struct json_object *umr_process_json_request(struct json_object *request)
 	struct json_object *answer = NULL;
 	const char *last_error;
 	const char *command = json_get_string(request, "command");
-	int j, k, l;
 
 	if (!command) {
 		last_error = "missing command";
