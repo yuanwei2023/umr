@@ -935,10 +935,15 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		goto error;
 	}
 
-	return answer;
+	struct json_object *out = json_object_new_object();
+	json_object_object_add(out, "request", json_object_get(request));
+	json_object_object_add(out, "answer", answer);
+
+	return out;
 
 error:
 	answer = json_object_new_object();
+	json_object_object_add(answer, "request", request);
 	json_object_object_add(answer, "error", json_object_new_string(last_error));
 	return answer;
 }
@@ -974,7 +979,6 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 	for (;;) {
 		char* buf;
 		int len = nn_recv(sock, &buf, NN_MSG, 0);
-		// printf("Received %d\n", len);
 		if (len < 0)
 			exit(0);
 		struct json_object *request = json_tokener_parse_ex(parser, buf, len);
@@ -984,19 +988,13 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 			printf("ERROR\n");
 		} else {
 			struct json_object *answer = umr_process_json_request(request);
-			#if 0
-			static int count = 0;
-			char tmp[512];
-			sprintf(tmp, "/tmp/answer%d.json", count);
-			count++;
-			json_object_to_file(tmp, answer);
-			#endif
+
 			const char* s = json_object_to_json_string(answer);
 			size_t len = strlen(s) + 1;
 			if (nn_send(sock, s, len, 0) < 0)
 				exit(0);
+			
 			json_object_put(answer);
-			json_object_put(request);
 			json_tokener_reset(parser);
 		}
 		nn_freemsg(buf);
