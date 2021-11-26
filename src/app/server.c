@@ -30,6 +30,58 @@
 #include <nanomsg/reqrep.h>
 #include <json.h>
 
+static char * read_file(const char *path) {
+	static char *buffer = NULL;
+	static unsigned buffer_size = 0;
+	FILE *fd = fopen(path, "r");
+	if (fd) {
+		long total = 0;
+		while (1) {
+			if (total >= buffer_size) {
+				buffer_size = total ? total * 2 : 1024;
+				buffer = realloc(buffer, buffer_size);
+			}
+
+			int n = fread(&buffer[total], 1, buffer_size - total, fd);
+			if (!n) {
+				buffer[total] = '\0';
+				break;
+			}
+			total += n;
+		}
+		fclose(fd);
+		return buffer;
+	}
+	return "";
+}
+
+static uint64_t read_sysfs_uint64(const char *path) {
+	char *content = read_file(path);
+	uint64_t v;
+	if (sscanf(content, "%lu", &v) == 1)
+		return v;
+	return 0;
+}
+
+static void parse_sysfs_clock_file(const char *path, int *min, int *max) {
+	char *content = read_file(path);
+	*min = 0;
+	*max = 100;
+
+	int i, value;
+	char *in = content;
+	char *ptr;
+	while((ptr = strchr(in, '\n'))) {
+		*ptr = '\0';
+		if (sscanf(in, "%d: %dMHz", &i, &value) == 2) {
+			if (i == 0)
+				*min = value;
+			*max = value;
+		}
+		in = ptr + 1;
+	}
+}
+
 static const char *json_get_string(struct json_object *json, const char *name) {
 	struct json_object *val = json_object_object_get(json, name);
 	if (json_object_get_type(val) != json_type_string)
