@@ -166,17 +166,6 @@ static int dummy_printf(const char *fmt, ...) {
 	return 0;
 }
 
-static char ring_decode_buffer[8196];
-static int ring_decode_buffer_offset = 0;
-static int ring_decode_fn(const char *fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	ring_decode_buffer_offset += vsprintf(&ring_decode_buffer[ring_decode_buffer_offset], fmt, ap);
-	va_end(ap);
-
-	return 0;
-}
-
 static struct umr_asic *asics[16] = {0};
 
 static void init_asics() {
@@ -611,7 +600,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 	} else if (strcmp(command, "ring") == 0) {
 		char *ring_name = (char*) json_get_string(request, "ring");
 		uint32_t wptr, rptr, drv_wptr, ringsize, start, end, value, *ring_data;
-		struct umr_ring_decoder decoder;
+		struct umr_ring_decoder decoder, *pdecoder;
 
 		struct json_object *halt = json_object_object_get(request, "halt_waves");
 		int halt_waves = halt && json_object_get_int(halt);
@@ -636,9 +625,9 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		json_object_object_add(answer, "write_ptr", json_object_new_int(wptr / 4));
 		json_object_object_add(answer, "driver_write_ptr", json_object_new_int(drv_wptr / 4));
 
-		struct json_object *ring_decode_answer_array = json_object_new_array();
 		struct json_object *ring_decode_raw = json_object_new_array();
-		struct json_object *ring_decode_offset = json_object_new_array();
+		struct json_object *ring_decode_shaders = json_object_new_array();
+		struct json_object *ring_decode_ibs = json_object_new_array();
 
 		memset(&decoder, 0, sizeof decoder);
 		if (!memcmp(ring_name, "gfx", 3) ||
@@ -657,47 +646,62 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		start = 0;
 		end = ringsize - 4;
 
-		int is_nop;
-		int previous_was_nop = 0;
 		do {
-			ring_decode_buffer_offset = 0;
-
 			value = ring_data[(start+12)>>2];
 			decoder.next_ib_info.addr = start / 4;
-			umr_print_decode(asic, &decoder, value, ring_decode_fn);
+			umr_print_decode(asic, &decoder, value, dummy_printf);
 
 			start += 4;
 			start %= ringsize;
 
-			char *nop = strstr(ring_decode_buffer, "NOP]");
-			is_nop = nop && nop < &ring_decode_buffer[ring_decode_buffer_offset];
-			if (is_nop) {
-				if (previous_was_nop > 1)
-					continue;
-				else if (previous_was_nop == 1) {
-					strcpy(ring_decode_buffer, "(more NOPs)");
-					ring_decode_buffer_offset = strlen(ring_decode_buffer);
-					previous_was_nop++;
-				} else {
-					previous_was_nop = 1;
-				}
-			} else if (previous_was_nop) {
-				previous_was_nop = 0;
-			}
-
-			json_object_array_add(ring_decode_answer_array,
-								  json_object_new_string_len(ring_decode_buffer,
-															 ring_decode_buffer_offset));
 			json_object_array_add(ring_decode_raw, json_object_new_int(value));
-			json_object_array_add(ring_decode_offset, json_object_new_int(start / 4 - 1));
-
-
 		} while (start != ((end + 4) % ringsize));
 
-		json_object_object_add(answer, "decoded", ring_decode_answer_array);
+		pdecoder = &decoder;
+		while (pdecoder) {
+			/* Dump shaders */
+			struct umr_shaders_pgm *shader;
+			shader = pdecoder->shader;
+			uint32_t *opcodes = NULL;
+			while (shader) {
+				opcodes = realloc(opcodes, shader->size);
+
+				if (umr_read_vram(asic, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
+					struct json_object *s = json_object_new_object();
+					struct json_object *op = json_object_new_array();
+					for (unsigned i = 0; i < shader->size / 4; i++)
+						json_object_array_add(op, json_object_new_int(opcodes[i]));
+					json_object_object_add(s, "opcodes", op);
+					json_object_object_add(s, "address", json_object_new_uint64(shader->addr));
+					json_object_array_add(ring_decode_shaders, s);
+				}
+			}
+			free(opcodes);
+
+			/* Parse IB */
+			pdecoder = pdecoder->next_ib;
+
+			if (!pdecoder)
+				break;
+
+			uint32_t *data = malloc(pdecoder->next_ib_info.size);
+			if (!umr_read_vram(asic, pdecoder->next_ib_info.vmid,
+									 pdecoder->next_ib_info.ib_addr,
+									 pdecoder->next_ib_info.size, (void*)data)) {
+				struct json_object *s = json_object_new_object();
+				struct json_object *op = json_object_new_array();
+				for (unsigned i = 0; i < pdecoder->next_ib_info.size / 4; i++)
+					json_object_array_add(op, json_object_new_int(data[i]));
+				json_object_object_add(s, "opcodes", op);
+				json_object_object_add(s, "address", json_object_new_uint64(pdecoder->next_ib_info.ib_addr));
+				json_object_array_add(ring_decode_ibs, s);
+			}
+			free(data);
+		}
+
 		json_object_object_add(answer, "raw", ring_decode_raw);
-		json_object_object_add(answer, "offsets", ring_decode_offset);
-		ring_decode_answer_array = NULL;
+		json_object_object_add(answer, "shaders", ring_decode_shaders);
+		json_object_object_add(answer, "ibs", ring_decode_ibs);
 
 		if (halt_waves) {
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
