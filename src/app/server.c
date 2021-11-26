@@ -402,6 +402,20 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 		umr_free_pm4_stream(stream);
 }
 
+static int sort_by_size(const void *_a, const void *_b) {
+	struct json_object **a = (struct json_object **)_a;
+	struct json_object **b = (struct json_object **)_b;
+	if (!*a && !*b)
+		return 0;
+	if (!*a)
+		return 1;
+	if (!*b)
+		return 1;
+	uint64_t size_a = json_object_get_uint64(json_object_object_get(*a, "size"));
+	uint64_t size_b = json_object_get_uint64(json_object_object_get(*b, "size"));
+	return size_a < size_b;
+}
+
 struct json_object *umr_process_json_request(struct json_object *request)
 {
 	struct json_object *answer = NULL;
@@ -886,18 +900,19 @@ struct json_object *umr_process_json_request(struct json_object *request)
 							*b = '\0';
 
 							/* Parse size */
-							uint32_t sz;
-							sscanf(id, "%u byte", &sz);
+							uint64_t sz;
+							sscanf(id, "%lu byte", &sz);
 							ptr = b + 5;
 
 							struct json_object *bo = json_object_new_object();
 							json_object_array_add(cat, bo);
-							json_object_object_add(bo, "size", json_object_new_int(sz));
-
+							json_object_object_add(bo, "size", json_object_new_uint64(sz));
 							cat_total += sz;
 							pid_total += sz;
 
 							/* Parse attributes */
+							char attr_in_progress[256];
+							int concat_the_next_n = 0;
 							struct json_object *attr = json_object_new_array();
 							while (ptr < end_of_line) {
 								next_space = strchr(ptr, ' ');
@@ -905,8 +920,23 @@ struct json_object *umr_process_json_request(struct json_object *request)
 									next_space = end_of_line;
 								if (next_space) {
 									*next_space = '\0';
-									if (ptr != next_space)
-										json_object_array_add(attr, json_object_new_string(ptr));
+									if (ptr != next_space) {
+										if (!strcmp(ptr, "exported") || !strcmp(ptr, "pin")) {
+											strcpy(attr_in_progress, ptr);
+											concat_the_next_n = 2;
+										} else if (concat_the_next_n > 0) {
+											strcat(attr_in_progress, " ");
+											strcat(attr_in_progress, ptr);
+											concat_the_next_n--;
+										} else {
+											strcpy(attr_in_progress, ptr);
+										}
+
+										if (concat_the_next_n == 0) {
+											json_object_array_add(attr, json_object_new_string(attr_in_progress));
+											attr_in_progress[0] = '\0';
+										}
+									}
 									ptr = next_space + 1;
 								} else {
 									break;
@@ -923,7 +953,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 					}
 
 					if (cat_total > 0) {
-						// json_object_object_add(cat, "total", json_object_new_uint64(cat_total));
+						json_object_array_sort(cat, sort_by_size);
 						json_object_object_add(p, categories[i], cat);
 					}
 				}

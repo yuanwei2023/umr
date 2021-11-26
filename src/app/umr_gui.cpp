@@ -90,6 +90,7 @@ struct AsicData {
 		power_panel.last_answer = NULL;
 		power_panel.sensors_last_answer = NULL;
 		power_panel.sensor_previous_values = NULL;
+		memory_usage_panel.last_answer = NULL;
 
 		options.no_kernel = true;
 		options.instance = instance;
@@ -116,6 +117,8 @@ struct AsicData {
 			json_object_put(power_panel.last_answer);
 		if (power_panel.sensors_last_answer)
 			json_object_put(power_panel.sensors_last_answer);
+		if (memory_usage_panel.last_answer)
+			json_object_put(memory_usage_panel.last_answer);
 		for (int i = 0; i < ring_panel.num_rings; i++)
 			free(ring_panel.rings[i]);
 		free(ring_panel.rings);
@@ -186,6 +189,10 @@ struct AsicData {
 		float *sensor_previous_values;
 		int sensor_values_offset;
 	} power_panel;
+
+	struct {
+		struct json_object *last_answer;
+	} memory_usage_panel;
 
 	/* Interface */
 	char register_filter[32] = {};
@@ -499,6 +506,22 @@ void send_sensors_command(struct Link& lnk, AsicData &data) {
 	send_request(req, data.asic);
 }
 
+void process_memory_usage_command_answer(std::vector<AsicData*> *asics, struct json_object *in) {
+	struct json_object *request = json_object_object_get(in, "request");
+	struct json_object *answer = json_object_object_get(in, "answer");
+	AsicData *data = answer_to_asic_data(asics, request);
+
+	if (data->memory_usage_panel.last_answer)
+		json_object_put(data->memory_usage_panel.last_answer);
+	data->memory_usage_panel.last_answer = json_object_get(answer);
+}
+
+void send_memory_usage_command(struct Link& lnk, AsicData &data) {
+	struct json_object *req = json_object_new_object();
+	json_object_object_add(req, "command", json_object_new_string("memory-usage"));
+	send_request(req, data.asic);
+}
+
 static void process_response(std::vector<AsicData*> *asics, struct json_object *in) {
 	struct json_object *request = json_object_object_get(in, "request");
 	const char *cmd = json_object_get_string(json_object_object_get(request, "command"));
@@ -519,6 +542,8 @@ static void process_response(std::vector<AsicData*> *asics, struct json_object *
 			process_waves_command_answer(asics, in);
 		} else if (!strcmp(cmd, "sensors")) {
 			process_sensors_command_answer(asics, in);
+		} else if (!strcmp(cmd, "memory-usage")) {
+			process_memory_usage_command_answer(asics, in);
 		}
 	}
 
@@ -1713,6 +1738,125 @@ static int run_gui(const char *url)
 				}
 				ImGui::EndChild();
 				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("#b58900M#ffffffemory Usage", NULL, kb_shortcut(SDLK_m) ? ImGuiTabItemFlags_SetSelected : 0)) {
+				static float last_vm_read = 10;
+				static float autorefresh = 0;
+				if (pending_request.empty()) {
+					if (!data.memory_usage_panel.last_answer || (autorefresh && last_vm_read > autorefresh))
+						send_memory_usage_command(lnk, data);
+					last_vm_read = 0;
+				}
+				last_vm_read += dt;
+
+				ImGui::DragFloat("Refresh interval (drag to modify)", &autorefresh, 0.1, 0, 10, "%.1f sec");
+
+				if (data.memory_usage_panel.last_answer) {
+					const char * titles[] = { "VRAM", "GTT", "Visible VRAM" };
+					const char * names[] = { "vram", "gtt", "vis_vram" };
+
+					char overlay[200];
+					for (int i = 0; i < 3; i++) {
+						struct json_object *o = json_object_object_get(data.memory_usage_panel.last_answer, names[i]);
+						ImGui::Text("%*sUsed %s", strlen(titles[i]) - strlen(titles[2]), "", titles[i]);
+						ImGui::SameLine();
+						uint64_t used = json_object_get_uint64(json_object_object_get(o, "used")) / (1024 * 1024);
+						uint64_t total = json_object_get_uint64(json_object_object_get(o, "total")) / (1024 * 1024);
+						float ratio = used / (float)total;
+						sprintf(overlay, "%.1f% (of %" PRId64 " MB)", 100 * ratio, total);
+						ImGui::ProgressBar(ratio, ImVec2(-1, 0), overlay);
+					}
+
+					ImGui::Separator();
+
+					ImGui::BeginChild("amdgpu_vm_info");
+					struct json_object *pids = json_object_object_get(data.memory_usage_panel.last_answer, "pids");
+					const char *type[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
+
+					std::vector<struct json_object*> sorted;
+					for (int i = 0; i < json_object_array_length(pids); i++) {
+						struct json_object *pid = json_object_array_get_idx(pids, i);
+						sorted.push_back(pid);
+					}
+					std::sort(sorted.begin(), sorted.end(), [](struct json_object *a, struct json_object *b) {
+						return json_object_get_uint64(json_object_object_get(a, "total")) >
+							   json_object_get_uint64(json_object_object_get(b, "total"));
+					});
+
+					uint64_t max = sorted.size() ? json_object_get_uint64(json_object_object_get(sorted[0], "total")) / (1024 * 1024) : 0;
+					for (auto *pid: sorted) {
+						char label[256], overlay[256];
+						sprintf(label, "pid: %8d ", json_object_get_int(json_object_object_get(pid, "pid")));
+						const char *name = json_object_get_string(json_object_object_get(pid, "name"));
+						if (strlen(name))
+							strcat(label, name);
+						uint64_t s = json_object_get_uint64(json_object_object_get(pid, "total")) / (1024 * 1024);
+						ImGui::PushID(i);
+						sprintf(overlay, "%ld MB", s);
+						ImGui::ProgressBar(s / (float)max, ImVec2(avail.x / 5, 0), overlay);
+						ImGui::SameLine();
+						float x = ImGui::GetCursorPosX();
+						ImGui::BeginGroup();
+						if (ImGui::TreeNodeEx(label)) {
+							for (int j = 0; j < 6; j++) {
+								struct json_object *cat = json_object_object_get(pid, type[j]);
+								if (!cat)
+									continue;
+								int bo_count = json_object_array_length(cat);
+								if (!bo_count)
+									continue;
+								char label[128];
+								sprintf(label, "%s (%d bo)", type[j], bo_count);
+								if (ImGui::TreeNodeEx(label)) {
+									const char *categories[] = { "VRAM", "GTT" };
+									for (int c = 0; c < 2; c++) {
+										ImGui::PushID(c);
+										if (ImGui::TreeNodeEx(categories[c])) {
+											for (int k = 0; k < bo_count; k++) {
+												struct json_object *bo = json_object_array_get_idx(cat, k);
+												struct json_object *attr = json_object_object_get(bo, "attributes");
+												const char *cc = json_object_get_string(json_object_array_get_idx(attr, 0));
+												if (!cc || strcmp(categories[c], cc))
+													continue;
+												ImGui::PushID(k);
+												uint64_t s = json_object_get_uint64(json_object_object_get(bo, "size"));
+												if (s < 1024)
+													ImGui::Text("%4d #6bde79b", (int)s);
+												else if (s < 1024 * 1024)
+													ImGui::Text("%4d #9bde79kb", (int)(s / 1024));
+												else if (s < 1024 * 1024 * 1024)
+													ImGui::Text("%4d #ab8e79Mb", (int)(s / (1024 * 1024)));
+												else
+													ImGui::Text("%4d #db2e79Gb", (int)(s / (1024 * 1024 * 1024)));
+												int cnt = json_object_array_length(attr);
+												for (int l = 1; l < cnt; l++) {
+													ImGui::SameLine();
+													ImGui::Text("%s%s%s",
+																l == 1 ? "(" : "",
+																json_object_get_string(json_object_array_get_idx(attr, l)),
+																(l == cnt - 1) ? ")" : ",");
+												}
+												ImGui::PopID();
+											}
+											ImGui::TreePop();
+										}
+										ImGui::PopID();
+									}
+									ImGui::TreePop();
+								}
+							}
+							ImGui::TreePop();
+						}
+						ImGui::EndGroup();
+						ImGui::PopID();
+					}
+					ImGui::EndChild();
+				}
+
+				ImGui::EndTabItem();
+				if (autorefresh)
+					need_auto_refresh = -1;
 			}
 
 			if (ImGui::BeginTabItem("Memory #b58900I#ffffffnspector", NULL, kb_shortcut(SDLK_i) ? ImGuiTabItemFlags_SetSelected : 0)) {
