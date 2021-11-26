@@ -135,59 +135,34 @@ static uint32_t parse_sensor_value(enum sensor_maps map, uint32_t value)
 }
 
 struct {
-	uint64_t addr;
-	uint64_t va;
 	uint64_t pba;
+	uint64_t va_mask;
 
 	int type; /* 0: base, 1: pde, 2: pte */
 
-	int valid;
-	int system;
-	int cache;
+	int system, tmz, mtype;
 	int pte;
 } page_table[64];
 int num_page_table_entries;
 
-static int my_vm_message_fn(const char *fmt, ...) {
-	int arg_offset = -1;
-
-	if (strstr(fmt, "BASE=") == fmt) {
-		page_table[num_page_table_entries].type = 0;
-		arg_offset = 0;
-	} else if (strstr(fmt, "PDE")) {
-		page_table[num_page_table_entries].type = 1;
-		arg_offset = 4;
-	} else if (strstr(fmt, "%s %s@{") == fmt) {
-		page_table[num_page_table_entries].type = 2;
-		arg_offset = 4;
-	}
-
-	if (arg_offset >= 0) {
-		va_list ap;
-		va_start(ap, fmt);
-		for(int i = 0; ; i++) {
-			if (i < arg_offset)
-				va_arg(ap, int);
-			else if (i == arg_offset + 0)
-				page_table[num_page_table_entries].addr = va_arg(ap, uint64_t);
-			else if (i == arg_offset + 1)
-				page_table[num_page_table_entries].va = va_arg(ap, uint64_t);
-			else if (i == arg_offset + 2)
-				page_table[num_page_table_entries].pba = va_arg(ap, uint64_t);
-			else if (i == arg_offset + 3)
-				page_table[num_page_table_entries].valid = va_arg(ap, int);
-			else if (i == arg_offset + 4)
-				page_table[num_page_table_entries].system = va_arg(ap, int);
-			else if (i == arg_offset + 5)
-				page_table[num_page_table_entries].cache = va_arg(ap, int);
-			else if (i == arg_offset + 6)
-				page_table[num_page_table_entries].pte = va_arg(ap, int);
-			else
-				break;
-		}
-		va_end(ap);
+static void my_va_decode(pde_fields_ai_t *pdes, int num_pde, pte_fields_ai_t pte) {
+	for (int i = 0; i < num_pde; i++) {
+		page_table[num_page_table_entries].pba = pdes[i].pte_base_addr;
+		page_table[num_page_table_entries].type = i == 0 ? 0 : 1;
+		page_table[num_page_table_entries].system = pdes[i].pte;
 		num_page_table_entries++;
 	}
+	if (pte.valid || 1) {
+		page_table[num_page_table_entries].type = 2;
+		page_table[num_page_table_entries].pba = pte.page_base_addr;
+		page_table[num_page_table_entries].system = pte.system;
+		page_table[num_page_table_entries].va_mask = pte.pte_mask;
+		num_page_table_entries++;
+	}
+}
+
+static int dummy_printf(const char *fmt, ...) {
+	(void)fmt;
 	return 0;
 }
 
@@ -575,7 +550,9 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		}
 
 		asic->options.verbose = 1;
-		asic->mem_funcs.vm_message = my_vm_message_fn;
+		asic->mem_funcs.vm_message = dummy_printf;
+		asic->mem_funcs.va_addr_decode = my_va_decode;
+
 		memset(page_table, 0, sizeof(page_table));
 		num_page_table_entries = 0;
 
@@ -607,12 +584,13 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		struct json_object *pt = json_object_new_array	();
 		for (int i = 0; i < num_page_table_entries; i++) {
 			struct json_object *level = json_object_new_object();
-			json_object_object_add(level, "address", json_object_new_uint64(page_table[i].addr));
-			json_object_object_add(level, "va", json_object_new_uint64(page_table[i].va));
 			json_object_object_add(level, "pba", json_object_new_uint64(page_table[i].pba));
+			if (page_table[i].type == 2)
+				json_object_object_add(level, "va_mask", json_object_new_uint64(page_table[i].va_mask));
 			json_object_object_add(level, "type", json_object_new_int(page_table[i].type));
-			json_object_object_add(level, "valid", json_object_new_int(page_table[i].valid));
 			json_object_object_add(level, "system", json_object_new_int(page_table[i].system));
+			json_object_object_add(level, "tmz", json_object_new_int(page_table[i].tmz));
+			json_object_object_add(level, "mtype", json_object_new_int(page_table[i].mtype));
 			json_object_array_add(pt, level);
 		}
 		json_object_object_add(answer, "page_table", pt);
