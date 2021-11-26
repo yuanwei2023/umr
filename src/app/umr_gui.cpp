@@ -87,6 +87,9 @@ struct AsicData {
 		waves_panel.details.view = NULL;
 		waves_panel.details.vgpr = NULL;
 		ring_panel.last_answer = NULL;
+		power_panel.last_answer = NULL;
+		power_panel.sensors_last_answer = NULL;
+		power_panel.sensor_previous_values = NULL;
 
 		options.no_kernel = true;
 		options.instance = instance;
@@ -109,9 +112,14 @@ struct AsicData {
 		}
 		if (ring_panel.last_answer)
 			json_object_put(ring_panel.last_answer);
+		if (power_panel.last_answer)
+			json_object_put(power_panel.last_answer);
+		if (power_panel.sensors_last_answer)
+			json_object_put(power_panel.sensors_last_answer);
 		for (int i = 0; i < ring_panel.num_rings; i++)
 			free(ring_panel.rings[i]);
 		free(ring_panel.rings);
+		free(power_panel.sensor_previous_values);
 		free(memory_panel.vram_content);
 		umr_close_asic(asic);
 	}
@@ -169,6 +177,15 @@ struct AsicData {
 		int num_rings;
 		struct json_object *last_answer;
 	} ring_panel;
+
+	struct {
+		struct json_object *last_answer;
+
+		struct json_object *sensors_last_answer;
+		bool consumed;
+		float *sensor_previous_values;
+		int sensor_values_offset;
+	} power_panel;
 
 	/* Interface */
 	char register_filter[32] = {};
@@ -445,6 +462,43 @@ void send_waves_command(struct Link& lnk, AsicData &data, bool halt_waves, bool 
 	send_request(req, data.asic);
 }
 
+void process_power_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+{
+	struct json_object *request = json_object_object_get(in, "request");
+	struct json_object *answer = json_object_object_get(in, "answer");
+	AsicData *data = answer_to_asic_data(asics, request);
+
+	if (data->power_panel.last_answer)
+		json_object_put(data->power_panel.last_answer);
+	data->power_panel.last_answer = json_object_get(answer);
+}
+
+void send_power_command(struct Link& lnk, AsicData &data, const char *new_value) {
+	struct json_object *req = json_object_new_object();
+	json_object_object_add(req, "command", json_object_new_string("power"));
+	if (new_value)
+		json_object_object_add(req, "set", json_object_new_string(new_value));
+	send_request(req, data.asic);
+}
+
+void process_sensors_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+{
+	struct json_object *request = json_object_object_get(in, "request");
+	struct json_object *answer = json_object_object_get(in, "answer");
+	AsicData *data = answer_to_asic_data(asics, request);
+
+	if (data->power_panel.sensors_last_answer)
+		json_object_put(data->power_panel.sensors_last_answer);
+	data->power_panel.sensors_last_answer = json_object_get(answer);
+	data->power_panel.consumed = false;
+}
+
+void send_sensors_command(struct Link& lnk, AsicData &data) {
+	struct json_object *req = json_object_new_object();
+	json_object_object_add(req, "command", json_object_new_string("sensors"));
+	send_request(req, data.asic);
+}
+
 static void process_response(std::vector<AsicData*> *asics, struct json_object *in) {
 	struct json_object *request = json_object_object_get(in, "request");
 	const char *cmd = json_object_get_string(json_object_object_get(request, "command"));
@@ -459,8 +513,12 @@ static void process_response(std::vector<AsicData*> *asics, struct json_object *
 			process_ring_command_answer(asics, in);
 		} else if (!strcmp(cmd, "vm-decode") || !strcmp(cmd, "vm-read")) {
 			process_vm_read_command_answer(asics, in);
+		} else if (!strcmp(cmd, "power")) {
+			process_power_command_answer(asics, in);
 		} else if (!strcmp(cmd, "waves")) {
 			process_waves_command_answer(asics, in);
+		} else if (!strcmp(cmd, "sensors")) {
+			process_sensors_command_answer(asics, in);
 		}
 	}
 
@@ -1580,6 +1638,80 @@ static int run_gui(const char *url)
 					
 					ImGui::EndTabBar();
 				}
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("#b58900P#ffffffower", NULL, kb_shortcut(SDLK_p) ? ImGuiTabItemFlags_SetSelected : 0)) {
+				ImGui::BeginChild("power profiles", ImVec2(avail.x / 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+				static float last_sensor_read = 0;
+				static float sensor_read_interval = 0.5;
+				if (!data.power_panel.last_answer) {
+					send_power_command(lnk, data, NULL);
+					last_sensor_read = 0;
+				} else {
+					ImGui::Text("Select DPM profile :");
+					ImGui::Indent();
+					ImGui::BeginDisabled(!pending_request.empty());
+					struct json_object *profiles = json_object_object_get(data.power_panel.last_answer, "profiles");
+					const char *current = json_object_get_string(json_object_object_get(data.power_panel.last_answer, "current"));
+					for (int i = 0; i < json_object_array_length(profiles) ; i++) {
+						const char *profile = json_object_get_string(json_object_array_get_idx(profiles, i));
+						if (ImGui::RadioButton(profile, !strcmp(current, profile))) {
+							send_power_command(lnk, data, profile);
+							last_sensor_read = 10;
+						}
+					}
+					ImGui::EndDisabled();
+					ImGui::Unindent();
+				}
+				ImGui::EndChild();
+				ImGui::SameLine();
+				ImGui::BeginChild("power sensors", ImVec2(avail.x * 2.0/ 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+				ImGui::Text("Sensors values:");
+				if (last_sensor_read > sensor_read_interval) {
+					if (pending_request.empty())
+						send_sensors_command(lnk, data);
+					last_sensor_read = 0;
+				}
+				last_sensor_read += dt;
+
+				if (data.power_panel.sensors_last_answer) {
+					ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
+
+					const int old_value_count = 100;
+					struct json_object *values = json_object_object_get(data.power_panel.sensors_last_answer, "values");
+					int sensors_count = json_object_array_length(values);
+
+					if (!data.power_panel.sensor_previous_values) {
+						data.power_panel.sensor_previous_values = (float *)calloc(sensors_count * old_value_count, sizeof(float));
+						data.power_panel.sensor_values_offset = 0;
+					}
+
+					for (int i = 0; i < sensors_count; i++) {
+						struct json_object *v = json_object_array_get_idx(values, i);
+						data.power_panel.sensor_previous_values[i * old_value_count + data.power_panel.sensor_values_offset] =
+							json_object_get_int(json_object_object_get(v, "value"));
+
+						ImGui::PlotLines(json_object_get_string(json_object_object_get(v, "name")),
+											 &data.power_panel.sensor_previous_values[i * old_value_count],
+											 old_value_count,
+											 data.power_panel.sensor_values_offset + 1,
+											 NULL,
+											 json_object_get_int(json_object_object_get(v, "min")),
+											 json_object_get_int(json_object_object_get(v, "max")),
+											 ImVec2(0, avail.y / (2 + sensors_count)));
+						ImGui::SameLine();
+						ImGui::Text(": %d %s",
+							(int)data.power_panel.sensor_previous_values[i * old_value_count + data.power_panel.sensor_values_offset],
+							json_object_get_string(json_object_object_get(v, "unit")));
+					}
+					if (!data.power_panel.consumed) {
+						data.power_panel.sensor_values_offset = (data.power_panel.sensor_values_offset + 1) % old_value_count;
+						data.power_panel.consumed = true;
+					}
+					need_auto_refresh = -1;
+				}
+				ImGui::EndChild();
 				ImGui::EndTabItem();
 			}
 
