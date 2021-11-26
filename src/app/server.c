@@ -90,6 +90,50 @@ static const char *json_get_string(struct json_object *json, const char *name) {
 }
 
 
+enum sensor_maps {
+	SENSOR_IDENTITY = 0,
+	SENSOR_D1000,
+	SENSOR_D100,
+	SENSOR_WAIT,
+};
+
+struct power_bitfield{
+	char *regname;
+	uint32_t value;
+	enum amd_pp_sensors sensor_id;
+	enum sensor_maps map;
+};
+
+
+static uint32_t parse_sensor_value(enum sensor_maps map, uint32_t value)
+{
+	uint32_t result = 0;
+
+	switch(map) {
+		case SENSOR_IDENTITY:
+			result = value;
+			break;
+		case SENSOR_D1000:
+			result = value / 1000;
+			break;
+		case SENSOR_D100:
+			result = value / 100;
+			break;
+		case SENSOR_WAIT:
+			result = ((value >> 8) * 1000);
+			if ((value & 0xFF) < 100)
+				result += (value & 0xFF) * 10;
+			else
+				result += value;
+			result /= 1000;
+			break;
+		default:
+			printf("invalid input value!\n");
+			break;
+	}
+	return result;
+}
+
 struct {
 	uint64_t addr;
 	uint64_t va;
