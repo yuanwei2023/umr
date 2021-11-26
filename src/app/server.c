@@ -188,9 +188,11 @@ static void init_asics() {
 	opt.instance = 0;
 	while ((asics[i] = umr_discover_asic(&opt, NULL))) {
 		// assign linux callbacks
-		asics[i]->mem_funcs.vm_message = NULL;
+		asics[i]->mem_funcs.vm_message = dummy_printf;
 		asics[i]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
 		asics[i]->mem_funcs.access_sram = umr_access_sram;
+
+		asics[i]->shader_disasm_funcs.disasm = umr_shader_disasm;
 
 		if (asics[i]->options.use_pci == 0)
 			asics[i]->mem_funcs.access_linear_vram = umr_access_linear_vram;
@@ -213,6 +215,11 @@ static void init_asics() {
 		asics[i]->options.shader_enable.enable_es_shader   = 1;
 		asics[i]->options.shader_enable.enable_ls_shader   = 1;
 		asics[i]->options.shader_enable.enable_comp_shader = 1;
+
+		asics[i]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
+		asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
+
+		asics[i]->err_msg = printf;
 
 		if (asics[i]->family > FAMILY_VI)
 			asics[i]->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
@@ -421,7 +428,16 @@ struct json_object *umr_process_json_request(struct json_object *request)
 	if (asics[0] == NULL)
 		init_asics();
 
-	struct umr_asic *asic = asics[json_object_get_int(json_object_object_get(request, "asic_index"))];
+	struct umr_asic *asic = NULL;
+	struct json_object *asc = json_object_object_get(request, "asic");
+	if (asc) {
+		unsigned did = json_object_get_int(json_object_object_get(asc, "did"));
+		int instance = json_object_get_int(json_object_object_get(asc, "instance"));
+		for (int i = 0; !asic; i++) {
+			if (asics[i] && asics[i]->did == did && asics[i]->instance == instance)
+				asic = asics[i];
+		}
+	}
 
 	if (strcmp(command, "enumerate") == 0) {
 		int i = 0, j;
@@ -453,7 +469,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 				struct json_object *rings = json_object_new_array();
 				char fname[256];
 				struct dirent *dir;
-				sprintf(fname, "/sys/kernel/debug/dri/%d/", asic->instance);
+				sprintf(fname, "/sys/kernel/debug/dri/%d/", asics[i]->instance);
 				DIR *d = opendir(fname);
 				if (d) {
 					while ((dir = readdir(d))) {
@@ -465,43 +481,8 @@ struct json_object *umr_process_json_request(struct json_object *request)
 				}
 				json_object_object_add(as, "rings", rings);
 			}
-
 			json_object_array_add(answer, as);
 			i++;
-		}
-	} else if (strcmp(command, "list-blocks") == 0) {
-		answer = json_object_new_array();
-
-		for (j = 0; j < asic->no_blocks; j++) {
-			json_object_array_add(answer, json_object_new_string(asic->blocks[j]->ipname));
-		}
-	} else if (strcmp(command, "list-regs") == 0) {
-		const char *blockname = json_get_string(request, "block");
-		int details = json_object_get_boolean(json_object_object_get(request, "details"));
-		for (j = 0; j < asic->no_blocks; j++) {
-			if (!strcmp(asic->blocks[j]->ipname, blockname)) {
-				/* Found the block */
-				answer = json_object_new_array();
-				for (k = 0; k < asic->blocks[j]->no_regs; k++) {
-					struct json_object *reg = json_object_new_object();
-					json_object_object_add(reg, "name", json_object_new_string(asic->blocks[j]->regs[k].regname));
-					json_object_object_add(reg, "address", json_object_new_uint64(asic->blocks[j]->regs[k].addr));
-
-					if (details) {
-						struct json_object *bits = json_object_new_array();
-						for (l = 0; l < asic->blocks[j]->regs[k].no_bits; l++) {
-							struct json_object *bit = json_object_new_object();
-							json_object_object_add(bit, "name", json_object_new_string(asic->blocks[j]->regs[k].bits[l].regname));
-							json_object_object_add(bit, "start", json_object_new_int(asic->blocks[j]->regs[k].bits[l].start));
-							json_object_object_add(bit, "end", json_object_new_int(asic->blocks[j]->regs[k].bits[l].stop));
-							json_object_array_add(bits, bit);
-						}
-						json_object_object_add(reg, "bitfields", bits);
-					}
-
-					json_object_array_add(answer, reg);
-				}
-			}
 		}
 	} else if (strcmp(command, "read") == 0) {
 		struct umr_reg *r = umr_find_reg_data_by_ip(
@@ -511,19 +492,6 @@ struct json_object *umr_process_json_request(struct json_object *request)
 
 		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_get_string(request, "block"), r->regname);
 		json_object_object_add(answer, "value", json_object_new_int(value));
-
-		struct json_object *details = json_object_object_get(request, "details");
-		if (details && json_object_get_boolean(details)) {
-			struct json_object *bits = json_object_new_array();
-			for (l = 0; l < r->no_bits; l++) {
-				struct json_object *bit = json_object_new_object();
-				json_object_object_add(bit, "name", json_object_new_string(r->bits[l].regname));
-				json_object_object_add(bit, "start", json_object_new_int(r->bits[l].start));
-				json_object_object_add(bit, "end", json_object_new_int(r->bits[l].stop));
-				json_object_array_add(bits, bit);
-			}
-			json_object_object_add(answer, "bitfields", bits);
-		}
 	} else if (strcmp(command, "write") == 0) {
 		struct umr_reg *r = umr_find_reg_data_by_ip(
 			asic, json_get_string(request, "block"), json_get_string(request, "register"));
