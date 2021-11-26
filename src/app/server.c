@@ -814,6 +814,123 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			close(asic->fd.sensors);
 			json_object_object_add(answer, "values", values);
 		}
+	} else if (!strcmp(command, "memory-usage")) {
+		const char *names[] = {
+			"vram", "vis_vram", "gtt", NULL
+		};
+		const char *suffixes[] = {
+			"total", "used", NULL
+		};
+		char path[256];
+
+		answer = json_object_new_object();
+
+		for (int i = 0; names[i]; i++) {
+			struct json_object *m = json_object_new_object();
+			for (int j = 0; suffixes[j]; j++) {
+				sprintf(path, "/sys/class/drm/card%d/device/mem_info_%s_%s", asic->instance, names[i], suffixes[j]);
+				uint64_t v = read_sysfs_uint64(path);
+				json_object_object_add(m, suffixes[j], json_object_new_uint64(v));
+			}
+			json_object_object_add(answer, names[i], m);
+		}
+
+		/* per pid reporting */
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+		char *per_pid = read_file(path);
+		char *ptr = per_pid;
+
+		struct json_object *pids = json_object_new_array();
+		json_object_object_add(answer, "pids", pids);
+
+		while (ptr) {
+			unsigned pid;
+			char *next_pid = strstr(ptr, "pid:");
+			if (!next_pid)
+				break;
+			char *next_space = strchr(next_pid, '\t');
+			*next_space = '\0';
+			ptr = next_space + 1;
+
+			if (sscanf(next_pid, "pid:%u", &pid) == 1) {
+				struct json_object *p = json_object_new_object();
+				json_object_array_add(pids, p);
+				json_object_object_add(p, "pid", json_object_new_int(pid));
+
+				ptr = next_space + 1 + strlen("Process:");
+				next_space = strchr(ptr, ' ');
+				*next_space = '\0';
+				json_object_object_add(p, "name", json_object_new_string(ptr));
+				ptr = next_space + 1;
+
+				const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
+				uint64_t pid_total = 0;
+				for (int i = 0; i < 6; i++) {
+					struct json_object *cat = json_object_new_array();
+					uint64_t cat_total = 0;
+
+					ptr = strstr(ptr, categories[i]);
+					/* Consume all chars until next line */
+					while (*ptr != '\n')
+						ptr++;
+					ptr++;
+
+					while (1) {
+						char *end_of_line = strchr(ptr, '\n');
+						*end_of_line = '\0';
+						char *id = strstr(ptr, "0x");
+						if (id) {
+							id += 11;
+							while (*id == ' ')
+								id++;
+							char *b = strstr(id, "byte");
+							*b = '\0';
+
+							/* Parse size */
+							uint32_t sz;
+							sscanf(id, "%u byte", &sz);
+							ptr = b + 5;
+
+							struct json_object *bo = json_object_new_object();
+							json_object_array_add(cat, bo);
+							json_object_object_add(bo, "size", json_object_new_int(sz));
+
+							cat_total += sz;
+							pid_total += sz;
+
+							/* Parse attributes */
+							struct json_object *attr = json_object_new_array();
+							while (ptr < end_of_line) {
+								next_space = strchr(ptr, ' ');
+								if (!next_space)
+									next_space = end_of_line;
+								if (next_space) {
+									*next_space = '\0';
+									if (ptr != next_space)
+										json_object_array_add(attr, json_object_new_string(ptr));
+									ptr = next_space + 1;
+								} else {
+									break;
+								}
+							}
+							if (json_object_array_length(attr))
+								json_object_object_add(bo, "attributes", attr);
+							else
+								json_object_put(attr);
+						} else {
+							*end_of_line = '\n';
+							break;
+						}
+					}
+
+					if (cat_total > 0) {
+						// json_object_object_add(cat, "total", json_object_new_uint64(cat_total));
+						json_object_object_add(p, categories[i], cat);
+					}
+				}
+				json_object_object_add(p, "total", json_object_new_uint64(pid_total));
+			}
+		}
 	} else {
 		last_error = "unknown command";
 		goto error;
