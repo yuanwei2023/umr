@@ -37,7 +37,7 @@
 #define SIGNATURE(a, b, c, d) (((d) << 24) | ((c) << 16) | ((b) << 8) | (a))
 
 #ifndef UMR_NO_DRM
-#include <drm/amdgpu_drm.h>
+#include <amdgpu_drm.h>
 #define ALIGN(val, align)   (((val) + (align - 1)) & ~(align - 1))
 static uint64_t get_full_vram_size(struct umr_asic *asic)
 {
