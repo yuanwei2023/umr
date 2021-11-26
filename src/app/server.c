@@ -706,6 +706,51 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		if (halt_waves) {
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
 		}
+	} else if (strcmp(command, "power") == 0) {
+		const char *profiles[] = {
+			"auto",
+			"low",
+			"high",
+			"manual",
+			"profile_standard",
+			"profile_min_sclk",
+			"profile_min_mclk",
+			"profile_peak",
+			NULL
+		};
+
+		answer = json_object_new_object();
+		struct json_object *valid = json_object_new_array();
+		for (int i = 0; profiles[i]; i++)
+			json_object_array_add(valid, json_object_new_string(profiles[i]));
+		json_object_object_add(answer, "profiles", valid);
+		struct json_object *write = json_object_object_get(request, "set");
+		char path[512];
+		sprintf(path, "/sys/class/drm/card%d/device/power_dpm_force_performance_level", asic->instance);
+		if (!write) {
+			char *content = read_file(path);
+			size_t s = strlen(content);
+
+			if (s > 0 && content[s - 1] == '\n')
+				content[s - 1] = '\0';
+
+			int current = -1;
+			for (int i = 0; profiles[i] && current < 0; i++) {
+				if (!strcmp(content, profiles[i]))
+					current = i;
+			}
+			json_object_object_add(answer, "current", json_object_new_string(current >= 0 ? profiles[current] : ""));
+		} else {
+			FILE *fd = fopen(path, "w");
+			if (fd) {
+				const char *value = json_object_get_string(write);
+				fwrite(value, 1, strlen(value), fd);
+				fclose(fd);
+				json_object_object_add(answer, "current", write);
+			} else {
+				json_object_object_add(answer, "current", json_object_new_string(""));
+			}
+		}
 	} else {
 		last_error = "unknown command";
 		goto error;
