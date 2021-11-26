@@ -11,6 +11,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI")
 include_directories("imgui")
 set (GUI_SOURCE server.c umr_gui.cpp
                 imgui/imgui.cpp imgui/imgui_draw.cpp imgui/imgui_impl_opengl3.cpp
+                imgui/imgui_tables.cpp
                 imgui/imgui_impl_sdl.cpp imgui/imgui_widgets.cpp)
 endif()
 
