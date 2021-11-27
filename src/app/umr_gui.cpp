@@ -30,7 +30,7 @@ extern "C" {
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_memory_editor.h"
-#include <GL/glew.h>
+#include "glad/glad.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -866,7 +866,7 @@ static int run_gui(const char *url)
 	SDL_GL_SetSwapInterval(1); // Enable vsync
 
 	// Initialize OpenGL loader
-	if (glewInit() != GLEW_OK) {
+	if (gladLoadGL() == 0) {
 		fprintf(stderr, "Failed to initialize OpenGL loader!\n");
 		return 1;
 	}

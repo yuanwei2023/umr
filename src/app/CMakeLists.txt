@@ -8,11 +8,14 @@ include_directories(inc)
 if(UMR_GUI)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_GUI")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI")
+include_directories("gui/glad/include")
 include_directories("imgui")
 set (GUI_SOURCE server.c umr_gui.cpp
                 imgui/imgui.cpp imgui/imgui_draw.cpp imgui/imgui_impl_opengl3.cpp
                 imgui/imgui_tables.cpp
-                imgui/imgui_impl_sdl.cpp imgui/imgui_widgets.cpp)
+                imgui/imgui_impl_sdl.cpp imgui/imgui_widgets.cpp
+                gui/glad/src/glad.c)
+add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD=1)
 endif()
 
 #application objects
@@ -47,6 +50,9 @@ target_link_libraries(umr umrapp)
 target_link_libraries(umr umrlow)
 target_link_libraries(umr umrcore)
 target_link_libraries(umr umrlow)
+if(UMR_GUI)
+target_link_libraries(umr dl)
+endif()
 
 target_link_libraries(umr ${LLVM_LIBS})
 target_link_libraries(umr ${REQUIRED_EXTERNAL_LIBS})
