@@ -9,11 +9,11 @@ if(UMR_GUI)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_GUI")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI")
 include_directories("gui/glad/include")
-include_directories("imgui")
+include_directories("gui/imgui")
 set (GUI_SOURCE server.c umr_gui.cpp
-                imgui/imgui.cpp imgui/imgui_draw.cpp imgui/imgui_impl_opengl3.cpp
-                imgui/imgui_tables.cpp
-                imgui/imgui_impl_sdl.cpp imgui/imgui_widgets.cpp
+                gui/imgui/imgui.cpp gui/imgui/imgui_draw.cpp gui/imgui/imgui_impl_opengl3.cpp
+                gui/imgui/imgui_tables.cpp
+                gui/imgui/imgui_impl_sdl.cpp gui/imgui/imgui_widgets.cpp
                 gui/glad/src/glad.c)
 add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD=1)
 endif()
