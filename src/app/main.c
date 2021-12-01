@@ -1035,13 +1035,13 @@ printf(
 #if UMR_GUI
 printf(
 "\n*** GUI server ***\n"
-"\n\t--server url \n\t\turl can be tcp://127.0.0.1:1234 or tcp://*:8090.. see Nanomsg protocol doc for more example\n"
+"\n\t--server [url] \n\t\turl can be tcp://127.0.0.1:1234 or tcp://*:8090. Default value is 'tcp://*:1234' see Nanomsg protocol doc for more example\n"
 "\n\t--gui [url] \n\t\tRun umr in GUI mode. An optional url can be supplied to connect to a remote instance (see --server)\n");
 #endif
 			exit(EXIT_SUCCESS);
 #if UMR_GUI
 		} else if (!strcmp(argv[i], "--server")) {
-			char *url= argv[i + 1];
+			char *url = (i < argc - 1) ? argv[i + 1] : "tcp://*:1234";
 			run_server_loop(url, asic);
 		} else if (!strcmp(argv[i], "--gui")) {
 			char *url = NULL;
