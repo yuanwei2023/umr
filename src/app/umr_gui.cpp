@@ -689,11 +689,11 @@ static uint32_t display_ib(struct umr_asic *asic, regmatch_t *pmatch, struct jso
 			else
 				sprintf(tmp, "#0083d8%" PRIx64, 4 * idx + base);
 			addr_col_size = std::max(addr_col_size, ImGui::CalcTextSize(tmp).x);
-			ImGui::Text(tmp);
+			ImGui::TextUnformatted(tmp);
 			ImGui::NextColumn();
 			sprintf(tmp, "%08x", raw_value);
 			raw_col_size = std::max(raw_col_size, ImGui::CalcTextSize(tmp).x);
-			ImGui::Text(tmp);
+			ImGui::TextUnformatted(tmp);
 			ImGui::NextColumn();
 
 			tmp[0] = '\0';
@@ -704,7 +704,7 @@ static uint32_t display_ib(struct umr_asic *asic, regmatch_t *pmatch, struct jso
 			if (idx == drv_wptr)
 				strcat(tmp, "#586e75DW");
 
-			ImGui::Text(tmp);
+			ImGui::TextUnformatted(tmp);
 			ImGui::NextColumn();
 
 			char copy[4096];
@@ -772,7 +772,7 @@ static uint32_t display_ib(struct umr_asic *asic, regmatch_t *pmatch, struct jso
 				}
 			}
 
-			ImGui::Text(line);
+			ImGui::TextUnformatted(line);
 			if (indent)
 				ImGui::Unindent();
 			ImGui::NextColumn();
@@ -1035,7 +1035,7 @@ static int run_gui(const char *url)
 					struct json_object *fw = json_object_array_get_idx(fws, j);
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
-					ImGui::Text(json_object_get_string(json_object_object_get(fw, "name"))); ImGui::NextColumn(); ImGui::NextColumn();
+					ImGui::TextUnformatted(json_object_get_string(json_object_object_get(fw, "name"))); ImGui::NextColumn(); ImGui::NextColumn();
 					ImGui::TableSetColumnIndex(1);
 					ImGui::Text("#b589000x%x", json_object_get_int(json_object_object_get(fw, "feature_version"))); ImGui::NextColumn();
 					ImGui::TableSetColumnIndex(2);
@@ -1045,7 +1045,7 @@ static int run_gui(const char *url)
 				ImGui::Separator();
 				int j = 0;
 				while (data.asic->config.fw[j].name[0] != '\0') {
-					ImGui::Text(data.asic->config.fw[j].name); ImGui::NextColumn(); ImGui::NextColumn();
+					ImGui::TextUnformatted(data.asic->config.fw[j].name); ImGui::NextColumn(); ImGui::NextColumn();
 					ImGui::Text("#b589000x%x", data.asic->config.fw[j].feature_version); ImGui::NextColumn();
 					ImGui::Text("#b589000x%x", data.asic->config.fw[j].firmware_version); ImGui::NextColumn();
 				}
@@ -1058,7 +1058,7 @@ static int run_gui(const char *url)
 				/* Split pane */
 				ImGui::BeginChild("Registers list", ImVec2(avail.x / 3, 0), false,
 									ImGuiWindowFlags_NoTitleBar);
-				char label[128];
+				char details[128];
 				for (int i = 0; i < (int) data.asic->no_blocks; i++) {
 					unsigned matching = 0;
 					struct umr_ip_block *b = data.asic->blocks[i];
@@ -1078,11 +1078,11 @@ static int run_gui(const char *url)
 						}
 						if (matching == 0)
 							continue;
-						sprintf(label, "%12s (%d/%d registers)", b->ipname, matching, b->no_regs);
+						sprintf(details, "%d/%d registers", matching, b->no_regs);
 					} else {
-						sprintf(label, "%12s (%d registers)", b->ipname, b->no_regs);
+						sprintf(details, "%d registers", b->no_regs);
 					}
-					if (ImGui::TreeNodeEx(b->ipname, (matching && matching < 10) ? ImGuiTreeNodeFlags_Leaf : 0, label)) {
+					if (ImGui::TreeNodeEx(b->ipname, (matching && matching < 10) ? ImGuiTreeNodeFlags_Leaf : 0, "%12s (%s)", b->ipname, details)) {
 						bool at_least_one = matching > 0;
 						for (int j = 0; j < b->no_regs; j++) {
 							bool pinned = false;
@@ -1107,7 +1107,7 @@ static int run_gui(const char *url)
 							}
 							at_least_one = true;
 							if (pinned) {
-								ImGui::Text(b->regs[j].regname);
+								ImGui::TextUnformatted(b->regs[j].regname);
 							} else if (ImGui::Button(b->regs[j].regname)) {
 								data.blocks_panel.pinned_registers.push_back(PinnedRegister(b, &b->regs[j]));
 								send_read_reg_command(lnk, data, &data.blocks_panel.pinned_registers.back());
@@ -1186,7 +1186,7 @@ static int run_gui(const char *url)
 						data.blocks_panel.pinned_registers.erase(data.blocks_panel.pinned_registers.begin() + i);
 						i--;
 					}
-					ImGui::TableSetColumnIndex(1); ImGui::Text(pinned.reg->regname);
+					ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(pinned.reg->regname);
 					ImGui::TableSetColumnIndex(2); ImGui::Text("0x%08lx", pinned.reg->addr);
 					ImGui::TableSetColumnIndex(3);
 					{
@@ -1194,7 +1194,7 @@ static int run_gui(const char *url)
 						bool was_dirty = pinned.value_is_dirty;
 						if (was_dirty)
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0, 0, 1));
-						sprintf(tmp, "0x%08x", pinned.reg->value);
+						sprintf(tmp, "0x%08lx", pinned.reg->value);
 						if (ImGui::InputText("", tmp, 16, ImGuiInputTextFlags_CharsHexadecimal)) {
 							unsigned value;
 							if (sscanf(tmp, "0x%x", &value) == 1) {
@@ -1535,13 +1535,13 @@ static int run_gui(const char *url)
 								}
 								const char *tknOpen = strchr(src, '[');
 								const char *tkn = strchr(tknOpen, ']');
-								sprintf(tmp, "%.*s", tkn - tknOpen + 1, tknOpen);
+								sprintf(tmp, "%.*s", (int) (tkn - tknOpen + 1), tknOpen);
 								addr_col_size = std::max(addr_col_size, ImGui::CalcTextSize(tmp).x);
-								ImGui::Text(tmp);
+								ImGui::TextUnformatted(tmp);
 								ImGui::NextColumn();
 								tkn += 4;
 								sprintf(tmp, "%.10s", tkn);
-								ImGui::Text(tmp);
+								ImGui::TextUnformatted(tmp);
 								raw_col_size = std::max(raw_col_size, ImGui::CalcTextSize(tmp).x);
 								ImGui::NextColumn();
 								tkn += 12;
@@ -1579,7 +1579,7 @@ static int run_gui(const char *url)
 									}
 								} while (true);
 
-								ImGui::Text(buf);
+								ImGui::TextUnformatted(buf);
 
 								ImGui::NextColumn();
 								if (is_pc)
@@ -1759,12 +1759,12 @@ static int run_gui(const char *url)
 					char overlay[200];
 					for (int i = 0; i < 3; i++) {
 						struct json_object *o = json_object_object_get(data.memory_usage_panel.last_answer, names[i]);
-						ImGui::Text("%*sUsed %s", strlen(titles[i]) - strlen(titles[2]), "", titles[i]);
+						ImGui::Text("%*sUsed %s", (int)(strlen(titles[i]) - strlen(titles[2])), "", titles[i]);
 						ImGui::SameLine();
 						uint64_t used = json_object_get_uint64(json_object_object_get(o, "used")) / (1024 * 1024);
 						uint64_t total = json_object_get_uint64(json_object_object_get(o, "total")) / (1024 * 1024);
 						float ratio = used / (float)total;
-						sprintf(overlay, "%.1f% (of %" PRId64 " MB)", 100 * ratio, total);
+						sprintf(overlay, "%.1f%% (of %" PRId64 " MB)", 100 * ratio, total);
 						ImGui::ProgressBar(ratio, ImVec2(-1, 0), overlay);
 					}
 
