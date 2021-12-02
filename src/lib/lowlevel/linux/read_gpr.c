@@ -150,6 +150,11 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 	uint64_t addr;
 	int r;
 
+	if (ws->gpr_alloc.value == 0xbebebeef) {
+		asic->err_msg("[WARNING]: Trying to read SGPRs from wave with GPR_ALLOC==0xbebebeef\n");
+		return 0;
+	}
+
 	if (!asic->options.no_kernel) {
 		addr =
 			(1ULL << 60)                             | // reading SGPRs
@@ -262,6 +267,11 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 	uint64_t addr;
 	unsigned granularity = asic->parameters.vgpr_granularity;
 	int r;
+
+	if (ws->gpr_alloc.value == 0xbebebeef) {
+		asic->err_msg("[WARNING]: Trying to read VGPRs from wave with GPR_ALLOC==0xbebebeef\n");
+		return 0;
+	}
 
 	if (!asic->options.no_kernel) {
 		addr =
