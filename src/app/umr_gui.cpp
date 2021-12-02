@@ -76,9 +76,9 @@ struct PinnedRegister {
 struct AsicData {
 	AsicData(long did, int instance) {
 		info_panel.last_answer = NULL;
-		strcpy(memory_panel.vram_address, "0x00100000000");
+		strcpy(memory_panel.vram_address, "00100000000");
 		memory_panel.vram_content = NULL;
-		memory_panel.vram_size = 256;
+		memory_panel.vram_size = 1024;
 		memory_panel.vmid = 1;
 		memory_panel.valid_content_size = 0;
 		memory_panel.num_page_table_entries = 0;
@@ -2035,8 +2035,12 @@ static int run_gui(const char *url)
 				if (!use_linear)
 					ImGui::InputInt("VMID", &data.memory_panel.vmid, 0, 0, ImGuiInputTextFlags_CharsDecimal);
 				ImGui::SameLine();
+				ImGui::Text("Address: 0x");
+				ImGui::SameLine();
 				ImGui::SetNextItemWidth(_8digitsize * 2);
-				ImGui::InputText("Address", data.memory_panel.vram_address, 20, ImGuiInputTextFlags_CharsHexadecimal);
+				ImGui::PushID("Address");
+				ImGui::InputText("", data.memory_panel.vram_address, 20, ImGuiInputTextFlags_CharsHexadecimal);
+				ImGui::PopID();
 				ImGui::SameLine();
 				ImGui::SetNextItemWidth(_8digitsize);
 				ImGui::InputInt("Size", &data.memory_panel.vram_size, 0, 0, ImGuiInputTextFlags_CharsDecimal);

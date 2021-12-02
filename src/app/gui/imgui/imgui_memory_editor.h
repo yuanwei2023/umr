@@ -421,7 +421,7 @@ struct MemoryEditor
                 }
             }
         }
-        IM_ASSERT(clipper.Step() == false);
+        // IM_ASSERT(clipper.Step() == false);
         clipper.End();
         ImGui::PopStyleVar(2);
         ImGui::EndChild();
