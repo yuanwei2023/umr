@@ -309,7 +309,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 		json_object_object_add(gpr_alloc, "sgpr_size", json_object_new_int(wd->ws.gpr_alloc.sgpr_size));
 		json_object_object_add(wave, "gpr_alloc", gpr_alloc);
 
-		if (is_halted) {
+		if (is_halted && wd->ws.gpr_alloc.value != 0xbebebeef) {
 			int spgr_count = (wd->ws.gpr_alloc.sgpr_size + 1) * ((asic->family <= FAMILY_CIK) ? 3 : 4);
 			struct json_object *sgpr = json_object_new_array();
 			for (int x = 0; x < spgr_count; x++) {

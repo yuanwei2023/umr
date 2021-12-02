@@ -1306,7 +1306,7 @@ static int run_gui(const char *url)
 
 			/*----------------------------------- Waves tab -----------------------------------*/
 			if (ImGui::BeginTabItem("#b58900W#ffffffaves", NULL, kb_shortcut(SDLK_w) ? ImGuiTabItemFlags_SetSelected : 0)) {
-				static bool halt = false;
+				static bool halt = true;
 				static bool resume = true;
 				static bool turn_off_gfxoff = true;
 
