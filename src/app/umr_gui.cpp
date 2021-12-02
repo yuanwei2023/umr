@@ -564,10 +564,12 @@ static void *communication_thread(void *_job) {
 
 	while (!done) {
 		pthread_mutex_lock(&mtx);
-		pthread_cond_wait(&cond, &mtx);
+		if (pending_request.empty())
+			pthread_cond_wait(&cond, &mtx);
 		for (int i = 0; i < pending_request.size(); i++) {
+			struct json_object* req = pending_request[i];
 			pthread_mutex_unlock(&mtx);
-			struct json_object *in = query(lnk, pending_request[i]);
+			struct json_object *in = query(lnk, req);
 			pthread_mutex_lock(&mtx);
 
 			/* Save to disk for replay */
