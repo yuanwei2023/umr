@@ -102,6 +102,8 @@ struct AsicData {
 		blocks_panel.autorefresh = false;
 		blocks_panel.autorefresh_hz = 5;
 		blocks_panel.elapsed_since_last_refresh = 0;
+
+		memset(&top_panel, 0, sizeof(top_panel));
 	}
 	~AsicData() {
 		if (info_panel.last_answer)
@@ -119,6 +121,8 @@ struct AsicData {
 			json_object_put(power_panel.sensors_last_answer);
 		if (memory_usage_panel.last_answer)
 			json_object_put(memory_usage_panel.last_answer);
+		if (top_panel.last_accumulate_answer)
+			json_object_put(top_panel.last_accumulate_answer);
 		for (int i = 0; i < ring_panel.num_rings; i++)
 			free(ring_panel.rings[i]);
 		free(ring_panel.rings);
@@ -193,6 +197,14 @@ struct AsicData {
 	struct {
 		struct json_object *last_answer;
 	} memory_usage_panel;
+
+	struct {
+		struct json_object *last_accumulate_answer;
+		const char *ipname;
+		float *fences_deltas;
+		int fence_deltas_offset;
+		bool consumed;
+	} top_panel;
 
 	/* Interface */
 	char register_filter[32] = {};
@@ -318,9 +330,10 @@ void process_read_reg_command_answer(std::vector<AsicData*> *asics, struct json_
 	struct json_object *answer = json_object_object_get(in, "answer");
 	AsicData *data = answer_to_asic_data(asics, request);
 
-	PinnedRegister *pinned = NULL;
 	const char *blk = json_object_get_string(json_object_object_get(request, "block"));
 	const char *reg = json_object_get_string(json_object_object_get(request, "register"));
+
+	PinnedRegister *pinned = NULL;
 	for (int i = 0; i < data->blocks_panel.pinned_registers.size() && !pinned; i++) {
 		PinnedRegister &p = data->blocks_panel.pinned_registers[i];
 		if (!strcmp(p.blk->ipname, blk) && !strcmp(p.reg->regname, reg))
@@ -346,6 +359,32 @@ void send_read_reg_command(struct Link& lnk, AsicData &data, PinnedRegister *pin
 	json_object_object_add(req, "command", json_object_new_string("read"));
 	json_object_object_add(req, "block", json_object_new_string(pinned->blk->ipname));
 	json_object_object_add(req, "register", json_object_new_string(pinned->reg->regname));
+	send_request(req, data.asic);
+}
+
+void process_accumulate_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+{
+	struct json_object *request = json_object_object_get(in, "request");
+	struct json_object *answer = json_object_object_get(in, "answer");
+	AsicData *data = answer_to_asic_data(asics, request);
+
+	if (data->top_panel.last_accumulate_answer)
+		json_object_put(data->top_panel.last_accumulate_answer);
+	data->top_panel.last_accumulate_answer = json_object_get(answer);
+	data->top_panel.consumed = false;
+}
+
+void send_accumulate_command(struct Link& lnk, AsicData &data, const char *ipname, int ms, const char **regname)
+{
+	struct json_object *req = json_object_new_object();
+	json_object_object_add(req, "command", json_object_new_string("accumulate"));
+	json_object_object_add(req, "block", json_object_new_string(ipname));
+	struct json_object *regs = json_object_new_array();
+	for (int i = 0; regname[i]; i++)
+		json_object_array_add(regs, json_object_new_string(regname[i]));
+	json_object_object_add(req, "registers", regs);
+	json_object_object_add(req, "period", json_object_new_int(ms));
+	json_object_object_add(req, "steps", json_object_new_int(100));
 	send_request(req, data.asic);
 }
 
@@ -544,6 +583,8 @@ static void process_response(std::vector<AsicData*> *asics, struct json_object *
 			process_sensors_command_answer(asics, in);
 		} else if (!strcmp(cmd, "memory-usage")) {
 			process_memory_usage_command_answer(asics, in);
+		} else if (!strcmp(cmd, "accumulate")) {
+			process_accumulate_command_answer(asics, in);
 		}
 	}
 
@@ -1859,6 +1900,126 @@ static int run_gui(const char *url)
 				ImGui::EndTabItem();
 				if (autorefresh)
 					need_auto_refresh = -1;
+			}
+
+			if (ImGui::BeginTabItem("#b58900T#ffffffop", NULL, kb_shortcut(SDLK_t) ? ImGuiTabItemFlags_SetSelected : 0)) {
+				static ImColor colors[] = {
+					ImColor(232, 45, 45),
+					ImColor(12, 232, 56),
+					ImColor(120, 115, 200),
+					ImColor(80, 210, 156),
+				};
+				static float last_sensor_read = 0;
+				static float top_read_interval = 0.5;
+
+				if (!data.top_panel.ipname) {
+					for (int i = 0; i < (int) data.asic->no_blocks && !data.top_panel.ipname; i++) {
+						struct umr_ip_block *b = data.asic->blocks[i];
+						for (int j = 0; j < b->no_regs; j++) {
+							if (!strcmp(b->regs[j].regname, "mmGRBM_STATUS")) {
+								data.top_panel.ipname = b->ipname;
+								break;
+							}
+						}
+					}
+				}
+
+				if (last_sensor_read > top_read_interval) {
+					if (pending_request.empty()) {
+						const char *regs[] = {"mmGRBM_STATUS", "mmGRBM_STATUS2", NULL};
+						send_accumulate_command(lnk, data, data.top_panel.ipname, top_read_interval * 1000, regs);
+						last_sensor_read = 0;
+					}
+				} else {
+					last_sensor_read += dt;
+				}
+
+				ImGui::DragFloat("Interval (drag to modify)", &top_read_interval, 0.01, 0.1, 1, "%.2f sec");
+				ImGui::Separator();
+				if (data.top_panel.last_accumulate_answer) {
+					ImGui::BeginChild("grbm bits", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+					struct json_object *values = json_object_object_get(data.top_panel.last_accumulate_answer, "values");
+					for (int i = 0; i < json_object_array_length(values); i++) {
+						struct json_object *val = json_object_array_get_idx(values, i);
+						for (int j = 0; j < json_object_array_length(val); j++) {
+							struct json_object *value = json_object_array_get_idx(val, j);
+							const char *name = json_object_get_string(json_object_object_get(value, "name"));
+							const size_t l = strlen(name);
+							const char *pos = strstr(name, "_BUSY");
+							if (pos && pos == (name + l - 5)) {
+								int v = json_object_get_int(json_object_object_get(value, "counter"));
+								ImGui::ProgressBar(v / 100.0, ImVec2(avail.x / 3, 0));
+								ImGui::SameLine();
+								const char *color = v < 20 ? "#34de51" : (v < 60 ? "#f3e26d" : "#8f2316");
+								ImGui::Text("%s%s", color, name, pos);
+							}
+						}
+					}
+					ImGui::EndChild();
+					if (!data.top_panel.fences_deltas) {
+						data.top_panel.fences_deltas = (float *)calloc(data.ring_panel.num_rings * 100, sizeof(float));
+						data.top_panel.fence_deltas_offset = 0;
+					}
+					ImGui::SameLine();
+					ImGui::BeginChild("drm bits", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+					struct json_object *fences = json_object_object_get(data.top_panel.last_accumulate_answer, "fences");
+
+					ImVec2 sc = ImGui::GetCursorScreenPos();
+
+					float max_value = 0;
+					for (int i = 0; i < data.ring_panel.num_rings * 100; i++)
+						max_value = std::max(max_value, data.top_panel.fences_deltas[i]);
+
+					for (int i = 0; i < json_object_array_length(fences); i++) {
+						struct json_object *fence = json_object_array_get_idx(fences, i);
+						int delta = json_object_get_int(json_object_object_get(fence, "delta"));
+						data.top_panel.fences_deltas[i * 100 + data.top_panel.fence_deltas_offset] = delta / top_read_interval;
+
+						ImGui::SetCursorScreenPos(sc);
+						const char *ring_name = json_object_get_string(json_object_object_get(fence, "name"));
+
+						ImColor color;
+						if (strstr(ring_name, "gfx")) {
+							color = colors[0];
+						} else if (strstr(ring_name, "comp")) {
+							color = colors[1];
+						} else if (strstr(ring_name, "sdma")) {
+							color = colors[2];
+						} else {
+							color = colors[3];
+						}
+						ImGui::PushStyleColor(ImGuiCol_PlotLines, (ImU32)color);
+						ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)color);
+
+						ImGui::PushID(ring_name);
+						ImGui::PlotLines("",
+							 &data.top_panel.fences_deltas[i * 100],
+							 100,
+							 data.top_panel.fence_deltas_offset + 1,
+							 NULL,
+							 0,
+							 max_value + 10,
+							 ImVec2(0, avail.y / 2),
+							 sizeof(float),
+							 i != 0);
+						ImGui::SameLine();
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() + i * ImGui::GetTextLineHeight());
+						ImGui::Text("%12s: %5d fences/sec", ring_name, (int)data.top_panel.fences_deltas[i * 100 + data.top_panel.fence_deltas_offset]);
+
+						ImGui::PopID();
+
+						ImGui::PopStyleColor(2);
+					}
+
+					if (!data.top_panel.consumed) {
+						data.top_panel.fence_deltas_offset = (data.top_panel.fence_deltas_offset + 1) % 100;
+						data.top_panel.consumed = true;
+					}
+					ImGui::EndChild();
+					need_auto_refresh = -1;
+				}
+
+				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem("Memory #b58900I#ffffffnspector", NULL, kb_shortcut(SDLK_i) ? ImGuiTabItemFlags_SetSelected : 0)) {

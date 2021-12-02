@@ -494,6 +494,92 @@ struct json_object *umr_process_json_request(struct json_object *request)
 
 		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_get_string(request, "block"), r->regname);
 		json_object_object_add(answer, "value", json_object_new_int(value));
+	} else if (strcmp(command, "accumulate") == 0) {
+		struct json_object *regs = json_object_object_get(request, "registers");
+		const int num_reg = json_object_array_length(regs);
+		char *ipname = (char*) json_get_string(request, "block");
+		struct umr_reg **reg = malloc(num_reg * sizeof(struct umr_reg*));
+		for (int i = 0; i < num_reg; i++)
+			reg[i] = umr_find_reg_data_by_ip(asic, ipname, json_object_get_string(json_object_array_get_idx(regs, i)));
+
+		answer = json_object_new_object();
+
+		int steps = json_object_get_int(json_object_object_get(request, "steps"));
+		int period_ms = json_object_get_int(json_object_object_get(request, "period"));
+		unsigned *counters = calloc(32 * num_reg, sizeof(unsigned));
+
+		char path[256];
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
+		const char *content_before = read_file(path);
+
+		struct timespec req;
+		req.tv_sec = 0;
+		req.tv_nsec = 10 * 1000000; /* 10 ms */
+		steps = period_ms / 10;
+		for (int i = 0; i < steps; i++) {
+			for (int j = 0; j < num_reg; j++) {
+				uint64_t value = (uint64_t)asic->reg_funcs.read_reg(asic,
+																	reg[j]->addr * (reg[j]->type == REG_MMIO ? 4 : 1),
+																	reg[j]->type);
+				for (int k = 0; k < reg[j]->no_bits; k++) {
+					uint64_t v = umr_bitslice_reg_quiet(asic, reg[j], reg[j]->bits[k].regname, value);
+					counters[32 * j + k] += (unsigned)v;
+				}
+			}
+
+			nanosleep(&req, NULL);
+		}
+
+		struct json_object *fences = json_object_new_array();
+		char *copy = strdup(content_before);
+		char *content_after = read_file(path);
+		int cursor = 0;
+		while (1) {
+			char *next_ring = strstr(&copy[cursor], "--- ring");
+			if (!next_ring)
+				break;
+			char *next_ring_start = strchr(next_ring, '(');
+			if (!next_ring_start)
+				break;
+			next_ring_start++;
+			char *next_ring_end = strchr(next_ring_start, ')');
+			*next_ring_end = '\0';
+			char ring_name[128];
+			strcpy(ring_name, next_ring_start);
+			char *next_line = strstr(next_ring_end + 1, "0x");
+			if (!next_line)
+				break;
+			int c = next_line - copy;
+			copy[c + strlen("0x00000000")] = '\0';
+			content_after[c + strlen("0x00000000")] = '\0';
+
+			unsigned long last_signaled[2] = {0};
+			if (sscanf(&copy[c], "0x%08lx", &last_signaled[0]) == 1 &&
+				sscanf(&content_after[c], "0x%08lx", &last_signaled[1]) == 1) {
+				struct json_object *fence = json_object_new_object();
+				json_object_object_add(fence, "name", json_object_new_string(ring_name));
+				json_object_object_add(fence, "delta", json_object_new_int(last_signaled[1] - last_signaled[0]));
+				json_object_array_add(fences, fence);
+			}
+			cursor = c + strlen("0x00000000") + 1;
+		}
+		free(copy);
+		json_object_object_add(answer, "fences", fences);
+
+		struct json_object *values = json_object_new_array();
+		for (int j = 0; j < num_reg; j++) {
+			struct json_object *regvalue = json_object_new_array();
+			for (int k = 0; k < reg[j]->no_bits; k++) {
+				struct json_object *v = json_object_new_object();
+				json_object_object_add(v, "name", json_object_new_string(reg[j]->bits[k].regname));
+				json_object_object_add(v, "counter", json_object_new_int(counters[num_reg * j + k]));
+				json_object_array_add(regvalue, v);
+			}
+			json_object_array_add(values, regvalue);
+		}
+		json_object_object_add(answer, "values", values);
+		free(counters);
+		free(reg);
 	} else if (strcmp(command, "write") == 0) {
 		struct umr_reg *r = umr_find_reg_data_by_ip(
 			asic, json_get_string(request, "block"), json_get_string(request, "register"));
