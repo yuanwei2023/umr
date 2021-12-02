@@ -704,6 +704,10 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		struct json_object *halt = json_object_object_get(request, "halt_waves");
 		int halt_waves = halt && json_object_get_int(halt);
 
+		/* Disable gfxoff */
+		value = 0;
+		write(asic->fd.gfxoff, &value, sizeof(value));
+
 		if (halt_waves) {
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
 		}
@@ -742,8 +746,14 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		}
 		decoder.pm4.cur_opcode = 0xFFFFFFFF;
 		decoder.sdma.cur_opcode = 0xFFFFFFFF;
-		start = 0;
-		end = ringsize - 4;
+
+		if (json_object_get_int(json_object_object_get(request, "rptr_wptr"))) {
+			start = rptr;
+			end = wptr;
+		} else {
+			start = 0;
+			end = ringsize - 4;
+		}
 
 		do {
 			value = ring_data[(start+12)>>2];
@@ -797,6 +807,10 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			}
 			free(data);
 		}
+
+		/* Reenable gfxoff */
+		value = 1;
+		write(asic->fd.gfxoff, &value, sizeof(value));
 
 		json_object_object_add(answer, "raw", ring_decode_raw);
 		json_object_object_add(answer, "shaders", ring_decode_shaders);

@@ -455,11 +455,12 @@ void process_ring_command_answer(std::vector<AsicData*> *asics, struct json_obje
 		json_object_put(data->ring_panel.last_answer);
 	data->ring_panel.last_answer = json_object_get(answer);
 }
-void send_ring_command(struct Link& lnk, AsicData &data, const char *ring_name, bool halt_ring) {
+void send_ring_command(struct Link& lnk, AsicData &data, const char *ring_name, bool halt_ring, bool rptr_wptr) {
 	struct json_object *req = json_object_new_object();
 	json_object_object_add(req, "command", json_object_new_string("ring"));
 	json_object_object_add(req, "ring", json_object_new_string(ring_name));
 	json_object_object_add(req, "halt_waves", json_object_new_boolean(halt_ring));
+	json_object_object_add(req, "rptr_wptr", json_object_new_boolean(rptr_wptr));
 	send_request(req, data.asic);
 }
 
@@ -1653,15 +1654,22 @@ static int run_gui(const char *url)
 			if (ImGui::BeginTabItem("Rin#b58900g#ffffffs", NULL, kb_shortcut(SDLK_g) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				static int current_item = data.ring_panel.num_rings - 1;
 				static bool halt = true;
+				static bool rptr_wptr = true;
 
 				ImGui::Checkbox("Halt waves", &halt);
 				ImGui::SameLine();
-				ImGui::Combo("(select ring to read)", &current_item, data.ring_panel.rings, data.ring_panel.num_rings);
-
+				ImGui::TextUnformatted("Select ring:");
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(_8digitsize * 4);
+				ImGui::PushID("selectring");
+				ImGui::Combo("", &current_item, data.ring_panel.rings, data.ring_panel.num_rings);
+				ImGui::PopID();
 				ImGui::SameLine();
 				ImGui::BeginDisabled(!pending_request.empty());
+				ImGui::Checkbox("Limit to rptr/wptr", &rptr_wptr);
+				ImGui::SameLine();
 				if (!replay && ImGui::Button("Read")) {
-					send_ring_command(lnk, data, &data.ring_panel.rings[current_item][strlen("amdgpu_ring_")], halt);
+					send_ring_command(lnk, data, &data.ring_panel.rings[current_item][strlen("amdgpu_ring_")], halt, rptr_wptr);
 				}
 				ImGui::EndDisabled();
 				ImGui::Separator();
