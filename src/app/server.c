@@ -82,6 +82,151 @@ void parse_sysfs_clock_file(char *content, int *min, int *max) {
 	}
 }
 
+JSON_Value *compare_fence_infos(const char *before, const char *after) {
+	JSON_Value *fences = json_value_init_array();
+	int cursor = 0;
+	while (1) {
+		char *next_ring = strstr(&before[cursor], "--- ring");
+		if (!next_ring)
+			break;
+		char *next_ring_start = strchr(next_ring, '(');
+		if (!next_ring_start)
+			break;
+		next_ring_start++;
+		char *next_ring_end = strchr(next_ring_start, ')');
+		int len = next_ring_end - next_ring_start;
+		char ring_name[128];
+		strncpy(ring_name, next_ring_start, len);
+		ring_name[len] = '\0';
+		char *next_line = strstr(next_ring_end + 1, "0x");
+		if (!next_line)
+			break;
+		int c = next_line - before;
+
+		unsigned long last_signaled[2] = {0};
+		if (sscanf(&before[c], "0x%08lx", &last_signaled[0]) == 1 &&
+			sscanf(&after[c], "0x%08lx", &last_signaled[1]) == 1) {
+			JSON_Value *fence = json_value_init_object();
+			json_object_set_string(json_object(fence), "name", ring_name);
+			json_object_set_number(json_object(fence), "delta", last_signaled[1] - last_signaled[0]);
+			json_array_append_value(json_array(fences), fence);
+		}
+		cursor = c + strlen("0x00000000") + 1;
+	}
+	return fences;
+}
+
+JSON_Array *parse_vm_info(const char *content)
+{
+	JSON_Array *pids = json_array(json_value_init_array());
+
+	const char *ptr = content;
+	while (ptr) {
+		unsigned pid;
+		char *next_pid = strstr(ptr, "pid:");
+		if (!next_pid)
+			break;
+		char *next_space = strchr(next_pid, '\t');
+		ptr = next_space + 1;
+
+		if (sscanf(next_pid, "pid:%u", &pid) == 1) {
+			JSON_Value *p = json_value_init_object();
+			json_array_append_value(pids, p);
+			json_object_set_number(json_object(p), "pid", pid);
+
+			ptr = next_space + 1 + strlen("Process:");
+			next_space = strchr(ptr, ' ');
+			int len = next_space - ptr;
+
+			json_object_set_string_with_len(json_object(p), "name", ptr, len);
+			ptr = next_space + 1;
+			const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
+			uint64_t pid_total = 0;
+			for (int i = 0; i < 6; i++) {
+				JSON_Array *cat = json_array(json_value_init_array());
+				uint64_t cat_total = 0;
+				ptr = strstr(ptr, categories[i]);
+				/* Consume all chars until next line */
+				while (*ptr != '\n')
+					ptr++;
+				ptr++;
+
+				while (1) {
+					char *end_of_line = strchr(ptr, '\n');
+					char *id = strstr(ptr, "0x");
+					if (id && id < end_of_line) {
+						id += 11;
+						while (*id == ' ')
+							id++;
+						char *b = strstr(id, "byte");
+
+						/* Parse size */
+						uint64_t sz;
+						sscanf(id, "%lu byte", &sz);
+						ptr = b + 5;
+
+						JSON_Value *bo = json_value_init_object();
+						json_array_append_value(cat, bo);
+						json_object_set_number(json_object(bo), "size", sz);
+						cat_total += sz;
+						pid_total += sz;
+
+						/* Parse attributes */
+						char attr_in_progress[256];
+						int concat_the_next_n = 0;
+						JSON_Array *attr = json_array(json_value_init_array());
+						while (ptr < end_of_line) {
+							next_space = strchr(ptr, ' ');
+							if (!next_space || next_space > end_of_line)
+								next_space = end_of_line;
+							if (next_space) {
+								int len = next_space - ptr;
+								if (ptr != next_space) {
+									if ((len == strlen("exported") && !strncmp(ptr, "exported", len)) ||
+										(len == strlen("pin") && !strncmp(ptr, "pin", len))) {
+										strncpy(attr_in_progress, ptr, len);
+										attr_in_progress[len] = '\0';
+										concat_the_next_n = 2;
+									} else if (concat_the_next_n > 0) {
+										sprintf(&attr_in_progress[strlen(attr_in_progress)], " %.*s", len, ptr);
+										concat_the_next_n--;
+									} else {
+										strncpy(attr_in_progress, ptr, len);
+										attr_in_progress[len] = '\0';
+									}
+
+									if (concat_the_next_n == 0) {
+										json_array_append_string(attr, attr_in_progress);
+										attr_in_progress[0] = '\0';
+									}
+								}
+								ptr = next_space + 1;
+							} else {
+								break;
+							}
+						}
+						ptr = end_of_line + 1;
+						if (json_array_get_count(attr))
+							json_object_set_value(json_object(bo), "attributes",
+								json_array_get_wrapping_value(attr));
+						else
+							json_value_free(json_array_get_wrapping_value(attr));
+					} else {
+						break;
+					}
+				}
+
+				if (cat_total > 0) {
+					json_object_set_value(json_object(p), categories[i],
+						json_array_get_wrapping_value(cat));
+				}
+			}
+			json_object_set_number(json_object(p), "total", pid_total);
+		}
+	}
+	return pids;
+}
+
 enum sensor_maps {
 	SENSOR_IDENTITY = 0,
 	SENSOR_D1000,
@@ -508,39 +653,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			nanosleep(&req, NULL);
 		}
 
-		JSON_Value *fences = json_value_init_array();
 		char *copy = strdup(content_before);
-		char *content_after = read_file(path);
-		int cursor = 0;
-		while (1) {
-			char *next_ring = strstr(&copy[cursor], "--- ring");
-			if (!next_ring)
-				break;
-			char *next_ring_start = strchr(next_ring, '(');
-			if (!next_ring_start)
-				break;
-			next_ring_start++;
-			char *next_ring_end = strchr(next_ring_start, ')');
-			*next_ring_end = '\0';
-			char ring_name[128];
-			strcpy(ring_name, next_ring_start);
-			char *next_line = strstr(next_ring_end + 1, "0x");
-			if (!next_line)
-				break;
-			int c = next_line - copy;
-			copy[c + strlen("0x00000000")] = '\0';
-			content_after[c + strlen("0x00000000")] = '\0';
-
-			unsigned long last_signaled[2] = {0};
-			if (sscanf(&copy[c], "0x%08lx", &last_signaled[0]) == 1 &&
-				sscanf(&content_after[c], "0x%08lx", &last_signaled[1]) == 1) {
-				JSON_Value *fence = json_value_init_object();
-				json_object_set_string(json_object(fence), "name", ring_name);
-				json_object_set_number(json_object(fence), "delta", last_signaled[1] - last_signaled[0]);
-				json_array_append_value(json_array(fences), fence);
-			}
-			cursor = c + strlen("0x00000000") + 1;
-		}
+		JSON_Value *fences = compare_fence_infos(copy, read_file(path));
 		free(copy);
 		json_object_set_value(json_object(answer), "fences", fences);
 
@@ -917,117 +1031,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		/* per pid reporting */
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
-		char *per_pid = read_file(path);
-		char *ptr = per_pid;
-
-		JSON_Array *pids = json_array(json_value_init_array());
+		JSON_Array *pids = parse_vm_info(read_file(path));
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
-
-		while (ptr) {
-			unsigned pid;
-			char *next_pid = strstr(ptr, "pid:");
-			if (!next_pid)
-				break;
-			char *next_space = strchr(next_pid, '\t');
-			*next_space = '\0';
-			ptr = next_space + 1;
-
-			if (sscanf(next_pid, "pid:%u", &pid) == 1) {
-				JSON_Value *p = json_value_init_object();
-				json_array_append_value(pids, p);
-				json_object_set_number(json_object(p), "pid", pid);
-
-				ptr = next_space + 1 + strlen("Process:");
-				next_space = strchr(ptr, ' ');
-				*next_space = '\0';
-				json_object_set_string(json_object(p), "name", ptr);
-				ptr = next_space + 1;
-
-				const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
-				uint64_t pid_total = 0;
-				for (int i = 0; i < 6; i++) {
-					JSON_Array *cat = json_array(json_value_init_array());
-					uint64_t cat_total = 0;
-
-					ptr = strstr(ptr, categories[i]);
-					/* Consume all chars until next line */
-					while (*ptr != '\n')
-						ptr++;
-					ptr++;
-
-					while (1) {
-						char *end_of_line = strchr(ptr, '\n');
-						*end_of_line = '\0';
-						char *id = strstr(ptr, "0x");
-						if (id) {
-							id += 11;
-							while (*id == ' ')
-								id++;
-							char *b = strstr(id, "byte");
-							*b = '\0';
-
-							/* Parse size */
-							uint64_t sz;
-							sscanf(id, "%lu byte", &sz);
-							ptr = b + 5;
-
-							JSON_Value *bo = json_value_init_object();
-							json_array_append_value(cat, bo);
-							json_object_set_number(json_object(bo), "size", sz);
-							cat_total += sz;
-							pid_total += sz;
-
-							/* Parse attributes */
-							char attr_in_progress[256];
-							int concat_the_next_n = 0;
-							JSON_Array *attr = json_array(json_value_init_array());
-							while (ptr < end_of_line) {
-								next_space = strchr(ptr, ' ');
-								if (!next_space)
-									next_space = end_of_line;
-								if (next_space) {
-									*next_space = '\0';
-									if (ptr != next_space) {
-										if (!strcmp(ptr, "exported") || !strcmp(ptr, "pin")) {
-											strcpy(attr_in_progress, ptr);
-											concat_the_next_n = 2;
-										} else if (concat_the_next_n > 0) {
-											strcat(attr_in_progress, " ");
-											strcat(attr_in_progress, ptr);
-											concat_the_next_n--;
-										} else {
-											strcpy(attr_in_progress, ptr);
-										}
-
-										if (concat_the_next_n == 0) {
-											json_array_append_string(attr, attr_in_progress);
-											attr_in_progress[0] = '\0';
-										}
-									}
-									ptr = next_space + 1;
-								} else {
-									break;
-								}
-							}
-							if (json_array_get_count(attr))
-								json_object_set_value(json_object(bo), "attributes",
-									json_array_get_wrapping_value(attr));
-							else
-								json_value_free(json_array_get_wrapping_value(attr));
-						} else {
-							*end_of_line = '\n';
-							break;
-						}
-					}
-
-					if (cat_total > 0) {
-						json_object_set_value(json_object(p), categories[i],
-							json_array_get_wrapping_value(cat));
-					}
-				}
-				json_object_set_number(json_object(p), "total", pid_total);
-			}
-		}
 	} else {
 		last_error = "unknown command";
 		goto error;

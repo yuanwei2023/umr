@@ -2,10 +2,13 @@
 
 project(umrtestapp)
 
+include_directories("../app/gui/parson")
+
 add_executable(umrtest
   test_framework.c
   main.c
   test_mmio.c
+  test_server.c ../app/gui/parson/parson.c ../app/server.c
   test_vm.c
 )
 
