@@ -183,6 +183,7 @@ JSON_Array *parse_vm_info(const char *content)
 								int len = next_space - ptr;
 								if (ptr != next_space) {
 									if ((len == strlen("exported") && !strncmp(ptr, "exported", len)) ||
+										(len == strlen("imported") && !strncmp(ptr, "imported", len)) ||
 										(len == strlen("pin") && !strncmp(ptr, "pin", len))) {
 										strncpy(attr_in_progress, ptr, len);
 										attr_in_progress[len] = '\0';

@@ -3670,7 +3670,7 @@ void ImFont::RenderText(ImDrawList* draw_list, float size, ImVec2 pos, ImU32 col
             }
         }
         // stop colors at space/punctuation
-        if (c == ',' || c == '(' || c == ')' || c == ' ' || c == ':' || c == '=' || c == '\t')
+        if (c == ',' || c == '(' || c == ')' || c == ' ' || /*c == ':' || */ c == '=' || c == '\t')
             current_color = col;
 
         const ImFontGlyph* glyph = FindGlyph((ImWchar)c);

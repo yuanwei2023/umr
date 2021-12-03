@@ -1,0 +1,153 @@
+/*
+ * Copyright © 2021 Advanced Micro Devices, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sub license, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS, AUTHORS
+ * AND/OR ITS SUPPLIERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+ * USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * The above copyright notice and this permission notice (including the
+ * next paragraph) shall be included in all copies or substantial portions
+ * of the Software.
+ */
+#include "panels.h"
+
+class PowerPanel : public Panel {
+public:
+	PowerPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL),
+		sensors_last_answer(NULL),
+		consumed(false),
+		sensor_previous_values(NULL) {}
+
+	~PowerPanel() {
+		if (last_answer)
+			json_value_free(json_object_get_wrapping_value(last_answer));
+		if (sensors_last_answer)
+			json_value_free(json_object_get_wrapping_value(sensors_last_answer));
+		free(sensor_previous_values);
+	}
+
+	void process_server_message(JSON_Object *request, JSON_Value *answer) {
+		const char *command = json_object_get_string(request, "command");
+
+		if (!strcmp(command, "power")) {
+			if (last_answer)
+				json_value_free(json_object_get_wrapping_value(last_answer));
+			last_answer = json_object(json_value_deep_copy(answer));
+			consumed = false;
+		} else if (!strcmp(command, "sensors")) {
+			if (sensors_last_answer)
+				json_value_free(json_object_get_wrapping_value(sensors_last_answer));
+			sensors_last_answer = json_object(json_value_deep_copy(answer));
+			consumed = false;
+		}
+	}
+
+	bool display(float dt, const ImVec2& avail, bool can_send_request) {
+		ImGui::BeginChild("power profiles", ImVec2(avail.x / 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+		static float last_sensor_read = 0;
+		static float sensor_read_interval = 0.5;
+		if (!last_answer) {
+			send_power_command(NULL);
+			last_sensor_read = 0;
+		} else {
+			ImGui::Text("Select DPM profile :");
+			ImGui::Indent();
+			ImGui::BeginDisabled(!can_send_request);
+			JSON_Array *profiles = json_object_get_array(last_answer, "profiles");
+			const char *current = json_object_get_string(last_answer, "current");
+			for (int i = 0; i < json_array_get_count(profiles) ; i++) {
+				const char *profile = json_array_get_string(profiles, i);
+				if (ImGui::RadioButton(profile, !strcmp(current, profile))) {
+					send_power_command(profile);
+					last_sensor_read = 10;
+				}
+			}
+			ImGui::EndDisabled();
+			ImGui::Unindent();
+		}
+		ImGui::EndChild();
+		ImGui::SameLine();
+		ImGui::BeginChild("power sensors", ImVec2(avail.x * 2.0/ 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::Text("Sensors values:");
+		if (last_sensor_read > sensor_read_interval) {
+			if (can_send_request)
+				send_sensors_command();
+			last_sensor_read = 0;
+		}
+		last_sensor_read += dt;
+
+		if (sensors_last_answer) {
+			ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
+
+			const int old_value_count = 100;
+			JSON_Array *values = json_object_get_array(sensors_last_answer, "values");
+			int sensors_count = json_array_get_count(values);
+
+			if (!sensor_previous_values) {
+				sensor_previous_values = (float *)calloc(sensors_count * old_value_count, sizeof(float));
+				sensor_values_offset = 0;
+			}
+
+			for (int i = 0; i < sensors_count; i++) {
+				JSON_Object *v = json_object(json_array_get_value(values, i));
+				sensor_previous_values[i * old_value_count + sensor_values_offset] =
+					(int)json_object_get_number(v, "value");
+
+				ImGui::PlotLines(json_object_get_string(v, "name"),
+									 &sensor_previous_values[i * old_value_count],
+									 old_value_count,
+									 sensor_values_offset + 1,
+									 NULL,
+									 json_object_get_number(v, "min"),
+									 json_object_get_number(v, "max"),
+									 ImVec2(0, avail.y / (2 + sensors_count)));
+				ImGui::SameLine();
+				ImGui::Text(": %d %s",
+					(int)sensor_previous_values[i * old_value_count + sensor_values_offset],
+					json_object_get_string(v, "unit"));
+			}
+			if (!consumed) {
+				sensor_values_offset = (sensor_values_offset + 1) % old_value_count;
+				consumed = true;
+			}
+		}
+		ImGui::EndChild();
+		return sensors_last_answer != NULL;
+	}
+
+private:
+	void send_sensors_command() {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "sensors");
+		send_request(req);
+	}
+
+	void send_power_command(const char *new_value) {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "power");
+		if (new_value)
+			json_object_set_string(json_object(req), "set", new_value);
+		send_request(req);
+	}
+
+private:
+	JSON_Object *last_answer;
+	JSON_Object *sensors_last_answer;
+	bool consumed;
+	float *sensor_previous_values;
+	int sensor_values_offset;
+};
+
