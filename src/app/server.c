@@ -144,7 +144,7 @@ JSON_Array *parse_vm_info(const char *content)
 			ptr = next_space + 1;
 			const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
 			uint64_t pid_total = 0;
-			for (int i = 0; i < 6; i++) {
+			for (int i = 0; ptr && i < 6; i++) {
 				JSON_Array *cat = json_array(json_value_init_array());
 				uint64_t cat_total = 0;
 				ptr = strstr(ptr, categories[i]);
@@ -153,7 +153,7 @@ JSON_Array *parse_vm_info(const char *content)
 					ptr++;
 				ptr++;
 
-				while (1) {
+				while (ptr) {
 					char *end_of_line = strchr(ptr, '\n');
 					char *id = strstr(ptr, "0x");
 					if (id && id < end_of_line) {
@@ -640,7 +640,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		}
 	}
 
-	if (strcmp(command, "enumerate") == 0) {
+	int is_enumerate = strcmp(command, "enumerate") == 0;
+
+	if (!asic && !is_enumerate) {
+		last_error = "asic not found";
+		goto error;
+	}
+
+	if (is_enumerate) {
 		int i = 0, j;
 		answer = json_value_init_array();
 		while (asics[i]) {
@@ -703,7 +710,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		answer = json_value_init_object();
 
-		int steps = json_object_get_number(request, "steps");
+		int step_ms = json_object_get_number(request, "step_ms");
 		int period_ms = json_object_get_number(request, "period");
 		unsigned *counters = calloc(32 * num_reg, sizeof(unsigned));
 
@@ -713,8 +720,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		struct timespec req;
 		req.tv_sec = 0;
-		req.tv_nsec = 10 * 1000000; /* 10 ms */
-		steps = period_ms / 10;
+		req.tv_nsec = step_ms * 1000000;
+		int steps = period_ms / step_ms;
 		for (int i = 0; i < steps; i++) {
 			for (int j = 0; j < num_reg; j++) {
 				uint64_t value = (uint64_t)asic->reg_funcs.read_reg(asic,

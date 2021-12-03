@@ -84,6 +84,7 @@ public:
 			ImGui::Text("Hardware blocks busyness:");
 			ImGui::Separator();
 			JSON_Array *values = json_object_get_array(last_accumulate_answer, "values");
+			int max_counter_value = (top_read_interval * 1000) / 10;
 			for (int i = 0; i < json_array_get_count(values); i++) {
 				JSON_Array *val = json_array_get_array(values, i);
 				for (int j = 0; j < json_array_get_count(val); j++) {
@@ -92,11 +93,20 @@ public:
 					const size_t l = strlen(name);
 					const char *pos = strstr(name, "_BUSY");
 					if (pos && pos == (name + l - 5)) {
-						int v = (int)json_object_get_number(value, "counter");
+						int v = (int)(100 * json_object_get_number(value, "counter") / max_counter_value);
+
+						if (v < 20) {
+							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, (ImU32)ImColor(52, 222, 81));
+						} else if (v < 60) {
+							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, (ImU32)ImColor(229, 169, 41));
+						} else {
+							ImGui::PushStyleColor(ImGuiCol_PlotHistogram, (ImU32)ImColor(215, 36, 36));
+						}
+
 						ImGui::ProgressBar(v / 100.0, ImVec2(avail.x / 3, 0));
 						ImGui::SameLine();
-						const char *color = v < 20 ? "#34de51" : (v < 60 ? "#f3e26d" : "#8f2316");
-						ImGui::Text("%s%s%s", color, name, pos);
+						ImGui::TextUnformatted(name, pos);
+						ImGui::PopStyleColor(1);
 					}
 				}
 			}
@@ -214,7 +224,7 @@ private:
 			json_array_append_string(json_array(regs), regname[i]);
 		json_object_set_value(json_object(req), "registers", regs);
 		json_object_set_number(json_object(req), "period", ms);
-		json_object_set_number(json_object(req), "steps", 100);
+		json_object_set_number(json_object(req), "step_ms", 10);
 		send_request(req);
 	}
 

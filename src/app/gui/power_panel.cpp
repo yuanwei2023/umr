@@ -60,8 +60,10 @@ public:
 		static float last_sensor_read = 0;
 		static float sensor_read_interval = 0.5;
 		if (!last_answer) {
-			send_power_command(NULL);
-			last_sensor_read = 0;
+			if (can_send_request) {
+				send_power_command(NULL);
+				last_sensor_read = 0;
+			}
 		} else {
 			ImGui::Text("Select DPM profile :");
 			ImGui::Indent();
