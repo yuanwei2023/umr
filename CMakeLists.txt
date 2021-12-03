@@ -92,12 +92,10 @@ endif()
 
 if (UMR_GUI)
 find_package(SDL2 REQUIRED)
-find_package(JsonC REQUIRED)
 find_package(NanoMsg REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 include_directories(${NANOMSG_INCLUDE_DIR})
-include_directories(${JSON_C_INCLUDE_DIR})
-set(REQUIRED_EXTERNAL_LIBS_GUI ${JSON_C_LIBRARIES} ${NANOMSG_LIBRARIES} ${SDL2_LIBRARIES})
+set(REQUIRED_EXTERNAL_LIBS_GUI ${NANOMSG_LIBRARIES} ${SDL2_LIBRARIES})
 endif()
 
 if(UMR_NEED_RT)

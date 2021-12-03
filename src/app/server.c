@@ -28,7 +28,7 @@
 #include <stdarg.h>
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
-#include <json.h>
+#include "parson.h"
 
 static char * read_file(const char *path) {
 	static char *buffer = NULL;
@@ -63,32 +63,24 @@ static uint64_t read_sysfs_uint64(const char *path) {
 	return 0;
 }
 
-static void parse_sysfs_clock_file(const char *path, int *min, int *max) {
-	char *content = read_file(path);
-	*min = 0;
-	*max = 100;
+void parse_sysfs_clock_file(char *content, int *min, int *max) {
+	*min = 100000;
+	*max = 0;
 
 	int i, value;
 	char *in = content;
 	char *ptr;
+	char tmp[1024];
 	while((ptr = strchr(in, '\n'))) {
-		*ptr = '\0';
-		if (sscanf(in, "%d: %dMHz", &i, &value) == 2) {
-			if (i == 0)
-				*min = value;
-			*max = value;
+		strncpy(tmp, in, ptr - in);
+		tmp[ptr - in] = '\0';
+		if (sscanf(tmp, "%d: %dMHz", &i, &value) == 2) {
+			if (value < *min) *min = value;
+			if (value > *max) *max = value;
 		}
 		in = ptr + 1;
 	}
 }
-
-static const char *json_get_string(struct json_object *json, const char *name) {
-	struct json_object *val = json_object_object_get(json, name);
-	if (json_object_get_type(val) != json_type_string)
-		return NULL;
-	return json_object_get_string(val);
-}
-
 
 enum sensor_maps {
 	SENSOR_IDENTITY = 0,
@@ -223,121 +215,121 @@ static void init_asics() {
 	}
 }
 
-static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shaders, struct json_object *out) {
+static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shaders, JSON_Object *out) {
 	struct umr_pm4_stream *stream = umr_pm4_decode_ring(asic, asic->options.ring_name, 1, -1, -1);
 
 	struct umr_wave_data *wd = umr_scan_wave_data(asic);
 
-	struct json_object *shaders = json_object_new_object();
+	JSON_Value *shaders = json_value_init_object();
 
-	struct json_object *waves = json_object_new_array();
+	JSON_Value *waves = json_value_init_array();
 	while (wd) {
 		uint64_t pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo);
 		unsigned vmid;
 
-		struct json_object *wave = json_object_new_object();
-		json_object_object_add(wave, "se", json_object_new_int(wd->se));
-		json_object_object_add(wave, "sh", json_object_new_int(wd->se));
-		json_object_object_add(wave, "cu", json_object_new_int(wd->cu));
-		json_object_object_add(wave, "simd_id", json_object_new_int(wd->ws.hw_id1.simd_id));
-		json_object_object_add(wave, "wave_id", json_object_new_int(wd->ws.hw_id1.wave_id));
-		json_object_object_add(wave, "PC", json_object_new_uint64(pgm_addr));
-		json_object_object_add(wave, "wave_inst_dw0", json_object_new_int(wd->ws.wave_inst_dw0));
-		json_object_object_add(wave, "wave_inst_dw1", json_object_new_int(wd->ws.wave_inst_dw1));
+		JSON_Value *wave = json_value_init_object();
+		json_object_set_number(json_object(wave), "se", wd->se);
+		json_object_set_number(json_object(wave), "sh", wd->se);
+		json_object_set_number(json_object(wave), "cu", wd->cu);
+		json_object_set_number(json_object(wave), "simd_id", wd->ws.hw_id1.simd_id);
+		json_object_set_number(json_object(wave), "wave_id", wd->ws.hw_id1.wave_id);
+		json_object_set_number(json_object(wave), "PC", pgm_addr);
+		json_object_set_number(json_object(wave), "wave_inst_dw0", wd->ws.wave_inst_dw0);
+		json_object_set_number(json_object(wave), "wave_inst_dw1", wd->ws.wave_inst_dw1);
 
-		struct json_object *status = json_object_new_object();
-		json_object_object_add(status, "value", json_object_new_int(wd->ws.wave_status.value));
-		json_object_object_add(status, "scc", json_object_new_int(wd->ws.wave_status.scc));
-		json_object_object_add(status, "execz", json_object_new_int(wd->ws.wave_status.execz));
-		json_object_object_add(status, "vccz", json_object_new_int(wd->ws.wave_status.vccz));
-		json_object_object_add(status, "in_tg", json_object_new_int(wd->ws.wave_status.in_tg));
-		json_object_object_add(status, "halt", json_object_new_int(wd->ws.wave_status.halt));
-		json_object_object_add(status, "valid", json_object_new_int(wd->ws.wave_status.valid));
-		json_object_object_add(status, "spi_prio", json_object_new_int(wd->ws.wave_status.spi_prio));
-		json_object_object_add(status, "wave_prio", json_object_new_int(wd->ws.wave_status.wave_prio));
-		json_object_object_add(status, "priv", json_object_new_int(wd->ws.wave_status.priv));
-		json_object_object_add(status, "trap_en", json_object_new_int(wd->ws.wave_status.trap_en));
-		json_object_object_add(status, "trap", json_object_new_int(wd->ws.wave_status.trap));
-		json_object_object_add(status, "ttrace_en", json_object_new_int(wd->ws.wave_status.ttrace_en));
-		json_object_object_add(status, "export_rdy", json_object_new_int(wd->ws.wave_status.export_rdy));
-		json_object_object_add(status, "in_barrier", json_object_new_int(wd->ws.wave_status.in_barrier));
-		json_object_object_add(status, "ecc_err", json_object_new_int(wd->ws.wave_status.ecc_err));
-		json_object_object_add(status, "skip_export", json_object_new_int(wd->ws.wave_status.skip_export));
-		json_object_object_add(status, "perf_en", json_object_new_int(wd->ws.wave_status.perf_en));
-		json_object_object_add(status, "cond_dbg_user", json_object_new_int(wd->ws.wave_status.cond_dbg_user));
-		json_object_object_add(status, "cond_dbg_sys", json_object_new_int(wd->ws.wave_status.cond_dbg_sys));
-		json_object_object_add(status, "allow_replay", json_object_new_int(wd->ws.wave_status.allow_replay));
-		json_object_object_add(status, "fatal_halt", json_object_new_int(asic->family >= FAMILY_AI && wd->ws.wave_status.fatal_halt));
-		json_object_object_add(status, "must_export", json_object_new_int(wd->ws.wave_status.must_export));
+		JSON_Value *status = json_value_init_object();
+		json_object_set_number(json_object(status), "value", wd->ws.wave_status.value);
+		json_object_set_number(json_object(status), "scc", wd->ws.wave_status.scc);
+		json_object_set_number(json_object(status), "execz", wd->ws.wave_status.execz);
+		json_object_set_number(json_object(status), "vccz", wd->ws.wave_status.vccz);
+		json_object_set_number(json_object(status), "in_tg", wd->ws.wave_status.in_tg);
+		json_object_set_number(json_object(status), "halt", wd->ws.wave_status.halt);
+		json_object_set_number(json_object(status), "valid", wd->ws.wave_status.valid);
+		json_object_set_number(json_object(status), "spi_prio", wd->ws.wave_status.spi_prio);
+		json_object_set_number(json_object(status), "wave_prio", wd->ws.wave_status.wave_prio);
+		json_object_set_number(json_object(status), "priv", wd->ws.wave_status.priv);
+		json_object_set_number(json_object(status), "trap_en", wd->ws.wave_status.trap_en);
+		json_object_set_number(json_object(status), "trap", wd->ws.wave_status.trap);
+		json_object_set_number(json_object(status), "ttrace_en", wd->ws.wave_status.ttrace_en);
+		json_object_set_number(json_object(status), "export_rdy", wd->ws.wave_status.export_rdy);
+		json_object_set_number(json_object(status), "in_barrier", wd->ws.wave_status.in_barrier);
+		json_object_set_number(json_object(status), "ecc_err", wd->ws.wave_status.ecc_err);
+		json_object_set_number(json_object(status), "skip_export", wd->ws.wave_status.skip_export);
+		json_object_set_number(json_object(status), "perf_en", wd->ws.wave_status.perf_en);
+		json_object_set_number(json_object(status), "cond_dbg_user", wd->ws.wave_status.cond_dbg_user);
+		json_object_set_number(json_object(status), "cond_dbg_sys", wd->ws.wave_status.cond_dbg_sys);
+		json_object_set_number(json_object(status), "allow_replay", wd->ws.wave_status.allow_replay);
+		json_object_set_number(json_object(status), "fatal_halt", asic->family >= FAMILY_AI && wd->ws.wave_status.fatal_halt);
+		json_object_set_number(json_object(status), "must_export", wd->ws.wave_status.must_export);
 
-		json_object_object_add(wave, "status", status);
+		json_object_set_value(json_object(wave), "status", status);
 
-		struct json_object *hw_id = json_object_new_object();
+		JSON_Value *hw_id = json_value_init_object();
 		if (asic->family < FAMILY_NV) {
-			json_object_object_add(hw_id, "value", json_object_new_int(wd->ws.hw_id.value));
-			json_object_object_add(hw_id, "wave_id", json_object_new_int(wd->ws.hw_id.wave_id));
-			json_object_object_add(hw_id, "simd_id", json_object_new_int(wd->ws.hw_id.simd_id));
-			json_object_object_add(hw_id, "pipe_id", json_object_new_int(wd->ws.hw_id.pipe_id));
-			json_object_object_add(hw_id, "cu_id", json_object_new_int(wd->ws.hw_id.cu_id));
-			json_object_object_add(hw_id, "sh_id", json_object_new_int(wd->ws.hw_id.sh_id));
-			json_object_object_add(hw_id, "tg_id", json_object_new_int(wd->ws.hw_id.tg_id));
-			json_object_object_add(hw_id, "state_id", json_object_new_int(wd->ws.hw_id.state_id));
-			json_object_object_add(hw_id, "vm_id", json_object_new_int(wd->ws.hw_id.vm_id));
+			json_object_set_number(json_object(hw_id), "value", wd->ws.hw_id.value);
+			json_object_set_number(json_object(hw_id), "wave_id", wd->ws.hw_id.wave_id);
+			json_object_set_number(json_object(hw_id), "simd_id", wd->ws.hw_id.simd_id);
+			json_object_set_number(json_object(hw_id), "pipe_id", wd->ws.hw_id.pipe_id);
+			json_object_set_number(json_object(hw_id), "cu_id", wd->ws.hw_id.cu_id);
+			json_object_set_number(json_object(hw_id), "sh_id", wd->ws.hw_id.sh_id);
+			json_object_set_number(json_object(hw_id), "tg_id", wd->ws.hw_id.tg_id);
+			json_object_set_number(json_object(hw_id), "state_id", wd->ws.hw_id.state_id);
+			json_object_set_number(json_object(hw_id), "vm_id", wd->ws.hw_id.vm_id);
 			vmid = wd->ws.hw_id.vm_id;
 		} else {
-			json_object_object_add(hw_id, "value", json_object_new_int(wd->ws.hw_id1.value));
-			json_object_object_add(hw_id, "wave_id", json_object_new_int(wd->ws.hw_id1.wave_id));
-			json_object_object_add(hw_id, "simd_id", json_object_new_int(wd->ws.hw_id1.simd_id));
-			json_object_object_add(hw_id, "wgp_id", json_object_new_int(wd->ws.hw_id1.wgp_id));
-			json_object_object_add(hw_id, "se_id", json_object_new_int(wd->ws.hw_id1.se_id));
-			json_object_object_add(hw_id, "sa_id", json_object_new_int(wd->ws.hw_id1.sa_id));
-			json_object_object_add(hw_id, "queue_id", json_object_new_int(wd->ws.hw_id2.queue_id));
-			json_object_object_add(hw_id, "pipe_id", json_object_new_int(wd->ws.hw_id2.pipe_id));
-			json_object_object_add(hw_id, "me_id", json_object_new_int(wd->ws.hw_id2.me_id));
-			json_object_object_add(hw_id, "state_id", json_object_new_int(wd->ws.hw_id2.state_id));
-			json_object_object_add(hw_id, "wg_id", json_object_new_int(wd->ws.hw_id2.wg_id));
-			json_object_object_add(hw_id, "compat_level", json_object_new_int(wd->ws.hw_id2.compat_level));
-			json_object_object_add(hw_id, "vm_id", json_object_new_int(wd->ws.hw_id2.vm_id));
+			json_object_set_number(json_object(hw_id), "value", wd->ws.hw_id1.value);
+			json_object_set_number(json_object(hw_id), "wave_id", wd->ws.hw_id1.wave_id);
+			json_object_set_number(json_object(hw_id), "simd_id", wd->ws.hw_id1.simd_id);
+			json_object_set_number(json_object(hw_id), "wgp_id", wd->ws.hw_id1.wgp_id);
+			json_object_set_number(json_object(hw_id), "se_id", wd->ws.hw_id1.se_id);
+			json_object_set_number(json_object(hw_id), "sa_id", wd->ws.hw_id1.sa_id);
+			json_object_set_number(json_object(hw_id), "queue_id", wd->ws.hw_id2.queue_id);
+			json_object_set_number(json_object(hw_id), "pipe_id", wd->ws.hw_id2.pipe_id);
+			json_object_set_number(json_object(hw_id), "me_id", wd->ws.hw_id2.me_id);
+			json_object_set_number(json_object(hw_id), "state_id", wd->ws.hw_id2.state_id);
+			json_object_set_number(json_object(hw_id), "wg_id", wd->ws.hw_id2.wg_id);
+			json_object_set_number(json_object(hw_id), "compat_level", wd->ws.hw_id2.compat_level);
+			json_object_set_number(json_object(hw_id), "vm_id", wd->ws.hw_id2.vm_id);
 			vmid = wd->ws.hw_id2.vm_id;
 		}
-		json_object_object_add(wave, "hw_id", hw_id);
+		json_object_set_value(json_object(wave), "hw_id", hw_id);
 
-		struct json_object *gpr_alloc = json_object_new_object();
-		json_object_object_add(gpr_alloc, "vgpr_base", json_object_new_int(wd->ws.gpr_alloc.vgpr_base));
-		json_object_object_add(gpr_alloc, "vgpr_size", json_object_new_int(wd->ws.gpr_alloc.vgpr_size));
-		json_object_object_add(gpr_alloc, "sgpr_base", json_object_new_int(wd->ws.gpr_alloc.sgpr_base));
-		json_object_object_add(gpr_alloc, "sgpr_size", json_object_new_int(wd->ws.gpr_alloc.sgpr_size));
-		json_object_object_add(wave, "gpr_alloc", gpr_alloc);
+		JSON_Value *gpr_alloc = json_value_init_object();
+		json_object_set_number(json_object(gpr_alloc), "vgpr_base", wd->ws.gpr_alloc.vgpr_base);
+		json_object_set_number(json_object(gpr_alloc), "vgpr_size", wd->ws.gpr_alloc.vgpr_size);
+		json_object_set_number(json_object(gpr_alloc), "sgpr_base", wd->ws.gpr_alloc.sgpr_base);
+		json_object_set_number(json_object(gpr_alloc), "sgpr_size", wd->ws.gpr_alloc.sgpr_size);
+		json_object_set_value(json_object(wave), "gpr_alloc", gpr_alloc);
 
 		if (is_halted && wd->ws.gpr_alloc.value != 0xbebebeef) {
 			int spgr_count = (wd->ws.gpr_alloc.sgpr_size + 1) * ((asic->family <= FAMILY_CIK) ? 3 : 4);
-			struct json_object *sgpr = json_object_new_array();
+			JSON_Value *sgpr = json_value_init_array();
 			for (int x = 0; x < spgr_count; x++) {
-				json_object_array_add(sgpr, json_object_new_int(wd->sgprs[x]));
+				json_array_append_number(json_array(sgpr), wd->sgprs[x]);
 			}
-			json_object_object_add(wave, "sgpr", sgpr);
+			json_object_set_value(json_object(wave), "sgpr", sgpr);
 
-			struct json_object *threads = json_object_new_array();
+			JSON_Value *threads = json_value_init_array();
 			int num_threads = asic->family < FAMILY_NV ? 64 : wd->num_threads;
 			for (int thread = 0; thread < num_threads; thread++) {
 				unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))	: (wd->ws.exec_hi & (1u << (thread - 32)));
-				json_object_array_add(threads, json_object_new_int(live ? 1 : 0));
+				json_array_append_boolean(json_array(threads), live ? 1 : 0);
 			}
-			json_object_object_add(wave, "threads", threads);
+			json_object_set_value(json_object(wave), "threads", threads);
 
 
 			if (wd->have_vgprs) {
 				unsigned granularity = asic->parameters.vgpr_granularity;
 				unsigned vpgr_count = (wd->ws.gpr_alloc.vgpr_size + 1) << granularity;
-				struct json_object *vgpr = json_object_new_array();
+				JSON_Value *vgpr = json_value_init_array();
 				for (int x = 0; x < (int) vpgr_count; x++) {
-					struct json_object *v = json_object_new_array();
+					JSON_Value *v = json_value_init_array();
 					for (int thread = 0; thread < num_threads; thread++) {
-						json_object_array_add(v, json_object_new_int(wd->vgprs[thread * 256 + x]));
+						json_array_append_number(json_array(v), wd->vgprs[thread * 256 + x]);
 					}
-					json_object_array_add(vgpr, v);
+					json_array_append_value(json_array(vgpr), v);
 				}
-				json_object_object_add(wave, "vgpr", vgpr);
+				json_object_set_value(json_object(wave), "vgpr", vgpr);
 			}
 
 			/* */
@@ -365,62 +357,48 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 					/* Remember which shader address we used for this wave */
 					char tmp[128];
 					sprintf(tmp, "%lx", shader_addr);
-					json_object_object_add(wave, "shader_disassembly", json_object_new_string(tmp));
+					json_object_set_string(json_object(wave), "shader_disassembly", tmp);
 
 					/* And add it to the top level object if it's not there already */
 					int lines = shader_size / 4;
-					struct json_object *dis = json_object_object_get(shaders, tmp) == NULL ? json_object_new_array() : NULL;
+					JSON_Value *dis = json_object_get_value(json_object(shaders), tmp) == NULL ? json_value_init_array() : NULL;
 
 					for (int f = 0 ; f < lines; f++) {
 						if (dis)
-							json_object_array_add(dis, json_object_new_string(disassembly[f]));
+							json_array_append_string(json_array(dis), disassembly[f]);
 						free(disassembly[f]);
 					}
 					free(disassembly);
 					if (dis)
-						json_object_object_add(shaders, tmp, dis);
+						json_object_set_value(json_object(shaders), tmp, dis);
 				} else {
 					printf("disassembly failed.\n");
 				}
 			}
 		}
 
-		json_object_array_add(waves, wave);
+		json_array_append_value(json_array(waves), wave);
 
 		struct umr_wave_data *old = wd;
 		wd = wd->next;
 		free(old);
 	}
 
-	json_object_object_add(out, "waves", waves);
+	json_object_set_value(out, "waves", waves);
 	if (include_shaders)
-		json_object_object_add(out, "shaders", shaders);
+		json_object_set_value(out, "shaders", shaders);
 	else
-		json_object_put(shaders);
+		json_value_free(shaders);
 
 	if (stream)
 		umr_free_pm4_stream(stream);
 }
 
-static int sort_by_size(const void *_a, const void *_b) {
-	struct json_object **a = (struct json_object **)_a;
-	struct json_object **b = (struct json_object **)_b;
-	if (!*a && !*b)
-		return 0;
-	if (!*a)
-		return 1;
-	if (!*b)
-		return 1;
-	uint64_t size_a = json_object_get_uint64(json_object_object_get(*a, "size"));
-	uint64_t size_b = json_object_get_uint64(json_object_object_get(*b, "size"));
-	return size_a < size_b;
-}
-
-struct json_object *umr_process_json_request(struct json_object *request)
+JSON_Value *umr_process_json_request(JSON_Object *request)
 {
-	struct json_object *answer = NULL;
+	JSON_Value *answer = NULL;
 	const char *last_error;
-	const char *command = json_get_string(request, "command");
+	const char *command = json_object_get_string(request, "command");
 
 	if (!command) {
 		last_error = "missing command";
@@ -431,10 +409,10 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		init_asics();
 
 	struct umr_asic *asic = NULL;
-	struct json_object *asc = json_object_object_get(request, "asic");
+	JSON_Object *asc = json_object_get_object(request, "asic");
 	if (asc) {
-		unsigned did = json_object_get_int(json_object_object_get(asc, "did"));
-		int instance = json_object_get_int(json_object_object_get(asc, "instance"));
+		unsigned did = json_object_get_number(asc, "did");
+		int instance = json_object_get_number(asc, "instance");
 		for (int i = 0; !asic; i++) {
 			if (asics[i] && asics[i]->did == did && asics[i]->instance == instance)
 				asic = asics[i];
@@ -443,32 +421,32 @@ struct json_object *umr_process_json_request(struct json_object *request)
 
 	if (strcmp(command, "enumerate") == 0) {
 		int i = 0, j;
-		answer = json_object_new_array();
+		answer = json_value_init_array();
 		while (asics[i]) {
-			struct json_object *as = json_object_new_object();
-			json_object_object_add(as, "name", json_object_new_string(asics[i]->asicname));
-			json_object_object_add(as, "index", json_object_new_int(i));
-			json_object_object_add(as, "instance", json_object_new_int(asics[i]->instance));
-			json_object_object_add(as, "did", json_object_new_int(asics[i]->did));
-			json_object_object_add(as, "family", json_object_new_int(asics[i]->family));
-			json_object_object_add(as, "vram_size", json_object_new_uint64(asics[i]->config.vram_size));
-			json_object_object_add(as, "vis_vram_size", json_object_new_uint64(asics[i]->config.vis_vram_size));
-			json_object_object_add(as, "vbios_version", json_object_new_string(asics[i]->config.vbios_version));
-			struct json_object *fws = json_object_new_array();
+			JSON_Value *as = json_value_init_object ();
+			json_object_set_string(json_object(as), "name", asics[i]->asicname);
+			json_object_set_number(json_object(as), "index", i);
+			json_object_set_number(json_object(as), "instance", asics[i]->instance);
+			json_object_set_number(json_object(as), "did", asics[i]->did);
+			json_object_set_number(json_object(as), "family", asics[i]->family);
+			json_object_set_number(json_object(as), "vram_size", asics[i]->config.vram_size);
+			json_object_set_number(json_object(as), "vis_vram_size", asics[i]->config.vis_vram_size);
+			json_object_set_string(json_object(as), "vbios_version", asics[i]->config.vbios_version);
+			JSON_Value *fws = json_value_init_array();
 			j = 0;
 			while (asics[i]->config.fw[j].name[0] != '\0') {
-				struct json_object *fw = json_object_new_object();
-				json_object_object_add(fw, "name", json_object_new_string(asics[i]->config.fw[j].name));
-				json_object_object_add(fw, "feature_version", json_object_new_int(asics[i]->config.fw[j].feature_version));
-				json_object_object_add(fw, "firmware_version", json_object_new_int(asics[i]->config.fw[j].firmware_version));
-				json_object_array_add(fws, fw);
+				JSON_Value *fw = json_value_init_object();
+				json_object_set_string(json_object(fw), "name", asics[i]->config.fw[j].name);
+				json_object_set_number(json_object(fw), "feature_version", asics[i]->config.fw[j].feature_version);
+				json_object_set_number(json_object(fw), "firmware_version", asics[i]->config.fw[j].firmware_version);
+				json_array_append_value(json_array(fws), fw);
 				j++;
 			}
-			json_object_object_add(as, "firmwares", fws);
+			json_object_set_value(json_object(as), "firmwares", fws);
 
 			/* Discover the rings */
 			{
-				struct json_object *rings = json_object_new_array();
+				JSON_Value *rings = json_value_init_array();
 				char fname[256];
 				struct dirent *dir;
 				sprintf(fname, "/sys/kernel/debug/dri/%d/", asics[i]->instance);
@@ -476,36 +454,36 @@ struct json_object *umr_process_json_request(struct json_object *request)
 				if (d) {
 					while ((dir = readdir(d))) {
 						if (strncmp(dir->d_name, "amdgpu_ring_", strlen("amdgpu_ring_")) == 0) {
-							json_object_array_add(rings, json_object_new_string(dir->d_name));
+							json_array_append_string(json_array(rings), dir->d_name);
 						}
 					}
 					closedir(d);
 				}
-				json_object_object_add(as, "rings", rings);
+				json_object_set_value(json_object(as), "rings", rings);
 			}
-			json_object_array_add(answer, as);
+			json_array_append_value(json_array(answer), as);
 			i++;
 		}
 	} else if (strcmp(command, "read") == 0) {
 		struct umr_reg *r = umr_find_reg_data_by_ip(
-			asic, json_get_string(request, "block"), json_get_string(request, "register"));
+			asic, json_object_get_string(request, "block"), json_object_get_string(request, "register"));
 
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 
-		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_get_string(request, "block"), r->regname);
-		json_object_object_add(answer, "value", json_object_new_int(value));
+		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
+		json_object_set_number(json_object(answer), "value", value);
 	} else if (strcmp(command, "accumulate") == 0) {
-		struct json_object *regs = json_object_object_get(request, "registers");
-		const int num_reg = json_object_array_length(regs);
-		char *ipname = (char*) json_get_string(request, "block");
+		JSON_Array *regs = json_object_get_array(request, "registers");
+		const int num_reg = json_array_get_count(regs);
+		char *ipname = (char*) json_object_get_string(request, "block");
 		struct umr_reg **reg = malloc(num_reg * sizeof(struct umr_reg*));
 		for (int i = 0; i < num_reg; i++)
-			reg[i] = umr_find_reg_data_by_ip(asic, ipname, json_object_get_string(json_object_array_get_idx(regs, i)));
+			reg[i] = umr_find_reg_data_by_ip(asic, ipname, json_array_get_string(regs, i));
 
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 
-		int steps = json_object_get_int(json_object_object_get(request, "steps"));
-		int period_ms = json_object_get_int(json_object_object_get(request, "period"));
+		int steps = json_object_get_number(request, "steps");
+		int period_ms = json_object_get_number(request, "period");
 		unsigned *counters = calloc(32 * num_reg, sizeof(unsigned));
 
 		char path[256];
@@ -530,7 +508,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			nanosleep(&req, NULL);
 		}
 
-		struct json_object *fences = json_object_new_array();
+		JSON_Value *fences = json_value_init_array();
 		char *copy = strdup(content_before);
 		char *content_after = read_file(path);
 		int cursor = 0;
@@ -556,51 +534,51 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			unsigned long last_signaled[2] = {0};
 			if (sscanf(&copy[c], "0x%08lx", &last_signaled[0]) == 1 &&
 				sscanf(&content_after[c], "0x%08lx", &last_signaled[1]) == 1) {
-				struct json_object *fence = json_object_new_object();
-				json_object_object_add(fence, "name", json_object_new_string(ring_name));
-				json_object_object_add(fence, "delta", json_object_new_int(last_signaled[1] - last_signaled[0]));
-				json_object_array_add(fences, fence);
+				JSON_Value *fence = json_value_init_object();
+				json_object_set_string(json_object(fence), "name", ring_name);
+				json_object_set_number(json_object(fence), "delta", last_signaled[1] - last_signaled[0]);
+				json_array_append_value(json_array(fences), fence);
 			}
 			cursor = c + strlen("0x00000000") + 1;
 		}
 		free(copy);
-		json_object_object_add(answer, "fences", fences);
+		json_object_set_value(json_object(answer), "fences", fences);
 
-		struct json_object *values = json_object_new_array();
+		JSON_Value *values = json_value_init_array();
 		for (int j = 0; j < num_reg; j++) {
-			struct json_object *regvalue = json_object_new_array();
+			JSON_Value *regvalue = json_value_init_array();
 			for (int k = 0; k < reg[j]->no_bits; k++) {
-				struct json_object *v = json_object_new_object();
-				json_object_object_add(v, "name", json_object_new_string(reg[j]->bits[k].regname));
-				json_object_object_add(v, "counter", json_object_new_int(counters[num_reg * j + k]));
-				json_object_array_add(regvalue, v);
+				JSON_Value *v = json_value_init_object();
+				json_object_set_string(json_object(v), "name", reg[j]->bits[k].regname);
+				json_object_set_number(json_object(v), "counter", counters[num_reg * j + k]);
+				json_array_append_value(json_array(regvalue), v);
 			}
-			json_object_array_add(values, regvalue);
+			json_array_append_value(json_array(values), regvalue);
 		}
-		json_object_object_add(answer, "values", values);
+		json_object_set_value(json_object(answer), "values", values);
 		free(counters);
 		free(reg);
 	} else if (strcmp(command, "write") == 0) {
 		struct umr_reg *r = umr_find_reg_data_by_ip(
-			asic, json_get_string(request, "block"), json_get_string(request, "register"));
+			asic, json_object_get_string(request, "block"), json_object_get_string(request, "register"));
 
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 
-		char *block = (char*) json_get_string(request, "block");
-		unsigned value = json_object_get_int(json_object_object_get(request, "value"));
+		char *block = (char*) json_object_get_string(request, "block");
+		unsigned value = json_object_get_number(request, "value");
 		if (umr_write_reg_by_name_by_ip(asic, block, r->regname, value)) {
 			value = umr_read_reg_by_name_by_ip(asic, block, r->regname);
 		}
-		json_object_object_add(answer, "value", json_object_new_int(value));
+		json_object_set_number(json_object(answer), "value", value);
 	} else if (strcmp(command, "vm-read") == 0 || strcmp(command, "vm-decode") == 0) {
-		uint64_t address = json_object_get_uint64(json_object_object_get(request, "address"));
-		struct json_object *vmidv = json_object_object_get(request, "vmid");
+		uint64_t address = json_object_get_number(request, "address");
+		JSON_Value *vmidv = json_object_get_value(request, "vmid");
 		uint32_t vmid = UMR_LINEAR_HUB;
 		if (vmidv)
-			vmid = json_object_get_int(vmidv);
+			vmid = json_number(vmidv);
 
 		uint64_t *buf = NULL;
-		unsigned size = json_object_get_int(json_object_object_get(request, "size"));
+		unsigned size = json_object_get_number(request, "size");
 		if (size % 8) {
 			size += 8 - size % 8;
 		}
@@ -627,44 +605,38 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		asic->mem_funcs.vm_message = NULL;
 		asic->options.verbose = 0;
 
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 
 		if (buf) {
-			struct json_object *value = json_object_new_array();
+			JSON_Value *value = json_value_init_array();
 			for (int i = 0; i < (int) size / 8; i++) {
-				json_object_array_add(value, json_object_new_uint64(buf[i]));
+				json_array_append_number(json_array(value), buf[i]);
 			}
-			json_object_object_add(answer, "values", value);
+			json_object_set_value(json_object(answer), "values", value);
 			free(buf);
 		}
-		struct json_object *pt = json_object_new_array	();
+		JSON_Value *pt = json_value_init_array();
 		for (int i = 0; i < num_page_table_entries; i++) {
-			struct json_object *level = json_object_new_object();
-			json_object_object_add(level, "pba", json_object_new_uint64(page_table[i].pba));
+			JSON_Value *level = json_value_init_object();
+			json_object_set_number(json_object(level), "pba", page_table[i].pba);
 			if (page_table[i].type == 2)
-				json_object_object_add(level, "va_mask", json_object_new_uint64(page_table[i].va_mask));
-			json_object_object_add(level, "type", json_object_new_int(page_table[i].type));
-			json_object_object_add(level, "system", json_object_new_int(page_table[i].system));
-			json_object_object_add(level, "tmz", json_object_new_int(page_table[i].tmz));
-			json_object_object_add(level, "mtype", json_object_new_int(page_table[i].mtype));
-			json_object_array_add(pt, level);
+				json_object_set_number(json_object(level), "va_mask", page_table[i].va_mask);
+			json_object_set_number(json_object(level), "type", page_table[i].type);
+			json_object_set_number(json_object(level), "system", page_table[i].system);
+			json_object_set_number(json_object(level), "tmz", page_table[i].tmz);
+			json_object_set_number(json_object(level), "mtype", page_table[i].mtype);
+			json_array_append_value(json_array(pt), level);
 		}
-		json_object_object_add(answer, "page_table", pt);
-	} else if (strcmp(command, "waves") == 0) {
+		json_object_set_value(json_object(answer), "page_table", pt);
+	}
+	else if (strcmp(command, "waves") == 0) {
 		/* Assumes Navi chip for now (= code adapted from umr_print_waves_nv,
 		 * should be updated to cover umr_print_waves_si_ai as well). */
-		struct json_object *halt = json_object_object_get(request, "halt_waves");
-		int halt_waves = halt && json_object_get_int(halt);
-		int resume_waves = halt_waves;
-		struct json_object *resume = json_object_object_get(request, "resume_waves");
-		if (resume)
-			resume_waves = json_object_get_int(resume);
-		if (json_object_object_get(request, "ring")) {
-			strcpy(asic->options.ring_name, json_get_string(request, "ring"));
-		}
+		int halt_waves = json_object_get_boolean(request, "halt_waves");
+		int resume_waves = json_object_get_boolean(request, "resume_waves");
+		int disable_gfxoff = json_object_get_boolean(request, "disable_gfxoff");
+		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
 
-		struct json_object *gfxoff = json_object_object_get(request, "disable_gfxoff");
-		int disable_gfxoff = gfxoff && json_object_get_int(gfxoff);
 		if (disable_gfxoff) {
 			uint32_t value = 0;
 			write(asic->fd.gfxoff, &value, sizeof(value));
@@ -680,9 +652,9 @@ struct json_object *umr_process_json_request(struct json_object *request)
 
 		int is_halted = umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name);
 
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 
-		wave_to_json(asic, is_halted, 1, answer);
+		wave_to_json(asic, is_halted, 1, json_object(answer));
 
 		if (disable_gfxoff) {
 			uint32_t value = 1;
@@ -691,18 +663,14 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		if (resume_waves)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
 	} else if (strcmp(command, "resume-waves") == 0) {
-		if (json_object_object_get(request, "ring")) {
-			strcpy(asic->options.ring_name, json_get_string(request, "ring"));
-		}
+		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 	} else if (strcmp(command, "ring") == 0) {
-		char *ring_name = (char*) json_get_string(request, "ring");
+		char *ring_name = (char*)json_object_get_string(request, "ring");
 		uint32_t wptr, rptr, drv_wptr, ringsize, start, end, value, *ring_data;
 		struct umr_ring_decoder decoder, *pdecoder;
-
-		struct json_object *halt = json_object_object_get(request, "halt_waves");
-		int halt_waves = halt && json_object_get_int(halt);
+		int halt_waves = json_object_get_boolean(request, "halt_waves");
 
 		/* Disable gfxoff */
 		value = 0;
@@ -723,14 +691,14 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		wptr = ring_data[1]<<2;
 		drv_wptr = ring_data[2]<<2;
 
-		answer = json_object_new_object();
-		json_object_object_add(answer, "read_ptr", json_object_new_int(rptr / 4));
-		json_object_object_add(answer, "write_ptr", json_object_new_int(wptr / 4));
-		json_object_object_add(answer, "driver_write_ptr", json_object_new_int(drv_wptr / 4));
+		answer = json_value_init_object();
+		json_object_set_number(json_object(answer), "read_ptr", rptr / 4);
+		json_object_set_number(json_object(answer), "write_ptr", wptr / 4);
+		json_object_set_number(json_object(answer), "driver_write_ptr", drv_wptr / 4);
 
-		struct json_object *ring_decode_raw = json_object_new_array();
-		struct json_object *ring_decode_shaders = json_object_new_array();
-		struct json_object *ring_decode_ibs = json_object_new_array();
+		JSON_Array *ring_decode_raw = json_array(json_value_init_array());
+		JSON_Array *ring_decode_shaders = json_array(json_value_init_array());
+		JSON_Array *ring_decode_ibs = json_array(json_value_init_array());
 
 		memset(&decoder, 0, sizeof decoder);
 		if (!memcmp(ring_name, "gfx", 3) ||
@@ -747,7 +715,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		decoder.pm4.cur_opcode = 0xFFFFFFFF;
 		decoder.sdma.cur_opcode = 0xFFFFFFFF;
 
-		if (json_object_get_int(json_object_object_get(request, "rptr_wptr"))) {
+		if (json_object_get_boolean(request, "rptr_wptr")) {
 			start = rptr;
 			end = wptr;
 		} else {
@@ -763,7 +731,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			start += 4;
 			start %= ringsize;
 
-			json_object_array_add(ring_decode_raw, json_object_new_int(value));
+			json_array_append_number(ring_decode_raw, value);
 		} while (start != ((end + 4) % ringsize));
 
 		pdecoder = &decoder;
@@ -776,13 +744,13 @@ struct json_object *umr_process_json_request(struct json_object *request)
 				opcodes = realloc(opcodes, shader->size);
 
 				if (umr_read_vram(asic, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
-					struct json_object *s = json_object_new_object();
-					struct json_object *op = json_object_new_array();
+					JSON_Object *s = json_object(json_value_init_object());
+					JSON_Array *op = json_array(json_value_init_array());
 					for (unsigned i = 0; i < shader->size / 4; i++)
-						json_object_array_add(op, json_object_new_int(opcodes[i]));
-					json_object_object_add(s, "opcodes", op);
-					json_object_object_add(s, "address", json_object_new_uint64(shader->addr));
-					json_object_array_add(ring_decode_shaders, s);
+						json_array_append_number(op, opcodes[i]);
+					json_object_set_value(s, "opcodes", json_array_get_wrapping_value(op));
+					json_object_set_number(s, "address", shader->addr);
+					json_array_append_value(ring_decode_shaders, json_object_get_wrapping_value(s));
 				}
 			}
 			free(opcodes);
@@ -797,13 +765,13 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			if (!umr_read_vram(asic, pdecoder->next_ib_info.vmid,
 									 pdecoder->next_ib_info.ib_addr,
 									 pdecoder->next_ib_info.size, (void*)data)) {
-				struct json_object *s = json_object_new_object();
-				struct json_object *op = json_object_new_array();
+				JSON_Value *s = json_value_init_object();
+				JSON_Array *op = json_array(json_value_init_array());
 				for (unsigned i = 0; i < pdecoder->next_ib_info.size / 4; i++)
-					json_object_array_add(op, json_object_new_int(data[i]));
-				json_object_object_add(s, "opcodes", op);
-				json_object_object_add(s, "address", json_object_new_uint64(pdecoder->next_ib_info.ib_addr));
-				json_object_array_add(ring_decode_ibs, s);
+					json_array_append_number(op, data[i]);
+				json_object_set_value(json_object(s), "opcodes", json_array_get_wrapping_value(op));
+				json_object_set_number(json_object(s), "address", pdecoder->next_ib_info.ib_addr);
+				json_array_append_value(ring_decode_ibs, s);
 			}
 			free(data);
 		}
@@ -812,9 +780,9 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		value = 1;
 		write(asic->fd.gfxoff, &value, sizeof(value));
 
-		json_object_object_add(answer, "raw", ring_decode_raw);
-		json_object_object_add(answer, "shaders", ring_decode_shaders);
-		json_object_object_add(answer, "ibs", ring_decode_ibs);
+		json_object_set_value(json_object(answer), "raw", json_array_get_wrapping_value(ring_decode_raw));
+		json_object_set_value(json_object(answer), "shaders", json_array_get_wrapping_value(ring_decode_shaders));
+		json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(ring_decode_ibs));
 
 		if (halt_waves) {
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
@@ -832,12 +800,12 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			NULL
 		};
 
-		answer = json_object_new_object();
-		struct json_object *valid = json_object_new_array();
+		answer = json_value_init_object();
+		JSON_Value *valid = json_value_init_array();
 		for (int i = 0; profiles[i]; i++)
-			json_object_array_add(valid, json_object_new_string(profiles[i]));
-		json_object_object_add(answer, "profiles", valid);
-		struct json_object *write = json_object_object_get(request, "set");
+			json_array_append_string(json_array(valid), profiles[i]);
+		json_object_set_value(json_object(answer), "profiles", valid);
+		const char *write = json_object_get_string(request, "set");
 		char path[512];
 		sprintf(path, "/sys/class/drm/card%d/device/power_dpm_force_performance_level", asic->instance);
 		if (!write) {
@@ -852,16 +820,15 @@ struct json_object *umr_process_json_request(struct json_object *request)
 				if (!strcmp(content, profiles[i]))
 					current = i;
 			}
-			json_object_object_add(answer, "current", json_object_new_string(current >= 0 ? profiles[current] : ""));
+			json_object_set_string(json_object(answer), "current", current >= 0 ? profiles[current] : "");
 		} else {
 			FILE *fd = fopen(path, "w");
 			if (fd) {
-				const char *value = json_object_get_string(write);
-				fwrite(value, 1, strlen(value), fd);
+				fwrite(write, 1, strlen(write), fd);
 				fclose(fd);
-				json_object_object_add(answer, "current", write);
+				json_object_set_string(json_object(answer), "current", write);
 			} else {
-				json_object_object_add(answer, "current", json_object_new_string(""));
+				json_object_set_string(json_object(answer), "current", "");
 			}
 		}
 	} else if (strcmp(command, "sensors") == 0) {
@@ -877,10 +844,10 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		char fname[256];
 		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_sensors", asic->instance);
 		asic->fd.sensors = open(fname, O_RDWR);
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 		if (asic->fd.sensors) {
 			uint32_t gpu_power_data[32];
-			struct json_object *values = json_object_new_array();
+			JSON_Array *values = json_array(json_value_init_array());
 			for (int i = 0; p_info[i].regname; i++){
 				int size = 4;
 				p_info[i].value = 0;
@@ -890,42 +857,42 @@ struct json_object *umr_process_json_request(struct json_object *request)
 					p_info[i].value = gpu_power_data[0];
 					p_info[i].value = parse_sensor_value(p_info[i].map, p_info[i].value);
 				}
-				struct json_object *v = json_object_new_object();
-				json_object_object_add(v, "name", json_object_new_string(p_info[i].regname));
-				json_object_object_add(v, "value", json_object_new_int(p_info[i].value));
+				JSON_Object *v = json_object(json_value_init_object());
+				json_object_set_string(v, "name", p_info[i].regname);
+				json_object_set_number(v, "value", p_info[i].value);
 
 				/* Determine min/max */
 				{
 					int min, max;
 					if (i == 0) {
 						snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/pp_dpm_sclk", asic->instance);
-						parse_sysfs_clock_file(fname, &min, &max);
-						json_object_object_add(v, "unit", json_object_new_string("MHz"));
+						parse_sysfs_clock_file(read_file(fname), &min, &max);
+						json_object_set_string(v, "unit", "MHz");
 					} else if (i == 1) {
 						snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/pp_dpm_mclk", asic->instance);
-						parse_sysfs_clock_file(fname, &min, &max);
-						json_object_object_add(v, "unit", json_object_new_string("MHz"));
+						parse_sysfs_clock_file(read_file(fname), &min, &max);
+						json_object_set_string(v, "unit", "MHz");
 					} else if (i == 2) {
 						min = 0;
 						max = 300;
-						json_object_object_add(v, "unit", json_object_new_string("W"));
+						json_object_set_string(v, "unit", "W");
 					} else if (i >= 3 && i <= 4) {
 						min = 0;
 						max = 100;
-						json_object_object_add(v, "unit", json_object_new_string("%"));
+						json_object_set_string(v, "unit", "%");
 					} else {
 						min = 15;
 						max = 120;
-						json_object_object_add(v, "unit", json_object_new_string("°C"));
+						json_object_set_string(v, "unit", "°C");
 					}
-					json_object_object_add(v, "min", json_object_new_int(min));
-					json_object_object_add(v, "max", json_object_new_int(max));
+					json_object_set_number(v, "min", min);
+					json_object_set_number(v, "max", max);
 				}
 
-				json_object_array_add(values, v);
+				json_array_append_value(values, json_object_get_wrapping_value(v));
 			}
 			close(asic->fd.sensors);
-			json_object_object_add(answer, "values", values);
+			json_object_set_value(json_object(answer), "values", json_array_get_wrapping_value(values));
 		}
 	} else if (!strcmp(command, "memory-usage")) {
 		const char *names[] = {
@@ -936,16 +903,16 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		};
 		char path[256];
 
-		answer = json_object_new_object();
+		answer = json_value_init_object();
 
 		for (int i = 0; names[i]; i++) {
-			struct json_object *m = json_object_new_object();
+			JSON_Value *m = json_value_init_object();
 			for (int j = 0; suffixes[j]; j++) {
 				sprintf(path, "/sys/class/drm/card%d/device/mem_info_%s_%s", asic->instance, names[i], suffixes[j]);
 				uint64_t v = read_sysfs_uint64(path);
-				json_object_object_add(m, suffixes[j], json_object_new_uint64(v));
+				json_object_set_number(json_object(m), suffixes[j], v);
 			}
-			json_object_object_add(answer, names[i], m);
+			json_object_set_value(json_object(answer), names[i], m);
 		}
 
 		/* per pid reporting */
@@ -953,8 +920,8 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		char *per_pid = read_file(path);
 		char *ptr = per_pid;
 
-		struct json_object *pids = json_object_new_array();
-		json_object_object_add(answer, "pids", pids);
+		JSON_Array *pids = json_array(json_value_init_array());
+		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
 
 		while (ptr) {
 			unsigned pid;
@@ -966,20 +933,20 @@ struct json_object *umr_process_json_request(struct json_object *request)
 			ptr = next_space + 1;
 
 			if (sscanf(next_pid, "pid:%u", &pid) == 1) {
-				struct json_object *p = json_object_new_object();
-				json_object_array_add(pids, p);
-				json_object_object_add(p, "pid", json_object_new_int(pid));
+				JSON_Value *p = json_value_init_object();
+				json_array_append_value(pids, p);
+				json_object_set_number(json_object(p), "pid", pid);
 
 				ptr = next_space + 1 + strlen("Process:");
 				next_space = strchr(ptr, ' ');
 				*next_space = '\0';
-				json_object_object_add(p, "name", json_object_new_string(ptr));
+				json_object_set_string(json_object(p), "name", ptr);
 				ptr = next_space + 1;
 
 				const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
 				uint64_t pid_total = 0;
 				for (int i = 0; i < 6; i++) {
-					struct json_object *cat = json_object_new_array();
+					JSON_Array *cat = json_array(json_value_init_array());
 					uint64_t cat_total = 0;
 
 					ptr = strstr(ptr, categories[i]);
@@ -1004,16 +971,16 @@ struct json_object *umr_process_json_request(struct json_object *request)
 							sscanf(id, "%lu byte", &sz);
 							ptr = b + 5;
 
-							struct json_object *bo = json_object_new_object();
-							json_object_array_add(cat, bo);
-							json_object_object_add(bo, "size", json_object_new_uint64(sz));
+							JSON_Value *bo = json_value_init_object();
+							json_array_append_value(cat, bo);
+							json_object_set_number(json_object(bo), "size", sz);
 							cat_total += sz;
 							pid_total += sz;
 
 							/* Parse attributes */
 							char attr_in_progress[256];
 							int concat_the_next_n = 0;
-							struct json_object *attr = json_object_new_array();
+							JSON_Array *attr = json_array(json_value_init_array());
 							while (ptr < end_of_line) {
 								next_space = strchr(ptr, ' ');
 								if (!next_space)
@@ -1033,7 +1000,7 @@ struct json_object *umr_process_json_request(struct json_object *request)
 										}
 
 										if (concat_the_next_n == 0) {
-											json_object_array_add(attr, json_object_new_string(attr_in_progress));
+											json_array_append_string(attr, attr_in_progress);
 											attr_in_progress[0] = '\0';
 										}
 									}
@@ -1042,10 +1009,11 @@ struct json_object *umr_process_json_request(struct json_object *request)
 									break;
 								}
 							}
-							if (json_object_array_length(attr))
-								json_object_object_add(bo, "attributes", attr);
+							if (json_array_get_count(attr))
+								json_object_set_value(json_object(bo), "attributes",
+									json_array_get_wrapping_value(attr));
 							else
-								json_object_put(attr);
+								json_value_free(json_array_get_wrapping_value(attr));
 						} else {
 							*end_of_line = '\n';
 							break;
@@ -1053,11 +1021,11 @@ struct json_object *umr_process_json_request(struct json_object *request)
 					}
 
 					if (cat_total > 0) {
-						json_object_array_sort(cat, sort_by_size);
-						json_object_object_add(p, categories[i], cat);
+						json_object_set_value(json_object(p), categories[i],
+							json_array_get_wrapping_value(cat));
 					}
 				}
-				json_object_object_add(p, "total", json_object_new_uint64(pid_total));
+				json_object_set_number(json_object(p), "total", pid_total);
 			}
 		}
 	} else {
@@ -1065,16 +1033,16 @@ struct json_object *umr_process_json_request(struct json_object *request)
 		goto error;
 	}
 
-	struct json_object *out = json_object_new_object();
-	json_object_object_add(out, "request", json_object_get(request));
-	json_object_object_add(out, "answer", answer);
+	JSON_Value *out = json_value_init_object();
+	json_object_set_value(json_object(out), "answer", answer);
+	json_object_set_value(json_object(out), "request", json_object_get_wrapping_value(request));
 
 	return out;
 
 error:
-	answer = json_object_new_object();
-	json_object_object_add(answer, "request", request);
-	json_object_object_add(answer, "error", json_object_new_string(last_error));
+	answer = json_value_init_object();
+	json_object_set_string(json_object(answer), "error", last_error);
+	json_object_set_value(json_object(answer), "request", json_object_get_wrapping_value(request));
 	return answer;
 }
 
@@ -1104,30 +1072,28 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 	/* Everything is ready. Wait for commands */
 
 	printf("Waiting for commands.\n");
-	struct json_tokener *parser = json_tokener_new();
-
 	for (;;) {
 		char* buf;
 		int len = nn_recv(sock, &buf, NN_MSG, 0);
 		if (len < 0)
 			exit(0);
-		struct json_object *request = json_tokener_parse_ex(parser, buf, len);
+		else if (len == 0)
+			continue;
 
-		enum json_tokener_error jerr = json_tokener_get_error(parser);
-		if (jerr != json_tokener_success) {
+		buf[len - 1] = '\0';
+		JSON_Value *request = json_parse_string(buf);
+
+		if (request == NULL) {
 			printf("ERROR\n");
 		} else {
-			struct json_object *answer = umr_process_json_request(request);
-
-			const char* s = json_object_to_json_string(answer);
+			JSON_Value *answer = umr_process_json_request(json_object(request));
+			char* s = json_serialize_to_string(answer);
 			size_t len = strlen(s) + 1;
 			if (nn_send(sock, s, len, 0) < 0)
 				exit(0);
-			
-			json_object_put(answer);
-			json_tokener_reset(parser);
+			json_value_free(answer);
+			json_free_serialized_string(s);
 		}
 		nn_freemsg(buf);
 	}
-	json_tokener_free(parser);
 }

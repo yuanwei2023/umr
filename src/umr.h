@@ -1442,7 +1442,8 @@ int umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len)
 void umr_gfxoff_read(struct umr_asic *asic);
 
 #if UMR_GUI
-struct json_object *umr_process_json_request(struct json_object *request);
+#include "parson.h"
+JSON_Value *umr_process_json_request(JSON_Object *request);
 void umr_run_gui(const char *url);
 #endif
 

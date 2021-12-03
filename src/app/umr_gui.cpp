@@ -52,14 +52,8 @@ extern "C" {
 #include <pthread.h>
 #include <algorithm>
 
-#include <json.h>
+#include "parson.h"
 
-
-struct Bitfield {
-	std::string name;
-	int start;
-	int end;
-};
 
 struct PinnedRegister {
 	PinnedRegister(struct umr_ip_block *_blk, struct umr_reg *_reg) : blk(_blk), reg(_reg) {
@@ -107,22 +101,23 @@ struct AsicData {
 	}
 	~AsicData() {
 		if (info_panel.last_answer)
-			json_object_put(info_panel.last_answer);
+			json_value_free(json_object_get_wrapping_value(info_panel.last_answer));
 		if (waves_panel.last_answer) {
-			json_object_put(waves_panel.last_answer);
+			json_value_free(json_object_get_wrapping_value(waves_panel.last_answer));
+			json_value_free(json_array_get_wrapping_value(waves_panel.active_shader));
 			free(waves_panel.details.vgpr);
 			free(waves_panel.details.view);
 		}
 		if (ring_panel.last_answer)
-			json_object_put(ring_panel.last_answer);
+			json_value_free(json_object_get_wrapping_value(ring_panel.last_answer));
 		if (power_panel.last_answer)
-			json_object_put(power_panel.last_answer);
+			json_value_free(json_object_get_wrapping_value(power_panel.last_answer));
 		if (power_panel.sensors_last_answer)
-			json_object_put(power_panel.sensors_last_answer);
+			json_value_free(json_object_get_wrapping_value(power_panel.sensors_last_answer));
 		if (memory_usage_panel.last_answer)
-			json_object_put(memory_usage_panel.last_answer);
+			json_value_free(json_object_get_wrapping_value(memory_usage_panel.last_answer));
 		if (top_panel.last_accumulate_answer)
-			json_object_put(top_panel.last_accumulate_answer);
+			json_value_free(json_object_get_wrapping_value(top_panel.last_accumulate_answer));
 		for (int i = 0; i < ring_panel.num_rings; i++)
 			free(ring_panel.rings[i]);
 		free(ring_panel.rings);
@@ -135,7 +130,7 @@ struct AsicData {
 	struct umr_asic *asic;
 
 	struct {
-		struct json_object *last_answer;
+		JSON_Object *last_answer;
 	} info_panel;
 
 	/* Register panel */
@@ -167,8 +162,8 @@ struct AsicData {
 
 	/* Waves panel */
 	struct {
-		struct json_object *last_answer;
-		struct json_object *active_shader;
+		JSON_Object *last_answer;
+		JSON_Array *active_shader;
 		uint64_t base_address;
 		uint64_t pc;
 		struct {
@@ -182,24 +177,24 @@ struct AsicData {
 	struct {
 		char **rings;
 		int num_rings;
-		struct json_object *last_answer;
+		JSON_Object *last_answer;
 	} ring_panel;
 
 	struct {
-		struct json_object *last_answer;
+		JSON_Object *last_answer;
 
-		struct json_object *sensors_last_answer;
+		JSON_Object *sensors_last_answer;
 		bool consumed;
 		float *sensor_previous_values;
 		int sensor_values_offset;
 	} power_panel;
 
 	struct {
-		struct json_object *last_answer;
+		JSON_Object *last_answer;
 	} memory_usage_panel;
 
 	struct {
-		struct json_object *last_accumulate_answer;
+		JSON_Object *last_accumulate_answer;
 		const char *ipname;
 		float *fences_deltas;
 		int fence_deltas_offset;
@@ -217,7 +212,6 @@ struct Link {
 	bool use_sock;
 };
 
-struct json_tokener *parser = json_tokener_new();
 
 /* From fts_fuzzy_match */
 static bool fuzzy_match_simple(char const * pattern, char const * str) {
@@ -231,16 +225,17 @@ static bool fuzzy_match_simple(char const * pattern, char const * str) {
 }
 
 /* Helpers */
-struct json_object *query(struct Link& lnk, struct json_object *request)
+JSON_Value *query(struct Link& lnk, JSON_Value *request)
 {
 	if (lnk.use_sock) {
-		const char* s = json_object_to_json_string(request);
+		char* s = json_serialize_to_string(request);
 		int len = strlen(s) + 1;
 		int r = nn_send(lnk.sock, s, len, 0);
+		json_free_serialized_string(s);
 
 		if (r < 0)
 			exit(0);
-		json_object_put(request);
+		json_value_free(request);
 
 		if (r < 0)
 			return NULL;
@@ -252,13 +247,12 @@ struct json_object *query(struct Link& lnk, struct json_object *request)
 		if (len == 0)
 			return NULL;
 
-		struct json_object *out = json_tokener_parse_ex(parser, buffer, len);
-		json_tokener_reset(parser);
+		buffer[len - 1] = '\0';
+		JSON_Value *out = json_parse_string(buffer);
 		nn_freemsg(buffer);
 		return out;
 	} else {
-		struct json_object * out = umr_process_json_request(request);
-		return out;
+		return umr_process_json_request(json_object(request));
 	}
 }
 
@@ -271,15 +265,15 @@ static void force_redraw() {
 struct Link lnk;
 pthread_mutex_t mtx;
 pthread_cond_t cond;
-std::vector<struct json_object*> pending_request;
+std::vector<JSON_Value*> pending_request;
 bool done;
 
-static void send_request(struct json_object *req, struct umr_asic *asic) {
+static void send_request(JSON_Value *req, struct umr_asic *asic) {
 	if (asic) {
-		struct json_object *a = json_object_new_object();
-		json_object_object_add(a, "did", json_object_new_int(asic->did));
-		json_object_object_add(a, "instance", json_object_new_int(asic->instance));
-		json_object_object_add(req, "asic", a);
+		JSON_Value *a = json_value_init_object();
+		json_object_set_number(json_object(a), "did", asic->did);
+		json_object_set_number(json_object(a), "instance", asic->instance);
+		json_object_set_value(json_object(req), "asic", a);
 	}
 	pthread_mutex_lock(&mtx);
 	pending_request.push_back(req);
@@ -287,35 +281,35 @@ static void send_request(struct json_object *req, struct umr_asic *asic) {
 	pthread_mutex_unlock(&mtx);
 }
 
-void process_enumerate_command_answer(std::vector<AsicData*> *asics, struct json_object *in) {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+void process_enumerate_command_answer(std::vector<AsicData*> *asics, JSON_Object *in) {
+	JSON_Value *request = json_object_get_value(in, "request");
+	JSON_Array *answer = json_array(json_object_get_value(in, "answer"));
 
-	int s = json_object_array_length(answer);
+	int s = json_array_get_count(answer);
 	for (int i = 0; i < s; i++) {
-		struct json_object *a = json_object_array_get_idx(answer, i);
-		AsicData *d = new AsicData(json_object_get_int(json_object_object_get(a, "did")),
-									json_object_get_int(json_object_object_get(a, "instance")));
-		struct json_object *rings = json_object_object_get(a, "rings");
-		int n = json_object_array_length(rings);
+		JSON_Object *a = json_object(json_array_get_value(answer, i));
+		AsicData *d = new AsicData(json_object_get_number(a, "did"),
+									json_object_get_number(a, "instance"));
+		JSON_Array *rings = json_object_get_array(a, "rings");
+		int n = json_array_get_count(rings);
 		d->ring_panel.rings = (char**) malloc(sizeof(char*) * n);
 		for (int i = 0; i < n; i++)
-			d->ring_panel.rings[i] = strdup(json_object_get_string(json_object_array_get_idx(rings, i)));
+			d->ring_panel.rings[i] = strdup(json_array_get_string(rings, i));
 		d->ring_panel.num_rings = n;
-		d->info_panel.last_answer = json_object_get(a);
+		d->info_panel.last_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(a)));
 		asics->push_back(d);
 	}
 }
 void send_enumerate_command(struct Link& lnk) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("enumerate"));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "enumerate");
 	send_request(req, NULL);
 }
 
-AsicData *answer_to_asic_data(std::vector<AsicData*> *asics, struct json_object *response) {
-	struct json_object *asc = json_object_object_get(response, "asic");
-	int did = json_object_get_int(json_object_object_get(asc, "did"));
-	int instance = json_object_get_int(json_object_object_get(asc, "instance"));
+AsicData *answer_to_asic_data(std::vector<AsicData*> *asics, JSON_Object *response) {
+	JSON_Object *asc = json_object(json_object_get_value(response, "asic"));
+	int did = json_object_get_number(asc, "did");
+	int instance = json_object_get_number(asc, "instance");
 
 	for (int i = 0; i < (int) asics->size(); i++) {
 		if ((*asics)[i]->asic->did == did && (*asics)[i]->asic->instance == instance)
@@ -324,14 +318,14 @@ AsicData *answer_to_asic_data(std::vector<AsicData*> *asics, struct json_object 
 	return NULL;
 }
 
-void process_read_reg_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_read_reg_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
-	const char *blk = json_object_get_string(json_object_object_get(request, "block"));
-	const char *reg = json_object_get_string(json_object_object_get(request, "register"));
+	const char *blk = json_object_get_string(request, "block");
+	const char *reg = json_object_get_string(request, "register");
 
 	PinnedRegister *pinned = NULL;
 	for (int i = 0; i < data->blocks_panel.pinned_registers.size() && !pinned; i++) {
@@ -348,144 +342,143 @@ void process_read_reg_command_answer(std::vector<AsicData*> *asics, struct json_
 		pinned = &data->blocks_panel.pinned_registers.back();
 	}
 
-	pinned->reg->value = json_object_get_int(json_object_object_get(answer, "value"));
+	pinned->reg->value = json_object_get_number(answer, "value");
 	pinned->value_is_valid = true;
 	pinned->value_is_dirty = false;
 }
 
 void send_read_reg_command(struct Link& lnk, AsicData &data, PinnedRegister *pinned)
 {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("read"));
-	json_object_object_add(req, "block", json_object_new_string(pinned->blk->ipname));
-	json_object_object_add(req, "register", json_object_new_string(pinned->reg->regname));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "read");
+	json_object_set_string(json_object(req), "block", pinned->blk->ipname);
+	json_object_set_string(json_object(req), "register", pinned->reg->regname);
 	send_request(req, data.asic);
 }
 
-void process_accumulate_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_accumulate_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
 	if (data->top_panel.last_accumulate_answer)
-		json_object_put(data->top_panel.last_accumulate_answer);
-	data->top_panel.last_accumulate_answer = json_object_get(answer);
+		json_value_free(json_object_get_wrapping_value(data->top_panel.last_accumulate_answer));
+	data->top_panel.last_accumulate_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(answer)));
 	data->top_panel.consumed = false;
 }
 
 void send_accumulate_command(struct Link& lnk, AsicData &data, const char *ipname, int ms, const char **regname)
 {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("accumulate"));
-	json_object_object_add(req, "block", json_object_new_string(ipname));
-	struct json_object *regs = json_object_new_array();
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "accumulate");
+	json_object_set_string(json_object(req), "block", ipname);
+	JSON_Value *regs = json_value_init_array();
 	for (int i = 0; regname[i]; i++)
-		json_object_array_add(regs, json_object_new_string(regname[i]));
-	json_object_object_add(req, "registers", regs);
-	json_object_object_add(req, "period", json_object_new_int(ms));
-	json_object_object_add(req, "steps", json_object_new_int(100));
+		json_array_append_string(json_array(regs), regname[i]);
+	json_object_set_value(json_object(req), "registers", regs);
+	json_object_set_number(json_object(req), "period", ms);
+	json_object_set_number(json_object(req), "steps", 100);
 	send_request(req, data.asic);
 }
 
 void send_write_reg_command(struct Link& lnk, AsicData &data, PinnedRegister *pinned, unsigned value)
 {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("write"));
-	json_object_object_add(req, "block", json_object_new_string(pinned->blk->ipname));
-	json_object_object_add(req, "register", json_object_new_string(pinned->reg->regname));
-	json_object_object_add(req, "value", json_object_new_int(value));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "write");
+	json_object_set_string(json_object(req), "block", pinned->blk->ipname);
+	json_object_set_string(json_object(req), "register", pinned->reg->regname);
+	json_object_set_number(json_object(req), "value", value);
 	send_request(req, data.asic);
 }
 
-void process_vm_read_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_vm_read_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
-	struct json_object *values = json_object_object_get(answer, "values");
+	JSON_Array *values = json_array(json_object_get_value(answer, "values"));
 	if (values) {
-		int s = json_object_array_length(values);
+		int s = json_array_get_count(values);
 		data->memory_panel.vram_content = (uint64_t*) realloc(data->memory_panel.vram_content, s * sizeof(uint64_t));
 
 		for (int k = 0; k < s; k++) {
-			data->memory_panel.vram_content[k] = json_object_get_uint64(json_object_array_get_idx(values, k));
+			data->memory_panel.vram_content[k] = json_array_get_number(values, k);
 		}
 		data->memory_panel.valid_content_size = s * sizeof(uint64_t);
 	}
 
-	struct json_object *pt = json_object_object_get(answer, "page_table");
+	JSON_Array *pt = json_array(json_object_get_value(answer, "page_table"));
 	if (pt) {
-		int num_pt = json_object_array_length(pt);
+		int num_pt = json_array_get_count(pt);
 		for (int k = 0; k < num_pt; k++) {
-			struct json_object *level = json_object_array_get_idx(pt, k);
-			data->memory_panel.page_table[k].pba = json_object_get_uint64(json_object_object_get(level, "pba"));
-			data->memory_panel.page_table[k].type = json_object_get_uint64(json_object_object_get(level, "type"));
+			JSON_Object *level = json_object(json_array_get_value(pt, k));
+			data->memory_panel.page_table[k].pba = json_object_get_number(level, "pba");
+			data->memory_panel.page_table[k].type = json_object_get_number(level, "type");
 			if (data->memory_panel.page_table[k].type == 2)
-				data->memory_panel.page_table[k].va_mask = json_object_get_uint64(json_object_object_get(level, "va_mask"));
-			data->memory_panel.page_table[k].system = json_object_get_uint64(json_object_object_get(level, "system"));
-			data->memory_panel.page_table[k].tmz = json_object_get_uint64(json_object_object_get(level, "tmz"));	
-			data->memory_panel.page_table[k].mtype = json_object_get_uint64(json_object_object_get(level, "mtype"));
+				data->memory_panel.page_table[k].va_mask = json_object_get_number(level, "va_mask");
+			data->memory_panel.page_table[k].system = json_object_get_number(level, "system");
+			data->memory_panel.page_table[k].tmz = json_object_get_number(level, "tmz");
+			data->memory_panel.page_table[k].mtype = json_object_get_number(level, "mtype");
 		}
 		data->memory_panel.num_page_table_entries = num_pt;
-		data->memory_panel.decoded_addr = json_object_get_uint64(json_object_object_get(request, "address"));
-		data->memory_panel.decoded_vmid = json_object_get_int(json_object_object_get(request, "vmid"));
+		data->memory_panel.decoded_addr = json_object_get_number(request, "address");
+		data->memory_panel.decoded_vmid = json_object_get_number(request, "vmid");
 	}
 }
 void send_vm_read_command(struct Link& lnk, AsicData &data, bool use_linear, bool decode_only = false) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string(decode_only ? "vm-decode" : "vm-read"));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", decode_only ? "vm-decode" : "vm-read");
 	uint64_t addr;
 	sscanf(data.memory_panel.vram_address, "%" SCNx64, &addr);
-	json_object_object_add(req, "address", json_object_new_uint64(addr));
-	json_object_object_add(req, "size", json_object_new_int(data.memory_panel.vram_size));
+	json_object_set_number(json_object(req), "address", addr);
+	json_object_set_number(json_object(req), "size", data.memory_panel.vram_size);
 	if (!use_linear)
-		json_object_object_add(req, "vmid", json_object_new_int(data.memory_panel.vmid));
+		json_object_set_number(json_object(req), "vmid", data.memory_panel.vmid);
 	send_request(req, data.asic);
 }
 
-void process_ring_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_ring_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
 	if (data->ring_panel.last_answer)
-		json_object_put(data->ring_panel.last_answer);
-	data->ring_panel.last_answer = json_object_get(answer);
+		json_value_free(json_object_get_wrapping_value(data->ring_panel.last_answer));
+	data->ring_panel.last_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(answer)));
 }
 void send_ring_command(struct Link& lnk, AsicData &data, const char *ring_name, bool halt_ring, bool rptr_wptr) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("ring"));
-	json_object_object_add(req, "ring", json_object_new_string(ring_name));
-	json_object_object_add(req, "halt_waves", json_object_new_boolean(halt_ring));
-	json_object_object_add(req, "rptr_wptr", json_object_new_boolean(rptr_wptr));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "ring");
+	json_object_set_string(json_object(req), "ring", ring_name);
+	json_object_set_boolean(json_object(req), "halt_waves", halt_ring);
+	json_object_set_boolean(json_object(req), "rptr_wptr", rptr_wptr);
 	send_request(req, data.asic);
 }
 
-void process_waves_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_waves_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
   	data->waves_panel.active_shader = NULL;
 	if (data->waves_panel.last_answer) {
-		json_object_put(data->waves_panel.last_answer);
+		json_value_free(json_object_get_wrapping_value(data->waves_panel.last_answer));
   	}
-	data->waves_panel.last_answer = json_object_get(answer);
+	data->waves_panel.last_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(answer)));
 
 	data->waves_panel.details.max_vgpr = 0;
 
-	struct json_object *waves = json_object_object_get(data->waves_panel.last_answer, "waves");
-	int wave_count = json_object_array_length(waves);
-	for (int i = 0; i < json_object_array_length(waves) ; i++) {
-		struct json_object *wave = json_object_array_get_idx(waves, i);
-		struct json_object *sgpr = json_object_object_get(wave, "sgpr");
-		struct json_object *vgpr = json_object_object_get(wave, "vgpr");
+	JSON_Array *waves = json_array(json_object_get_value(data->waves_panel.last_answer, "waves"));
+	int wave_count = json_array_get_count(waves);
+	for (int i = 0; i < wave_count ; i++) {
+		JSON_Object *wave = json_object(json_array_get_value(waves, i));
+		JSON_Value *vgpr = json_object_get_value(wave, "vgpr");
 		if (vgpr) {
-			int s = json_object_array_length(vgpr);
+			int s = json_array_get_count(json_array(vgpr));
 			data->waves_panel.details.max_vgpr = std::max(s, data->waves_panel.details.max_vgpr);
 		}
 	}
@@ -500,74 +493,75 @@ void process_waves_command_answer(std::vector<AsicData*> *asics, struct json_obj
 	}
 }
 void send_waves_command(struct Link& lnk, AsicData &data, bool halt_waves, bool resume_waves, bool disable_gfxoff) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("waves"));
-	json_object_object_add(req, "halt_waves", json_object_new_boolean(halt_waves));
-	json_object_object_add(req, "resume_waves", json_object_new_boolean(halt_waves && resume_waves));
-	json_object_object_add(req, "disable_gfxoff", json_object_new_boolean(disable_gfxoff));
-	json_object_object_add(req, "ring", json_object_new_string(data.asic->family >= FAMILY_NV ? "gfx_0.0.0" : "gfx"));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "waves");
+	json_object_set_boolean(json_object(req), "halt_waves", halt_waves);
+	json_object_set_boolean(json_object(req), "resume_waves", halt_waves && resume_waves);
+	json_object_set_boolean(json_object(req), "disable_gfxoff", disable_gfxoff);
+	json_object_set_string(json_object(req), "ring", data.asic->family >= FAMILY_NV ? "gfx_0.0.0" : "gfx");
 	send_request(req, data.asic);
 }
 
-void process_power_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_power_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
 	if (data->power_panel.last_answer)
-		json_object_put(data->power_panel.last_answer);
-	data->power_panel.last_answer = json_object_get(answer);
+		json_value_free(json_object_get_wrapping_value(data->power_panel.last_answer));
+	data->power_panel.last_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(answer)));
 }
 
 void send_power_command(struct Link& lnk, AsicData &data, const char *new_value) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("power"));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "power");
 	if (new_value)
-		json_object_object_add(req, "set", json_object_new_string(new_value));
+		json_object_set_string(json_object(req), "set", new_value);
 	send_request(req, data.asic);
 }
 
-void process_sensors_command_answer(std::vector<AsicData*> *asics, struct json_object *in)
+void process_sensors_command_answer(std::vector<AsicData*> *asics, JSON_Object *in)
 {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
 	if (data->power_panel.sensors_last_answer)
-		json_object_put(data->power_panel.sensors_last_answer);
-	data->power_panel.sensors_last_answer = json_object_get(answer);
+		json_value_free(json_object_get_wrapping_value(data->power_panel.sensors_last_answer));
+	data->power_panel.sensors_last_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(answer)));
 	data->power_panel.consumed = false;
 }
 
 void send_sensors_command(struct Link& lnk, AsicData &data) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("sensors"));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "sensors");
 	send_request(req, data.asic);
 }
 
-void process_memory_usage_command_answer(std::vector<AsicData*> *asics, struct json_object *in) {
-	struct json_object *request = json_object_object_get(in, "request");
-	struct json_object *answer = json_object_object_get(in, "answer");
+void process_memory_usage_command_answer(std::vector<AsicData*> *asics, JSON_Object *in) {
+	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+	JSON_Object *answer = json_object(json_object_get_value(in, "answer"));
 	AsicData *data = answer_to_asic_data(asics, request);
 
 	if (data->memory_usage_panel.last_answer)
-		json_object_put(data->memory_usage_panel.last_answer);
-	data->memory_usage_panel.last_answer = json_object_get(answer);
+		json_value_free(json_object_get_wrapping_value(data->memory_usage_panel.last_answer));
+	data->memory_usage_panel.last_answer = json_object(json_value_deep_copy(json_object_get_wrapping_value(answer)));
 }
 
 void send_memory_usage_command(struct Link& lnk, AsicData &data) {
-	struct json_object *req = json_object_new_object();
-	json_object_object_add(req, "command", json_object_new_string("memory-usage"));
+	JSON_Value *req = json_value_init_object();
+	json_object_set_string(json_object(req), "command", "memory-usage");
 	send_request(req, data.asic);
 }
 
-static void process_response(std::vector<AsicData*> *asics, struct json_object *in) {
-	struct json_object *request = json_object_object_get(in, "request");
-	const char *cmd = json_object_get_string(json_object_object_get(request, "command"));
-	struct json_object *error = json_object_object_get(in, "error");
+static void process_response(std::vector<AsicData*> *asics, JSON_Object *in) {
+	JSON_Value *request = json_object_get_value(in, "request");
+	const char *cmd = json_object_get_string(json_object(request), "command");
+	JSON_Value *error = json_object_get_value(in, "error");
 
-	if (!error) {
+
+	if (!error && cmd) {
 		if (!strcmp(cmd, "enumerate")) {
 			process_enumerate_command_answer(asics, in);
 		} else if (!strcmp(cmd, "read") || !strcmp(cmd, "write")) {
@@ -601,7 +595,7 @@ static void *communication_thread(void *_job) {
 		if (stat(session_filename, &statbuf) == -1 && errno == ENOENT)
 			break;
 	}
-	struct json_object *session = json_object_new_array();
+	JSON_Array *session = json_array(json_value_init_array());
 	std::vector<AsicData*> *asics = (std::vector<AsicData*> *)_job;
 
 	while (!done) {
@@ -609,22 +603,24 @@ static void *communication_thread(void *_job) {
 		if (pending_request.empty())
 			pthread_cond_wait(&cond, &mtx);
 		for (int i = 0; i < pending_request.size(); i++) {
-			struct json_object* req = pending_request[i];
+			JSON_Value* req = pending_request[i];
 			pthread_mutex_unlock(&mtx);
-			struct json_object *in = query(lnk, req);
+			JSON_Value *in = query(lnk, req);
 			pthread_mutex_lock(&mtx);
 
 			/* Save to disk for replay */
-			json_object_array_add(session, in);
+			json_array_append_value(session, json_value_deep_copy(in));
 
-			process_response(asics, in);
+			process_response(asics, json_object(in));
+
+			json_value_free(in);
 		}
 		pending_request.clear();
 		pthread_mutex_unlock(&mtx);
 
-		json_object_to_file(session_filename, session);
+		json_serialize_to_file(json_array_get_wrapping_value(session), session_filename);
 	}
-	json_object_put(session);
+	json_value_free(json_array_get_wrapping_value(session));
 	return 0;
 }
 
@@ -677,14 +673,14 @@ std::vector<syntax_coloring> regexps = {
    },
 };
 
-static uint32_t display_ib(struct umr_asic *asic, regmatch_t *pmatch, struct json_object *raw, uint64_t base, int rptr = -1, int wptr = -1, int drv_wptr = -1)
+static uint32_t display_ib(struct umr_asic *asic, regmatch_t *pmatch, JSON_Array *raw, uint64_t base, int rptr = -1, int wptr = -1, int drv_wptr = -1)
 {
 	float addr_col_size = ImGui::CalcTextSize("Address").x;
 	float raw_col_size = ImGui::CalcTextSize("Raw Value").x;
 	uint32_t addr_lo_ib = 0;
 
 	ImGuiListClipper clipper;
-	clipper.Begin(json_object_array_length(raw));
+	clipper.Begin(json_array_get_count(raw));
 	ImGui::Columns(4);
 	ImGui::Text(rptr >= 0 ? "Index" : "Address");
 	ImGui::NextColumn();
@@ -708,7 +704,7 @@ static uint32_t display_ib(struct umr_asic *asic, regmatch_t *pmatch, struct jso
 
 	while (clipper.Step()) {
 		for (int i = 0 ; i < clipper.DisplayEnd; i++) {
-			uint32_t raw_value = json_object_get_int(json_object_array_get_idx(raw, i));
+			uint32_t raw_value = json_array_get_number(raw, i);
 
 			ring_decode_buffer_offset = 0;
 			umr_print_decode(asic, &decoder, raw_value, ring_decode_fn);
@@ -874,9 +870,11 @@ static int run_gui(const char *url)
 
 	pthread_t t_id;
 	if (replay) {
-		struct json_object *session = json_object_from_file(url);
-		for (int i = 0; i < json_object_array_length(session); i++) {
-			process_response(&asics, json_object_array_get_idx(session, i));
+		JSON_Array *session = json_array(json_parse_file(url));
+		if (!session)
+			return 1;
+		for (int i = 0; i < json_array_get_count(session); i++) {
+			process_response(&asics, json_object(json_array_get_value(session, i)));
 		}
 	} else {
 		pthread_create(&t_id, NULL, communication_thread, &asics);
@@ -1044,7 +1042,7 @@ static int run_gui(const char *url)
 						"SI", "CIK", "VI", "AI", "NV", "NPI"
 				};
 				ImGui::BeginChild("Info");
-				struct json_object *a = data.info_panel.last_answer;
+				JSON_Object *a = data.info_panel.last_answer;
 				ImGui::BeginTable("Info", 2, ImGuiTableFlags_Borders, ImVec2(avail.x / 2, 0));
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0); ImGui::Text("ASIC name");
@@ -1060,13 +1058,13 @@ static int run_gui(const char *url)
 				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%s", families[data.asic->family]);
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0); ImGui::Text("VRAM");
-				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%6d MB", (int) (json_object_get_uint64(json_object_object_get(a, "vram_size")) / (1024 * 1024)));
+				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%6d MB", (int) (json_object_get_number(a, "vram_size") / (1024 * 1024)));
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0); ImGui::Text("Visible VRAM");
-				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%6d MB", (int) (json_object_get_uint64(json_object_object_get(a, "vis_vram_size")) / (1024 * 1024)));
+				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%6d MB", (int) (json_object_get_number(a, "vis_vram_size") / (1024 * 1024)));
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0); ImGui::Text("vBios version");
-				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%s", json_object_get_string(json_object_object_get(a, "vbios_version")));
+				ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%s", json_object_get_string(a, "vbios_version"));
 				ImGui::EndTable();
 				
 				ImGui::BeginTable("Firmwares", 3, ImGuiTableFlags_Borders, ImVec2(avail.x / 2, 0));
@@ -1074,16 +1072,16 @@ static int run_gui(const char *url)
 				ImGui::TableSetupColumn("Feature version");
 				ImGui::TableSetupColumn("Firmware version");
 				ImGui::TableHeadersRow();
-				struct json_object *fws = json_object_object_get(a, "firmwares");
-				for (int j = 0; j < json_object_array_length(fws); j++) {
-					struct json_object *fw = json_object_array_get_idx(fws, j);
+				JSON_Array *fws = json_object_get_array(a, "firmwares");
+				for (int j = 0; j < json_array_get_count(fws); j++) {
+					JSON_Object *fw = json_object(json_array_get_value(fws, j));
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
-					ImGui::TextUnformatted(json_object_get_string(json_object_object_get(fw, "name"))); ImGui::NextColumn(); ImGui::NextColumn();
+					ImGui::TextUnformatted(json_object_get_string(fw, "name")); ImGui::NextColumn(); ImGui::NextColumn();
 					ImGui::TableSetColumnIndex(1);
-					ImGui::Text("#b589000x%x", json_object_get_int(json_object_object_get(fw, "feature_version"))); ImGui::NextColumn();
+					ImGui::Text("#b589000x%x", (unsigned)json_object_get_number(fw, "feature_version")); ImGui::NextColumn();
 					ImGui::TableSetColumnIndex(2);
-					ImGui::Text("#b589000x%x", json_object_get_int(json_object_object_get(fw, "firmware_version"))); ImGui::NextColumn();
+					ImGui::Text("#b589000x%x", (unsigned)json_object_get_number(fw, "firmware_version")); ImGui::NextColumn();
 				}
 				ImGui::EndTable();
 				ImGui::Separator();
@@ -1327,53 +1325,54 @@ static int run_gui(const char *url)
 				ImGui::Separator();
 				if (data.waves_panel.last_answer) {
 					ImGui::BeginChild("Waves", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
-					struct json_object *waves = json_object_object_get(data.waves_panel.last_answer, "waves");
-					struct json_object *shaders = json_object_object_get(data.waves_panel.last_answer, "shaders");
+					JSON_Array *waves = json_object_get_array(data.waves_panel.last_answer, "waves");
+					JSON_Object *shaders = json_object(json_object_get_value(data.waves_panel.last_answer, "shaders"));
 					bool force_scroll = false;
-					int w = json_object_array_length(waves);
+					int w = json_array_get_count(waves);
 					for (int i = 0; i < w; i++) {
-						struct json_object *wave = json_object_array_get_idx(waves, i);
-						struct json_object *status = json_object_object_get(wave, "status"); 
+						JSON_Object *wave = json_object(json_array_get_value(waves, i));
+						JSON_Object *status = json_object(json_object_get_value(wave, "status"));
 
 						ImGui::PushID(i);
 
 						if (ImGui::TreeNode("wave", "Wave %d", i)) {
 							ImGui::Columns(4);
-							ImGui::Text("se: #b58900%d", json_object_get_int(json_object_object_get(wave, "se")));
+							ImGui::Text("se: #b58900%d", json_object_get_number(wave, "se"));
 							ImGui::NextColumn();
-							ImGui::Text("sh: #b58900%d", json_object_get_int(json_object_object_get(wave, "sh")));
+							ImGui::Text("sh: #b58900%d", json_object_get_number(wave, "sh"));
 							ImGui::NextColumn();
-							ImGui::Text("cu: #b58900%d", json_object_get_int(json_object_object_get(wave, "cu")));
+							ImGui::Text("cu: #b58900%d", json_object_get_number(wave, "cu"));
 							ImGui::NextColumn();
-							ImGui::Text("simd_id: #b58900%d", json_object_get_int(json_object_object_get(wave, "simd_id")));
+							ImGui::Text("simd_id: #b58900%d", json_object_get_number(wave, "simd_id"));
 							ImGui::NextColumn();
-							ImGui::Text("wave_id: #b58900%d", json_object_get_int(json_object_object_get(wave, "wave_id")));
+							ImGui::Text("wave_id: #b58900%d", json_object_get_number(wave, "wave_id"));
 							ImGui::NextColumn();
-							struct json_object *dis = json_object_object_get(wave, "shader_disassembly");
+							const char *dis = json_object_get_string(wave, "shader_disassembly");
 							if (dis) {
 								char label[128];
-								sprintf(label, "PC: 0x%lx", json_object_get_uint64(json_object_object_get(wave, "PC")));
+								sprintf(label, "PC: 0x%lx", (uint64_t)json_object_get_number(wave, "PC"));
 								if (ImGui::Button(label)) {
-									const char *sh = json_object_get_string(dis);
-									data.waves_panel.active_shader = json_object_object_get(shaders, sh);
-									sscanf(sh, "%" PRIx64, &data.waves_panel.base_address);
-									data.waves_panel.pc = json_object_get_uint64(json_object_object_get(wave, "PC"));
+									data.waves_panel.active_shader = json_object_get_array(shaders, dis);
+									sscanf(dis, "%" PRIx64, &data.waves_panel.base_address);
+									data.waves_panel.pc = json_object_get_number(wave, "PC");
 
 									force_scroll = true;
 								}
 							} else {
-								ImGui::Text("PC: 0x%lx", json_object_get_uint64(json_object_object_get(wave, "PC")));
+								ImGui::Text("PC: 0x%lx", json_object_get_number(wave, "PC"));
 							}
 							ImGui::Columns(2);
-							ImGui::Text("wave_inst_dw0: #b589000x%08x", json_object_get_int(json_object_object_get(wave, "wave_inst_dw0")));
+							ImGui::Text("wave_inst_dw0: #b589000x%08x", json_object_get_number(wave, "wave_inst_dw0"));
 							ImGui::NextColumn();
-							ImGui::Text("wave_inst_dw1: #b589000x%08x", json_object_get_int(json_object_object_get(wave, "wave_inst_dw1")));
+							ImGui::Text("wave_inst_dw1: #b589000x%08x", json_object_get_number(wave, "wave_inst_dw1"));
 							ImGui::NextColumn();
 							ImGui::Columns(1);
 							if (ImGui::TreeNodeEx("Status")) {
 								ImGui::Columns(4);
-								json_object_object_foreach(status, key, val) {
-									ImGui::Text("%s: #b58900%d", key, json_object_get_int(val));
+								size_t n = json_object_get_count(status);
+								for (size_t j = 0; j < n; j++) {
+									ImGui::Text("%s: #b58900%d", json_object_get_name(status, j),
+																 (unsigned)json_number(json_object_get_value_at(status, j)));
 									ImGui::NextColumn();
 								}
 								ImGui::Columns(1);
@@ -1381,8 +1380,11 @@ static int run_gui(const char *url)
 							}
 							if (ImGui::TreeNodeEx("Hardware Id")) {
 								ImGui::Columns(4);
-								json_object_object_foreach(json_object_object_get(wave, "hw_id"), key, val) {
-									ImGui::Text("%s: #b58900%d", key, json_object_get_int(val));
+								JSON_Object *hw_id = json_object(json_object_get_value(wave, "hw_id"));
+								size_t n = json_object_get_count(hw_id);
+								for (size_t j = 0; j < n; j++) {
+									ImGui::Text("%s: #b58900%d", json_object_get_name(hw_id, j),
+																 (unsigned)json_number(json_object_get_value_at(hw_id, j)));
 									ImGui::NextColumn();
 								}
 								ImGui::Columns(1);
@@ -1390,8 +1392,11 @@ static int run_gui(const char *url)
 							}
 							if (ImGui::TreeNodeEx("GPR Alloc")) {
 								ImGui::Columns(4);
-								json_object_object_foreach(json_object_object_get(wave, "gpr_alloc"), key, val) {
-									ImGui::Text("%s: #b58900%d", key, json_object_get_int(val));
+								JSON_Object *gpr_alloc = json_object(json_object_get_value(wave, "gpr_alloc"));
+								size_t n = json_object_get_count(gpr_alloc);
+								for (size_t j = 0; j < n; j++) {
+									ImGui::Text("%s: #b58900%d", json_object_get_name(gpr_alloc, j),
+																 (unsigned)json_number(json_object_get_value_at(gpr_alloc, j)));
 									ImGui::NextColumn();
 								}
 								ImGui::Columns(1);
@@ -1400,7 +1405,7 @@ static int run_gui(const char *url)
 
 							{
 								static const char *formats[] = { "s%*d: #d33682%d", "s%*d: #d33682%u", "s%*d: #d33682%08x" };
-								struct json_object *sgpr = json_object_object_get(wave, "sgpr");
+								JSON_Array *sgpr = json_object_get_array(wave, "sgpr");
 								if (sgpr && ImGui::TreeNodeEx("#d33682SGPRs")) {
 									static int mode = 2;
 									ImGui::Text("Display as:");
@@ -1414,12 +1419,12 @@ static int run_gui(const char *url)
 									ImGui::RadioButton("float", &mode, 3);
 									ImGui::Columns(4);
 									ImGui::PushID("sgpr");
-									int s = json_object_array_length(sgpr);
+									int s = json_array_get_count(sgpr);
 									int align = s > 99 ? 3 : 2;
 									for (int i = 0; i < s; i++) {
-										struct json_object *v = json_object_array_get_idx(sgpr, i);
+										JSON_Value *v = json_array_get_value(sgpr, i);
 										ImGui::PushID(v);
-										int aaa = json_object_get_int(v);
+										int aaa = (int)json_number(v);
 										if (mode == 3) {
 											float f = reinterpret_cast<float&>(aaa);
 											ImGui::Text("s%*d: #d33682%f", align, i, f);
@@ -1437,9 +1442,9 @@ static int run_gui(const char *url)
 
 							{
 								static const char *formats[] = { "#6c71c4%d", "#6c71c4%u", "#6c71c4%08x" };
-								struct json_object *vgpr = json_object_object_get(wave, "vgpr");
+								JSON_Array *vgpr = json_object_get_array(wave, "vgpr");
 								if (vgpr && ImGui::TreeNodeEx("#6c71c4VGPRs")) {
-									int s = json_object_array_length(vgpr);
+									int s = json_array_get_count(vgpr);
 
 									ImGui::BeginTable("vgprvalues", 5, ImGuiTableFlags_Borders);
 									ImGui::TableSetupColumn("Base");
@@ -1467,8 +1472,8 @@ static int run_gui(const char *url)
 											ImGui::TableSetColumnIndex(4);
 											ImGui::RadioButton("as float", mode, 3);
 
-											struct json_object *vg = json_object_array_get_idx(vgpr, i);
-											int num_thread = json_object_array_length(vg);
+											JSON_Array *vg = json_array_get_array(vgpr, i);
+											int num_thread = json_array_get_count(vg);
 
 											for (int j = 0; j < num_thread; j++) {
 												if (j % 4 == 0) {
@@ -1478,9 +1483,9 @@ static int run_gui(const char *url)
 												}
 												ImGui::TableSetColumnIndex(1 + j % 4);
 
-												struct json_object *v = json_object_array_get_idx(vg, i);
+												JSON_Value *v = json_array_get_value(vg, i);
 												ImGui::PushID(v);
-												int aaa = json_object_get_int(v);
+												int aaa = (int)json_number(v);
 												if (*mode == 3) {
 													float f = reinterpret_cast<float&>(aaa);
 													ImGui::Text("#6c71c4%f", f);
@@ -1498,20 +1503,19 @@ static int run_gui(const char *url)
 							}
 
 							{
-								struct json_object *threads = json_object_object_get(wave, "threads");
+								JSON_Array *threads = json_object_get_array(wave, "threads");
 								if (threads) {
-									int s = json_object_array_length(threads);
+									int s = json_array_get_count(threads);
 									int active = 0;
 									for (int i = 0; i < s; i++) {
-										active += json_object_get_int(json_object_array_get_idx(threads, i));
+										active += json_array_get_boolean(threads, i);
 									}
 
 									if (ImGui::TreeNode(threads, "Threads (%d active)", active)) {
 										ImGui::Columns(4);
 										for (int i = 0; i < s; i++) {
 											ImGui::Text("t%d: %s", i,
-												json_object_get_int(
-													json_object_array_get_idx(threads, i)) ?
+												json_array_get_boolean(threads, i) ?
 														"#859900on" : "#dc322foff");
 											ImGui::NextColumn();
 										}
@@ -1551,7 +1555,7 @@ static int run_gui(const char *url)
 							}
 						}
 
-						int s = json_object_array_length(data.waves_panel.active_shader);
+						int s = json_array_get_count(data.waves_panel.active_shader);
 						int scroll = 0;
 						float addr_col_size = 0;
 						float raw_col_size = 0;
@@ -1570,7 +1574,7 @@ static int run_gui(const char *url)
 						while (clipper.Step()) {
 							for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
 								uint64_t addr = data.waves_panel.base_address + i * 4;
-								const char *src = json_object_get_string(json_object_array_get_idx(data.waves_panel.active_shader, i));
+								const char *src = json_array_get_string(data.waves_panel.active_shader, i);
 								bool is_pc = data.waves_panel.pc == addr;
 								if (is_pc) {
 									/* PC points to this instruction */
@@ -1674,11 +1678,11 @@ static int run_gui(const char *url)
 				ImGui::EndDisabled();
 				ImGui::Separator();
 				if (data.ring_panel.last_answer) {
-					struct json_object *raw = json_object_object_get(data.ring_panel.last_answer, "raw");
+					JSON_Array *raw = json_object_get_array(data.ring_panel.last_answer, "raw");
 
-					int rptr = json_object_get_int(json_object_object_get(data.ring_panel.last_answer, "read_ptr"));
-					int wptr = json_object_get_int(json_object_object_get(data.ring_panel.last_answer, "write_ptr"));
-					int drv_wptr = json_object_get_int(json_object_object_get(data.ring_panel.last_answer, "driver_write_ptr"));
+					int rptr = json_object_get_number(data.ring_panel.last_answer, "read_ptr");
+					int wptr = json_object_get_number(data.ring_panel.last_answer, "write_ptr");
+					int drv_wptr = json_object_get_number(data.ring_panel.last_answer, "driver_write_ptr");
 
 					ImGui::BeginTabBar("ringtabs", ImGuiTabBarFlags_None);
 					
@@ -1689,10 +1693,10 @@ static int run_gui(const char *url)
 						ImGui::EndChild();
 						ImGui::EndTabItem();
 					}
-					struct json_object *ibs = json_object_object_get(data.ring_panel.last_answer, "ibs");
-					for (int i = 0; i < json_object_array_length(ibs); i++) {
-						struct json_object *ib = json_object_array_get_idx(ibs, i);
-						uint64_t base = json_object_get_uint64(json_object_object_get(ib, "address"));
+					JSON_Array *ibs = json_object_get_array(data.ring_panel.last_answer, "ibs");
+					for (int i = 0; i < json_array_get_count(ibs); i++) {
+						JSON_Object *ib = json_object(json_array_get_value(ibs, i));
+						uint64_t base = (uint64_t) json_object_get_number(ib, "address");
 						int high = (((uint32_t)base) == highlight_lo_ib);
 
 						if (high)
@@ -1704,7 +1708,7 @@ static int run_gui(const char *url)
 							if (high)
 								ImGui::PopStyleColor();
 							ImGui::BeginChild(tmp);
-							highlight_lo_ib = display_ib(data.asic, pmatch, json_object_object_get(ib, "opcodes"), base);
+							highlight_lo_ib = display_ib(data.asic, pmatch, json_object_get_array(ib, "opcodes"), base);
 							ImGui::EndChild();
 							ImGui::EndTabItem();		
 						} else if (high) {
@@ -1728,10 +1732,10 @@ static int run_gui(const char *url)
 					ImGui::Text("Select DPM profile :");
 					ImGui::Indent();
 					ImGui::BeginDisabled(!pending_request.empty());
-					struct json_object *profiles = json_object_object_get(data.power_panel.last_answer, "profiles");
-					const char *current = json_object_get_string(json_object_object_get(data.power_panel.last_answer, "current"));
-					for (int i = 0; i < json_object_array_length(profiles) ; i++) {
-						const char *profile = json_object_get_string(json_object_array_get_idx(profiles, i));
+					JSON_Array *profiles = json_object_get_array(data.power_panel.last_answer, "profiles");
+					const char *current = json_object_get_string(data.power_panel.last_answer, "current");
+					for (int i = 0; i < json_array_get_count(profiles) ; i++) {
+						const char *profile = json_array_get_string(profiles, i);
 						if (ImGui::RadioButton(profile, !strcmp(current, profile))) {
 							send_power_command(lnk, data, profile);
 							last_sensor_read = 10;
@@ -1755,8 +1759,8 @@ static int run_gui(const char *url)
 					ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
 
 					const int old_value_count = 100;
-					struct json_object *values = json_object_object_get(data.power_panel.sensors_last_answer, "values");
-					int sensors_count = json_object_array_length(values);
+					JSON_Array *values = json_object_get_array(data.power_panel.sensors_last_answer, "values");
+					int sensors_count = json_array_get_count(values);
 
 					if (!data.power_panel.sensor_previous_values) {
 						data.power_panel.sensor_previous_values = (float *)calloc(sensors_count * old_value_count, sizeof(float));
@@ -1764,22 +1768,22 @@ static int run_gui(const char *url)
 					}
 
 					for (int i = 0; i < sensors_count; i++) {
-						struct json_object *v = json_object_array_get_idx(values, i);
+						JSON_Object *v = json_object(json_array_get_value(values, i));
 						data.power_panel.sensor_previous_values[i * old_value_count + data.power_panel.sensor_values_offset] =
-							json_object_get_int(json_object_object_get(v, "value"));
+							(int)json_object_get_number(v, "value");
 
-						ImGui::PlotLines(json_object_get_string(json_object_object_get(v, "name")),
+						ImGui::PlotLines(json_object_get_string(v, "name"),
 											 &data.power_panel.sensor_previous_values[i * old_value_count],
 											 old_value_count,
 											 data.power_panel.sensor_values_offset + 1,
 											 NULL,
-											 json_object_get_int(json_object_object_get(v, "min")),
-											 json_object_get_int(json_object_object_get(v, "max")),
+											 json_object_get_number(v, "min"),
+											 json_object_get_number(v, "max"),
 											 ImVec2(0, avail.y / (2 + sensors_count)));
 						ImGui::SameLine();
 						ImGui::Text(": %d %s",
 							(int)data.power_panel.sensor_previous_values[i * old_value_count + data.power_panel.sensor_values_offset],
-							json_object_get_string(json_object_object_get(v, "unit")));
+							json_object_get_string(v, "unit"));
 					}
 					if (!data.power_panel.consumed) {
 						data.power_panel.sensor_values_offset = (data.power_panel.sensor_values_offset + 1) % old_value_count;
@@ -1809,11 +1813,11 @@ static int run_gui(const char *url)
 
 					char overlay[200];
 					for (int i = 0; i < 3; i++) {
-						struct json_object *o = json_object_object_get(data.memory_usage_panel.last_answer, names[i]);
+						JSON_Object *o = json_object(json_object_get_value(data.memory_usage_panel.last_answer, names[i]));
 						ImGui::Text("%*sUsed %s", (int)(strlen(titles[i]) - strlen(titles[2])), "", titles[i]);
 						ImGui::SameLine();
-						uint64_t used = json_object_get_uint64(json_object_object_get(o, "used")) / (1024 * 1024);
-						uint64_t total = json_object_get_uint64(json_object_object_get(o, "total")) / (1024 * 1024);
+						uint64_t used = ((uint64_t) json_object_get_number(o, "used")) / (1024 * 1024);
+						uint64_t total = ((uint64_t) json_object_get_number(o, "total")) / (1024 * 1024);
 						float ratio = used / (float)total;
 						sprintf(overlay, "%.1f%% (of %" PRId64 " MB)", 100 * ratio, total);
 						ImGui::ProgressBar(ratio, ImVec2(-1, 0), overlay);
@@ -1822,27 +1826,26 @@ static int run_gui(const char *url)
 					ImGui::Separator();
 
 					ImGui::BeginChild("amdgpu_vm_info");
-					struct json_object *pids = json_object_object_get(data.memory_usage_panel.last_answer, "pids");
+					JSON_Array *pids = json_object_get_array(data.memory_usage_panel.last_answer, "pids");
 					const char *type[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
 
-					std::vector<struct json_object*> sorted;
-					for (int i = 0; i < json_object_array_length(pids); i++) {
-						struct json_object *pid = json_object_array_get_idx(pids, i);
-						sorted.push_back(pid);
+					std::vector<JSON_Object*> sorted;
+					for (int i = 0; i < json_array_get_count(pids); i++) {
+						sorted.push_back(json_object(json_array_get_value(pids, i)));
 					}
-					std::sort(sorted.begin(), sorted.end(), [](struct json_object *a, struct json_object *b) {
-						return json_object_get_uint64(json_object_object_get(a, "total")) >
-							   json_object_get_uint64(json_object_object_get(b, "total"));
+					std::sort(sorted.begin(), sorted.end(), [](JSON_Object *a, JSON_Object *b) {
+						return json_object_get_number(a, "total") >
+							   json_object_get_number(b, "total");
 					});
 
-					uint64_t max = sorted.size() ? json_object_get_uint64(json_object_object_get(sorted[0], "total")) / (1024 * 1024) : 0;
+					uint64_t max = sorted.size() ? json_object_get_number(sorted[0], "total") / (1024 * 1024) : 0;
 					for (auto *pid: sorted) {
 						char label[256], overlay[256];
-						sprintf(label, "pid: %8d ", json_object_get_int(json_object_object_get(pid, "pid")));
-						const char *name = json_object_get_string(json_object_object_get(pid, "name"));
+						sprintf(label, "pid: %8d ", (int)json_object_get_number(pid, "pid"));
+						const char *name = json_object_get_string(pid, "name");
 						if (strlen(name))
 							strcat(label, name);
-						uint64_t s = json_object_get_uint64(json_object_object_get(pid, "total")) / (1024 * 1024);
+						uint64_t s = ((uint64_t)json_object_get_number(pid, "total")) / (1024 * 1024);
 						ImGui::PushID(i);
 						sprintf(overlay, "%ld MB", s);
 						ImGui::ProgressBar(s / (float)max, ImVec2(avail.x / 5, 0), overlay);
@@ -1851,10 +1854,10 @@ static int run_gui(const char *url)
 						ImGui::BeginGroup();
 						if (ImGui::TreeNodeEx(label)) {
 							for (int j = 0; j < 6; j++) {
-								struct json_object *cat = json_object_object_get(pid, type[j]);
+								JSON_Array *cat = json_object_get_array(pid, type[j]);
 								if (!cat)
 									continue;
-								int bo_count = json_object_array_length(cat);
+								int bo_count = json_array_get_count(cat);
 								if (!bo_count)
 									continue;
 								char label[128];
@@ -1862,16 +1865,30 @@ static int run_gui(const char *url)
 								if (ImGui::TreeNodeEx(label)) {
 									const char *categories[] = { "VRAM", "GTT" };
 									for (int c = 0; c < 2; c++) {
+										std::vector<JSON_Object *> bos;
+										for (int k = 0; k < bo_count; k++) {
+											JSON_Object *bo = json_object(json_array_get_value(cat, k));
+											JSON_Array *attr = json_object_get_array(bo, "attributes");
+											if (!attr)
+												continue;
+											const char *cc = json_array_get_string(attr, 0);
+											if (!cc || strcmp(categories[c], cc))
+												continue;
+
+											bos.push_back(bo);
+										}
+										if (bos.empty())
+											continue;
 										ImGui::PushID(c);
-										if (ImGui::TreeNodeEx(categories[c])) {
-											for (int k = 0; k < bo_count; k++) {
-												struct json_object *bo = json_object_array_get_idx(cat, k);
-												struct json_object *attr = json_object_object_get(bo, "attributes");
-												const char *cc = json_object_get_string(json_object_array_get_idx(attr, 0));
-												if (!cc || strcmp(categories[c], cc))
-													continue;
+										if (ImGui::TreeNodeEx(categories[c], 0, "%s (%d bos)", categories[c], bos.size())) {
+											std::sort(bos.begin(), bos.end(), [](JSON_Object *a, JSON_Object *b) {
+												return json_object_get_number(a, "size") > json_object_get_number(b, "size");
+											});
+											for (size_t k = 0; k < bos.size(); k++) {
+												JSON_Object *bo = bos[k];
+												JSON_Array *attr = json_object_get_array(bo, "attributes");
 												ImGui::PushID(k);
-												uint64_t s = json_object_get_uint64(json_object_object_get(bo, "size"));
+												uint64_t s = (uint64_t)json_object_get_number(bo, "size");
 												if (s < 1024)
 													ImGui::Text("%4d #6bde79b", (int)s);
 												else if (s < 1024 * 1024)
@@ -1880,13 +1897,27 @@ static int run_gui(const char *url)
 													ImGui::Text("%4d #ab8e79Mb", (int)(s / (1024 * 1024)));
 												else
 													ImGui::Text("%4d #db2e79Gb", (int)(s / (1024 * 1024 * 1024)));
-												int cnt = json_object_array_length(attr);
+												int cnt = json_array_get_count(attr);
 												for (int l = 1; l < cnt; l++) {
 													ImGui::SameLine();
 													ImGui::Text("%s%s%s",
 																l == 1 ? "(" : "",
-																json_object_get_string(json_object_array_get_idx(attr, l)),
+																json_array_get_string(attr, l),
 																(l == cnt - 1) ? ")" : ",");
+												}
+
+												int identical = 0;
+												for (size_t l = k + 1; l < bos.size(); l++) {
+													JSON_Object *bo2 = bos[l];
+													if (json_value_equals(json_object_get_wrapping_value(bo),
+														json_object_get_wrapping_value(bo2))) {
+														identical++;
+														k++;
+													}
+												}
+												if (identical > 0) {
+													ImGui::SameLine();
+													ImGui::Text("#b58900x%d", identical + 1);
 												}
 												ImGui::PopID();
 											}
@@ -1946,16 +1977,16 @@ static int run_gui(const char *url)
 				ImGui::Separator();
 				if (data.top_panel.last_accumulate_answer) {
 					ImGui::BeginChild("grbm bits", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
-					struct json_object *values = json_object_object_get(data.top_panel.last_accumulate_answer, "values");
-					for (int i = 0; i < json_object_array_length(values); i++) {
-						struct json_object *val = json_object_array_get_idx(values, i);
-						for (int j = 0; j < json_object_array_length(val); j++) {
-							struct json_object *value = json_object_array_get_idx(val, j);
-							const char *name = json_object_get_string(json_object_object_get(value, "name"));
+					JSON_Array *values = json_object_get_array(data.top_panel.last_accumulate_answer, "values");
+					for (int i = 0; i < json_array_get_count(values); i++) {
+						JSON_Array *val = json_array_get_array(values, i);
+						for (int j = 0; j < json_array_get_count(val); j++) {
+							JSON_Object *value = json_object(json_array_get_value(val, j));
+							const char *name = json_object_get_string(value, "name");
 							const size_t l = strlen(name);
 							const char *pos = strstr(name, "_BUSY");
 							if (pos && pos == (name + l - 5)) {
-								int v = json_object_get_int(json_object_object_get(value, "counter"));
+								int v = (int)json_object_get_number(value, "counter");
 								ImGui::ProgressBar(v / 100.0, ImVec2(avail.x / 3, 0));
 								ImGui::SameLine();
 								const char *color = v < 20 ? "#34de51" : (v < 60 ? "#f3e26d" : "#8f2316");
@@ -1970,7 +2001,7 @@ static int run_gui(const char *url)
 					}
 					ImGui::SameLine();
 					ImGui::BeginChild("drm bits", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
-					struct json_object *fences = json_object_object_get(data.top_panel.last_accumulate_answer, "fences");
+					JSON_Array *fences = json_object_get_array(data.top_panel.last_accumulate_answer, "fences");
 
 					ImVec2 sc = ImGui::GetCursorScreenPos();
 
@@ -1978,13 +2009,13 @@ static int run_gui(const char *url)
 					for (int i = 0; i < data.ring_panel.num_rings * 100; i++)
 						max_value = std::max(max_value, data.top_panel.fences_deltas[i]);
 
-					for (int i = 0; i < json_object_array_length(fences); i++) {
-						struct json_object *fence = json_object_array_get_idx(fences, i);
-						int delta = json_object_get_int(json_object_object_get(fence, "delta"));
+					for (int i = 0; i < json_array_get_count(fences); i++) {
+						JSON_Object *fence = json_object(json_array_get_value(fences, i));
+						int delta = json_object_get_number(fence, "delta");
 						data.top_panel.fences_deltas[i * 100 + data.top_panel.fence_deltas_offset] = delta / top_read_interval;
 
 						ImGui::SetCursorScreenPos(sc);
-						const char *ring_name = json_object_get_string(json_object_object_get(fence, "name"));
+						const char *ring_name = json_object_get_string(fence, "name");
 
 						ImColor color;
 						if (strstr(ring_name, "gfx")) {
