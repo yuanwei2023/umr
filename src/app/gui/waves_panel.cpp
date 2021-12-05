@@ -111,12 +111,12 @@ public:
 						active_threads += json_array_get_boolean(threads, i);
 					}
 				}
-				const char *dis = json_object_get_string(wave, "shader_disassembly");
+				const char *shader_address_str = json_object_get_string(wave, "shader");
 
 				char label[256];
 				if (active_threads < 0)
 					sprintf(label, "Wave %d", i);
-				else if (dis)
+				else if (shader_address_str)
 					sprintf(label, "Wave %d (#dbde79%d threads, valid PC)", i, active_threads);
 				else
 					sprintf(label, "Wave %d (#dbde79%d threads)", i, active_threads);
@@ -141,11 +141,11 @@ public:
 					ImGui::Separator();
 					ImGui::NextColumn();
 					ImGui::Text("PC: #b589000x%" PRIx64, (uint64_t)json_object_get_number(wave, "PC"));
-					if (dis) {
+					if (shader_address_str) {
 						ImGui::SameLine();
 						if (ImGui::Button("View Shader")) {
-							active_shader = json_object_get_array(shaders, dis);
-							sscanf(dis, "%" PRIx64, &base_address);
+							active_shader = json_object(json_object_get_value(shaders, shader_address_str));
+							sscanf(shader_address_str, "%" PRIx64, &base_address);
 							pc = json_object_get_number(wave, "PC");
 
 							force_scroll = true;
@@ -309,58 +309,45 @@ public:
 			ImGui::SameLine();
 			ImGui::BeginChild("Shaders", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
 			if (active_shader) {
-				int s = json_array_get_count(active_shader);
 				int scroll = 0;
-				float addr_col_size = 0;
-				float raw_col_size = 0;
+				JSON_Array *op = json_object_get_array(active_shader, "opcodes");
+				uint32_t *copy = new uint32_t[json_array_get_count(op)];
+				for (size_t j = 0; j < json_array_get_count(op); j++)
+					copy[j] = (uint32_t)json_array_get_number(op, j);
 
-				ImGuiListClipper clipper;
-				clipper.Begin(s);
-				ImGui::Columns(3);
-				ImGui::Text("Index");
-				ImGui::NextColumn();
-				ImGui::Text("Raw Value");
-				ImGui::NextColumn();
-				ImGui::Text("Disassembly");
-				ImGui::NextColumn();
-				ImGui::Separator();
-				char tmp[1024];
-				while (clipper.Step()) {
-					for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
-						uint64_t addr = base_address + i * 4;
-						const char *src = json_array_get_string(active_shader, i);
-						bool is_pc = pc == addr;
-						if (is_pc) {
-							/* PC points to this instruction */
-							scroll = ImGui::GetCursorPos().y;
-							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.5, 0.5, 1));
-						}
-						const char *tknOpen = strchr(src, '[');
-						const char *tkn = strchr(tknOpen, ']');
-						sprintf(tmp, "%.*s", (int) (tkn - tknOpen + 1), tknOpen);
-						addr_col_size = std::max(addr_col_size, ImGui::CalcTextSize(tmp).x);
-						ImGui::TextUnformatted(tmp);
-						ImGui::NextColumn();
-						tkn += 4;
-						sprintf(tmp, "%.10s", tkn);
-						ImGui::TextUnformatted(tmp);
-						raw_col_size = std::max(raw_col_size, ImGui::CalcTextSize(tmp).x);
-						ImGui::NextColumn();
-						tkn += 12;
+				uint64_t base_address = json_object_get_number(active_shader, "address");
+				char **opcode_strs = NULL;
+				umr_shader_disasm(asic, (uint8_t *)copy, json_array_get_count(op) * 4, base_address, &opcode_strs);
 
-						const char *line = is_pc ? tkn : shader_syntax.transform(tkn);
-						ImGui::TextUnformatted(line);
+				ImGui::BeginTable("shader", 3, ImGuiTableFlags_Borders);
+				ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x00000000 + 0x0000 ").x);
+				ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(  "0x00000000  ").x);
+				ImGui::TableSetupColumn("Disassembly");
+				ImGui::TableHeadersRow();
+				for (size_t j = 0; j < json_array_get_count(op); j++) {
+					uint64_t addr = base_address + j * 4;
+					bool is_pc = pc == addr;
+					if (is_pc) {
+						/* PC points to this instruction */
+						scroll = ImGui::GetCursorPos().y;
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.5, 0.5, 1));
+				   }
 
-						ImGui::NextColumn();
-						if (is_pc)
-							 ImGui::PopStyleColor();
-					}
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::Text("0x%08x + 0x%x", base_address, j * 4);
+					ImGui::TableSetColumnIndex(1);
+					ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
+					ImGui::TableSetColumnIndex(2);
+					ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
+					free(opcode_strs[j]);
+					if (is_pc)
+						ImGui::PopStyleColor(1);
 				}
-				int p = 2 * ImGui::GetStyle().WindowPadding.x;
-				ImGui::SetColumnWidth(0, addr_col_size + p);
-				ImGui::SetColumnWidth(1, raw_col_size + p);
-				ImGui::Columns(1);
-				clipper.End();
+				ImGui::EndTable();
+				free(opcode_strs);
+				delete[] copy;
+
 				if (force_scroll) {
 					force_scroll = false;
 					ImGui::SetScrollY(scroll - avail.y / 2);
@@ -389,7 +376,7 @@ private:
 private:
 	SyntaxHighlighter shader_syntax;
 	JSON_Object *last_answer = NULL;
-	JSON_Array *active_shader = NULL;
+	JSON_Object *active_shader = NULL;
 	uint64_t base_address;
 	uint64_t pc;
 	struct {

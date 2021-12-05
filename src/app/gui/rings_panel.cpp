@@ -169,14 +169,14 @@ public:
 
 					ImGui::BeginChild(tmp);
 					ImGui::BeginTable("shader", 3, ImGuiTableFlags_Borders);
-					ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("00000").x);
-					ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(  "0x00000000  ").x);
+					ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x00000000 + 0x0000 ").x);
+					ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("0x00000000  ").x);
 					ImGui::TableSetupColumn("Disassembly");
 					ImGui::TableHeadersRow();
 					for (size_t j = 0; j < json_array_get_count(op); j++) {
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						ImGui::Text("%04ld", j);
+						ImGui::Text("0x%08x + 0x%x", base, j * 4);
 						ImGui::TableSetColumnIndex(1);
 						ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
 						ImGui::TableSetColumnIndex(2);

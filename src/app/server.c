@@ -306,6 +306,22 @@ static int dummy_printf(const char *fmt, ...) {
 	return 0;
 }
 
+static JSON_Value *shader_pgm_to_json(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t size) {
+	JSON_Object *res = NULL;
+	uint32_t *opcodes = calloc(size / 4, sizeof(uint32_t));
+	if (umr_read_vram(asic, asic->options.vm_partition, vmid, addr, size, (void*)opcodes) == 0) {
+		res = json_object(json_value_init_object());
+		JSON_Array *op = json_array(json_value_init_array());
+		for (unsigned i = 0; i < size / 4; i++)
+			json_array_append_number(op, opcodes[i]);
+		json_object_set_value(res, "opcodes", json_array_get_wrapping_value(op));
+		json_object_set_number(res, "address", addr);
+		json_object_set_number(res, "vmid", vmid);
+	}
+	free(opcodes);
+	return json_object_get_wrapping_value(res);
+}
+
 /* Ring stream decoding */
 struct ring_decoding_data {
 	JSON_Object *current_ib;
@@ -349,18 +365,9 @@ void ring_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic,
 		}
 	}
 
-	uint32_t *opcodes = calloc(shader->size / 4, sizeof(uint32_t));
-	if (umr_read_vram(asic, asic->options.vm_partition, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
-		JSON_Object *s = json_object(json_value_init_object());
-		JSON_Array *op = json_array(json_value_init_array());
-		for (unsigned i = 0; i < shader->size / 4; i++)
-			json_array_append_number(op, opcodes[i]);
-		json_object_set_value(s, "opcodes", json_array_get_wrapping_value(op));
-		json_object_set_number(s, "address", shader->addr);
-		json_object_set_number(s, "vmid", shader->vmid);
-		json_array_append_value(data->shaders, json_object_get_wrapping_value(s));
-	}
-	free(opcodes);
+	JSON_Value *sh = shader_pgm_to_json(asic, shader->vmid, shader->addr, shader->size);
+	if (sh)
+		json_array_append_value(data->shaders, sh);
 }
 
 void ring_add_data(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {
@@ -421,7 +428,7 @@ static void init_asics() {
 		asics[i]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
 		asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
 
-		asics[i]->err_msg = printf;
+		asics[i]->err_msg = dummy_printf;
 
 		if (asics[i]->family > FAMILY_VI)
 			asics[i]->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
@@ -450,13 +457,14 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 
 		JSON_Value *wave = json_value_init_object();
 		json_object_set_number(json_object(wave), "se", wd->se);
-		json_object_set_number(json_object(wave), "sh", wd->se);
-		json_object_set_number(json_object(wave), "cu", wd->cu);
+		json_object_set_number(json_object(wave), "sh", wd->sh);
+		json_object_set_number(json_object(wave), asic->family < FAMILY_NV ? "cu" : "wgp", wd->cu);
 		json_object_set_number(json_object(wave), "simd_id", wd->ws.hw_id1.simd_id);
 		json_object_set_number(json_object(wave), "wave_id", wd->ws.hw_id1.wave_id);
 		json_object_set_number(json_object(wave), "PC", pgm_addr);
 		json_object_set_number(json_object(wave), "wave_inst_dw0", wd->ws.wave_inst_dw0);
-		json_object_set_number(json_object(wave), "wave_inst_dw1", wd->ws.wave_inst_dw1);
+		if (asic->family < FAMILY_NV)
+			json_object_set_number(json_object(wave), "wave_inst_dw1", wd->ws.wave_inst_dw1);
 
 		JSON_Value *status = json_value_init_object();
 		json_object_set_number(json_object(status), "value", wd->ws.wave_status.value);
@@ -531,7 +539,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 			json_object_set_value(json_object(wave), "sgpr", sgpr);
 
 			JSON_Value *threads = json_value_init_array();
-			int num_threads = asic->family < FAMILY_NV ? 64 : wd->num_threads;
+			int num_threads = wd->num_threads;
 			for (int thread = 0; thread < num_threads; thread++) {
 				unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))	: (wd->ws.exec_hi & (1u << (thread - 32)));
 				json_array_append_boolean(json_array(threads), live ? 1 : 0);
@@ -568,33 +576,16 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 					shader_size = NUM_OPCODE_WORDS * 4;
 					#undef NUM_OPCODE_WORDS
 				}
-				char **disassembly;
-				int r = umr_vm_disasm_to_str(asic, asic->options.vm_partition, vmid,
-											 shader_addr, pgm_addr, shader_size,
-											 0,
-											 &disassembly);
 
-				if (r == 0) {
-					/* Remember which shader address we used for this wave */
-					char tmp[128];
-					sprintf(tmp, "%lx", shader_addr);
-					json_object_set_string(json_object(wave), "shader_disassembly", tmp);
-
-					/* And add it to the top level object if it's not there already */
-					int lines = shader_size / 4;
-					JSON_Value *dis = json_object_get_value(json_object(shaders), tmp) == NULL ? json_value_init_array() : NULL;
-
-					for (int f = 0 ; f < lines; f++) {
-						if (dis)
-							json_array_append_string(json_array(dis), disassembly[f]);
-						free(disassembly[f]);
-					}
-					free(disassembly);
-					if (dis)
-						json_object_set_value(json_object(shaders), tmp, dis);
-				} else {
-					printf("disassembly failed.\n");
+				char tmp[128];
+				sprintf(tmp, "%lx", shader_addr);
+				/* This given shader isn't there, so read it. */
+				if (json_object_get_value(json_object(shaders), tmp) == NULL) {
+					JSON_Value *shader = shader_pgm_to_json(asic, vmid, shader_addr, shader_size);
+					if (shader)
+						json_object_set_value(json_object(shaders), tmp, shader);
 				}
+				json_object_set_string(json_object(wave), "shader", tmp);
 			}
 		}
 
@@ -827,14 +818,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		json_object_set_value(json_object(answer), "page_table", pt);
 	}
 	else if (strcmp(command, "waves") == 0) {
-		/* Assumes Navi chip for now (= code adapted from umr_print_waves_nv,
-		 * should be updated to cover umr_print_waves_si_ai as well). */
 		int halt_waves = json_object_get_boolean(request, "halt_waves");
 		int resume_waves = json_object_get_boolean(request, "resume_waves");
 		int disable_gfxoff = json_object_get_boolean(request, "disable_gfxoff");
 		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
 
-		if (disable_gfxoff) {
+		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 0;
 			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
@@ -853,7 +842,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		wave_to_json(asic, is_halted, 1, json_object(answer));
 
-		if (disable_gfxoff) {
+		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
 			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
@@ -871,7 +860,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		/* Disable gfxoff */
 		value = 0;
-		write(asic->fd.gfxoff, &value, sizeof(value));
+		if (asic->fd.gfxoff >= 0)
+			write(asic->fd.gfxoff, &value, sizeof(value));
 
 		struct ring_decoding_data data;
 		data.current_ib = NULL;
@@ -910,7 +900,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		/* Reenable gfxoff */
 		value = 1;
-		write(asic->fd.gfxoff, &value, sizeof(value));
+		if (asic->fd.gfxoff >= 0)
+			write(asic->fd.gfxoff, &value, sizeof(value));
 
 	} else if (strcmp(command, "power") == 0) {
 		const char *profiles[] = {
