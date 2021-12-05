@@ -30,15 +30,15 @@ class WavesPanel : public Panel {
 public:
 	WavesPanel(struct umr_asic *asic) : Panel(asic) {
 		/* SGPR */
-		syntax.add_definition("(s[[:digit:]]+|s\\[[[:digit:]]+:[[:digit:]]+\\])", { "#d33682" });
+		shader_syntax.add_definition("(s[[:digit:]]+|s\\[[[:digit:]]+:[[:digit:]]+\\])", { "#d33682" });
 		/* VGPR */
-		syntax.add_definition("(v[[:digit:]]+|v\\[[[:digit:]]+:[[:digit:]]+\\])", { "#6c71c4" });
+		shader_syntax.add_definition("(v[[:digit:]]+|v\\[[[:digit:]]+:[[:digit:]]+\\])", { "#6c71c4" });
 		/* Constants */
-		syntax.add_definition("(0x[[:digit:]]*)\\b", { "#b58900" });
+		shader_syntax.add_definition("(0x[[:digit:]]*)\\b", { "#b58900" });
 		/* Comments */
-		syntax.add_definition("(;)", { "#586e75" });
+		shader_syntax.add_definition("(;)", { "#586e75" });
 		/* Keywords */
-		syntax.add_definition("(attr[[:digit:]]+|exec|m0|[[:alpha:]]+cnt\\([[:digit:]]\\))", { "#3097a1" });
+		shader_syntax.add_definition("(attr[[:digit:]]+|exec|m0|[[:alpha:]]+cnt\\([[:digit:]]\\))", { "#3097a1" });
 	}
 
 	void process_server_message(JSON_Object *request, JSON_Value *answer) {
@@ -348,7 +348,7 @@ public:
 						ImGui::NextColumn();
 						tkn += 12;
 
-						const char *line = is_pc ? tkn : syntax.transform(tkn);
+						const char *line = is_pc ? tkn : shader_syntax.transform(tkn);
 						ImGui::TextUnformatted(line);
 
 						ImGui::NextColumn();
@@ -387,7 +387,7 @@ private:
 		send_request(req);
 	}
 private:
-	SyntaxHighlighter syntax;
+	SyntaxHighlighter shader_syntax;
 	JSON_Object *last_answer = NULL;
 	JSON_Array *active_shader = NULL;
 	uint64_t base_address;

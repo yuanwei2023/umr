@@ -127,6 +127,7 @@ struct AsicData {
 		options.no_kernel = true;
 		options.instance = instance;
 		options.database_path[0] = '\0';
+		options.no_disasm = 0;
 		asic = umr_discover_asic_by_did(&options, did, printf);
 		asic->instance = instance;
 

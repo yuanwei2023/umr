@@ -304,6 +304,79 @@ static int dummy_printf(const char *fmt, ...) {
 	return 0;
 }
 
+/* Ring stream decoding */
+struct ring_decoding_data {
+	JSON_Object *current_ib;
+	JSON_Array *shaders;
+	JSON_Array *ibs;
+};
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+void ring_start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type) {
+	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
+	data->current_ib = json_object(json_value_init_object());
+	json_object_set_number(data->current_ib, "address", ib_addr);
+	json_object_set_number(data->current_ib, "vmid", ib_vmid);
+	JSON_Array *opcodes = json_array(json_value_init_array());
+	json_object_set_value(data->current_ib, "opcodes", json_array_get_wrapping_value(opcodes));
+}
+
+void ring_start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data) {
+	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
+	JSON_Array *opcodes = json_object_get_array(data->current_ib, "opcodes");
+	json_array_append_number(opcodes, header);
+	for (unsigned i = 0; i < nwords; i++)
+		json_array_append_number(opcodes, raw_data[i]);
+}
+
+void ring_add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix) {
+	/* Ignore */
+}
+
+void ring_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader) {
+	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
+
+	for (size_t i = 0; i < json_array_get_count(data->shaders); i++) {
+		JSON_Object *sh = json_object(json_array_get_value(data->shaders, i));
+		uint64_t addr = json_object_get_number(sh, "address");
+		uint64_t vmid = json_object_get_number(sh, "vmid");
+		if (addr == shader->addr && vmid == shader->vmid) {
+			/* Duplicate => skip */
+			return;
+		}
+	}
+
+	uint32_t *opcodes = calloc(shader->size / 4, sizeof(uint32_t));
+	if (umr_read_vram(asic, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
+		JSON_Object *s = json_object(json_value_init_object());
+		JSON_Array *op = json_array(json_value_init_array());
+		for (unsigned i = 0; i < shader->size / 4; i++)
+			json_array_append_number(op, opcodes[i]);
+		json_object_set_value(s, "opcodes", json_array_get_wrapping_value(op));
+		json_object_set_number(s, "address", shader->addr);
+		json_object_set_number(s, "vmid", shader->vmid);
+		json_array_append_value(data->shaders, json_object_get_wrapping_value(s));
+	}
+	free(opcodes);
+}
+
+void ring_add_data(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {
+	/* Ignore */
+}
+
+void ring_unhandled(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream) {
+	/* Ignore */
+}
+
+void ring_done(struct umr_pm4_stream_decode_ui *ui) {
+	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
+
+	json_array_append_value(data->ibs, json_object_get_wrapping_value(data->current_ib));
+	data->current_ib = NULL;
+}
+#pragma GCC diagnostic pop
+
 static struct umr_asic *asics[16] = {0};
 
 static void init_asics() {
@@ -783,125 +856,53 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		answer = json_value_init_object();
 	} else if (strcmp(command, "ring") == 0) {
 		char *ring_name = (char*)json_object_get_string(request, "ring");
-		uint32_t wptr, rptr, drv_wptr, ringsize, start, end, value, *ring_data;
-		struct umr_ring_decoder decoder, *pdecoder;
+		uint32_t wptr, rptr, drv_wptr, ringsize, value, *ring_data;
 		int halt_waves = json_object_get_boolean(request, "halt_waves");
+		int limit_ptr = json_object_get_boolean(request, "rptr_wptr");
 
 		/* Disable gfxoff */
 		value = 0;
 		write(asic->fd.gfxoff, &value, sizeof(value));
 
-		if (halt_waves) {
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		}
-		ring_data = umr_read_ring_data(asic, ring_name, &ringsize);
+		struct ring_decoding_data data;
+		data.current_ib = NULL;
+		data.ibs = json_array(json_value_init_array());
+		data.shaders = json_array(json_value_init_array());
 
-		if (!ring_data) {
-			last_error = "couldn't read ring";
-			goto error;
-		}
+		struct umr_pm4_stream_decode_ui fn;
+		fn.data = &data;
+		fn.start_ib = ring_start_ib;
+		fn.start_opcode = ring_start_opcode;
+		fn.add_field = ring_add_field;
+		fn.add_shader = ring_add_shader;
+		fn.add_data = ring_add_data;
+		fn.unhandled = ring_unhandled;
+		fn.done = ring_done;
 
-		/* read pointers */
-		rptr = ring_data[0]<<2;
-		wptr = ring_data[1]<<2;
-		drv_wptr = ring_data[2]<<2;
+		asic->options.halt_waves = halt_waves;
+		struct umr_pm4_stream *str = umr_pm4_decode_ring(asic, ring_name, !halt_waves, limit_ptr ? -1 : 3, limit_ptr ? -1 : 0);
+
+		umr_pm4_decode_stream_opcodes(asic, &fn, str, 0, 0, 0, 0, ~0UL, 1);
 
 		answer = json_value_init_object();
-		json_object_set_number(json_object(answer), "read_ptr", rptr / 4);
-		json_object_set_number(json_object(answer), "write_ptr", wptr / 4);
-		json_object_set_number(json_object(answer), "driver_write_ptr", drv_wptr / 4);
 
-		JSON_Array *ring_decode_raw = json_array(json_value_init_array());
-		JSON_Array *ring_decode_shaders = json_array(json_value_init_array());
-		JSON_Array *ring_decode_ibs = json_array(json_value_init_array());
-
-		memset(&decoder, 0, sizeof decoder);
-		if (!memcmp(ring_name, "gfx", 3) ||
-			!memcmp(ring_name, "uvd", 3) ||
-			!memcmp(ring_name, "vcn_dec", 7) ||
-			!memcmp(ring_name, "vcn_enc", 7) ||
-			!memcmp(ring_name, "kiq", 3) ||
-			!memcmp(ring_name, "comp", 4)) {
-			decoder.pm = 4;
-		} else if (!memcmp(ring_name, "sdma", 4) ||
-			   !memcmp(ring_name, "page", 4)) {
-			decoder.pm = 3;
-		}
-		decoder.pm4.cur_opcode = 0xFFFFFFFF;
-		decoder.sdma.cur_opcode = 0xFFFFFFFF;
-
-		if (json_object_get_boolean(request, "rptr_wptr")) {
-			start = rptr;
-			end = wptr;
-		} else {
-			start = 0;
-			end = ringsize - 4;
-		}
-
-		do {
-			value = ring_data[(start+12)>>2];
-			decoder.next_ib_info.addr = start / 4;
-			umr_print_decode(asic, &decoder, value, dummy_printf);
-
-			start += 4;
-			start %= ringsize;
-
-			json_array_append_number(ring_decode_raw, value);
-		} while (start != ((end + 4) % ringsize));
-
-		pdecoder = &decoder;
-		while (pdecoder) {
-			/* Dump shaders */
-			struct umr_shaders_pgm *shader;
-			shader = pdecoder->shader;
-			uint32_t *opcodes = NULL;
-			while (shader) {
-				opcodes = realloc(opcodes, shader->size);
-
-				if (umr_read_vram(asic, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
-					JSON_Object *s = json_object(json_value_init_object());
-					JSON_Array *op = json_array(json_value_init_array());
-					for (unsigned i = 0; i < shader->size / 4; i++)
-						json_array_append_number(op, opcodes[i]);
-					json_object_set_value(s, "opcodes", json_array_get_wrapping_value(op));
-					json_object_set_number(s, "address", shader->addr);
-					json_array_append_value(ring_decode_shaders, json_object_get_wrapping_value(s));
-				}
-			}
-			free(opcodes);
-
-			/* Parse IB */
-			pdecoder = pdecoder->next_ib;
-
-			if (!pdecoder)
-				break;
-
-			uint32_t *data = malloc(pdecoder->next_ib_info.size);
-			if (!umr_read_vram(asic, pdecoder->next_ib_info.vmid,
-									 pdecoder->next_ib_info.ib_addr,
-									 pdecoder->next_ib_info.size, (void*)data)) {
-				JSON_Value *s = json_value_init_object();
-				JSON_Array *op = json_array(json_value_init_array());
-				for (unsigned i = 0; i < pdecoder->next_ib_info.size / 4; i++)
-					json_array_append_number(op, data[i]);
-				json_object_set_value(json_object(s), "opcodes", json_array_get_wrapping_value(op));
-				json_object_set_number(json_object(s), "address", pdecoder->next_ib_info.ib_addr);
-				json_array_append_value(ring_decode_ibs, s);
-			}
-			free(data);
-		}
+		ring_data = umr_read_ring_data(asic, ring_name, &ringsize);
+		/* read pointers */
+		ringsize /= 4;
+		rptr = ring_data[0] % ringsize;
+		wptr = ring_data[1] % ringsize;
+		drv_wptr = ring_data[2] % ringsize;
+		free(ring_data);
+		json_object_set_number(json_object(answer), "read_ptr", rptr);
+		json_object_set_number(json_object(answer), "write_ptr", wptr);
+		json_object_set_number(json_object(answer), "driver_write_ptr", drv_wptr);
+		json_object_set_value(json_object(answer), "shaders", json_array_get_wrapping_value(data.shaders));
+		json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(data.ibs));
 
 		/* Reenable gfxoff */
 		value = 1;
 		write(asic->fd.gfxoff, &value, sizeof(value));
 
-		json_object_set_value(json_object(answer), "raw", json_array_get_wrapping_value(ring_decode_raw));
-		json_object_set_value(json_object(answer), "shaders", json_array_get_wrapping_value(ring_decode_shaders));
-		json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(ring_decode_ibs));
-
-		if (halt_waves) {
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
-		}
 	} else if (strcmp(command, "power") == 0) {
 		const char *profiles[] = {
 			"auto",

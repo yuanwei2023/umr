@@ -47,11 +47,22 @@ class RingsPanel : public Panel {
 public:
 	RingsPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL) {
 		/* PKT3_ */
-		syntax.add_definition("(PKT3_[A-Z_0-9]*)", { "#3097a1" });
+		ib_syntax.add_definition("(PKT3_[A-Z_0-9]*)", { "#3097a1" });
 		/* number */
-		syntax.add_definition("(0x[a-z0-9]*)", { "#dbde79" });
+		ib_syntax.add_definition("(0x[a-z0-9]*)", { "#dbde79" });
 		/* keyword */
-		syntax.add_definition("(PKT[0-3],|OPCODE)", { "#8f979c" });
+		ib_syntax.add_definition("(PKT[0-3],|OPCODE)", { "#8f979c" });
+
+		/* SGPR */
+		shader_syntax.add_definition("(s[[:digit:]]+|s\\[[[:digit:]]+:[[:digit:]]+\\])", { "#d33682" });
+		/* VGPR */
+		shader_syntax.add_definition("(v[[:digit:]]+|v\\[[[:digit:]]+:[[:digit:]]+\\])", { "#6c71c4" });
+		/* Constants */
+		shader_syntax.add_definition("(0x[[:digit:]]*)\\b", { "#b58900" });
+		/* Comments */
+		shader_syntax.add_definition("(;)", { "#586e75" });
+		/* Keywords */
+		shader_syntax.add_definition("(attr[[:digit:]]+|exec|m0|[[:alpha:]]+cnt\\([[:digit:]]\\))", { "#3097a1" });
 
 		current_item = - 1;
 		halt = true;
@@ -102,23 +113,24 @@ public:
 		ImGui::EndDisabled();
 		ImGui::Separator();
 		if (last_answer) {
-			JSON_Array *raw = json_object_get_array(last_answer, "raw");
+			JSON_Array *ibs = json_object_get_array(last_answer, "ibs");
+			JSON_Array *shaders = json_object_get_array(last_answer, "shaders");
+			JSON_Array *ring = json_object_get_array(json_object(json_array_get_value(ibs, 0)), "opcodes");
 
 			int rptr = json_object_get_number(last_answer, "read_ptr");
 			int wptr = json_object_get_number(last_answer, "write_ptr");
 			int drv_wptr = json_object_get_number(last_answer, "driver_write_ptr");
 
-			ImGui::BeginTabBar("ringtabs", ImGuiTabBarFlags_None);
+			ImGui::BeginTabBar("ringtabs", ImGuiTabBarFlags_FittingPolicyScroll | ImGuiTabBarFlags_TabListPopupButton);
 
 			uint32_t highlight_lo_ib = 0;
 			if (ImGui::BeginTabItem("Ring Content")) {
 				ImGui::BeginChild("ringtabs scroll");
-				highlight_lo_ib = display_ib(raw, 0, rptr, wptr, drv_wptr);
+				highlight_lo_ib = display_ib(ring, 0, rptr, wptr, drv_wptr);
 				ImGui::EndChild();
 				ImGui::EndTabItem();
 			}
-			JSON_Array *ibs = json_object_get_array(last_answer, "ibs");
-			for (int i = 0; i < json_array_get_count(ibs); i++) {
+			for (int i = 1; i < json_array_get_count(ibs); i++) {
 				JSON_Object *ib = json_object(json_array_get_value(ibs, i));
 				uint64_t base = (uint64_t) json_object_get_number(ib, "address");
 				int high = (((uint32_t)base) == highlight_lo_ib);
@@ -138,6 +150,46 @@ public:
 				} else if (high) {
 					ImGui::PopStyleColor();
 				}
+			}
+
+			for (int i = 0; i < json_array_get_count(shaders); i++) {
+				JSON_Object *shader = json_object(json_array_get_value(shaders, i));
+				uint64_t base = (uint64_t) json_object_get_number(shader, "address");
+				char tmp[128];
+				sprintf(tmp, "shader @ %" PRIx64, base);
+				ImGui::PushID(i);
+				if (ImGui::BeginTabItem(tmp)) {
+					JSON_Array *op = json_object_get_array(shader, "opcodes");
+					uint32_t *copy = new uint32_t[json_array_get_count(op)];
+					for (size_t j = 0; j < json_array_get_count(op); j++)
+						copy[j] = (uint32_t)json_array_get_number(op, j);
+
+					char **opcode_strs = NULL;
+					umr_shader_disasm(asic, (uint8_t *)copy, json_array_get_count(op) * 4, base, &opcode_strs);
+
+					ImGui::BeginChild(tmp);
+					ImGui::BeginTable("shader", 3, ImGuiTableFlags_Borders);
+					ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("00000").x);
+					ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(  "0x00000000  ").x);
+					ImGui::TableSetupColumn("Disassembly");
+					ImGui::TableHeadersRow();
+					for (size_t j = 0; j < json_array_get_count(op); j++) {
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::Text("%04d", j);
+						ImGui::TableSetColumnIndex(1);
+						ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
+						ImGui::TableSetColumnIndex(2);
+						ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
+						free(opcode_strs[j]);
+					}
+					ImGui::EndTable();
+					free(opcode_strs);
+					delete[] copy;
+					ImGui::EndChild();
+					ImGui::EndTabItem();
+				}
+				ImGui::PopID();
 			}
 
 			ImGui::EndTabBar();
@@ -225,7 +277,7 @@ private:
 				}
 
 				ImGui::TableSetColumnIndex(3);
-				char *colored = (char*) syntax.transform(line);
+				char *colored = (char*) ib_syntax.transform(line);
 
 				if (indent)
 					ImGui::Indent();
@@ -258,7 +310,8 @@ private:
 	}
 private:
 	JSON_Object *last_answer;
-	SyntaxHighlighter syntax;
+	SyntaxHighlighter ib_syntax;
+	SyntaxHighlighter shader_syntax;
 	int current_item;
 	bool halt;
 	bool rptr_wptr;
