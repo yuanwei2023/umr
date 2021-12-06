@@ -16,9 +16,6 @@ git checkout amd-staging-drm-next
 git reset --hard origin/amd-staging-drm-next
 cd -
 
-# random bits
-UMR_NO_SOC15=1 ../comp/compiler ${pk}/include/asic_reg/gca/gfx_7_0_d.h ${pk}/include/asic_reg/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
-
 x=0
 
 for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
@@ -32,18 +29,23 @@ for f in ${pk}/include/asic_reg/*/*_offset.h ${pk}/include/asic_reg/*/*_d.h; do
 	#older IP only had 2 parts to the name, add a '_0' in this case
 	revnameparts=`echo ${revname} | tr [_] [\ ] | awk '{ print NF; }'`
 	if [ ${revnameparts} == 2 ]; then
-		revname=${revname}_0
+		outrevname=${revname}_0
+	else
+		outrevname=${revname}
 	fi
 
 	if [ -e ${smnname} ]; then
 		cat ${smnname} ${f} > /tmp/delme.h
-		../comp/compiler /tmp/delme.h `echo ${f} | sed -e 's/_d/_sh_mask/' -e 's/_offset/_sh_mask/'` > ../database/ip/${ipname}_${revname}.reg
+		../comp/compiler /tmp/delme.h `echo ${f} | sed -e 's/_d/_sh_mask/' -e 's/_offset/_sh_mask/'` > ../database/ip/${ipname}_${outrevname}.reg
 		rm -f /tmp/delme.h
 	else
-		parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${revname}.reg
+		parse_reg_bits ${dirname}/${ipname}_${revname} ${ipname}_${outrevname}.reg
 	fi
 	x=`expr ${x} + 1`
 done
+
+# random bits
+UMR_NO_SOC15=1 ../comp/compiler ${pk}/include/asic_reg/gca/gfx_7_0_d.h ${pk}/include/asic_reg/gca/gfx_7_2_sh_mask.h > ../database/ip/gfx_7_0_0.reg    # there is no shift/mask for 7.0.0
 
 echo "Parsed ${x} register files..."
 
