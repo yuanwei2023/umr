@@ -26,8 +26,10 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdarg.h>
+#if UMR_GUI_REMOTE
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
+#endif
 #include "parson.h"
 
 static char * read_file(const char *path) {
@@ -1053,6 +1055,7 @@ error:
 	return answer;
 }
 
+#if UMR_GUI_REMOTE
 void run_server_loop(const char *url, struct umr_asic * asic)
 {
 	int sock = nn_socket(AF_SP, NN_REP);
@@ -1104,3 +1107,4 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 		nn_freemsg(buf);
 	}
 }
+#endif

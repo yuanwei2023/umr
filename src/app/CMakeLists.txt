@@ -5,9 +5,9 @@ project(umr)
 #where app .h file can be found
 include_directories(inc)
 
-if(UMR_GUI)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_GUI")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI")
+if(NOT UMR_NO_GUI)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_GUI -DUMR_GUI_REMOTE=${UMR_GUI_REMOTE}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI -DUMR_GUI_REMOTE=${UMR_GUI_REMOTE}")
 include_directories("gui/glad/include")
 include_directories("gui/imgui")
 include_directories("gui/parson")
@@ -52,7 +52,8 @@ target_link_libraries(umr umrapp)
 target_link_libraries(umr umrlow)
 target_link_libraries(umr umrcore)
 target_link_libraries(umr umrlow)
-if(UMR_GUI)
+if(NOT UMR_NO_GUI)
+# Used by glad
 target_link_libraries(umr dl)
 endif()
 

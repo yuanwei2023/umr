@@ -28,8 +28,10 @@
 #include <unistd.h>
 #include <vector>
 #include <stdio.h>
+#if UMR_GUI_REMOTE
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
+#endif
 #include <pthread.h>
 #include <regex.h>
 
@@ -82,6 +84,7 @@ struct Link {
 };
 
 JSON_Value *query(struct Link& lnk, JSON_Value *request) {
+	#if UMR_GUI_REMOTE
 	if (lnk.use_sock) {
 		char* s = json_serialize_to_string(request);
 		int len = strlen(s) + 1;
@@ -106,9 +109,9 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request) {
 		JSON_Value *out = json_parse_string(buffer);
 		nn_freemsg(buffer);
 		return out;
-	} else {
+	} else
+	#endif
 		return umr_process_json_request(json_object(request));
-	}
 }
 
 void force_redraw() {
@@ -298,6 +301,7 @@ static int run_gui(const char *url)
 		if (stat(url, &statbuf) == 0 && statbuf.st_mode & S_IFMT) {
 			replay = true;
 		} else {
+			#if UMR_GUI_REMOTE
 			int rv;
 			if ((lnk.sock = nn_socket(AF_SP, NN_REQ)) < 0) {
 				exit(1);
@@ -312,6 +316,10 @@ static int run_gui(const char *url)
 			}
 			lnk.use_sock = true;
 			lnk.endpoint = rv;
+			#else
+			printf("Error: UMR remote GUI feature was not enabled at build time.\n");
+			exit(1);
+			#endif
 		}
 	} else {
 		lnk.use_sock = false;
@@ -551,10 +559,12 @@ static int run_gui(const char *url)
 	pthread_cond_signal(&cond);
 	pthread_mutex_unlock(&mtx);
 
+#if UMR_GUI_REMOTE
 	if (lnk.use_sock) {
 		nn_shutdown(lnk.sock, lnk.endpoint);
 		nn_close(lnk.sock);
 	}
+#endif
 
 	if (!replay) {
 		void *res;

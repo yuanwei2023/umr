@@ -71,10 +71,10 @@ environment.  e.g.,
 
     $ cmake -DUMR_NO_DRM=ON ../
 
-NOTE:  You may enable the graphical frontendby adding UMR_GUI to your
+NOTE:  You may disable the graphical frontend by adding UMR_NO_GUI to your
 environment.  e.g.,
 
-    $ cmake -DUMR_GUI=ON ../
+    $ cmake -DUMR_NO_GUI=ON ../
 
 
 Running umr
