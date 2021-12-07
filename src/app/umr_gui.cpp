@@ -76,6 +76,7 @@ private:
 #include "gui/memory_usage_panel.cpp"
 #include "gui/memory_debug_panel.cpp"
 #include "gui/waves_panel.cpp"
+#include "gui/kms_panel.cpp"
 
 struct Link {
 	int sock;
@@ -142,6 +143,7 @@ struct AsicData {
 		panels.push_back(new MemoryUsagePanel(asic));
 		panels.push_back(new MemoryDebugPanel(asic));
 		panels.push_back(new WavesPanel(asic));
+		panels.push_back(new KmsPanel(asic));
 
 		for (auto panel: panels) {
 			panel->store_info(json_object_get_wrapping_value(answer));
@@ -519,6 +521,12 @@ static int run_gui(const char *url)
 
 			if (ImGui::BeginTabItem("#b58900T#ffffffop", NULL, kb_shortcut(SDLK_t) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[4]->display(dt, avail, can_send_request))
+					need_auto_refresh = -1;
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("#b58900K#ffffffMS", NULL, kb_shortcut(SDLK_k) ? ImGuiTabItemFlags_SetSelected : 0)) {
+				if (data.panels[8]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}

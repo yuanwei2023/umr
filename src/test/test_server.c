@@ -4,6 +4,8 @@
 extern void parse_sysfs_clock_file(char *content, int *min, int *max);
 extern JSON_Value *compare_fence_infos(const char *before, const char *after);
 extern JSON_Array *parse_vm_info(const char *content);
+extern JSON_Array *parse_kms_framebuffer_sysfs_file(const char *content);
+extern JSON_Object *parse_kms_state_sysfs_file(const char *content);
 
 enum TEST_RESULT test_parse_sysfs_clock_file()
 {
@@ -139,8 +141,140 @@ enum TEST_RESULT test_parse_vm_info()
     return TEST_SUCCESS;
 }
 
+enum TEST_RESULT test_parse_sysfs_framebuffer()
+{
+    const char *content =
+        "framebuffer[135]:\n"
+        "\tallocated by = gnome-shell\n"
+        "\trefcount=1\n"
+        "\tformat=AR24 little-endian (0x34325241)\n"
+        "\tmodifier=0x0\n"
+        "\tsize=256x256\n"
+        "\tlayers:\n"
+        "\t\tsize[0]=256x256\n"
+        "\t\tpitch[0]=1024\n"
+        "\t\toffset[0]=0\n"
+        "\t\tobj[0]:\n"
+        "\t\t\tname=0\n"
+        "\t\t\trefcount=2\n"
+        "\t\t\tstart=00103c38\n"
+        "\t\t\tsize=262144\n"
+        "\t\t\timported=no\n"
+        "framebuffer[119]:\n"
+        "\tallocated by = [fbcon]\n"
+        "\trefcount=1\n"
+        "\tformat=XR24 little-endian (0x34325258)\n"
+        "\tmodifier=0x1234\n"
+        "\tsize=3440x1440\n"
+        "\tlayers:\n"
+        "\t\tsize[0]=3440x1440\n"
+        "\t\tpitch[0]=13824\n"
+        "\t\toffset[0]=0\n"
+        "\t\tobj[0]:\n"
+        "\t\t\tname=0\n"
+        "\t\t\trefcount=2\n"
+        "\t\t\tstart=00100000\n"
+        "\t\t\tsize=19906560\n"
+        "\t\t\timported=no\n";
+
+    JSON_Array *out = parse_kms_framebuffer_sysfs_file(content);
+
+    const char *expected_json =
+        "[ \
+            { \
+                \"id\": 135, \"allocated by\": \"gnome-shell\", \"format\": \"AR24 little-endian (0x34325241)\", \
+                \"modifier\": 0, \"size\": { \"w\": 256, \"h\": 256 }, \
+                \"layers\": [ \
+                    { \
+                        \"size\": { \"w\": 256, \"h\": 256 }, \
+                        \"pitch\": 1024 \
+                    } \
+                ] \
+            }, \
+            { \
+                \"id\": 119, \"allocated by\": \"[fbcon]\", \"format\": \"XR24 little-endian (0x34325258)\", \
+                \"modifier\": 4660, \"size\": { \"w\": 3440, \"h\": 1440 }, \
+                \"layers\": [ \
+                    { \
+                        \"size\": { \"w\": 3440, \"h\": 1440 }, \
+                        \"pitch\": 13824 \
+                    } \
+                ] \
+            } \
+        ]";
+
+    JSON_Value *expected = json_parse_string(expected_json);
+
+    ASSERT_EQ(json_value_equals(json_array_get_wrapping_value(out), expected), 1);
+    return TEST_SUCCESS;
+}
+
+enum TEST_RESULT test_parse_sysfs_state()
+{
+    const char *content =
+        "plane[65]: plane-5\n"
+        "\tcrtc=crtc-0\n"
+        "\tfb=120\n"
+        "\t\tallocated by = gnome-shell\n"
+        "\t\trefcount=2\n"
+        "\t\tformat=XR24 little-endian (0x34325258)\n"
+        "\t\tmodifier=0x200000020801b03\n"
+        "\t\tsize=3440x1440\n"
+        "\t\tlayers:\n"
+        "\t\t\tsize[0]=3440x1440\n"
+        "\t\t\tpitch[0]=13824\n"
+        "\t\t\toffset[0]=0\n"
+        "\t\t\tobj[0]:\n"
+        "\t\t\t\tname=0\n"
+        "\t\t\t\trefcount=2\n"
+        "\t\t\t\tstart=001096aa\n"
+        "\t\t\t\tsize=21422080\n"
+        "\t\t\t\timported=no\n"
+        "\tcrtc-pos=3440x1440+0+0\n"
+        "\tsrc-pos=3440.000000x1440.000000+0.000000+0.000000\n"
+        "\trotation=1\n"
+        "\tnormalized-zpos=0\n"
+        "\tcolor-encoding=ITU-R BT.601 YCbCr\n"
+        "\tcolor-range=YCbCr limited range\n"
+        "crtc[77]: crtc-0\n"
+        "\tenable=1\n"
+        "\tactive=1\n"
+        "\tself_refresh_active=0\n"
+        "\tplanes_changed=1\n"
+        "\tmode_changed=0\n"
+        "\tactive_changed=0\n"
+        "\tconnectors_changed=0\n"
+        "\tcolor_mgmt_changed=0\n"
+        "\tplane_mask=a0\n"
+        "\tconnector_mask=1\n"
+        "\tencoder_mask=1\n"
+        "\tmode: \"3440x1440\": 60 319750 3440 3520 3552 3600 1440 1468 1478 1481 0x48 0x9\n"
+        "connector[94]: DP-1\n"
+        "\tcrtc=crtc-0\n"
+        "\tself_refresh_aware=0\n";
+
+    JSON_Object *out = parse_kms_state_sysfs_file(content);
+
+    const char * frames = "[{\"name\": \"plane-0\", \"fb\": 120, \"crtc\": { \"id\": 0, \"pos\": { \"x\": 0, \"y\": 0, \"w\": 3440, \"h\": 1440 } }]";
+    const char * crtcs = "[{\"id\": 0, \"enable\": 1, \"active\": 1}]";
+    const char * connectors = "[{\"name\": \"DP-1\", \"crtc\": 0}]";
+
+    JSON_Value *frames_ref = json_parse_string(frames);
+    ASSERT_EQ(json_value_equals(json_object_get_value(out, "frames"), frames_ref), 1);
+
+    JSON_Value *crtcs_ref = json_parse_string(crtcs);
+    ASSERT_EQ(json_value_equals(json_object_get_value(out, "crtcs"), crtcs_ref), 1);
+
+    JSON_Value *connectors_ref = json_parse_string(connectors);
+    ASSERT_EQ(json_value_equals(json_object_get_value(out, "connectors"), connectors_ref), 1);
+
+    return TEST_SUCCESS;
+}
+
 DEFINE_TESTS(server_tests)
 TEST(test_parse_sysfs_clock_file, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_fence_info, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_vm_info, "navi_reg_only.envdef", "navi10"),
+TEST(test_parse_sysfs_framebuffer, "navi_reg_only.envdef", "navi10"),
+TEST(test_parse_sysfs_state, "navi_reg_only.envdef", "navi10"),
 END_TESTS(server_tests);

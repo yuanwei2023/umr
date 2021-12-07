@@ -84,6 +84,226 @@ void parse_sysfs_clock_file(char *content, int *min, int *max) {
 	}
 }
 
+static const char * lookup_field(const char **in, const char *field, char separator) {
+	static char value[2048];
+	const char *input = *in;
+	input = strstr(input, field);
+	if (!input)
+		return NULL;
+	input += strlen(field);
+	while (*input != separator)
+		input++;
+	input++;
+	while (*input == ' ' || *input == '\t')
+		input++;
+	const char *end = input + 1;
+	while (*end != '\n')
+		end++;
+	memcpy(value, input, end - input);
+	value[end - input] = '\0';
+	*in = end;
+
+	return value;
+}
+
+enum kms_field_type {
+	KMS_STRING = 0,
+	KMS_INT_10,
+	KMS_INT_16,
+	KMS_SIZE,
+	KMS_SIZE_POS
+};
+static int parse_kms_field(const char **content, const char *field, const char *js_field, enum kms_field_type type, JSON_Object *out) {
+	const char *ptr = lookup_field(content, field, '=');
+	if (!ptr)
+		return 0;
+
+	switch (type) {
+		case KMS_STRING:
+			json_object_set_string(out, js_field, ptr);
+			break;
+		case KMS_INT_10: {
+			int v;
+			if (sscanf(ptr, "%d", &v) == 1)
+				json_object_set_number(out, js_field, v);
+			break;
+		}
+		case KMS_INT_16: {
+			uint64_t v;
+			if (sscanf(ptr, "0x%" PRIx64, &v) == 1)
+				json_object_set_number(out, js_field, v);
+			break;
+		}
+		case KMS_SIZE: {
+			int w, h;
+			if (sscanf(ptr, "%dx%d", &w, &h) == 2) {
+				JSON_Value *size = json_value_init_object();
+				json_object_set_number(json_object(size), "w", w);
+				json_object_set_number(json_object(size), "h", h);
+				json_object_set_value(out, js_field, size);
+			}
+			break;
+		}
+		case KMS_SIZE_POS: {
+			int x, y, w, h;
+			if (sscanf(ptr, "%dx%d+%d+%d", &w, &h, &x, &y) == 4) {
+				JSON_Value *size = json_value_init_object();
+				json_object_set_number(json_object(size), "w", w);
+				json_object_set_number(json_object(size), "h", h);
+				json_object_set_number(json_object(size), "x", x);
+				json_object_set_number(json_object(size), "y", y);
+				json_object_set_value(out, js_field, size);
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	return 1;
+}
+
+JSON_Array *parse_kms_framebuffer_sysfs_file(const char *content) {
+	JSON_Array *out = json_array(json_value_init_array());
+	const char *next_framebuffer = strstr(content, "framebuffer[");
+	while (next_framebuffer) {
+		if (!next_framebuffer)
+			break;
+
+		JSON_Object *fb = json_object(json_value_init_object());
+		content = next_framebuffer + strlen("framebuffer");
+		int id;
+		if (sscanf(content, "[%d]", &id) == 1)
+			json_object_set_number(fb, "id", id);
+
+		parse_kms_field(&content, "allocated by", "allocated by", KMS_STRING, fb);
+		parse_kms_field(&content, "format", "format", KMS_STRING, fb);
+		parse_kms_field(&content, "modifier", "modifier", KMS_INT_16, fb);
+		parse_kms_field(&content, "size", "size", KMS_SIZE, fb);
+
+		JSON_Value *layers = json_value_init_array();
+		content = strstr(content, "layers:");
+		next_framebuffer = strstr(content, "framebuffer[");
+		int layer_id = 0;
+		while (content) {
+			JSON_Value *layer = json_value_init_object();
+
+			char tmp[256];
+			sprintf(tmp, "size[%d]", layer_id);
+			if (parse_kms_field(&content, tmp, "size", KMS_SIZE, json_object(layer))) {
+				if (content > next_framebuffer && next_framebuffer) {
+					json_value_free(layer);
+					break;
+				}
+
+				sprintf(tmp, "pitch[%d]", layer_id);
+				parse_kms_field(&content, tmp, "pitch", KMS_INT_10, json_object(layer));
+				json_array_append_value(json_array(layers), layer);
+				layer_id++;
+			} else {
+				json_value_free(layer);
+				break;
+			}
+		}
+		json_object_set_value(fb, "layers", layers);
+
+		json_array_append_value(out, json_object_get_wrapping_value(fb));
+	}
+
+	return out;
+}
+
+JSON_Object *parse_kms_state_sysfs_file(const char *content) {
+	char tmp[256];
+	JSON_Object *out = json_object(json_value_init_object());
+
+	/* planes */
+	JSON_Value *planes = json_value_init_array();
+	int plane_id = 0;
+	while (1) {
+		const char *last_input = content;
+		sprintf(tmp, "plane-%d", plane_id);
+		const char *plane = strstr(content, tmp);
+		if (plane) {
+			JSON_Object *p = json_object(json_value_init_object());
+			json_object_set_number(p, "id", plane_id);
+			const char *ptr = lookup_field(&plane, "crtc", '=');
+			if (ptr) {
+				int crtc_id;
+				if (sscanf(ptr, "crtc-%d", &crtc_id) == 1) {
+					parse_kms_field(&plane, "fb", "fb", KMS_INT_10, p);
+					JSON_Object *cr = json_object(json_value_init_object());
+					json_object_set_number(cr, "id", crtc_id);
+					parse_kms_field(&plane, "crtc-pos", "pos", KMS_SIZE_POS, cr);
+					json_object_set_value(p, "crtc", json_object_get_wrapping_value(cr));
+				} else {
+					parse_kms_field(&plane, "fb", "fb", KMS_INT_10, p);
+				}
+			}
+			content = plane;
+			json_array_append_value(json_array(planes), json_object_get_wrapping_value(p));
+			plane_id++;
+		} else {
+			content = last_input;
+			break;
+		}
+	}
+
+	/* crtcs */
+	JSON_Value *crtcs = json_value_init_array();
+	int crtc_id = 0;
+	while (1) {
+		const char *last_input = content;
+		sprintf(tmp, "crtc-%d", crtc_id);
+		const char *crtc = strstr(content, tmp);
+		if (crtc) {
+			JSON_Object *c = json_object(json_value_init_object());
+			json_object_set_number(c, "id", crtc_id);
+			parse_kms_field(&content, "enable", "enable", KMS_INT_10, c);
+			parse_kms_field(&content, "active", "active", KMS_INT_10, c);
+			json_array_append_value(json_array(crtcs), json_object_get_wrapping_value(c));
+			crtc_id++;
+		} else {
+			content = last_input;
+			break;
+		}
+	}
+
+	/* connectors */
+	JSON_Value *connectors = json_value_init_array();
+	while (1) {
+		const char *last_input = content;
+		const char *ptr = strstr(content, "connector[");
+		if (ptr) {
+			JSON_Object *c = json_object(json_value_init_object());
+			while(*ptr != ' ')
+				ptr++;
+			ptr++;
+			const char *end = ptr + 1;
+			while (*end != '\n')
+				end++;
+			json_object_set_string_with_len(c, "name", ptr, end - ptr);
+			const char *cr = lookup_field(&ptr, "crtc", '=');
+			if (cr) {
+				int cid;
+				if (sscanf(cr, "crtc-%d", &cid) == 1) {
+					json_object_set_number(c, "crtc", cid);
+				}
+			}
+			json_array_append_value(json_array(connectors), json_object_get_wrapping_value(c));
+			content = end;
+		} else {
+			content = last_input;
+			break;
+		}
+	}
+
+	json_object_set_value(out, "planes", planes);
+	json_object_set_value(out, "crtcs", crtcs);
+	json_object_set_value(out, "connectors", connectors);
+
+	return out;
+}
+
 JSON_Value *compare_fence_infos(const char *before, const char *after) {
 	JSON_Value *fences = json_value_init_array();
 	int cursor = 0;
@@ -1051,6 +1271,18 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 		JSON_Array *pids = parse_vm_info(read_file(path));
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
+	} else if (!strcmp(command, "kms")) {
+		char path[256];
+		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
+		const char *content = read_file(path);
+		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(content);
+
+		sprintf(path, "/sys/kernel/debug/dri/%d/state", asic->instance);
+		content = read_file(path);
+		JSON_Object *state = parse_kms_state_sysfs_file(content);
+
+		answer = json_object_get_wrapping_value(state);
+		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
 	} else {
 		last_error = "unknown command";
 		goto error;
