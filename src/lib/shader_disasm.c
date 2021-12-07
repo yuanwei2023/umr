@@ -60,7 +60,7 @@ static struct umr_wave_data *find_wave(struct umr_asic *asic, struct umr_wave_da
  * @wd: Wave scan data (or NULL) used to track activity in this shader
  * @out: array of strings containing formatted output
  */
-int umr_vm_disasm_to_str(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, char ***out)
+int umr_vm_disasm_to_str(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, char ***out)
 {
 	uint32_t *opcodes = NULL, x, y;
 	char **opcode_strs = NULL;
@@ -78,7 +78,7 @@ int umr_vm_disasm_to_str(struct umr_asic *asic, unsigned vmid, uint64_t addr, ui
 
 	// read the shader from an offset.  This allows us to know
 	// where the shader starts but only read/display a portion of it
-	if (umr_read_vram(asic, vmid, addr + start_offset, size, (void*)opcodes)) {
+	if (umr_read_vram(asic, vm_partition, vmid, addr + start_offset, size, (void*)opcodes)) {
 		r = -1;
 		goto error;
 	}
@@ -116,7 +116,7 @@ error:
  * @start_offset:  Offset of disassembly starting address from @addr
  * @wd: Wave scan data (or NULL) used to track activity in this shader
  */
-int umr_vm_disasm(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd)
+int umr_vm_disasm(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd)
 {
 	uint32_t x, y, nwave, wavehits;
 	struct umr_wave_data *pwd;
@@ -132,7 +132,7 @@ int umr_vm_disasm(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t 
 		pwd = pwd->next;
 	}
 
-	r = umr_vm_disasm_to_str(asic, vmid, addr, PC, size, start_offset, &outstrs);
+	r = umr_vm_disasm_to_str(asic, vm_partition, vmid, addr, PC, size, start_offset, &outstrs);
 	if (r)
 		return r;
 	for (y = 0, x = start_offset / 4; x < (start_offset + size)/4; x++, y++) {
@@ -182,8 +182,7 @@ int umr_vm_disasm(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t 
  * resort to using the last 's_endpgm' if the shader vm mappings
  * run out.
  */
-uint32_t umr_compute_shader_size(struct umr_asic *asic,
-				 struct umr_shaders_pgm *shader)
+uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition, struct umr_shaders_pgm *shader)
 {
 	uint64_t addr;
 	uint32_t buf[256/4]; // read 256 byte pages at a time
@@ -200,7 +199,7 @@ uint32_t umr_compute_shader_size(struct umr_asic *asic,
 			// if we hit a fault just assume that's the end of the memory
 			// mapped to the shader.  This is to account for
 			// older UMDs that might not use the 5 ENDPGM postfix.
-			if (umr_read_vram(asic, shader->vmid, addr, 256, &buf[0]) < 0)
+			if (umr_read_vram(asic, vm_partition, shader->vmid, addr, 256, &buf[0]) < 0)
 				break;
 			addr += 256;
 			x = 0;

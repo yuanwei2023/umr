@@ -49,7 +49,7 @@ can be used:
 
 ::
 
-	struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vmid, uint32_t *stream, uint32_t nwords);
+	struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_partition, int vmid, uint32_t *stream, uint32_t nwords);
 
 This will return a structure pointer if successful.
 

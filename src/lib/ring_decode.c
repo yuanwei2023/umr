@@ -370,7 +370,7 @@ static void add_shader(struct umr_asic *asic, struct umr_ring_decoder *decoder)
 	pshader->vmid = decoder->pm4.next_ib_state.ib_vmid;
 	pshader->addr = (((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) |
 					 decoder->pm4.next_ib_state.ib_addr_lo) << 8;
-	pshader->size = umr_compute_shader_size(asic, pshader);
+	pshader->size = umr_compute_shader_size(asic, asic->options.vm_partition, pshader);
 	pshader->src.ib_offset = decoder->next_ib_info.addr;
 	pshader->src.ib_base = decoder->next_ib_info.ib_addr;
 	return;
@@ -597,7 +597,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 				case 2: print("INDEX_BASE_HI: %s0x%08lx%s", YELLOW, (unsigned long) BITS(ib, 0, 32), RST);
 						decoder->pm4.next_ib_state.ib_addr_hi = ib;
 						if (!asic->options.no_follow_ib) {
-							if (umr_read_vram(asic, decoder->next_ib_info.vmid,
+							if (umr_read_vram(asic, asic->options.vm_partition, decoder->next_ib_info.vmid,
 											  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0)
 								print(" [%sUNMAPPED%s]", RED, RST);
 							else
@@ -665,7 +665,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 							   BLUE, (unsigned)BITS(ib, 31, 32), RST);
 					}
 					if (!asic->options.no_follow_ib) {
-						if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+						if (umr_read_vram(asic, asic->options.vm_partition, decoder->pm4.next_ib_state.ib_vmid,
 										  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0) {
 							print(" [%sUNMAPPED%s]", RED, RST);
 						} else {
@@ -1084,7 +1084,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 								decoder->pm4.next_ib_state.ib_addr_hi = ib;
 								decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid;
 								if (!asic->options.no_follow_ib) {
-									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+									if (umr_read_vram(asic, asic->options.vm_partition, decoder->pm4.next_ib_state.ib_vmid,
 													  (((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo) << 8,
 													  4, buf) < 0) {
 										print(" [%sUNMAPPED%s]", RED, RST);
@@ -1105,7 +1105,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 								decoder->pm4.next_ib_state.ib_addr_hi = ib;
 								decoder->pm4.next_ib_state.ib_vmid = decoder->next_ib_info.vmid;
 								if (!asic->options.no_follow_ib) {
-									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+									if (umr_read_vram(asic, asic->options.vm_partition, decoder->pm4.next_ib_state.ib_vmid,
 													  (((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo) << 8,
 													  4, buf) < 0) {
 										print(" [%sUNMAPPED%s]", RED, RST);
@@ -1407,7 +1407,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 								break;
 						case 3: print("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
 								if (!asic->options.no_follow_ib) {
-									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+									if (umr_read_vram(asic, asic->options.vm_partition, decoder->pm4.next_ib_state.ib_vmid,
 													  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0) {
 										print(" [%sUNMAPPED%s]", RED, RST);
 									} else {
@@ -1451,7 +1451,7 @@ static void print_decode_pm4_pkt3(struct umr_asic *asic, struct umr_ring_decoder
 								break;
 						case 3: print("WPTR_ADDR_HI: %s0x%lx%s", YELLOW, (unsigned long)ib, RST);
 								if (!asic->options.no_follow_ib) {
-									if (umr_read_vram(asic, decoder->pm4.next_ib_state.ib_vmid,
+									if (umr_read_vram(asic, asic->options.vm_partition, decoder->pm4.next_ib_state.ib_vmid,
 													  ((uint64_t)decoder->pm4.next_ib_state.ib_addr_hi << 32) | decoder->pm4.next_ib_state.ib_addr_lo, 4, buf) < 0) {
 										print(" [%sUNMAPPED%s]", RED, RST);
 									} else {
@@ -2033,7 +2033,7 @@ static void parse_next_sdma_pkt(struct umr_asic *asic, struct umr_ring_decoder *
 				case 5: print("IB_CSA_ADDR_HI: %s0x%08lx%s", YELLOW, (unsigned long)ib, RST);
 					decoder->sdma.next_ib_state.csa_addr_hi = ib;
 					if (!asic->options.no_follow_ib) {
-						if (umr_read_vram(asic, decoder->sdma.next_ib_state.ib_vmid,
+						if (umr_read_vram(asic, asic->options.vm_partition, decoder->sdma.next_ib_state.ib_vmid,
 										  ((uint64_t)decoder->sdma.next_ib_state.ib_addr_hi << 32) | decoder->sdma.next_ib_state.ib_addr_lo,
 										  4, buf) < 0) {
 							print(" [%sUNMAPPED%s]", RED, RST);

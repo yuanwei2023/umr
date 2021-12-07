@@ -88,6 +88,24 @@ the string 'ip' for a register that exactly matches 'regname'.  The IP
 block naming is partially matched to support blocks that have
 versions in the name,
 
+
+``````````````````````````````````````````
+Searching by Name and IP name and Instance
+``````````````````````````````````````````
+
+This function allows searching for a specific register by both IP block
+and instance.  If the 'inst' is passed as -1 it is ignored (same as
+calling 'umr_find_reg_data_by_ip()').
+
+::
+
+	struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname);
+
+When 'inst' is 0 or above it searches for IP blocks that contain '{inst}' in
+the name.  For instance, passing 1 would search for IP blocks with '{1}' in
+the name.
+
+
 '''''''''''''''''''''
 Searching by wildcard
 '''''''''''''''''''''
@@ -202,7 +220,6 @@ Similarly, to access a register by IP block:
 As in the case of the 'umr_find_reg_data_by_ip()' call the IP block name
 pointed to by 'ip' is only partially compared.  For instance,
 
-
 ::
 
 	printf("mmUVD_NO_OP value is: 0x%08lx\n",
@@ -210,6 +227,14 @@ pointed to by 'ip' is only partially compared.  For instance,
 
 The string "uvd" is incomplete but will match IP blocks such as 'uvd6'
 (as found in VI ASICs for instance).
+
+Similarly, to read or write a register by IP name and instance number:
+
+::
+
+	int umr_write_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int inst, char *name, uint64_t value);
+	uint64_t umr_read_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int inst, char *name);
+
 
 --------------------------
 Bitslicing Register Values

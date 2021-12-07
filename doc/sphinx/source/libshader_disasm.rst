@@ -38,7 +38,7 @@ used:
 ::
 
 	int umr_vm_disasm_to_str(struct umr_asic *asic,
-				 unsigned vmid, uint64_t addr,
+				 int vm_partition, unsigned vmid, uint64_t addr,
 				 uint64_t PC, uint32_t size,
 				 uint32_t start_offset, char ***out);
 
@@ -72,7 +72,7 @@ To compute the size of a shader this function can be used:
 
 ::
 
-	uint32_t umr_compute_shader_size(struct umr_asic *asic,
+	uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition,
 					 struct umr_shaders_pgm *shader)
 
 The shader must be terminated at some point with an S_ENDPGM opcode or ideally

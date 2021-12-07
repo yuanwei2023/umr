@@ -263,6 +263,7 @@ struct umr_options {
 	    no_fold_vm_decode,
 	    pg_lock,
 	    test_log,
+	    vm_partition,
 	    is_virtual;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
@@ -1046,6 +1047,7 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter 
 char *umr_reg_name(struct umr_asic *asic, uint64_t addr);
 
 // find the register data for a register
+struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname);
 struct umr_reg *umr_find_reg_data_by_ip(struct umr_asic *asic, const char *ip, const char *regname);
 struct umr_reg *umr_find_reg_data(struct umr_asic *asic, const char *regname);
 struct umr_reg *umr_find_reg_by_addr(struct umr_asic *asic, uint64_t addr, struct umr_ip_block **ip);
@@ -1057,6 +1059,10 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 // read/write a register given a name
 uint64_t umr_read_reg_by_name(struct umr_asic *asic, char *name);
 int umr_write_reg_by_name(struct umr_asic *asic, char *name, uint64_t value);
+
+// read/write a register by ip/inst/name
+int umr_write_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int inst, char *name, uint64_t value);
+uint64_t umr_read_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int inst, char *name);
 
 // read/write a register by ip/name
 uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name);
@@ -1117,8 +1123,8 @@ struct umr_pm4_stream {
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
 struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
-struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
+struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
@@ -1185,7 +1191,7 @@ struct umr_pm4_stream_decode_ui {
 };
 
 struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
-int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt);
+int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, int vm_partition, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt);
 
 /* SDMA decoding */
 struct umr_sdma_stream {
@@ -1210,8 +1216,8 @@ struct umr_sdma_stream {
 };
 
 struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop);
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
 struct umr_sdma_stream_decode_ui {
@@ -1307,19 +1313,19 @@ int umr_shader_disasm(struct umr_asic *asic,
 		    uint8_t *inst, unsigned inst_bytes,
 		    uint64_t PC,
 		    char ***disasm_text);
-int umr_vm_disasm_to_str(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, char ***out);
-int umr_vm_disasm(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd);
-uint32_t umr_compute_shader_size(struct umr_asic *asic, struct umr_shaders_pgm *shader);
+int umr_vm_disasm_to_str(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, char ***out);
+int umr_vm_disasm(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd);
+uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition, struct umr_shaders_pgm *shader);
 
 
 // memory access
 int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en);
 uint64_t umr_vm_dma_to_phys(struct umr_asic *asic, uint64_t dma_addr);
 int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en);
-int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en);
+int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en);
 int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t size, void *data, int write_en);
-#define umr_read_vram(asic, vmid, address, size, dst) umr_access_vram(asic, vmid, address, size, dst, 0)
-#define umr_write_vram(asic, vmid, address, size, src) umr_access_vram(asic, vmid, address, size, src, 1)
+#define umr_read_vram(asic, partition, vmid, address, size, dst) umr_access_vram(asic, partition, vmid, address, size, dst, 0)
+#define umr_write_vram(asic, partition, vmid, address, size, src) umr_access_vram(asic, partition, vmid, address, size, src, 1)
 
 // test harness support
 // struct for sysram and vram blocks

@@ -1120,6 +1120,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
  *
  * 	asic:  The ASIC the VM space and opcodes belong to
  * 	ui: The UI callbacks that will present the decoded information
+ *  vm_parition: What VM partition is this from?  -1 is default
  * 	ib_addr: The address in the VM where the opcodes reside
  * 	ib_vmid:  The VMID of the opcode stream
  * 	nwords:  The number of 32-bit words to feed to the decoder (size of the IB for instance)
@@ -1130,15 +1131,15 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
  * 	rt: a value from the set umr_ring_type
  *
  */
-int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt)
+int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, int vm_partition, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt)
 {
 	uint32_t *data;
 	struct umr_pm4_stream *stream;
 
 	data = calloc(sizeof(*data), nwords);
 	if (data) {
-		if (umr_read_vram(asic, ib_vmid, ib_addr, nwords * sizeof(*data), data) == 0) {
-			stream = umr_pm4_decode_stream(asic, ib_vmid, data, nwords, rt);
+		if (umr_read_vram(asic, vm_partition, ib_vmid, ib_addr, nwords * sizeof(*data), data) == 0) {
+			stream = umr_pm4_decode_stream(asic, vm_partition, ib_vmid, data, nwords, rt);
 			if (stream) {
 				umr_pm4_decode_stream_opcodes(asic, ui, stream, ib_addr, ib_vmid, from_addr, from_ib, opcodes, follow);
 				umr_free_pm4_stream(stream);

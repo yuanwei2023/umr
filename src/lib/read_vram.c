@@ -181,7 +181,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			pde_mask <<= (12 + 9 + page_table_block_size);
 
 			// read PDE entry
-			if (umr_read_vram(asic, UMR_LINEAR_HUB, page_table_base_addr + pde_idx * 8 - vm_fb_base, 8, &pde_entry)) {
+			if (umr_read_vram(asic, -1, UMR_LINEAR_HUB, page_table_base_addr + pde_idx * 8 - vm_fb_base, 8, &pde_entry)) {
 				asic->mem_funcs.vm_message("[ERROR]:  Could not read PDE.\n");
 				return -1;
 			}
@@ -211,7 +211,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			}
 
 			// now read PTE entry for this page
-			if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx*8 - vm_fb_base, 8, &pte_entry) < 0)
+			if (umr_read_vram(asic, -1, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx*8 - vm_fb_base, 8, &pte_entry) < 0)
 				return -1;
 
 			// decode PTE values
@@ -242,7 +242,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 			// depth == 0 == PTE only
 			pte_idx = (address >> 12);
 
-			if (umr_read_vram(asic, UMR_LINEAR_HUB, page_table_base_addr + pte_idx * 8 - vm_fb_base, 8, &pte_entry) < 0)
+			if (umr_read_vram(asic, -1, UMR_LINEAR_HUB, page_table_base_addr + pte_idx * 8 - vm_fb_base, 8, &pte_entry) < 0)
 				return -1;
 
 			// decode PTE values
@@ -286,7 +286,7 @@ next_page:
 					return -1;
 				}
 			} else {
-				if (umr_access_vram(asic, UMR_LINEAR_HUB, start_addr, chunk_size, pdst, write_en) < 0) {
+				if (umr_access_vram(asic, -1, UMR_LINEAR_HUB, start_addr, chunk_size, pdst, write_en) < 0) {
 					fprintf(stderr, "[ERROR]: Cannot access VRAM\n");
 					return -1;
 				}
@@ -530,8 +530,8 @@ static void print_pte_ai(struct umr_asic *asic,
 /**
  * umr_access_vram_ai - Access GPU mapped memory for GFX9+ platforms
  */
-static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
-			      uint64_t address, uint32_t size,
+static int umr_access_vram_ai(struct umr_asic *asic, int partition,
+				  uint32_t vmid, uint64_t address, uint32_t size,
 			      void *dst, int write_en)
 {
 	uint64_t start_addr, page_table_start_addr, page_table_end_addr, page_table_base_addr,
@@ -615,20 +615,20 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 	if (vmid == 0) {
 		// only need system aperture registers if we're using VMID 0
 		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", vm0prefix);
-			registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", vm0prefix);
-			registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		system_aperture_low = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << 18;
 		system_aperture_high = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR) << 18;
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
-			registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 	}
 
 	sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", vm0prefix);
-		registers.mmMC_VM_FB_LOCATION_BASE = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmMC_VM_FB_LOCATION_BASE = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		fb_bottom = ((uint64_t)registers.mmMC_VM_FB_LOCATION_BASE) << 24;
 	sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", vm0prefix);
-		registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		fb_top = ((uint64_t)registers.mmMC_VM_FB_LOCATION_TOP) << 24;
 
 	// check if we are in ZFB mode
@@ -639,41 +639,41 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 
 	if (zfb) {
 		sprintf(buf, "mm%sMC_VM_AGP_BASE", regprefix);
-			registers.mmMC_VM_AGP_BASE = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			registers.mmMC_VM_AGP_BASE = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 			agp_base = ((uint64_t)registers.mmMC_VM_AGP_BASE) << 24;
 		sprintf(buf, "mm%sMC_VM_AGP_BOT", regprefix);
-			registers.mmMC_VM_AGP_BOT = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			registers.mmMC_VM_AGP_BOT = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 			agp_bot = ((uint64_t)registers.mmMC_VM_AGP_BOT) << 24;
 		sprintf(buf, "mm%sMC_VM_AGP_TOP", regprefix);
-			registers.mmMC_VM_AGP_TOP = umr_read_reg_by_name_by_ip(asic, hub, buf);
+			registers.mmMC_VM_AGP_TOP = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 			agp_top = (((uint64_t)registers.mmMC_VM_AGP_TOP) << 24) | 0xFFFFFFULL;
 	} else {
 		agp_base = agp_bot = agp_top = 0;
 	}
 
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_start_addr = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 << 12;
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_HI32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_start_addr |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 << 44;
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_END_ADDR_LO32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_end_addr = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 << 12;
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_END_ADDR_HI32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_end_addr |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 << 44;
 
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_CNTL", regprefix, vmid);
-		tmp = registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		tmp = registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_depth      = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "PAGE_TABLE_DEPTH", tmp);
 		page_table_block_size = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
 
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_base_addr  = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 << 0;
 	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
 
 	if (page_table_base_addr == 0xFFFFFFFFFFFFFFFFULL)
@@ -686,7 +686,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
 		registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
 		sprintf(buf, "mm%sMC_VM_FB_OFFSET", regprefix);
-		registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip(asic, hub, buf);
+		registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		vm_fb_offset      = (uint64_t)registers.mmMC_VM_FB_OFFSET << 24;
 	} else {
 		vm_fb_offset = 0;
@@ -760,7 +760,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 		// addresses in VMID0 need special handling w.r.t. PAGE_TABLE_START_ADDR
 		switch (sam) {
 			case 0: // physical access
-				return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+				return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
 			case 1: // always VM access
 				break;
 			case 2: // inside system aperture is mapped, otherwise unmapped
@@ -769,7 +769,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 						//return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
 						return (dst) ? asic->mem_funcs.access_sram(asic, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
 					else
-						return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
 				}
 				break;
 			case 3: // inside system aperture is unmapped, otherwise mapped
@@ -778,7 +778,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 						//return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
 						return (dst) ? asic->mem_funcs.access_sram(asic, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
 					else
-						return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
 				}
 				break;
 			default:
@@ -859,7 +859,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, uint32_t vmid,
 							return -1;
 						}
 					} else {
-						if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_addr, 8, &pde_entry) < 0) {
+						if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pde_addr, 8, &pde_entry) < 0) {
 							asic->mem_funcs.vm_message("[ERROR]: Could not read PDE from VRAM\n");
 							return -1;
 						}
@@ -944,7 +944,7 @@ pte_further:
 						return -1;
 					}
 				} else {
-					if (umr_read_vram(asic, UMR_LINEAR_HUB, pte_addr, 8, &pte_entry) < 0) {
+					if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pte_addr, 8, &pte_entry) < 0) {
 						asic->mem_funcs.vm_message("[ERROR]: Cannot read PTE entry at VRAM address %" PRIx64, pte_addr);
 						return -1;
 					}
@@ -1067,7 +1067,7 @@ pde_is_pte:
 			// PTE addr = baseaddr[47:6] + (logical - start) >> fragsize)
 			pte_idx = (address >> (12 + pde0_block_fragment_size));
 
-			if (umr_read_vram(asic, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
+			if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
 				return -1;
 
 			pte_fields = decode_pte_entry_ai(pte_entry);
@@ -1131,7 +1131,7 @@ next_page:
 							return -1;
 						}
 					} else {
-						if (umr_access_vram(asic, UMR_LINEAR_HUB, new_addr, chunk_size, pdst, write_en) < 0) {
+						if (umr_access_vram(asic, partition, UMR_LINEAR_HUB, new_addr, chunk_size, pdst, write_en) < 0) {
 							fprintf(stderr, "[ERROR]: Cannot access VRAM\n");
 							return -1;
 						}
@@ -1170,6 +1170,7 @@ invalid_page:
  *
  *			The bits 0:7 indicate which VM to access (if any).
  *
+ * @partition: The VM partition to be used (refers to different INST of VM register blocks)
  * @address: The address of the memory to access must be word aligned
  * @size:  The number of bytes to read
  * @data:  The buffer to read from/write to
@@ -1177,7 +1178,7 @@ invalid_page:
  *
  * Returns -1 on error.
  */
-int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en)
+int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en)
 {
 	// only aligned reads
 	if ((address & 3) || (size & 3)) {
@@ -1241,7 +1242,7 @@ int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint
 			return umr_access_vram_vi(asic, vmid, address, size, data, write_en);
 		case FAMILY_AI:
 		case FAMILY_NV:
-			return umr_access_vram_ai(asic, vmid, address, size, data, write_en);
+			return umr_access_vram_ai(asic, partition, vmid, address, size, data, write_en);
 		default:
 			fprintf(stderr, "[BUG]: Unsupported ASIC family type for umr_read_vram()\n");
 			return -1;

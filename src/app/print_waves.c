@@ -74,7 +74,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		if (use_ring) {
 			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1, -1, -1);
 		} else {
-			stream = umr_pm4_decode_stream_vm(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_UNK);
+			stream = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_UNK);
 		}
 	} else {
 		ring_halted = 0;
@@ -144,7 +144,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 			}
 			if (ring_halted && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
 				pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo) - (NUM_OPCODE_WORDS*4)/2;
-				umr_vm_disasm(asic, wd->ws.hw_id.vm_id, pgm_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id.vm_id, pgm_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
 			}
 		} else {
 			first = 0;
@@ -300,7 +300,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 					shader_addr = pgm_addr;
 					printf("\n");
 				}
-				umr_vm_disasm(asic, wd->ws.hw_id.vm_id, shader_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id.vm_id, shader_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
 			}
 
 			Hv("LDS_ALLOC", wd->ws.lds_alloc.value);
@@ -381,7 +381,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 		if (use_ring) {
 			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1, -1, -1);
 		} else {
-			stream = umr_pm4_decode_stream_vm(asic, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_UNK);
+			stream = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_UNK);
 		}
 	} else {
 		ring_halted = 0;
@@ -445,7 +445,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			}
 			if (ring_halted && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
 				pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo) - (NUM_OPCODE_WORDS*4)/2;
-				umr_vm_disasm(asic, wd->ws.hw_id2.vm_id, pgm_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id2.vm_id, pgm_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
 			}
 		} else {
 			first = 0;
@@ -591,7 +591,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 					shader_addr = pgm_addr;
 					printf("\n");
 				}
-				umr_vm_disasm(asic, wd->ws.hw_id2.vm_id, shader_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id2.vm_id, shader_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
 			}
 
 			Hv("LDS_ALLOC", wd->ws.lds_alloc.value);

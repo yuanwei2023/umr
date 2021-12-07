@@ -27,6 +27,7 @@
 /**
  * parse_pm4 - Parse a PM4 packet looking for pointers to shaders or IBs
  *
+ * @vm_partition: What VM partition does it come from (-1 is default)
  * @vmid:  The known VMID this packet belongs to (or 0 if from a ring)
  * @ps: The PM4 packet to parse
  *
@@ -34,7 +35,7 @@
  * SET_SH_REG packet or further IBs indicated by INDIRECT_BUFFER
  * packets.
  */
-static void parse_pm4(struct umr_asic *asic, uint32_t vmid, struct umr_pm4_stream *ps)
+static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, struct umr_pm4_stream *ps)
 {
 	uint64_t addr;
 	uint32_t size, tvmid, rsrc1, rsrc2;
@@ -96,7 +97,7 @@ static void parse_pm4(struct umr_asic *asic, uint32_t vmid, struct umr_pm4_strea
 				ps->shader->vmid = vmid;
 				ps->shader->addr = shader_addr;
 				if (!asic->options.no_follow_shader)
-					ps->shader->size = umr_compute_shader_size(asic, ps->shader);
+					ps->shader->size = umr_compute_shader_size(asic, vm_partition, ps->shader);
 				else
 					ps->shader->size = 1;
 				ps->shader->type = type;
@@ -119,10 +120,10 @@ static void parse_pm4(struct umr_asic *asic, uint32_t vmid, struct umr_pm4_strea
 				if (!tvmid)
 					tvmid = vmid;
 				buf = calloc(1, size);
-				if (umr_read_vram(asic, tvmid, addr, size, buf) < 0) {
+				if (umr_read_vram(asic, vm_partition, tvmid, addr, size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, tvmid, buf, size / 4, ps->ring_type);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, buf, size / 4, ps->ring_type);
 					ps->ib_source.addr = addr;
 					ps->ib_source.vmid = tvmid;
 				}
@@ -219,13 +220,14 @@ void umr_free_pm4_stream(struct umr_pm4_stream *stream)
 /**
  * umr_pm4_decode_stream - Decode an array of PM4 packets into a PM4 stream
  *
+ * @vm_partition: What VM partition does it come from (-1 is default)
  * @vmid:  The VMID (or zero) that this array comes from (if say an IB)
  * @stream: An array of DWORDS which contain the PM4 packets
  * @nwords:  The number of words in the stream
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt)
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	struct {
@@ -275,7 +277,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmi
 
 		// decode specific packets
 		if (ps->pkttype == 3) {
-			parse_pm4(asic, vmid, ps);
+			parse_pm4(asic, vm_partition, vmid, ps);
 		} else {
 			char *name;
 			name = umr_reg_name(asic, ps->pkt0off);
@@ -308,10 +310,10 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, uint32_t vmi
 			if (!asic->options.no_follow_ib && uvd_ib.n == 15) {
 				void *buf;
 				buf = calloc(1, uvd_ib.size);
-				if (umr_read_vram(asic, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
+				if (umr_read_vram(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4, ps->ring_type);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, buf, uvd_ib.size / 4, ps->ring_type);
 					ps->ib_source.addr = uvd_ib.addr;
 					ps->ib_source.vmid = uvd_ib.vmid;
 				}
@@ -427,7 +429,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 				start = (start + 1) % ringsize;
 			}
 
-			ps = umr_pm4_decode_stream(asic, 0, lineardata, linearsize, rt);
+			ps = umr_pm4_decode_stream(asic, -1, 0, lineardata, linearsize, rt);
 			free(lineardata);
 		}
 	}
@@ -439,7 +441,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 	return ps;
 }
 
-struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
 {
 	uint32_t *words;
 	struct umr_pm4_stream *str;
@@ -449,12 +451,12 @@ struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, uint32_t 
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
-	if (umr_read_vram(asic, vmid, addr, nwords * 4, words)) {
+	if (umr_read_vram(asic, vm_partition, vmid, addr, nwords * 4, words)) {
 		asic->err_msg("[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
 		free(words);
 		return NULL;
 	}
-	str = umr_pm4_decode_stream(asic, vmid, words, nwords, rt);
+	str = umr_pm4_decode_stream(asic, vm_partition, vmid, words, nwords, rt);
 	free(words);
 	return str;
 }

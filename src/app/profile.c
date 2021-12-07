@@ -176,7 +176,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 
 				if (!shader_text) {
 					void *data = calloc(1, shader->size);
-					if (umr_read_vram(asic, shader->vmid, shader->addr, shader->size, data) < 0) {
+					if (umr_read_vram(asic, asic->options.vm_partition, shader->vmid, shader->addr, shader->size, data) < 0) {
 						fprintf(stderr, "[ERROR]: Could not read shader text at address %u:0x%llx\n", (unsigned)shader->vmid, (unsigned long long)shader->addr);
 						free(data);
 					} else {

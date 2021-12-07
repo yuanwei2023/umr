@@ -25,6 +25,8 @@
 #include "umrapp.h"
 #include <inttypes.h>
 
+// TODO: this isn't a library function, move to src/app later
+
 /**
  * umr_dump_ib - Decode an IB and print the contents to stdout
  *
@@ -60,7 +62,7 @@ void umr_dump_ib(struct umr_asic *asic, struct umr_ring_decoder *decoder)
 
 	// read IB
 	data = calloc(sizeof(*data), decoder->next_ib_info.size/sizeof(*data));
-	if (data && !umr_read_vram(asic, decoder->next_ib_info.vmid, decoder->next_ib_info.ib_addr, decoder->next_ib_info.size, data)) {
+	if (data && !umr_read_vram(asic, asic->options.vm_partition, decoder->next_ib_info.vmid, decoder->next_ib_info.ib_addr, decoder->next_ib_info.size, data)) {
 	// dump IB
 		decoder->pm4.cur_opcode = 0xFFFFFFFF;
 		decoder->sdma.cur_opcode = 0xFFFFFFFF;
@@ -91,7 +93,7 @@ void umr_dump_shaders(struct umr_asic *asic, struct umr_ring_decoder *decoder, s
 				BLUE, (unsigned)shader->vmid, RST,
 				YELLOW, shader->src.ib_base, RST,
 				YELLOW, (unsigned)shader->src.ib_offset * 4, RST);
-		umr_vm_disasm(asic, shader->vmid, shader->addr, 0, shader->size, 0, wd);
+		umr_vm_disasm(asic, asic->options.vm_partition, shader->vmid, shader->addr, 0, shader->size, 0, wd);
 		printf("\n");
 		pshader = shader->next;
 		free(shader);
@@ -317,7 +319,7 @@ static void dump_mqd_compute_nv(struct umr_asic *asic, struct umr_pm4_data_block
 	};
 	uint32_t mqd[512], x, y;
 
-	if (!umr_read_vram(asic, p->vmid, p->addr, 512 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, p->vmid, p->addr, 512 * 4, &mqd[0])) {
 		for (x = 0; x < 512; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -564,7 +566,7 @@ static void dump_mqd_graphics_nv(struct umr_asic *asic, struct umr_pm4_data_bloc
 	};
 	uint32_t mqd[512], x, y;
 
-	if (!umr_read_vram(asic, p->vmid, p->addr, 512 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, p->vmid, p->addr, 512 * 4, &mqd[0])) {
 		for (x = 0; x < 512; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -632,7 +634,7 @@ static void dump_mqd_sdma_nv(struct umr_asic *asic, struct umr_pm4_data_block *p
 	};
 	uint32_t mqd[128], x, y;
 
-	if (!umr_read_vram(asic, p->vmid, p->addr, 128 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, p->vmid, p->addr, 128 * 4, &mqd[0])) {
 		for (x = 0; x < 128; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -700,7 +702,7 @@ static void dump_mqd_sdma_vi(struct umr_asic *asic, struct umr_pm4_data_block *p
 	};
 	uint32_t mqd[128], x, y;
 
-	if (!umr_read_vram(asic, p->vmid, p->addr, 128 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, p->vmid, p->addr, 128 * 4, &mqd[0])) {
 		for (x = 0; x < 128; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -935,7 +937,7 @@ static void dump_mqd_compute_vi(struct umr_asic *asic, struct umr_pm4_data_block
 	};
 	uint32_t mqd[512], x, y;
 
-	if (!umr_read_vram(asic, p->vmid, p->addr, 512 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, p->vmid, p->addr, 512 * 4, &mqd[0])) {
 		for (x = 0; x < 512; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {

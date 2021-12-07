@@ -129,7 +129,7 @@ static void pm4_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic 
 
 	pm4_next_level(ui);
 	fprintf(data->stack[data->sp].f, "Shader from %lu@[0x%"PRIx64" + 0x%"PRIx64"] at %lu@0x%"PRIx64", type %d, size %lu\n", (unsigned long)ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, (unsigned long)shader->vmid, shader->addr, shader->type, (unsigned long)shader->size);
-	umr_vm_disasm_to_str(asic, shader->vmid, shader->addr, 0, shader->size, 0, &str);
+	umr_vm_disasm_to_str(asic, asic->options.vm_partition, shader->vmid, shader->addr, 0, shader->size, 0, &str);
 	x = 0;
 	while (str[x]) {
 		fprintf(data->stack[data->sp].f, "%s\n", str[x]);
@@ -360,7 +360,7 @@ static void dump_mqd_compute_nv(struct umr_asic *asic, struct umr_pm4_stream_dec
 	};
 	uint32_t mqd[512], x, y;
 
-	if (!umr_read_vram(asic, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
 		for (x = 0; x < 512; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -608,7 +608,7 @@ static void dump_mqd_graphics_nv(struct umr_asic *asic, struct umr_pm4_stream_de
 	};
 	uint32_t mqd[512], x, y;
 
-	if (!umr_read_vram(asic, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
 		for (x = 0; x < 512; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -677,7 +677,7 @@ static void dump_mqd_sdma_nv(struct umr_asic *asic, struct umr_pm4_stream_decode
 	};
 	uint32_t mqd[128], x, y;
 
-	if (!umr_read_vram(asic, buf_vmid, buf_addr, 128 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 128 * 4, &mqd[0])) {
 		for (x = 0; x < 128; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -746,7 +746,7 @@ static void dump_mqd_sdma_vi(struct umr_asic *asic, struct umr_pm4_stream_decode
 	};
 	uint32_t mqd[128], x, y;
 
-	if (!umr_read_vram(asic, buf_vmid, buf_addr, 128 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 128 * 4, &mqd[0])) {
 		for (x = 0; x < 128; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -982,7 +982,7 @@ static void dump_mqd_compute_vi(struct umr_asic *asic, struct umr_pm4_stream_dec
 	};
 	uint32_t mqd[512], x, y;
 
-	if (!umr_read_vram(asic, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
+	if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
 		for (x = 0; x < 512; x++) {
 			for (y = 0; mqdl[y].label; y++) {
 				if (mqdl[y].offset == x) {
@@ -1060,7 +1060,7 @@ static void present_pm4(struct umr_asic *asic, char *ringname, int start, int en
 	if (ringname)
 		str = umr_pm4_decode_ring(asic, ringname, 0, start, end);
 	else
-		str = umr_pm4_decode_stream_vm(asic, vmid, addr, nwords, UMR_RING_GFX);
+		str = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords, UMR_RING_GFX);
 	if (str) {
 		struct umr_pm4_stream_decode_ui ui;
 		int x;
@@ -1213,7 +1213,7 @@ static void present_sdma(struct umr_asic *asic, char *ringname, int start, int e
 	if (ringname)
 		stream = umr_sdma_decode_ring(asic, ringname, start, end);
 	else
-		stream = umr_sdma_decode_stream_vm(asic, vmid, addr, nwords, UMR_RING_SDMA);
+		stream = umr_sdma_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords, UMR_RING_SDMA);
 
 	if (stream) {
 		struct umr_sdma_stream_decode_ui myui;

@@ -149,9 +149,21 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter*
  */
 struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, const char* regname)
 {
+	return umr_find_reg_data_by_ip_by_instance(asic, ip, -1, regname);
+}
+
+struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname)
+{
 	int i, j, k;
-	char tmpregname[96];
+	char tmpregname[96], instname[16];
 	const char *oregname = regname;
+
+	// compute INST name for IP block
+	if (inst >= 0) {
+		sprintf(instname, "{%d}", inst);
+	} else {
+		instname[0] = 0;
+	}
 
 	k = regname[0] == '@';
 	if (k)
@@ -162,6 +174,8 @@ retry:
 	for (i = 0; i < asic->no_blocks; i++) {
 		// optionally require the ip block name to partially match (allows for ignoring version numbers)
 		if (ip && memcmp(asic->blocks[i]->ipname, ip, strlen(ip)))
+			continue;
+		if (inst >= 0 && !strstr(asic->blocks[i]->ipname, instname))
 			continue;
 		for (j = 0; j < asic->blocks[i]->no_regs; j++)
 			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname))

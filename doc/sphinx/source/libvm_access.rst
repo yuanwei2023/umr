@@ -7,7 +7,7 @@ the following function:
 
 ::
 
-	int umr_access_vram(struct umr_asic *asic, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en);
+	int umr_access_vram(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en);
 
 This will access the memory in the VMID indicated by 'vmid' at the
 address pointed to by 'address'.
@@ -21,11 +21,21 @@ order bits.  If bits 8..15 are set to **UMR_LINEAR_HUB** then the
 address is considered a physical address and the VRAM is read
 directly.  
 
+The 'vm_partition' parameter indicates which VM partition to use when
+decoding a GPUVM space.   '-1' is the default for all existing ASICs.
+Future ASICs may have multiple GC or MMHUB (or other) blocks which
+means they will need to be indicated here.  The value is used to modify
+the name of the IP block being searched for.
+
+The scheme in umr for multiple blocks is to use {} braces with a number.
+For instance, 'clk{0}' refers to the 0'th instance of a CLK IP block, whereas,
+'clk{3}' would refer to the fourth instance.
+
 ::
 
 	unsigned char buf[4096];
 
-	umr_access_vram(asic, (UMR_LINEAR_HUB << 8), 0x1234000, 4096, buf, 0);
+	umr_access_vram(asic, -1, (UMR_LINEAR_HUB << 8), 0x1234000, 4096, buf, 0);
 
 This example will read a page of VRAM from the address 0x1234000 to
 the buffer 'buf'.
@@ -43,7 +53,7 @@ using the **UMR_MM_HUB** flag in the same second 8 bits, for instance:
 
 	unsigned char buf[4096];
 
-	umr_access_vram(asic, (UMR_MM_HUB << 8) | 1, 0xFFEE000, 4096, buf, 0);
+	umr_access_vram(asic, -1, (UMR_MM_HUB << 8) | 1, 0xFFEE000, 4096, buf, 0);
 
 Will read a page from the address 0xFFEE000 in the VMID \#1 under the MM
 hub (for instance, a job from the UVD IP block).
@@ -60,8 +70,8 @@ To make access to VM memory simpler there are read and write macros:
 
 ::
 
-	#define umr_read_vram(asic, vmid, address, size, dst) umr_access_vram(asic, vmid, address, size, dst, 0)
-	#define umr_write_vram(asic, vmid, address, size, src) umr_access_vram(asic, vmid, address, size, src, 1)
+	#define umr_read_vram(asic, vm_partition, vmid, address, size, dst) umr_access_vram(asic, vm_partition, vmid, address, size, dst, 0)
+	#define umr_write_vram(asic, vm_partition, vmid, address, size, src) umr_access_vram(asic, vm_partition, vmid, address, size, src, 1)
 
 Which take the same order of parameters as umr_access_vram() but omit the write_en parameter.
 

@@ -24,29 +24,6 @@
  */
 #include "umr.h"
 
-
-/**
- * umr_read_reg_by_name_by_ip - Read a register by name and IP block
- *
- * Reads the value of a register with a specified @name in a specified
- * @ip block.  The IP block can be NULL to find the first instance
- * of the register in the ASIC.
- */
-uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
-{
-	struct umr_reg *reg;
-	reg = umr_find_reg_data_by_ip(asic, ip, name);
-	if (reg) {
-		if (reg->bit64)
-			return ((uint64_t)asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type)) |
-			((uint64_t)asic->reg_funcs.read_reg(asic, (reg->addr + 1) * (reg->type == REG_MMIO ? 4 : 1), reg->type) << 32);
-		else
-			return asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type);
-	} else {
-		return 0;
-	}
-}
-
 /**
  * umr_read_reg_by_name - Read a register by name
  *
@@ -60,6 +37,41 @@ uint64_t umr_read_reg_by_name(struct umr_asic *asic, char *name)
 }
 
 /**
+ * umr_read_reg_by_name_by_ip - Read a register by name and IP block
+ *
+ * Reads the value of a register with a specified @name in a specified
+ * @ip block.  The IP block can be NULL to find the first instance
+ * of the register in the ASIC.
+ */
+uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
+{
+	return umr_read_reg_by_name_by_ip_by_instance(asic, ip, -1, name);
+}
+
+/**
+ * umr_read_reg_by_name_by_ip_by_instance - Read a register by
+ * name and IP block and instance.
+ *
+ * Reads the value of a register with a specified @name in the specified
+ * @inst instance of the @ip block.  The IP block can be NULL to
+ * find the first instance of the register in the ASIC.
+ */
+uint64_t umr_read_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int inst, char *name)
+{
+	struct umr_reg *reg;
+	reg = umr_find_reg_data_by_ip_by_instance(asic, ip, inst, name);
+	if (reg) {
+		if (reg->bit64)
+			return ((uint64_t)asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type)) |
+			((uint64_t)asic->reg_funcs.read_reg(asic, (reg->addr + 1) * (reg->type == REG_MMIO ? 4 : 1), reg->type) << 32);
+		else
+			return asic->reg_funcs.read_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), reg->type);
+	} else {
+		return 0;
+	}
+}
+
+/**
  * umr_write_reg_by_name_by_ip - Write to a register by name and IP block
  *
  * Writes the @value specified to the regisrer with a specified @name in
@@ -68,10 +80,24 @@ uint64_t umr_read_reg_by_name(struct umr_asic *asic, char *name)
  */
 int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uint64_t value)
 {
+	return umr_write_reg_by_name_by_ip_by_instance(asic, ip, -1, name, value);
+}
+
+
+/**
+ * umr_write_reg_by_name_by_ip_by_instance - Write to a register by
+ * name and IP block and instance.
+ *
+ * Writes the @value specified to the regisrer with a specified @name in
+ * the specified @inst instance of an @ip block.  The IP block can be
+ * NULL to find the first instance of the register in the ASIC.
+ */
+int umr_write_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int inst, char *name, uint64_t value)
+{
 	struct umr_reg *reg;
 	int r;
 
-	reg = umr_find_reg_data_by_ip(asic, ip, name);
+	reg = umr_find_reg_data_by_ip_by_instance(asic, ip, inst, name);
 	if (reg) {
 		if (reg->bit64) {
 			r = asic->reg_funcs.write_reg(asic, reg->addr * (reg->type == REG_MMIO ? 4 : 1), value & 0xFFFFFFFFUL, reg->type);

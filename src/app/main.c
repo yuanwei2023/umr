@@ -90,6 +90,7 @@ static struct umr_asic *get_asic(void)
 	asic->options.shader_enable.enable_es_shader   = 1;
 	asic->options.shader_enable.enable_ls_shader   = 1;
 	asic->options.shader_enable.enable_comp_shader = 1;
+	asic->options.vm_partition = -1;
 
 	if (asic->family > FAMILY_VI)
 		asic->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
@@ -235,6 +236,14 @@ int main(int argc, char **argv)
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --instance requires a number\n");
+				return EXIT_FAILURE;
+			}
+		} else if (!strcmp(argv[i], "--vm_partition") || !strcmp(argv[i], "-vmp")) {
+			if (i + 1 < argc) {
+				options.vm_partition = atoi(argv[i+1]);
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --vm_partition requires a number\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--bank") || !strcmp(argv[i], "-b")) {
@@ -584,7 +593,7 @@ int main(int argc, char **argv)
 				if (options.hub_name[0])
 					vmid |= UMR_USER_HUB;
 
-				umr_read_vram(asic, vmid, address, 0x1000UL * size, NULL);
+				umr_read_vram(asic, asic->options.vm_partition, vmid, address, 0x1000UL * size, NULL);
 				i += 2;
 
 				asic->options.verbose = overbose;
@@ -616,7 +625,7 @@ int main(int argc, char **argv)
 				sscanf(argv[i+2], "%"SCNx32, &size);
 				do {
 					n = size > sizeof(buf) ? sizeof(buf) : size;
-					if (umr_read_vram(asic, vmid, address, n, buf))
+					if (umr_read_vram(asic, asic->options.vm_partition, vmid, address, n, buf))
 						return EXIT_FAILURE;
 					fwrite(buf, 1, n, stdout);
 					size -= n;
@@ -652,7 +661,7 @@ int main(int argc, char **argv)
 				do {
 					n = size > sizeof(buf) ? sizeof(buf) : size;
 					n = fread(buf, 1, n, stdin);
-					if (umr_write_vram(asic, vmid, address, n, buf))
+					if (umr_write_vram(asic, asic->options.vm_partition, vmid, address, n, buf))
 						return EXIT_FAILURE;
 					size -= n;
 					address += n;
@@ -683,7 +692,7 @@ int main(int argc, char **argv)
 					vmid |= UMR_USER_HUB;
 
 				sscanf(argv[i+2], "%"SCNx32, &data);
-				if (umr_write_vram(asic, vmid, address, 4, &data))
+				if (umr_write_vram(asic, asic->options.vm_partition, vmid, address, 4, &data))
 					return EXIT_FAILURE;
 				i += 2;
 			} else {
@@ -716,9 +725,9 @@ int main(int argc, char **argv)
 					struct umr_shaders_pgm shader;
 					shader.vmid = vmid;
 					shader.addr = address;
-					size = umr_compute_shader_size(asic, &shader);
+					size = umr_compute_shader_size(asic, asic->options.vm_partition, &shader);
 				}
-				umr_vm_disasm(asic, vmid, address, 0, size, 0, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, vmid, address, 0, size, 0, NULL);
 
 				i += 2;
 			} else {
@@ -909,6 +918,10 @@ int main(int argc, char **argv)
 "\n\t--gfxoff, -go <0 | 1>"
 	"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
 	"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"
+"\n\t--vm_partition, -vmp <-1, 0...n>"
+	"\n\t\tSelect a VM partition for all GPUVM accesses.  Default is -1 which"
+	"\n\t\trefers to the 0'th instance of the VM hub which is not the same as"
+	"\n\t\tspecifying '0'.  Values above -1 are for ASICs with multiple IP instances.\n"
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"

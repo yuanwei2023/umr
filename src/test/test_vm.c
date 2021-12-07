@@ -4,7 +4,7 @@
 enum TEST_RESULT test_can_read_from_vm_memory_direct0(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|0, 0x444000, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|0, 0x444000, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -13,7 +13,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct0(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct1(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|3, 0x800100400800ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|3, 0x800100400800ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -22,7 +22,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct1(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct2(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|0, 0x446000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|0, 0x446000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -31,7 +31,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct2(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct3(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|3, 0x15600000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|3, 0x15600000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -40,7 +40,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct3(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct5(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|3, 0x30380F000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|3, 0x30380F000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -49,7 +49,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct5(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct6(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|3, 0x304A0F000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|3, 0x304A0F000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -58,7 +58,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct6(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct7(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|3, 0xff0064e000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|3, 0xff0064e000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -67,7 +67,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct7(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct8(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|3, 0xff00650000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|3, 0xff00650000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -76,7 +76,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct8(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct9(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|8, 0x7ffff6768000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|8, 0x7ffff6768000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -85,7 +85,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct9(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct10(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|8, 0x7f3bcca00000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|8, 0x7f3bcca00000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -94,7 +94,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct10(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct11(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|8, 0x7f26faa00000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|8, 0x7f26faa00000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -103,7 +103,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct11(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct12(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|8, 0x7f334f600000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|8, 0x7f334f600000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -112,7 +112,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct12(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct13(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|0, 0xff00402000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|0, 0xff00402000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
@@ -121,7 +121,7 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct13(struct umr_asic* asic)
 enum TEST_RESULT test_can_read_from_vm_memory_direct14(struct umr_asic* asic)
 {
     uint64_t read_data = 0;
-    ASSERT_SUCCESS(umr_read_vram(asic, UMR_GFX_HUB|6, 0x00233000ULL, sizeof(read_data), &read_data));
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|6, 0x00233000ULL, sizeof(read_data), &read_data));
     ASSERT_EQ(read_data, 0x0706050403020100);
     return TEST_SUCCESS;
 }
