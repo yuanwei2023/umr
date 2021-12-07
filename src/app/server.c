@@ -680,6 +680,22 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 				}
 				json_object_set_value(json_object(as), "rings", rings);
 			}
+
+			/* PCIe link speed/width */
+			{
+				char fname[256];
+				sprintf(fname, "/sys/class/drm/card%d/device/current_link_speed", asics[i]->instance);
+				const char *content = read_file(fname);
+				JSON_Value *pcie = json_value_init_object();
+				if (content)
+					json_object_set_string(json_object(pcie), "speed", content);
+				sprintf(fname, "/sys/class/drm/card%d/device/current_link_width", asics[i]->instance);
+				uint64_t width = read_sysfs_uint64(fname);
+				if (width)
+					json_object_set_number(json_object(pcie), "width", width);
+				json_object_set_value(json_object(as), "pcie", pcie);
+			}
+
 			json_array_append_value(json_array(answer), as);
 			i++;
 		}

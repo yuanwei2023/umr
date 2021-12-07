@@ -35,8 +35,8 @@ public:
 			"SI", "CIK", "VI", "AI", "NV", "NPI"
 		};
 
-		ImGui::BeginChild("Info");
-		ImGui::BeginTable("Info", 2, ImGuiTableFlags_Borders, ImVec2(avail.x / 2, 0));
+		ImGui::BeginChild("Info", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::BeginTable("Info", 2, ImGuiTableFlags_Borders);
 		ImGui::TableNextRow();
 		ImGui::TableSetColumnIndex(0); ImGui::Text("ASIC name");
 		ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%s", asic->asicname);
@@ -60,7 +60,7 @@ public:
 		ImGui::TableSetColumnIndex(1); ImGui::Text("#b58900%s", json_object_get_string(info, "vbios_version"));
 		ImGui::EndTable();
 
-		ImGui::BeginTable("Firmwares", 3, ImGuiTableFlags_Borders, ImVec2(avail.x / 2, 0));
+		ImGui::BeginTable("Firmwares", 3, ImGuiTableFlags_Borders);
 		ImGui::TableSetupColumn("Firmware");
 		ImGui::TableSetupColumn("Feature version");
 		ImGui::TableSetupColumn("Firmware version");
@@ -77,14 +77,24 @@ public:
 			ImGui::Text("#b589000x%x", (unsigned)json_object_get_number(fw, "firmware_version")); ImGui::NextColumn();
 		}
 		ImGui::EndTable();
-		ImGui::Separator();
-		int j = 0;
-		while (asic->config.fw[j].name[0] != '\0') {
-			ImGui::TextUnformatted(asic->config.fw[j].name); ImGui::NextColumn(); ImGui::NextColumn();
-			ImGui::Text("#b589000x%x", asic->config.fw[j].feature_version); ImGui::NextColumn();
-			ImGui::Text("#b589000x%x", asic->config.fw[j].firmware_version); ImGui::NextColumn();
+		ImGui::EndChild();
+		ImGui::SameLine();
+		ImGui::BeginChild("Misc", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+		JSON_Object *pcie = json_object(json_object_get_value(info, "pcie"));
+		if (pcie) {
+			ImGui::BeginTable("PCIe", 2, ImGuiTableFlags_Borders);
+			ImGui::TableSetupColumn("Link Speed");
+			ImGui::TableSetupColumn("Link Width");
+			ImGui::TableHeadersRow();
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("%s", json_object_get_string(pcie, "speed"));
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("x %d", (int)json_object_get_number(pcie, "width"));
+			ImGui::EndTable();
 		}
 		ImGui::EndChild();
+
 		return false;
 	}
 };
