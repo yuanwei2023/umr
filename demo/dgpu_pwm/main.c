@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 	// find our asic
 	memset(&options, 0, sizeof options);
 	options.instance = instance;
-	asic = umr_discover_asic(&options);
+	asic = umr_discover_asic(&options, &printf);
 	if (!asic) {
 		fprintf(stderr, "[ERROR]: Could not find device\n");
 		exit(EXIT_FAILURE);
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 		} else {               // core is below a semi-busy state so ramp down slowly
 			down_pwm(1);
 		}
-		printf("temp %3lu C, fan %3lu %% \r", temp, (pwm * 100) / 256);
+		printf("temp %3" PRIu32" C, fan %3" PRIu32" %% \r", temp, (pwm * 100) / 256);
 		fflush(stdout);
 		nanosleep(&ts, NULL);
 	}
