@@ -23,10 +23,13 @@
  * of the Software.
  */
 #include "panels.h"
+#include <map>
 
 class KmsPanel : public Panel {
 public:
-	KmsPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL) {}
+	KmsPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), read_interval(0.5) {
+		delta_since_last_read = 10;
+	}
 
 	~KmsPanel() {
 		if (last_answer)
@@ -43,27 +46,353 @@ public:
 		}
 	}
 
+	float CenterText(const char *text, float width) {
+		float w = ImGui::CalcTextSize(text).x;
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + width / 2 - w / 2);
+		return w;
+	}
+
+	struct Group {
+		float container_width;
+		ImVec2 top_left;
+		ImVec2 padding;
+	};
+	std::vector<Group> groups;
+	void BeginBorderedGroup(const ImVec2& frame_padding, float container_width = 0) {
+		ImVec2 top_left = ImGui::GetCursorScreenPos();
+		ImVec2 padded = top_left;
+		padded.x += frame_padding.x;
+		padded.y += frame_padding.y;
+		ImGui::SetCursorScreenPos(padded);
+
+		ImGui::BeginGroup();
+		Group gp;
+		gp.top_left = top_left;
+		if (container_width == 0) {
+			assert(!groups.empty());
+			Group parent = groups.back();
+			container_width = parent.container_width - parent.padding.x * 2;
+		}
+		gp.container_width = container_width;
+		gp.padding = frame_padding;
+		groups.push_back(gp);
+	}
+
+	ImVec4 EndBorderedGroup(ImU32 color) {
+		assert(!groups.empty());
+		Group gp = groups.back();
+
+		ImVec2 br = ImGui::GetCursorScreenPos();
+		br.y += gp.padding.y;
+		ImGui::SetCursorScreenPos(br);
+		br.x = gp.top_left.x + gp.container_width;
+		ImGui::GetWindowDrawList()->AddRect(gp.top_left, br, color);
+		ImGui::EndGroup();
+		groups.pop_back();
+
+		ImVec4 border;
+		border.x = gp.top_left.x;
+		border.y = gp.top_left.y;
+		border.z = br.x;
+		border.w = br.y;
+		return border;
+	}
+
+	void Connect(ImVec2 p1, ImVec2 p4, ImU32 col) {
+		ImVec2 p2(p1.x * 0.2 + p4.x * 0.8, p1.y);
+		ImVec2 p3(p1.x * 0.8 + p4.x * 0.2, p4.y);
+		ImGui::GetWindowDrawList()->AddBezierCubic(p1, p2, p3, p4, col, 1);
+	}
+
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
-		if (!last_answer && can_send_request) {
-			send_kms_command();
+		if (!last_answer) {
+			if (can_send_request) {
+				send_kms_command();
+			}
+			return false;
 		}
 
-		ImGui::BeginChild("framebuffers", ImVec2(avail.x / 4, 0), false, ImGuiWindowFlags_NoTitleBar);
-		ImGui::EndChild();
+		ImGui::BeginDisabled(!can_send_request);
+		if (ImGui::Button("Refresh")) {
+			send_kms_command();
+			delta_since_last_read = 0;
+		}
+		ImGui::EndDisabled();
 
 		ImGui::SameLine();
-		ImGui::BeginChild("planes", ImVec2(avail.x / 4, 0), false, ImGuiWindowFlags_NoTitleBar);
-		ImGui::EndChild();
-
+		ImGui::Text("Auto-refresh");
 		ImGui::SameLine();
-		ImGui::BeginChild("crtcs", ImVec2(avail.x / 4, 0), false, ImGuiWindowFlags_NoTitleBar);
+		bool autorefresh_enabled = read_interval >= 0;
+		ImGui::PushID("autorefresh");
+		if (ImGui::Checkbox("", &autorefresh_enabled)) {
+			read_interval = autorefresh_enabled ? 0.0 : -1;
+		}
+		ImGui::PopID();
+		if (autorefresh_enabled) {
+			ImGui::SameLine();
+			ImGui::Text("Interval:");
+			ImGui::SameLine();
+			ImGui::DragFloat(" (drag to modify)", &read_interval, 0.1, 0, 10, "%.1f sec");
+		}
+		ImGui::Separator();
+
+		delta_since_last_read += dt;
+
+		if (delta_since_last_read > read_interval && autorefresh_enabled && can_send_request) {
+			send_kms_command();
+			delta_since_last_read = 0;
+		}
+
+		ImGui::BeginChild("kms");
+		ImGui::BeginTable("state", 4, ImGuiTableFlags_Borders);
+		ImGui::TableSetupColumn("Framebuffers");
+		ImGui::TableSetupColumn("Planes");
+		ImGui::TableSetupColumn("CRTCs");
+		ImGui::TableSetupColumn("Connectors");
+		ImGui::TableHeadersRow();
+
+		ImGui::TableNextRow();
+
+		std::map<int, ImVec4> fb_frames, crtc_frames;
+		std::map<int, ImU32> crtc_colors;
+		ImU32 connectors_colors[] = {
+			ImColor(12, 232, 56),
+			ImColor(232, 45, 45),
+			ImColor(120, 115, 200),
+			ImColor(80, 210, 156),
+		};
+
+		/* Framebuffers */
+		ImGui::TableSetColumnIndex(0);
+		ImGui::NewLine();
+		JSON_Array *fbs = json_object_get_array(last_answer, "framebuffers");
+		std::vector<std::string> apps;
+		for (int i = 0; i < json_array_get_count(fbs); i++) {
+			JSON_Object *fb = json_object(json_array_get_value(fbs, i));
+			const char *owner = json_object_get_string(fb, "allocated by");
+			if (std::find(apps.begin(), apps.end(), owner) == apps.end()) {
+				apps.push_back(owner);
+			}
+		}
+
+		const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
+		float colwidth = avail.x / 4 - 5 * frame_padding.x;
+		ImVec2 colpadding = ImVec2(frame_padding.x * 3, frame_padding.y * 3);
+		while (!apps.empty()) {
+			const char *owner = apps.back().c_str();
+
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + frame_padding.x);
+			BeginBorderedGroup(colpadding, colwidth);
+			CenterText(owner, colwidth);
+			ImGui::TextUnformatted(owner);
+			std::vector<JSON_Object *> sorted_fb;
+
+			for (int i = 0; i < json_array_get_count(fbs); i++) {
+				JSON_Object *fb = json_object(json_array_get_value(fbs, i));
+
+				if (strcmp(owner, json_object_get_string(fb, "allocated by")))
+					continue;
+				sorted_fb.push_back(fb);
+			}
+
+			std::sort(sorted_fb.begin(), sorted_fb.end(), [](JSON_Object *a, JSON_Object *b) {
+				return json_object_get_number(a, "id") < json_object_get_number(b, "id");
+			});
+
+			for (auto fb: sorted_fb) {
+				BeginBorderedGroup(frame_padding);
+
+				int id = (int) json_object_get_number(fb, "id");
+				ImGui::Text("id: #d33682%d", id);
+				const char *fmt = json_object_get_string(fb, "format");
+				const char *fourcc = strchr(fmt, '(');
+				ImGui::Text("format: %.*s", fourcc - fmt, fmt);
+				fourcc++;
+				ImGui::Text("fourcc: %.*s", strlen(fourcc) - 1, fourcc);
+				ImGui::Text("modifier: 0x%" PRIx64, (uint64_t) json_object_get_number(fb, "modifier"));
+				JSON_Object *size = json_object(json_object_get_value(fb, "size"));
+				ImGui::Text("size: %dx%d",
+					(int)json_object_get_number(size, "w"),
+					(int)json_object_get_number(size, "h"));
+
+				JSON_Array *layers = json_object_get_array(fb, "layers");
+				ImVec2 p = frame_padding;
+				p.x += 10; p.y += 5;
+				BeginBorderedGroup(p);
+				CenterText("Layers", groups.back().container_width);
+				ImGui::Text("Layers");
+				for (int j = 0; j < json_array_get_count(layers); j++) {
+					BeginBorderedGroup(frame_padding);
+					JSON_Object *layer = json_object(json_array_get_value(layers, j));
+					JSON_Object *size = json_object(json_object_get_value(layer, "size"));
+					ImGui::Text("size: %dx%d",
+						(int)json_object_get_number(size, "w"),
+						(int)json_object_get_number(size, "h"));
+					ImGui::Text("pitch: %d", (int) json_object_get_number(layer, "pitch"));
+					EndBorderedGroup(IM_COL32(0x40, 0x40, 0x40, 0x80));
+				}
+				EndBorderedGroup(IM_COL32(0x40, 0x40, 0x40, 0xff));
+
+				fb_frames[id] = EndBorderedGroup(IM_COL32(0x80, 0x80, 0x80, 0xff));
+
+				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + frame_padding.y);
+			}
+			apps.pop_back();
+			EndBorderedGroup(IM_COL32_WHITE);
+			ImGui::NewLine();
+		}
+
+
+		/* CRTCs */
+		ImGui::TableSetColumnIndex(2);
+		ImGui::NewLine();
+		JSON_Array *crtcs = json_object_get_array(last_answer, "crtcs");
+		for (int i = 0; i < json_array_get_count(crtcs); i++) {
+			JSON_Object *crtc = json_object(json_array_get_value(crtcs, i));
+
+			float w = CenterText("active: 1", colwidth);
+			BeginBorderedGroup(colpadding, w + colpadding.x * 2);
+			int id = (int) json_object_get_number(crtc, "id");
+			ImGui::Text("id: #3097a1%d", id);
+			int enable = (int) json_object_get_number(crtc, "enable");
+			ImGui::Text("enable: %d", enable);
+			int active = (int) json_object_get_number(crtc, "active");
+			ImGui::Text("active: %d", active);
+
+			crtc_frames[id] = EndBorderedGroup(IM_COL32(0x80, 0x80, 0x80, 0xff));
+
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + frame_padding.y);
+		}
+
+		/* Connectors */
+		ImGui::TableSetColumnIndex(3);
+		ImGui::NewLine();
+		JSON_Array *connectors = json_object_get_array(last_answer, "connectors");
+		for (int i = 0; i < json_array_get_count(connectors); i++) {
+			JSON_Object *conn = json_object(json_array_get_value(connectors, i));
+
+			const char *name = json_object_get_string(conn, "name");
+			float w = CenterText(name, colwidth);
+			BeginBorderedGroup(colpadding, w + colpadding.x * 2);
+			ImU32 color = connectors_colors[i % 4];
+			ImGui::Text("#%02x%02x%02x%s",
+				(color >> IM_COL32_R_SHIFT) & 0xff,
+				(color >> IM_COL32_G_SHIFT) & 0xff,
+				(color >> IM_COL32_B_SHIFT) & 0xff,
+				name);
+
+			int has_crtc = json_object_has_value(conn, "crtc");
+			ImVec4 frame = EndBorderedGroup(has_crtc ?
+				color :
+				IM_COL32(0x80, 0x80, 0x80, 0xff));
+
+			if (has_crtc) {
+				int crtc = json_object_get_number(conn, "crtc");
+				ImVec4 b = crtc_frames[crtc];
+				ImVec2 o(b.z, (b.y + b.w) * 0.5);
+				Connect(o, ImVec2(frame.x, (frame.y + frame.w) * 0.5), color);
+				ImGui::GetWindowDrawList()->AddRect(ImVec2(b.x, b.y), ImVec2(b.z, b.w),
+					color);
+				crtc_colors[crtc] = color;
+			}
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + frame_padding.y);
+		}
+
+		/* Planes */
+		ImGui::TableSetColumnIndex(1);
+		ImGui::NewLine();
+		JSON_Array *planes = json_object_get_array(last_answer, "planes");
+		std::map<int, std::vector<ImVec4>> crtc_from_planes;
+		for (int i = 0; i < json_array_get_count(planes); i++) {
+			JSON_Object *plane = json_object(json_array_get_value(planes, i));
+
+			float w = CenterText("fb: XXXX", colwidth);
+			BeginBorderedGroup(colpadding, w + colpadding.x * 2);
+			int id = (int) json_object_get_number(plane, "id");
+			ImGui::Text("id: #b58900%d", id);
+			int fb = (int) json_object_get_number(plane, "fb");
+			ImU32 col = IM_COL32(0x80, 0x80, 0x80, 0xff);
+			if (fb) {
+				ImGui::Text("fb: #d33682%d", fb);
+
+				JSON_Object *crtc = json_object(json_object_get_value(plane, "crtc"));
+				if (crtc) {
+					int c = json_object_get_number(crtc, "id");
+					col = crtc_colors[c];
+				}
+
+				ImVec4 frame = EndBorderedGroup(col);
+
+				if (crtc) {
+					int c = json_object_get_number(crtc, "id");
+
+					/* fb -> plane */
+					ImVec2 a(frame.x, (frame.y + frame.w) * 0.5);
+					ImVec4 fb_frame = fb_frames[fb];
+					ImVec2 b(fb_frame.z, (fb_frame.y + fb_frame.w) * 0.5);
+					Connect(a, b, col);
+
+					ImGui::GetWindowDrawList()->AddRect(
+						ImVec2(fb_frame.x, fb_frame.y),
+						ImVec2(fb_frame.z, fb_frame.w), col);
+
+					if (crtc_from_planes.find(c) == crtc_from_planes.end())
+						crtc_from_planes[c] = std::vector<ImVec4>();
+
+					JSON_Object *pos = json_object(json_object_get_value(crtc, "pos"));
+					crtc_from_planes[c].push_back(
+						ImVec4(frame.z, (frame.y + frame.w) * 0.5,
+						json_object_get_number(pos, "x"), json_object_get_number(pos, "y")));
+				}
+			} else {
+				EndBorderedGroup(col);
+			}
+
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + frame_padding.y);
+		}
+		ImGui::EndTable();
+
+		/* Draw the planes -> crtc lines */
+		for (auto it: crtc_from_planes) {
+			int crtc = it.first;
+			ImVec4 frame = crtc_frames[crtc];
+			ImU32 col = crtc_colors[crtc];
+
+			std::vector<ImVec4> crtc_pins = it.second;
+
+			float height = (frame.w - frame.y) - 4 * frame_padding.y;
+			float base = frame.y + 2 * frame_padding.y;
+			float v_steps;
+			if (crtc_pins.size() == 1) {
+				base += height / 2;
+				v_steps = 0;
+			} else {
+				v_steps = height / (crtc_pins.size() - 1);
+			}
+
+			for (int i = 0; i < (int) crtc_pins.size(); i++) {
+				ImVec4 v = crtc_pins[i];
+				ImVec2 plane_pin = ImVec2(v.x, v.y);
+				ImVec2 crtc_pin = ImVec2(frame.x, base + i * v_steps);
+
+				Connect(plane_pin, crtc_pin, col);
+
+				char txt_x[32], txt_y[32];
+				sprintf(txt_x, "x: %d", (int)v.z);
+				sprintf(txt_y, "y: %d", (int) v.w);
+				crtc_pin.y -= 2 * ImGui::GetTextLineHeight();
+				crtc_pin.x -= std::max(ImGui::CalcTextSize(txt_x).x, ImGui::CalcTextSize(txt_y).x)
+					+ frame_padding.x;
+
+				ImGui::GetWindowDrawList()->AddText(crtc_pin, col, txt_x);
+				crtc_pin.y += ImGui::GetTextLineHeight();
+				ImGui::GetWindowDrawList()->AddText(crtc_pin, col, txt_y);
+			}
+		}
+
 		ImGui::EndChild();
 
-		ImGui::SameLine();
-		ImGui::BeginChild("connectors", ImVec2(avail.x / 4, 0), false, ImGuiWindowFlags_NoTitleBar);
-		ImGui::EndChild();
-
-		return false;
+		return read_interval > 0;
 	}
 
 private:
@@ -75,5 +404,7 @@ private:
 
 private:
 	JSON_Object *last_answer;
+	float delta_since_last_read;
+	float read_interval;
 };
 
