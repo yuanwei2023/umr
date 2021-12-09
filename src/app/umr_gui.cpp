@@ -383,7 +383,53 @@ static int run_gui(const char *url)
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO &io = ImGui::GetIO();
-	io.IniFilename = NULL;
+	char ini_path[8096];
+	const char *config_filename = NULL;
+
+	const char *bases[] = { "XDG_CONFIG_HOME", "HOME" };
+	for (int i = 0; i < 2; i++) {
+		if (getenv(bases[i])) {
+			const char *base = getenv(bases[i]);
+			if (i == 0) {
+				strcpy(ini_path, base);
+			} else {
+				sprintf(ini_path, "%s/.config", base);
+			}
+			struct stat statbuf;
+			if (stat(ini_path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
+				char *copy = strdup(ini_path);
+				sprintf(ini_path, "%s/umr/", copy);
+				if (stat(ini_path, &statbuf) == -1 && errno == ENOENT) {
+					if (mkdir(ini_path, 0755) == 0) {
+						sprintf(ini_path, "%s/umr/umr_gui.ini", copy);
+						config_filename = strdup(ini_path);
+					}
+				} else {
+					sprintf(ini_path, "%s/umr/umr_gui.ini", copy);
+					config_filename = strdup(ini_path);
+				}
+				free(copy);
+			}
+		}
+	}
+
+	bool rebuild_scaled_font = false;
+	ImFont *scaled_font = NULL;
+	float old_scale = 1;
+	float scale = 1;
+
+	if (config_filename) {
+		FILE *f = fopen(config_filename, "r");
+		if (f) {
+			if (fscanf(f, "ui_scale=%f", &scale) == 1) {
+				scale = std::max(1.0f, std::min(2.0f, scale));
+				old_scale = scale;
+				if (scale != 1.0)
+					rebuild_scaled_font = true;
+			}
+			fclose(f);
+		}
+	}
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
@@ -399,6 +445,7 @@ static int run_gui(const char *url)
 	// Main loop
 	done = false;
 
+	io.FontGlobalScale = 1;
 	/* Discover asics */
 	JSON_Value *req = json_value_init_object();
 	json_object_set_string(json_object(req), "command", "enumerate");
@@ -414,6 +461,19 @@ static int run_gui(const char *url)
 			dt += (now.tv_nsec - before.tv_nsec) * 0.000000001;
 		}
 		memcpy(&before, &now, sizeof(now));
+
+		if (rebuild_scaled_font) {
+		    ImFontConfig cfg;
+			cfg.SizePixels = 13 * scale;
+			scaled_font = ImGui::GetIO().Fonts->AddFontDefault(&cfg);
+			ImGui::GetIO().Fonts->Build();
+			ImGui_ImplOpenGL3_CreateFontsTexture();
+			old_scale = scale;
+			ImGui::GetStyle().ScaleAllSizes(scale / old_scale);
+
+			rebuild_scaled_font = false;
+			force_redraw();
+		}
 
 		SDL_PumpEvents();
 
@@ -453,6 +513,9 @@ static int run_gui(const char *url)
 		ImGui::Begin("umr", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
 								  ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
+		if (scaled_font)
+			ImGui::PushFont(scaled_font);
+
 		ImVec2 topleft = ImGui::GetCursorScreenPos();
 		ImVec2 avail = ImGui::GetContentRegionAvail();
 		avail.x -= 2 * ImGui::GetStyle().WindowPadding.x;
@@ -461,7 +524,20 @@ static int run_gui(const char *url)
 
 		pthread_mutex_lock(&mtx);
 
-		ImGui::BeginTabBar("asics", ImGuiTabBarFlags_None);
+		ImGui::SetNextItemWidth(avail.x / 16);
+		if (ImGui::SliderFloat("scale", &scale, 1, 2, "%.1f")) {
+			if (scale < 1)
+				scale = 1;
+			if (scale > 2)
+				scale = 2;
+
+			rebuild_scaled_font = true;
+			//if (io.IniFilename)
+			//	ImGui::SaveIniSettingsToDisk(io.IniFilename);
+			// force_redraw();
+		}
+		ImGui::SameLine();
+		ImGui::BeginTabBar("asics", ImGuiTabBarFlags_FittingPolicyScroll);
 
 		if (asics.empty()) {
 			if (url)
@@ -552,6 +628,9 @@ static int run_gui(const char *url)
 
 		pthread_mutex_unlock(&mtx);
 
+		if (scaled_font)
+			ImGui::PopFont();
+
 		ImGui::End();
 
 		// Rendering
@@ -581,6 +660,14 @@ static int run_gui(const char *url)
 
 	for (int i = 0; i < asics.size(); i++)
 		delete asics[i];
+
+	if (config_filename) {
+		FILE *f = fopen(config_filename, "w");
+		if (f) {
+			fprintf(f, "ui_scale=%.1f\n", scale);
+			fclose(f);
+		}
+	}
 
 	// Cleanup
 	ImGui_ImplOpenGL3_Shutdown();
