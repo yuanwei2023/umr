@@ -146,7 +146,7 @@ public:
 								if (bos.empty())
 									continue;
 								ImGui::PushID(c);
-								if (ImGui::TreeNodeEx(categories[c], 0, "%s (%d bos)", categories[c], bos.size())) {
+								if (ImGui::TreeNodeEx(categories[c], 0, "%s (%ld bos)", categories[c], bos.size())) {
 									std::sort(bos.begin(), bos.end(), [](JSON_Object *a, JSON_Object *b) {
 										return json_object_get_number(a, "size") > json_object_get_number(b, "size");
 									});

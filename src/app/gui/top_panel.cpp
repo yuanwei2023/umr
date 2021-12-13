@@ -96,7 +96,7 @@ public:
 						ImGui::ProgressBar(v / 100.0, ImVec2(avail.x / 3, 0));
 						ImGui::SameLine();
 						const char *color = v < 20 ? "#34de51" : (v < 60 ? "#f3e26d" : "#8f2316");
-						ImGui::Text("%s%s", color, name, pos);
+						ImGui::Text("%s%s%s", color, name, pos);
 					}
 				}
 			}

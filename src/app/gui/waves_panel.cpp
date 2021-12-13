@@ -123,24 +123,24 @@ public:
 
 				if (ImGui::TreeNode(label)) {
 					ImGui::Columns(3);
-					ImGui::Text("se:            #586e750x%x", json_object_get_number(wave, "se"));
+					ImGui::Text("se:            #586e750x%x", (unsigned int)json_object_get_number(wave, "se"));
 					ImGui::NextColumn();
-					ImGui::Text("sh:            #586e750x%x", json_object_get_number(wave, "sh"));
+					ImGui::Text("sh:            #586e750x%x", (unsigned int)json_object_get_number(wave, "sh"));
 					ImGui::NextColumn();
-					ImGui::Text("cu: #586e750x%x", json_object_get_number(wave, "cu"));
+					ImGui::Text("cu: #586e750x%x", (unsigned int)json_object_get_number(wave, "cu"));
 					ImGui::NextColumn();
-					ImGui::Text("simd_id:       #586e750x%x", json_object_get_number(wave, "simd_id"));
+					ImGui::Text("simd_id:       #586e750x%x", (unsigned int)json_object_get_number(wave, "simd_id"));
 					ImGui::NextColumn();
-					ImGui::Text("wave_id:       #586e750x%x", json_object_get_number(wave, "wave_id"));
+					ImGui::Text("wave_id:       #586e750x%x", (unsigned int)json_object_get_number(wave, "wave_id"));
 					ImGui::NextColumn();
 					ImGui::NextColumn();
-					ImGui::Text("wave_inst_dw0: #586e750x%08x", json_object_get_number(wave, "wave_inst_dw0"));
+					ImGui::Text("wave_inst_dw0: #586e750x%08x", (unsigned int)json_object_get_number(wave, "wave_inst_dw0"));
 					ImGui::NextColumn();
-					ImGui::Text("wave_inst_dw1: #586e750x%08x", json_object_get_number(wave, "wave_inst_dw1"));
+					ImGui::Text("wave_inst_dw1: #586e750x%08x", (unsigned int)json_object_get_number(wave, "wave_inst_dw1"));
 					ImGui::Columns(1);
 					ImGui::Separator();
 					ImGui::NextColumn();
-					ImGui::Text("PC: #b589000x%llx", (uint64_t)json_object_get_number(wave, "PC"));
+					ImGui::Text("PC: #b589000x%" PRIx64, (uint64_t)json_object_get_number(wave, "PC"));
 					if (dis) {
 						ImGui::SameLine();
 						if (ImGui::Button("View Shader")) {
