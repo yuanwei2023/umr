@@ -176,7 +176,7 @@ public:
 					for (size_t j = 0; j < json_array_get_count(op); j++) {
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						ImGui::Text("0x%08x + 0x%x", base, j * 4);
+						ImGui::Text("0x%08" PRIx64 " + 0x%lx", base, j * 4);
 						ImGui::TableSetColumnIndex(1);
 						ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
 						ImGui::TableSetColumnIndex(2);

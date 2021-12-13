@@ -206,9 +206,9 @@ public:
 				ImGui::Text("id: #d33682%d", id);
 				const char *fmt = json_object_get_string(fb, "format");
 				const char *fourcc = strchr(fmt, '(');
-				ImGui::Text("format: %.*s", fourcc - fmt, fmt);
+				ImGui::Text("format: %.*s", (int)(fourcc - fmt), fmt);
 				fourcc++;
-				ImGui::Text("fourcc: %.*s", strlen(fourcc) - 1, fourcc);
+				ImGui::Text("fourcc: %.*s", (int)(strlen(fourcc) - 1), fourcc);
 				ImGui::Text("modifier: 0x%" PRIx64, (uint64_t) json_object_get_number(fb, "modifier"));
 				JSON_Object *size = json_object(json_object_get_value(fb, "size"));
 				ImGui::Text("size: %dx%d",
