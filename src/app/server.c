@@ -350,7 +350,7 @@ void ring_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic,
 	}
 
 	uint32_t *opcodes = calloc(shader->size / 4, sizeof(uint32_t));
-	if (umr_read_vram(asic, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
+	if (umr_read_vram(asic, asic->options.vm_partition, shader->vmid, shader->addr, shader->size, (void*)opcodes) == 0) {
 		JSON_Object *s = json_object(json_value_init_object());
 		JSON_Array *op = json_array(json_value_init_array());
 		for (unsigned i = 0; i < shader->size / 4; i++)
@@ -569,7 +569,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 					#undef NUM_OPCODE_WORDS
 				}
 				char **disassembly;
-				int r = umr_vm_disasm_to_str(asic, vmid,
+				int r = umr_vm_disasm_to_str(asic, asic->options.vm_partition, vmid,
 											 shader_addr, pgm_addr, shader_size,
 											 0,
 											 &disassembly);
@@ -786,7 +786,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			size = 4;
 		}
 
-		int r = umr_read_vram(asic, vmid, address, size, buf);
+		int r = umr_read_vram(asic, asic->options.vm_partition, vmid, address, size, buf);
 		if (r && buf) {
 			memset(buf, 0, size);
 			num_page_table_entries = 0;
