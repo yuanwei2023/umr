@@ -2,7 +2,7 @@
 Graphical User Interface
 ========================
 
-When built with the GUI enabled the gui can be initialized with the *--gui* command:
+UMR now comes with a GUI component that can be initialized with the *--gui* command:
 
 ::
 
@@ -10,7 +10,7 @@ When built with the GUI enabled the gui can be initialized with the *--gui* comm
 
 The landing page describes by default the 0th ASIC found with a variety of parameters and features.
 
-.. image:: gui_info.png
+.. image:: umr_gui_landing_page.png
 
 The topmost tab is where all of the detected ASICs are displayed.  Below the ASIC tabs are the workpage tabs.
 The default tab that opens is the info tab which display information about the ASIC such as firmware version, ring names,
@@ -20,20 +20,14 @@ memory configuration etc.
 Register Access
 ---------------
 
-The register page allows the user to read MMIO registers.
+The register page allows access to registers per IP block.
 
-.. image:: gui_reg_home.png
+.. image:: umr_gui_register_landing.png
 
-Registers can be selected by choosing one or more IP blocks.
+Registers can be read by clicking on them:
 
-.. image:: gui_regs.png
+.. image:: umr_gui_register_reading.png
 
-Which can then be selected by clicking on the register on the left or searching for them by filling out one of the filters.
-
-.. image:: gui_regs_read.png
-
-Here we have read uvd600.mmUVD_RB_BASE_LO and it is the value 0x00522000.  To stop inspecting a register the register can be clicked
-on in the right half of the tab to restore it's original state in the gui.
 
 -----------
 Wave Status
@@ -41,12 +35,17 @@ Wave Status
 
 Reading wave status is accomplished on the *Waves* tab.
 
-.. image:: gui_waves.png
+.. image:: umr_gui_waves_landing.png
 
-In this example we have already halted and scanned for waves.  On the left half are a list of waves that were halted and valid at the time
-of the scan.  By opening a wave the WAVE_STATUS fields are presented.  If the PC value is in a blue bounding box it means a shader
-was captured which can be presented by clicking on the blue box.  In this example a shader was found and we it presented on the right.
-The hightlighted line is where the PC register is pointing to.
+By clicking the query button active waves can be displayed.  Checking
+'disable gfxoff' will ensure that the power saving feature GFXOFF does not
+interrupt reading registers.
+
+.. image:: umr_gui_waves_using.png
+
+Once waves are queried they are listed by order of whcih waves are active.  The various
+status registers can be displayed by expanding their fields, if a shader is
+found it can be display in the right half by clicking 'view shader'.
 
 
 -------------
@@ -55,7 +54,27 @@ Reading Rings
 
 Reading rings is accomplished on the *Rings* tab.
 
-.. image:: gui_ring.png
+.. image:: umr_gui_rings_landing.png
 
-The dropdown box allows the user to select any detected ring for the given ASIC.  Hitting the 'read' button
-then reads and presents the contents of the ring with decoding where possible.
+The 'Limit to rptr/wptr' option is checked by default since normally reading
+outside that range leads to undefined behaviour.  You can read outside it
+by unchecking the box.
+
+.. image:: umr_gui_rings_page1.png
+
+The initial reading tab shows the contents of the ring buffer itself.  By default
+between the RPTR and WPTR.  The raw values as well as the decoding of the ring
+are presented.  Tabs are added to the right if indirect buffers (IBs) or
+shader programs are found.
+
+.. image:: umr_gui_rings_page2.png
+
+Indirect buffer objects can be decoded as well.  The offset from the
+start of the object is presented along with the raw values in order
+to aid in debugging.
+
+.. image:: umr_gui_rings_page3.png
+
+Shaders if found are presented in their own tabs named after the
+GPUVM address they were found at.
+
