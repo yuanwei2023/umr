@@ -66,6 +66,7 @@ public:
 		ImGui::SetCursorScreenPos(padded);
 
 		ImGui::BeginGroup();
+
 		Group gp;
 		gp.top_left = top_left;
 		if (container_width == 0) {
@@ -75,7 +76,13 @@ public:
 		}
 		gp.container_width = container_width;
 		gp.padding = frame_padding;
+
 		groups.push_back(gp);
+
+		ImVec2 br = top_left;
+		br.y += 100000;
+		br.x += container_width;
+		ImGui::PushClipRect(top_left, br, true);
 	}
 
 	ImVec4 EndBorderedGroup(ImU32 color) {
@@ -90,6 +97,8 @@ public:
 		ImGui::EndGroup();
 		groups.pop_back();
 
+		ImGui::PopClipRect();
+
 		ImVec4 border;
 		border.x = gp.top_left.x;
 		border.y = gp.top_left.y;
@@ -101,7 +110,9 @@ public:
 	void Connect(ImVec2 p1, ImVec2 p4, ImU32 col) {
 		ImVec2 p2(p1.x * 0.2 + p4.x * 0.8, p1.y);
 		ImVec2 p3(p1.x * 0.8 + p4.x * 0.2, p4.y);
+		ImGui::PushClipRect(fullscreen_top_left, fullscreen_bottom_right, false);
 		ImGui::GetWindowDrawList()->AddBezierCubic(p1, p2, p3, p4, col, 1);
+		ImGui::PopClipRect();
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
@@ -136,11 +147,20 @@ public:
 		}
 		ImGui::Separator();
 
-		delta_since_last_read += dt;
+		fullscreen_top_left = ImGui::GetCursorPos();
+		fullscreen_bottom_right = fullscreen_top_left;
+		fullscreen_bottom_right.y += 100000;
+		fullscreen_bottom_right.x += avail.x;
 
-		if (delta_since_last_read > read_interval && autorefresh_enabled && can_send_request) {
-			send_kms_command();
-			delta_since_last_read = 0;
+		if (autorefresh_enabled) {
+			if (delta_since_last_read > read_interval) {
+				if (can_send_request) {
+					send_kms_command();
+					delta_since_last_read = 0;
+				}
+			} else {
+				delta_since_last_read += dt;
+			}
 		}
 
 		ImGui::BeginChild("kms");
@@ -153,6 +173,7 @@ public:
 
 		ImGui::TableNextRow();
 
+		std::map<int, ImVec2> fb_resolutions;
 		std::map<int, ImVec4> fb_frames, crtc_frames;
 		std::map<int, ImU32> crtc_colors;
 		ImU32 connectors_colors[] = {
@@ -203,42 +224,46 @@ public:
 				BeginBorderedGroup(frame_padding);
 
 				int id = (int) json_object_get_number(fb, "id");
-				ImGui::Text("id: #d33682%d", id);
-				const char *fmt = json_object_get_string(fb, "format");
-				const char *fourcc = strchr(fmt, '(');
-				ImGui::Text("format: %.*s", (int)(fourcc - fmt), fmt);
-				fourcc++;
-				ImGui::Text("fourcc: %.*s", (int)(strlen(fourcc) - 1), fourcc);
-				ImGui::Text("modifier: 0x%" PRIx64, (uint64_t) json_object_get_number(fb, "modifier"));
+				char plane_id[128];
+				sprintf(plane_id, "id: #d33682%d", id);
 				JSON_Object *size = json_object(json_object_get_value(fb, "size"));
-				ImGui::Text("size: %dx%d",
-					(int)json_object_get_number(size, "w"),
-					(int)json_object_get_number(size, "h"));
-
-				JSON_Array *layers = json_object_get_array(fb, "layers");
-				ImVec2 p = frame_padding;
-				p.x += 10; p.y += 5;
-				BeginBorderedGroup(p);
-				CenterText("Layers", groups.back().container_width);
-				ImGui::Text("Layers");
-				for (int j = 0; j < json_array_get_count(layers); j++) {
-					BeginBorderedGroup(frame_padding);
-					JSON_Object *layer = json_object(json_array_get_value(layers, j));
-					JSON_Object *size = json_object(json_object_get_value(layer, "size"));
+				fb_resolutions[id] = ImVec2(json_object_get_number(size, "w"), json_object_get_number(size, "h"));
+				if (ImGui::CollapsingHeader(plane_id)) {
+					const char *fmt = json_object_get_string(fb, "format");
+					const char *fourcc = strchr(fmt, '(');
+					ImGui::Text("format: %.*s", (int)(fourcc - fmt), fmt);
+					fourcc++;
+					ImGui::Text("fourcc: %.*s", (int)(strlen(fourcc) - 1), fourcc);
+					ImGui::Text("modifier: 0x%" PRIx64, (uint64_t) json_object_get_number(fb, "modifier"));
 					ImGui::Text("size: %dx%d",
 						(int)json_object_get_number(size, "w"),
 						(int)json_object_get_number(size, "h"));
-					ImGui::Text("pitch: %d", (int) json_object_get_number(layer, "pitch"));
-					EndBorderedGroup(IM_COL32(0x40, 0x40, 0x40, 0x80));
+
+					JSON_Array *layers = json_object_get_array(fb, "layers");
+					ImVec2 p = frame_padding;
+					p.x += 10; p.y += 5;
+					BeginBorderedGroup(p);
+					CenterText("Layers", groups.back().container_width);
+					ImGui::Text("Layers");
+					for (int j = 0; j < json_array_get_count(layers); j++) {
+						BeginBorderedGroup(frame_padding);
+						JSON_Object *layer = json_object(json_array_get_value(layers, j));
+						JSON_Object *size = json_object(json_object_get_value(layer, "size"));
+						ImGui::Text("size: #3097a1%dx#3097a1%d",
+							(int)json_object_get_number(size, "w"),
+							(int)json_object_get_number(size, "h"));
+						ImGui::Text("pitch: %d", (int) json_object_get_number(layer, "pitch"));
+						EndBorderedGroup(IM_COL32(0x40, 0x40, 0x40, 0x80));
+					}
+					EndBorderedGroup(IM_COL32(0x40, 0x40, 0x40, 0xff));
 				}
-				EndBorderedGroup(IM_COL32(0x40, 0x40, 0x40, 0xff));
 
 				fb_frames[id] = EndBorderedGroup(IM_COL32(0x80, 0x80, 0x80, 0xff));
 
 				ImGui::SetCursorPosY(ImGui::GetCursorPosY() + frame_padding.y);
 			}
 			apps.pop_back();
-			EndBorderedGroup(IM_COL32_WHITE);
+			EndBorderedGroup(ImGui::GetColorU32(ImGuiCol_Text));
 			ImGui::NewLine();
 		}
 
@@ -291,8 +316,10 @@ public:
 				ImVec4 b = crtc_frames[crtc];
 				ImVec2 o(b.z, (b.y + b.w) * 0.5);
 				Connect(o, ImVec2(frame.x, (frame.y + frame.w) * 0.5), color);
+				ImGui::PushClipRect(fullscreen_top_left, fullscreen_bottom_right, false);
 				ImGui::GetWindowDrawList()->AddRect(ImVec2(b.x, b.y), ImVec2(b.z, b.w),
 					color);
+				ImGui::PopClipRect();
 				crtc_colors[crtc] = color;
 			}
 			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + frame_padding.y);
@@ -332,9 +359,11 @@ public:
 					ImVec2 b(fb_frame.z, (fb_frame.y + fb_frame.w) * 0.5);
 					Connect(a, b, col);
 
+					ImGui::PushClipRect(fullscreen_top_left, fullscreen_bottom_right, false);
 					ImGui::GetWindowDrawList()->AddRect(
 						ImVec2(fb_frame.x, fb_frame.y),
 						ImVec2(fb_frame.z, fb_frame.w), col);
+					ImGui::PopClipRect();
 
 					if (crtc_from_planes.find(c) == crtc_from_planes.end())
 						crtc_from_planes[c] = std::vector<ImVec4>();
@@ -343,6 +372,17 @@ public:
 					crtc_from_planes[c].push_back(
 						ImVec4(frame.z, (frame.y + frame.w) * 0.5,
 						json_object_get_number(pos, "x"), json_object_get_number(pos, "y")));
+
+					/* Resolution */
+					char txt_x[32], txt_y[32];
+					ImVec2 plane_out(frame.z, frame.y);
+					sprintf(txt_x, "w: %d", (int) fb_resolutions[fb].x);
+					sprintf(txt_y, "h: %d", (int) fb_resolutions[fb].y);
+					plane_out.x += frame_padding.x;
+
+					ImGui::GetWindowDrawList()->AddText(plane_out, ImGui::GetColorU32(ImGuiCol_Text), txt_x);
+					plane_out.y = frame.w - ImGui::GetTextLineHeight();
+					ImGui::GetWindowDrawList()->AddText(plane_out, ImGui::GetColorU32(ImGuiCol_Text), txt_y);
 				}
 			} else {
 				EndBorderedGroup(col);
@@ -384,9 +424,9 @@ public:
 				crtc_pin.x -= std::max(ImGui::CalcTextSize(txt_x).x, ImGui::CalcTextSize(txt_y).x)
 					+ frame_padding.x;
 
-				ImGui::GetWindowDrawList()->AddText(crtc_pin, col, txt_x);
+				ImGui::GetWindowDrawList()->AddText(crtc_pin, ImGui::GetColorU32(ImGuiCol_Text), txt_x);
 				crtc_pin.y += ImGui::GetTextLineHeight();
-				ImGui::GetWindowDrawList()->AddText(crtc_pin, col, txt_y);
+				ImGui::GetWindowDrawList()->AddText(crtc_pin, ImGui::GetColorU32(ImGuiCol_Text), txt_y);
 			}
 		}
 
@@ -406,5 +446,6 @@ private:
 	JSON_Object *last_answer;
 	float delta_since_last_read;
 	float read_interval;
+	ImVec2 fullscreen_top_left, fullscreen_bottom_right;
 };
 

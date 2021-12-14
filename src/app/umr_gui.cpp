@@ -431,7 +431,7 @@ static int run_gui(const char *url)
 		}
 	}
 
-	// Setup Dear ImGui style
+	// Setup Dear ImGui style (todo: support switch to light theme)
 	ImGui::StyleColorsDark();
 
 	// Setup Platform/Renderer bindings
