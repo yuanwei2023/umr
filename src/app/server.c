@@ -615,6 +615,7 @@ static void init_asics() {
 	opt.forcedid = -1;
 	opt.scanblock = "";
 	opt.instance = 0;
+	opt.vm_partition = -1;
 	while ((asics[i] = umr_discover_asic(&opt, NULL))) {
 		// assign linux callbacks
 		asics[i]->mem_funcs.vm_message = dummy_printf;
