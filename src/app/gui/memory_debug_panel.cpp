@@ -76,11 +76,8 @@ public:
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		const float _8digitsize = ImGui::CalcTextSize("0x00000000").x + ImGui::GetStyle().FramePadding.x * 2;
-		bool fetch = false;
 
-		if (ImGui::Checkbox("Linear (no vmid)", &use_linear)) {
-			fetch = true;
-		}
+		ImGui::Checkbox("Linear (no vmid)", &use_linear);
 
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(_8digitsize / 4);

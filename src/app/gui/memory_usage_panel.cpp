@@ -116,7 +116,6 @@ public:
 				sprintf(overlay, "%ld MB", s);
 				ImGui::ProgressBar(s / (float)max, ImVec2(avail.x / 5, 0), overlay);
 				ImGui::SameLine();
-				float x = ImGui::GetCursorPosX();
 				ImGui::BeginGroup();
 				if (ImGui::TreeNodeEx(label)) {
 					for (int j = 0; j < 6; j++) {

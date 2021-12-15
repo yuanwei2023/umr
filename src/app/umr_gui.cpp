@@ -520,8 +520,6 @@ static int run_gui(const char *url)
 		ImVec2 avail = ImGui::GetContentRegionAvail();
 		avail.x -= 2 * ImGui::GetStyle().WindowPadding.x;
 
-		float _8digitsize = ImGui::CalcTextSize("0x00000000").x + ImGui::GetStyle().FramePadding.x * 2;
-
 		pthread_mutex_lock(&mtx);
 
 		ImGui::SetNextItemWidth(avail.x / 16);
@@ -532,9 +530,6 @@ static int run_gui(const char *url)
 				scale = 2;
 
 			rebuild_scaled_font = true;
-			//if (io.IniFilename)
-			//	ImGui::SaveIniSettingsToDisk(io.IniFilename);
-			// force_redraw();
 		}
 		ImGui::SameLine();
 		ImGui::BeginTabBar("asics", ImGuiTabBarFlags_FittingPolicyScroll);
@@ -737,8 +732,6 @@ char * SyntaxHighlighter::transform(const char *in) {
 				int start = pmatch[group].rm_so;
 				if (start < 0)
 					continue;
-
-				one_match = true;
 
 				/* Copy everything until the match */
 				if (start > end) {

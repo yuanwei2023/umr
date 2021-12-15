@@ -349,7 +349,6 @@ public:
 				delete[] copy;
 
 				if (force_scroll) {
-					force_scroll = false;
 					ImGui::SetScrollY(scroll - avail.y / 2);
 					force_redraw();
 				}
