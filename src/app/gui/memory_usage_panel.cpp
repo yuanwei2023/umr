@@ -50,8 +50,8 @@ public:
 				send_memory_usage_command();
 				last_vm_read = 0;
 			}
+			last_vm_read += dt;
 		}
-		last_vm_read += dt;
 
 		if (ImGui::Button("Refresh")) {
 			send_memory_usage_command();

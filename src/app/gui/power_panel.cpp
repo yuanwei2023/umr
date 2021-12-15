@@ -85,11 +85,13 @@ public:
 		ImGui::BeginChild("power sensors", ImVec2(avail.x * 2.0/ 3, 0), false, ImGuiWindowFlags_NoTitleBar);
 		ImGui::Text("Sensors values:");
 		if (last_sensor_read > sensor_read_interval) {
-			if (can_send_request)
+			if (can_send_request) {
 				send_sensors_command();
-			last_sensor_read = 0;
+				last_sensor_read = 0;
+			}
+		} else {
+			last_sensor_read += dt;
 		}
-		last_sensor_read += dt;
 
 		if (sensors_last_answer) {
 			ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
