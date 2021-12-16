@@ -190,6 +190,11 @@ int main(int argc, char **argv)
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
 	struct umr_test_harness *th = NULL;
+	int running_as_gui = 0;
+	char *guiurl = NULL;
+
+	if (strstr(argv[0], "umrgui"))
+		running_as_gui = 1;
 
 	memset(&options, 0, sizeof options);
 
@@ -1048,18 +1053,25 @@ printf(
 			run_server_loop(url, asic);
 #endif
 		} else if (!strcmp(argv[i], "--gui")) {
-			char *url = NULL;
 			if (i < argc - 1 && argv[i+1][0] != '-') {
-				url = argv[i+1];
+				guiurl = argv[i+1];
 				i++;
 			}
-			umr_run_gui(url);
-			exit(EXIT_SUCCESS);
+			if (!running_as_gui) {
+				umr_run_gui(guiurl);
+				exit(EXIT_SUCCESS);
+			}
 #endif
 		} else {
 			fprintf(stderr, "[ERROR]: Unknown option <%s>\n", argv[i]);
 		}
 	}
+
+	if (running_as_gui) {
+		umr_run_gui(guiurl);
+		exit(EXIT_SUCCESS);
+	}
+
 
 	if (options.need_scan && options.print) {
 		asic = get_asic();

@@ -60,7 +60,12 @@ endif()
 target_link_libraries(umr ${LLVM_LIBS})
 target_link_libraries(umr ${REQUIRED_EXTERNAL_LIBS})
 
+execute_process(COMMAND ln -sf umr umrgui
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
 install(TARGETS umr DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES umrgui DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 find_package(bash-completion QUIET)
 if(BASH_COMPLETION_FOUND AND CMAKE_INSTALL_DATAROOTDIR)
