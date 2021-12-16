@@ -544,35 +544,55 @@ static JSON_Value *shader_pgm_to_json(struct umr_asic *asic, uint32_t vmid, uint
 
 /* Ring stream decoding */
 struct ring_decoding_data {
-	JSON_Object *current_ib;
 	JSON_Array *shaders;
 	JSON_Array *ibs;
+	JSON_Value *ring;
+	JSON_Array *open_ibs;
 };
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-void ring_start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type) {
-	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
-	data->current_ib = json_object(json_value_init_object());
-	json_object_set_number(data->current_ib, "address", ib_addr);
-	json_object_set_number(data->current_ib, "vmid", ib_vmid);
-	JSON_Array *opcodes = json_array(json_value_init_array());
-	json_object_set_value(data->current_ib, "opcodes", json_array_get_wrapping_value(opcodes));
+static void _ring_start_ib(struct ring_decoding_data *data, uint64_t ib_addr, uint32_t ib_vmid) {
+	JSON_Object *current_ib = json_object(json_value_init_object());
+	json_object_set_number(current_ib, "address", ib_addr);
+	json_object_set_number(current_ib, "vmid", ib_vmid);
+	json_object_set_value(current_ib, "opcodes", json_value_init_array());
+	json_array_append_value(data->open_ibs, json_object_get_wrapping_value(current_ib));
 }
-
-void ring_start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data) {
-	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
-	JSON_Array *opcodes = json_object_get_array(data->current_ib, "opcodes");
+static void _ring_start_opcode(struct ring_decoding_data *data, uint32_t nwords, uint32_t header, const uint32_t* raw_data) {
+	JSON_Value *current_ib = json_array_get_value(data->open_ibs, json_array_get_count(data->open_ibs) - 1);
+	JSON_Array *opcodes = json_object_get_array(json_object(current_ib), "opcodes");
 	json_array_append_number(opcodes, header);
 	for (unsigned i = 0; i < nwords; i++)
 		json_array_append_number(opcodes, raw_data[i]);
 }
+static void _ring_done(struct ring_decoding_data *data) {
+	int idx = json_array_get_count(data->open_ibs) - 1;
 
-void ring_add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix) {
+	JSON_Value *v = json_value_deep_copy(json_array_get_value(data->open_ibs, idx));
+	if (json_object_get_number(json_object(v), "address") == 0)
+		data->ring = v;
+	else
+		json_array_append_value(data->ibs, v);
+	json_array_remove(data->open_ibs, idx);
+}
+
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
+
+static void ring_start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type) {
+	_ring_start_ib((struct ring_decoding_data*) ui->data, ib_addr, ib_vmid);
+}
+
+static void ring_start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data) {
+	_ring_start_opcode((struct ring_decoding_data*) ui->data, nwords, header, raw_data);
+}
+
+static void ring_add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix) {
 	/* Ignore */
 }
 
-void ring_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader) {
+static void ring_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader) {
 	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
 
 	for (size_t i = 0; i < json_array_get_count(data->shaders); i++) {
@@ -590,19 +610,40 @@ void ring_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic,
 		json_array_append_value(data->shaders, sh);
 }
 
-void ring_add_data(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {
+static void ring_add_data(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {
 	/* Ignore */
 }
 
-void ring_unhandled(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream) {
+static void ring_unhandled(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream) {
 	/* Ignore */
 }
 
-void ring_done(struct umr_pm4_stream_decode_ui *ui) {
-	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
+static void ring_done(struct umr_pm4_stream_decode_ui *ui) {
+	_ring_done((struct ring_decoding_data*) ui->data);
+}
 
-	json_array_append_value(data->ibs, json_object_get_wrapping_value(data->current_ib));
-	data->current_ib = NULL;
+static void sdma_start_ib(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size) {
+	_ring_start_ib((struct ring_decoding_data*) ui->data, ib_addr, ib_vmid);
+}
+
+static void sdma_start_opcode(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t sub_opcode, uint32_t nwords, char *opcode_name, uint32_t header, uint32_t* raw_data) {
+	_ring_start_opcode((struct ring_decoding_data*) ui->data, nwords - 1, header, raw_data);
+}
+
+static void sdma_add_field(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix) {
+	/* Ignore */
+}
+
+static void sdma_unhandled(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream) {
+	/* Ignore */
+}
+
+static void sdma_unhandled_subop(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream) {
+	/* Ignore */
+}
+
+static void sdma_done(struct umr_sdma_stream_decode_ui *ui) {
+	_ring_done((struct ring_decoding_data*) ui->data);
 }
 #pragma GCC diagnostic pop
 
@@ -1101,24 +1142,9 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			write(asic->fd.gfxoff, &value, sizeof(value));
 
 		struct ring_decoding_data data;
-		data.current_ib = NULL;
 		data.ibs = json_array(json_value_init_array());
+		data.open_ibs = json_array(json_value_init_array());
 		data.shaders = json_array(json_value_init_array());
-
-		struct umr_pm4_stream_decode_ui fn;
-		fn.data = &data;
-		fn.start_ib = ring_start_ib;
-		fn.start_opcode = ring_start_opcode;
-		fn.add_field = ring_add_field;
-		fn.add_shader = ring_add_shader;
-		fn.add_data = ring_add_data;
-		fn.unhandled = ring_unhandled;
-		fn.done = ring_done;
-
-		asic->options.halt_waves = halt_waves;
-		struct umr_pm4_stream *str = umr_pm4_decode_ring(asic, ring_name, !halt_waves, limit_ptr ? -1 : 3, limit_ptr ? -1 : 0);
-
-		umr_pm4_decode_stream_opcodes(asic, &fn, str, 0, 0, 0, 0, ~0UL, 1);
 
 		answer = json_value_init_object();
 
@@ -1128,12 +1154,48 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		rptr = ring_data[0] % ringsize;
 		wptr = ring_data[1] % ringsize;
 		drv_wptr = ring_data[2] % ringsize;
+
+		if (!memcmp(ring_name, "sdma", 4) ||
+			!memcmp(ring_name, "page", 4)) {
+			struct umr_sdma_stream_decode_ui fn = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_subop, sdma_done, &data };
+			struct umr_sdma_stream *ps = umr_sdma_decode_ring(asic, ring_name, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
+
+			if (ps) {
+				/* Ring content */
+				umr_sdma_decode_stream_opcodes(asic, &fn, ps, 0, 0, 0, 0, ~0UL, 1);
+				json_object_set_value(json_object(answer), "ring", data.ring);
+				json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(data.ibs));
+				json_object_set_number(json_object(answer), "decoder", 3);
+				umr_free_sdma_stream(ps);
+			}
+		} else {
+			struct umr_pm4_stream_decode_ui fn;
+			fn.data = &data;
+			fn.start_ib = ring_start_ib;
+			fn.start_opcode = ring_start_opcode;
+			fn.add_field = ring_add_field;
+			fn.add_shader = ring_add_shader;
+			fn.add_data = ring_add_data;
+			fn.unhandled = ring_unhandled;
+			fn.done = ring_done;
+
+			asic->options.halt_waves = halt_waves;
+			struct umr_pm4_stream *str = umr_pm4_decode_ring(asic, ring_name, !halt_waves, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
+
+			if (str) {
+				umr_pm4_decode_stream_opcodes(asic, &fn, str, 0, 0, 0, 0, ~0UL, 1);
+				json_object_set_value(json_object(answer), "shaders", json_array_get_wrapping_value(data.shaders));
+				json_object_set_value(json_object(answer), "ring", data.ring);
+				json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(data.ibs));
+				json_object_set_number(json_object(answer), "decoder", 4);
+				umr_free_pm4_stream(str);
+			}
+		}
+
 		free(ring_data);
 		json_object_set_number(json_object(answer), "read_ptr", rptr);
 		json_object_set_number(json_object(answer), "write_ptr", wptr);
 		json_object_set_number(json_object(answer), "driver_write_ptr", drv_wptr);
-		json_object_set_value(json_object(answer), "shaders", json_array_get_wrapping_value(data.shaders));
-		json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(data.ibs));
 
 		/* Reenable gfxoff */
 		value = 1;

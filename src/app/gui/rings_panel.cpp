@@ -115,7 +115,8 @@ public:
 		if (last_answer) {
 			JSON_Array *ibs = json_object_get_array(last_answer, "ibs");
 			JSON_Array *shaders = json_object_get_array(last_answer, "shaders");
-			JSON_Array *ring = json_object_get_array(json_object(json_array_get_value(ibs, 0)), "opcodes");
+			JSON_Array *ring = json_object_get_array(json_object(json_object_get_value(last_answer, "ring")), "opcodes");
+			int decoder = json_object_get_number(last_answer, "decoder");
 
 			int rptr = json_object_get_number(last_answer, "read_ptr");
 			int wptr = json_object_get_number(last_answer, "write_ptr");
@@ -126,11 +127,11 @@ public:
 			uint32_t highlight_lo_ib = 0;
 			if (ImGui::BeginTabItem("Ring Content")) {
 				ImGui::BeginChild("ringtabs scroll");
-				highlight_lo_ib = display_ib(ring, 0, rptr, wptr, drv_wptr);
+				highlight_lo_ib = display_ib(ring, decoder, 0, rptr, wptr, drv_wptr);
 				ImGui::EndChild();
 				ImGui::EndTabItem();
 			}
-			for (int i = 1; i < json_array_get_count(ibs); i++) {
+			for (int i = 0; i < json_array_get_count(ibs); i++) {
 				JSON_Object *ib = json_object(json_array_get_value(ibs, i));
 				uint64_t base = (uint64_t) json_object_get_number(ib, "address");
 				int high = (((uint32_t)base) == highlight_lo_ib);
@@ -144,7 +145,7 @@ public:
 					if (high)
 						ImGui::PopStyleColor();
 					ImGui::BeginChild(tmp);
-					highlight_lo_ib = display_ib(json_object_get_array(ib, "opcodes"), base);
+					highlight_lo_ib = display_ib(json_object_get_array(ib, "opcodes"), decoder, base);
 					ImGui::EndChild();
 					ImGui::EndTabItem();
 				} else if (high) {
@@ -206,14 +207,14 @@ private:
 		send_request(req);
 	}
 
-	uint32_t display_ib(JSON_Array *raw, uint64_t base, int rptr = -1, int wptr = -1, int drv_wptr = -1) {
+	uint32_t display_ib(JSON_Array *raw, int decoder_type, uint64_t base, int rptr = -1, int wptr = -1, int drv_wptr = -1) {
 		uint32_t addr_lo_ib = 0;
 
 		ImGuiListClipper clipper;
 		clipper.Begin(json_array_get_count(raw));
 		ImGui::BeginTable("dis", 4, ImGuiTableFlags_BordersV);
 		ImGui::TableSetupColumn(rptr >= 0 ? "Index" : "Address", ImGuiTableColumnFlags_WidthFixed,
-			rptr >= 0 ? ImGui::CalcTextSize(" Index ").x : ImGui::CalcTextSize(" 0x00000000 + 0x0000").x);
+			rptr >= 0 ? ImGui::CalcTextSize(" Index ").x : ImGui::CalcTextSize(" 0x0000000000000000 + 0x0000").x);
 		ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed,
 			ImGui::CalcTextSize(" 00000000 ").x);
 		ImGui::TableSetupColumn("Pointers", ImGuiTableColumnFlags_WidthFixed,
@@ -223,7 +224,8 @@ private:
 
 		struct umr_ring_decoder decoder;
 		memset(&decoder, 0, sizeof decoder);
-		decoder.pm = 4; /* TODO */
+		decoder.pm = decoder_type;
+		decoder.sdma.cur_opcode = 0xFFFFFFFF;
 		decoder.pm4.cur_opcode = 0xFFFFFFFF;
 		asic->options.no_follow_ib = 1;
 		asic->options.use_colour = 0;
