@@ -208,6 +208,51 @@ struct umr_reg* umr_find_reg_data(struct umr_asic* asic, const char* regname)
 }
 
 /**
+ * umr_find_reg_by_name - Find a register by name
+ *
+ * Returns the umr_reg structure for a register with a specific name
+ * in the first IP block that contains it. If @ip is not NULL it will also
+ * store the IP block pointer for the register as well.
+ */
+struct umr_reg* umr_find_reg_by_name(struct umr_asic* asic, const char* regname, struct umr_ip_block** ip)
+{
+	int i, j, k;
+	char tmpregname[96];
+	const char *oregname = regname;
+
+	k = regname[0] == '@';
+	if (k)
+		++regname;
+
+	if (*ip)
+		ip = NULL;
+
+	oregname = regname;
+retry:
+	for (i = 0; i < asic->no_blocks; i++) {
+		for (j = 0; j < asic->blocks[i]->no_regs; j++)
+			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname)) {
+				if (ip)
+					*ip = asic->blocks[i];
+				return &asic->blocks[i]->regs[j];
+			}
+	}
+
+	// if regname starts with 'mm' search for variant with 'reg' prefix
+	// this avoids having to recode a lot of logic.
+	if (!memcmp(regname, "mm", 2)) {
+		strncpy(tmpregname, "reg", sizeof(tmpregname));
+		strncpy(tmpregname + 3, regname + 2, sizeof(tmpregname) - 3);
+		regname = (const char *)tmpregname;
+		goto retry;
+	}
+
+	if (!k)
+		asic->err_msg("[BUG]: reg [%s] not found on asic [%s]\n", oregname, asic->asicname);
+	return NULL;
+}
+
+/**
  * umr_find_reg - Find a register by name
  *
  * Returns the offset of the register if found or 0xFFFFFFFF if not.
