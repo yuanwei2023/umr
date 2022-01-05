@@ -20,11 +20,22 @@ memory configuration etc.
 Register Access
 ---------------
 
-The register page allows access to registers per IP block.
+The register page allows access to registers per IP block.  Alternatively,
+they can be searched for using the register name and field name text
+areas.
 
 .. image:: umr_gui_register_landing.png
 
-Registers can be read by clicking on them:
+
+UMR lists the IP blocks available which can be clicked on to expand their
+list of registers available.  Registers can be read by clicking on them which
+adds them to the view.
+
+.. image:: umr_gui_register_ip_block.png
+
+
+Registers in the view can be auto refreshed by clicking on the auto-refresh box and setting
+the interval.
 
 .. image:: umr_gui_register_reading.png
 
@@ -41,11 +52,16 @@ By clicking the query button active waves can be displayed.  Checking
 'disable gfxoff' will ensure that the power saving feature GFXOFF does not
 interrupt reading registers.
 
-.. image:: umr_gui_waves_using.png
+.. image:: umr_gui_waves_scanning.png
 
-Once waves are queried they are listed by order of whcih waves are active.  The various
+Once waves are queried they are listed by order of which waves are active.  The various
 status registers can be displayed by expanding their fields, if a shader is
 found it can be display in the right half by clicking 'view shader'.
+
+.. image:: umr_gui_waves_shader.png
+
+The highlighted line in the shader output represents the PC address for that particular
+wave at the time of the wave data was captured.
 
 
 -------------
@@ -77,4 +93,71 @@ to aid in debugging.
 
 Shaders if found are presented in their own tabs named after the
 GPUVM address they were found at.
+
+------------
+Power Status
+------------
+
+The current power status of the ASIC can be viewed on the power tab.
+The actual types of sensors available vary per ASIC.  The tab graphs
+the various sensors over time.
+
+.. image:: umr_gui_power_landing.png
+
+
+The different DPM profiles can be selected with the radio buttons on
+the left.
+
+--------
+ASIC Top
+--------
+
+Monitoring of various graphics hardware blocks is available on the
+tab named 'Top'.  The various blocks monitored by the GRBM_STATUS register
+are bar graphed on the left.  Green indicates low activity, yellow moderate,
+and red coloured bars indicating heavily busy blocks.  On the right
+the number of fences per second are graphed.  The various types of
+IP blocks that emit fences are grouped together by colour.
+
+.. image:: umr_gui_top_landing.png
+
+
+--------------
+KMS Monitoring
+--------------
+
+The KMS tab visualizes how different framebuffer objects map (if at all)
+to display hardware and ultimately display connectors.
+
+.. image:: umr_gui_kms_landing.png
+
+
+------------
+Memory Usage
+------------
+
+GPU VRAM usage can be visualized on the 'memory usage' tab.  The tab
+breaks down used VRAM, GTT, and visible VRAM.
+
+.. image:: umr_gui_vram_usage.png
+
+Usage of individual applications can be viewed by clicking on their
+pid.
+
+.. image:: umr_gui_vram_usage_page2.png
+
+
+---------------------
+Reading GPU VM memory
+---------------------
+
+GPU virtual and linear memory can be accessed on the 'Memory Inspector'
+tab.  A linear (non-virtual) address can be specified by checking the
+linear box otherwise a VMID can be specified.  Like command line umr
+the upper 8 bits of of the VMID can be used to specify a hub.
+
+The address and size of the block to inspect are next with the
+address specified in hexadecimal and the size in decimal.
+
+.. image:: umr_gui_reading_vm.png
 
