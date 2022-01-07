@@ -275,7 +275,7 @@ public:
 		for (int i = 0; i < json_array_get_count(crtcs); i++) {
 			JSON_Object *crtc = json_object(json_array_get_value(crtcs, i));
 
-			float w = CenterText("active: 1", colwidth);
+			float w = CenterText("Address 0x0123456701234567", colwidth);
 			BeginBorderedGroup(colpadding, w + colpadding.x * 2);
 			int id = (int) json_object_get_number(crtc, "id");
 			ImGui::Text("id: #3097a1%d", id);
@@ -283,6 +283,12 @@ public:
 			ImGui::Text("enable: %d", enable);
 			int active = (int) json_object_get_number(crtc, "active");
 			ImGui::Text("active: %d", active);
+
+			if (active) {
+				ImGui::Separator();
+				ImGui::Text("dcc: %s", json_object_get_number(crtc, "dcc") ? "#34de51on" : "#586e75off");
+				ImGui::Text("tmz: %s", json_object_get_number(crtc, "tmz") ? "#34de51on" : "#586e75off");
+			}
 
 			crtc_frames[id] = EndBorderedGroup(IM_COL32(0x80, 0x80, 0x80, 0xff));
 

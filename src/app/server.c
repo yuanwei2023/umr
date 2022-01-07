@@ -1346,6 +1346,23 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		answer = json_object_get_wrapping_value(state);
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
+
+		/* Parse interesting DC registers */
+		JSON_Array *crtcs = json_object_get_array(state, "crtcs");
+		for (int i = 0; i < (int)json_array_get_count(crtcs); i++) {
+			JSON_Object *crtc = json_object(json_array_get_value(crtcs, i));
+			if (json_object_get_boolean(crtc, "active")) {
+				sprintf(path, "mmHUBPREQ%d_DCSURF_SURFACE_CONTROL", i);
+				struct umr_reg *r = umr_find_reg_data(asic, path);
+				if (r) {
+					uint64_t value = umr_read_reg_by_name(asic, path);
+					int tmz = umr_bitslice_reg(asic, r, "PRIMARY_SURFACE_TMZ", value);
+					int dcc = umr_bitslice_reg(asic, r, "PRIMARY_SURFACE_DCC_EN", value);
+					json_object_set_number(crtc, "tmz", tmz);
+					json_object_set_number(crtc, "dcc", dcc);
+				}
+			}
+		}
 	} else {
 		last_error = "unknown command";
 		goto error;
