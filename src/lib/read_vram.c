@@ -457,10 +457,9 @@ static void print_pte_ai(struct umr_asic *asic,
 			asic->mem_funcs.vm_message("PDE0-as-PTE");
 		else
 			asic->mem_funcs.vm_message("PTE");
-		asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64"}",
-				prev_addr,
-				pte_idx);
 	}
+	asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64"}",
+			prev_addr, pte_idx);
 	asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
 			", PBA==0x%012" PRIx64 ", V=%" PRIu64
 			", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
@@ -1046,7 +1045,7 @@ pde_is_pte:
 			pte_fields = decode_pte_entry_ai(pte_entry);
 
 			if (asic->options.verbose)
-				print_pte_ai(asic, NULL, 0, 0, 0, pte_entry, address,
+				print_pte_ai(asic, NULL, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
 						~((uint64_t)0xFFF), pte_fields);
 
 			if (pdst && !pte_fields.valid)
