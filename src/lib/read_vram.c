@@ -458,7 +458,7 @@ static void print_pte_ai(struct umr_asic *asic,
 		else
 			asic->mem_funcs.vm_message("PTE");
 	}
-	asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64"}",
+	asic->mem_funcs.vm_message("@{0x%" PRIx64 "/0x%" PRIx64"}",
 			prev_addr, pte_idx);
 	asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
 			", PBA==0x%012" PRIx64 ", V=%" PRIu64
@@ -709,8 +709,13 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			);
 	}
 
-	// transform page_table_base
-	page_table_base_addr -= vm_fb_offset;
+	// get PDE fields from page table base address
+	pde_fields = decode_pde_entry_ai(page_table_base_addr);
+
+	if (!pde_fields.system) {
+		// transform page_table_base (only if first PDB or the PTB is in VRAM)
+		page_table_base_addr -= vm_fb_offset;
+	}
 
 	pde0_block_fragment_size = 0;
 
@@ -1039,8 +1044,13 @@ pde_is_pte:
 			// PTE addr = baseaddr[47:6] + (logical - start) >> fragsize)
 			pte_idx = (address >> (12 + pde0_block_fragment_size));
 
-			if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
-				return -1;
+			if (pde_fields.system == 0) {
+				if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
+					return -1;
+			} else {
+				if (asic->mem_funcs.access_sram(asic, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry, 0) < 0)
+					return -1;
+			}
 
 			pte_fields = decode_pte_entry_ai(pte_entry);
 
