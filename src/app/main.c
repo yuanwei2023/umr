@@ -190,11 +190,13 @@ int main(int argc, char **argv)
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
 	struct umr_test_harness *th = NULL;
+#if UMR_GUI
 	int running_as_gui = 0;
 	char *guiurl = NULL;
 
 	if (strstr(argv[0], "umrgui"))
 		running_as_gui = 1;
+#endif
 
 	memset(&options, 0, sizeof options);
 
@@ -1067,10 +1069,12 @@ printf(
 		}
 	}
 
+#if UMR_GUI
 	if (running_as_gui) {
 		umr_run_gui(guiurl);
 		exit(EXIT_SUCCESS);
 	}
+#endif
 
 
 	if (options.need_scan && options.print) {
