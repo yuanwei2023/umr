@@ -449,6 +449,12 @@ struct umr_read_gpr_funcs {
 	int (*read_sgprs)(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst);
 };
 
+struct umr_hive_info {
+	uint64_t node_id;
+	int instance, hive_position;
+	struct umr_asic *asic;
+};
+
 struct umr_asic {
 	char *asicname;
 	int no_blocks;
@@ -474,11 +480,7 @@ struct umr_asic {
 				device_id,
 				hive_id;
 			int callbacks_applied;
-			struct {
-				uint64_t node_id;
-				int instance;
-				struct umr_asic *asic;
-			} nodes[UMR_MAX_XGMI_DEVICES];
+			struct umr_hive_info nodes[UMR_MAX_XGMI_DEVICES];
 		} xgmi;
 	} config;
 	struct {

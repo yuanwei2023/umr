@@ -115,7 +115,6 @@ static uint64_t read_int_drm(int cardno, char *fname)
 	return 0;
 }
 
-
 /**
  * umr_scan_config - Scan the debugfs confiruration data
  */

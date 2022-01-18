@@ -128,6 +128,7 @@ void umr_print_config(struct umr_asic *asic)
 			printf("\tasic.xgmi.node[%d].asicname == %s\n", x, asic->config.xgmi.nodes[x].asic->asicname);
 			printf("\tasic.xgmi.node[%d].devname == %s\n", x, asic->config.xgmi.nodes[x].asic->options.pci.name);
 			printf("\tasic.xgmi.node[%d].device_id == %llu\n", x, (unsigned long long)asic->config.xgmi.nodes[x].node_id);
+			printf("\tasic.xgmi.node[%d].hive_position == %d\n", x, asic->config.xgmi.nodes[x].hive_position);
 			printf("\tasic.xgmi.node[%d].vram_mib == %llu\n", x, (unsigned long long)asic->config.xgmi.nodes[x].asic->config.vram_size >> 20ULL);
 		}
 	}

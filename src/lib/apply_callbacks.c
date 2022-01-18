@@ -24,6 +24,12 @@
  */
 #include "umr.h"
 
+static int hive_cmp(const void *a, const void *b)
+{
+	const struct umr_hive_info *A = a, *B = b;
+	return (A->hive_position > B->hive_position);
+}
+
 void umr_apply_callbacks(struct umr_asic *asic,
 			 struct umr_memory_access_funcs *mems,
 			 struct umr_register_access_funcs *regs)
@@ -33,7 +39,11 @@ void umr_apply_callbacks(struct umr_asic *asic,
 	n = 0;
 	while (asic->config.xgmi.nodes[n].asic) {
 		asic->config.xgmi.nodes[n].asic->mem_funcs = *mems;
-		asic->config.xgmi.nodes[n++].asic->reg_funcs = *regs;
+		asic->config.xgmi.nodes[n].asic->reg_funcs = *regs;
+		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg_by_name_by_ip(asic->config.xgmi.nodes[n].asic, "gfx", "mmMC_VM_XGMI_LFB_CNTL", "PF_LFB_REGION", umr_read_reg_by_name_by_ip(asic->config.xgmi.nodes[n].asic, "gfx", "mmMC_VM_XGMI_LFB_CNTL"));
+		++n;
 	}
+	// sort nodes based on hive position
+	qsort(&asic->config.xgmi.nodes[0], n, sizeof(asic->config.xgmi.nodes[0]), hive_cmp);
 	asic->config.xgmi.callbacks_applied = 1;
 }

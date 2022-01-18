@@ -329,6 +329,7 @@ int main(int argc, char **argv)
 		} else if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
 			if (!asic)
 				asic = get_asic();
+			umr_apply_callbacks(asic, &asic->mem_funcs, &asic->reg_funcs);
 			umr_print_config(asic);
 		} else if (!strcmp(argv[i], "--list-blocks") || !strcmp(argv[i], "-lb")) {
 			uint32_t rev;
