@@ -222,16 +222,16 @@ private:
 		ImGui::TableSetupColumn("Disassembly");
 		ImGui::TableHeadersRow();
 
-		struct umr_ring_decoder decoder;
-		memset(&decoder, 0, sizeof decoder);
-		decoder.pm = decoder_type;
-		decoder.sdma.cur_opcode = 0xFFFFFFFF;
-		decoder.pm4.cur_opcode = 0xFFFFFFFF;
-		asic->options.no_follow_ib = 1;
-		asic->options.use_colour = 0;
-		asic->options.bitfields = 0;
-
 		while (clipper.Step()) {
+			struct umr_ring_decoder decoder;
+			memset(&decoder, 0, sizeof decoder);
+			decoder.pm = decoder_type;
+			decoder.sdma.cur_opcode = 0xFFFFFFFF;
+			decoder.pm4.cur_opcode = 0xFFFFFFFF;
+			asic->options.no_follow_ib = 1;
+			asic->options.use_colour = 0;
+			asic->options.bitfields = 0;
+
 			for (int i = 0 ; i < clipper.DisplayEnd; i++) {
 				uint32_t raw_value = json_array_get_number(raw, i);
 
