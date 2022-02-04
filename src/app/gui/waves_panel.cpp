@@ -240,15 +240,15 @@ public:
 							ImGui::TableSetupColumn("+ 3");
 							ImGui::TableHeadersRow();
 							char label[128];
-							for (int i = 0; i < s; i++) {
-								ImGui::PushID(i);
+							for (int vg = 0; vg < s; vg++) {
+								ImGui::PushID(vg);
 								ImGui::TableNextRow();
 								ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableRowBgAlt));
 								ImGui::TableSetColumnIndex(0);
-								sprintf(label, "show v%2d", i);
-								ImGui::Checkbox(label, &details.vgpr[i * details.max_vgpr]);
-								if (details.vgpr[i * details.max_vgpr]) {
-									int *mode = &details.view[i * details.max_vgpr];
+								sprintf(label, "show v%2d", vg);
+								ImGui::Checkbox(label, &details.vgpr[i * details.max_vgpr + vg]);
+								if (details.vgpr[i * details.max_vgpr + vg]) {
+									int *mode = &details.view[i * details.max_vgpr + vg];
 									ImGui::TableSetColumnIndex(1);
 									ImGui::RadioButton("as int", mode, 0);
 									ImGui::TableSetColumnIndex(2);
@@ -258,18 +258,18 @@ public:
 									ImGui::TableSetColumnIndex(4);
 									ImGui::RadioButton("as float", mode, 3);
 
-									JSON_Array *vg = json_array_get_array(vgpr, i);
-									int num_thread = json_array_get_count(vg);
+									JSON_Array *vgp = json_array_get_array(vgpr, vg);
+									int num_thread = json_array_get_count(vgp);
 
-									for (int j = 0; j < num_thread; j++) {
-										if (j % 4 == 0) {
+									for (int t = 0; t < num_thread; t++) {
+										if (t % 4 == 0) {
 											ImGui::TableNextRow();
 											ImGui::TableSetColumnIndex(0);
-											ImGui::Text("%d", j);
+											ImGui::Text("%d", t);
 										}
-										ImGui::TableSetColumnIndex(1 + j % 4);
+										ImGui::TableSetColumnIndex(1 + t % 4);
 
-										JSON_Value *v = json_array_get_value(vg, i);
+										JSON_Value *v = json_array_get_value(vgp, t);
 										ImGui::PushID(v);
 										int aaa = (int)json_number(v);
 										if (*mode == 3) {
