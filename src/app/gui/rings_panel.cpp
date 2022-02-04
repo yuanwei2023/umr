@@ -126,6 +126,8 @@ public:
 
 			uint32_t highlight_lo_ib = 0;
 			if (ImGui::BeginTabItem("Ring Content")) {
+				ImGui::Text("Last signaled fence: #dbde790x%08x",
+					(uint32_t)json_object_get_number(last_answer, "last_signaled_fence"));
 				ImGui::BeginChild("ringtabs scroll");
 				highlight_lo_ib = display_ib(ring, decoder, 0, rptr, wptr, drv_wptr);
 				ImGui::EndChild();

@@ -304,11 +304,11 @@ JSON_Object *parse_kms_state_sysfs_file(const char *content) {
 	return out;
 }
 
-JSON_Value *compare_fence_infos(const char *before, const char *after) {
-	JSON_Value *fences = json_value_init_array();
+JSON_Array *get_rings_last_signaled_fences(const char *fence_info, const char *ring_filter) {
+	JSON_Array *fences = json_array(json_value_init_array());
 	int cursor = 0;
 	while (1) {
-		char *next_ring = strstr(&before[cursor], "--- ring");
+		char *next_ring = strstr(&fence_info[cursor], "--- ring");
 		if (!next_ring)
 			break;
 		char *next_ring_start = strchr(next_ring, '(');
@@ -320,21 +320,45 @@ JSON_Value *compare_fence_infos(const char *before, const char *after) {
 		char ring_name[128];
 		strncpy(ring_name, next_ring_start, len);
 		ring_name[len] = '\0';
+
 		char *next_line = strstr(next_ring_end + 1, "0x");
 		if (!next_line)
 			break;
-		int c = next_line - before;
 
-		unsigned long last_signaled[2] = {0};
-		if (sscanf(&before[c], "0x%08lx", &last_signaled[0]) == 1 &&
-			sscanf(&after[c], "0x%08lx", &last_signaled[1]) == 1) {
-			JSON_Value *fence = json_value_init_object();
-			json_object_set_string(json_object(fence), "name", ring_name);
-			json_object_set_number(json_object(fence), "delta", last_signaled[1] - last_signaled[0]);
-			json_array_append_value(json_array(fences), fence);
+		int c = next_line - fence_info;
+		unsigned long last_signaled;
+		if (sscanf(&fence_info[c], "0x%08lx", &last_signaled) == 1) {
+			if (!ring_filter || strcmp(ring_filter, ring_name) == 0) {
+				JSON_Value *fence = json_value_init_object();
+				json_object_set_string(json_object(fence), "name", ring_name);
+				json_object_set_number(json_object(fence), "value", last_signaled);
+				json_array_append_value(fences, fence);
+			}
 		}
 		cursor = c + strlen("0x00000000") + 1;
 	}
+	return fences;
+}
+
+JSON_Value *compare_fence_infos(const char *fence_info_before, const char *fence_info_after) {
+	JSON_Value *fences = json_value_init_array();
+	JSON_Array *before = get_rings_last_signaled_fences(fence_info_before, NULL);
+	JSON_Array *after = get_rings_last_signaled_fences(fence_info_after, NULL);
+	for (size_t i = 0; i < json_array_get_count(before); i++) {
+		JSON_Value *fence = json_value_init_object();
+		JSON_Object *b = json_object(json_array_get_value(before, i));
+		JSON_Object *a = json_object(json_array_get_value(after, i));
+
+		const char *ring_name = json_object_get_string(b, "name");
+		uint32_t v1 = (uint32_t)json_object_get_number(b, "value");
+		uint32_t v2 = (uint32_t)json_object_get_number(a, "value");
+		json_object_set_string(json_object(fence), "name", ring_name);
+		json_object_set_number(json_object(fence), "delta", v2 - v1);
+		json_array_append_value(json_array(fences), fence);
+	}
+	json_value_free(json_array_get_wrapping_value(before));
+	json_value_free(json_array_get_wrapping_value(after));
+
 	return fences;
 }
 
@@ -1148,6 +1172,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		answer = json_value_init_object();
 
+		char path[256];
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
+		const char *fence_info = read_file(path);
+		JSON_Array *signaled_fences = get_rings_last_signaled_fences(fence_info, ring_name);
+
 		ring_data = umr_read_ring_data(asic, ring_name, &ringsize);
 		/* read pointers */
 		ringsize /= 4;
@@ -1196,6 +1225,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		json_object_set_number(json_object(answer), "read_ptr", rptr);
 		json_object_set_number(json_object(answer), "write_ptr", wptr);
 		json_object_set_number(json_object(answer), "driver_write_ptr", drv_wptr);
+		json_object_set_number(json_object(answer), "last_signaled_fence",
+			json_object_get_number(json_object(json_array_get_value(signaled_fences, 0)), "value"));
 
 		/* Reenable gfxoff */
 		value = 1;
