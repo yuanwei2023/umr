@@ -235,10 +235,11 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 		}
 		asic = umr_discover_asic_by_did(options, did, errout);
 	} else {
-		if (options->dev_name[0])
+		if (options->dev_name[0]) {
 			asic = umr_discover_asic_by_name(options, options->dev_name, errout);
-		else
+		} else {
 			asic = umr_discover_asic_by_did(options, trydid, errout);
+		}
 	}
 
 	if (asic) {

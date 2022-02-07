@@ -89,8 +89,11 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did,
 	asic = NULL;
 	while (fgets(linebuf, sizeof linebuf, f)) {
 		sscanf(linebuf, "%"SCNx32" %s", &ldid, lname);
-		if (ldid == did) {
+		if (ldid == did && strstr(lname, ".asic")) {
 			asic = umr_database_read_asic(options, lname, errout);
+			break;
+		} else if (ldid == did) {
+			asic = umr_discover_asic_by_discovery_table(lname, options, errout);
 			break;
 		}
 	}
@@ -114,9 +117,6 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did,
 		asic->fd.iova = -1;
 		asic->fd.iomem = -1;
 		asic->fd.gfxoff = -1;
-	} else {
-		if (!options->quiet && !options->dev_name[0])
-			errout("ERROR: Device 0x%04lx not found in UMR device table\n", did);
 	}
 
 	return asic;

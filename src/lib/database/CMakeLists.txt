@@ -3,4 +3,7 @@ add_library(database OBJECT
   read_asic.c
   read_ip.c
   read_soc15.c
+  scan.c
+  match.c
+  free_scan.c
 )

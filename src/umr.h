@@ -104,6 +104,7 @@ enum chipfamily {
 	FAMILY_NV, // NAVI10 and up
 
 	FAMILY_NPI, // reserves for new devices that are not public yet
+	FAMILY_CONFIGURE,
 };
 
 enum regclass {
@@ -301,6 +302,7 @@ struct umr_options {
 		dev_name[64],
 		hub_name[32],
 		ring_name[32],
+		desired_path[256],
 		database_path[256];
 	struct {
 		unsigned domain,
@@ -470,6 +472,7 @@ struct umr_asic {
 		struct umr_gfx_config gfx;
 		struct umr_fw_config fw[UMR_MAX_FW];
 		struct umr_pci_config pci;
+		int is_apu;
 		char vbios_version[128];
 		uint64_t vram_size,
 			 vis_vram_size,
@@ -1042,6 +1045,8 @@ int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
 struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout);
 struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout);
 struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name, umr_err_output errout);
+struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblocks, umr_err_output errout);
+struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr_options *options, umr_err_output errout);
 void umr_free_asic_blocks(struct umr_asic *asic);
 void umr_free_asic(struct umr_asic *asic);
 void umr_free_maps(struct umr_asic *asic);
@@ -1451,6 +1456,12 @@ void umr_run_gui(const char *url);
 #endif
 
 // database
+struct umr_database_scan_item {
+	char path[256], fname[128], ipname[128];
+	int maj, min, rev;
+	struct umr_database_scan_item *next;
+};
+
 struct umr_soc15_database {
 	char ipname[64];
 	uint64_t off[8][8];
@@ -1468,6 +1479,13 @@ struct umr_vbios_info {
 };
 
 FILE *umr_database_open(char *path, char *filename);
+struct umr_database_scan_item *umr_database_scan(char *path);
+struct umr_database_scan_item *umr_database_find_ip(
+	struct umr_database_scan_item *db,
+	char *ipname, int maj, int min, int rev,
+	char *desired_path);
+void umr_database_free_scan_items(struct umr_database_scan_item *it);
+
 struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, umr_err_output errout);
 struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst, umr_err_output errout);
 struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename, umr_err_output errout);

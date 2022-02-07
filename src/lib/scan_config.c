@@ -83,6 +83,12 @@ static void parse_rev3(struct umr_asic *asic, uint32_t *data, int *r)
 	asic->config.pci.subsystem_vendor = data[(*r)++];
 }
 
+static void parse_rev4(struct umr_asic *asic, uint32_t *data, int *r)
+{
+	parse_rev3(asic, data, r);
+	asic->config.is_apu = data[(*r)++];
+}
+
 static uint64_t read_int(char *pci_name, char *fname)
 {
 	char buf[256];
@@ -237,9 +243,23 @@ gca_config:
 			break;
 		case 3: parse_rev3(asic, data, &r);
 			break;
+		case 4: parse_rev4(asic, data, &r);
+			break;
 		default:
 			printf("Invalid gca config data header\n");
 			return -1;
 	}
+
+	if (asic->family == FAMILY_CONFIGURE) {
+		asic->is_apu = asic->config.is_apu;
+		if (asic->config.gfx.family >= 143) {
+			asic->family = FAMILY_NV;
+		} else if (asic->config.gfx.family >= 141) {
+			asic->family = FAMILY_AI;
+		} else {
+			asic->family = FAMILY_VI;
+		}
+	}
+
 	return 0;
 }

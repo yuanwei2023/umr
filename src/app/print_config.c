@@ -106,6 +106,7 @@ static const struct {
 	{ "Carrizo", 135 },
 	{ "Arctic Islands", 141 },
 	{ "Raven", 142 },
+	{ "Navi", 143 },
 	{ NULL, 0 },
 };
 
@@ -183,6 +184,7 @@ void umr_print_config(struct umr_asic *asic)
 		if (family[x].family_id == asic->config.gfx.family)
 			printf(", %s", family[x].name);
 	printf("\n");
+	p(is_apu);
 	px(gfx.rev_id);
 	px(gfx.external_rev_id);
 	px(gfx.cg_flags);
