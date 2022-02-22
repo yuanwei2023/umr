@@ -122,7 +122,7 @@ static uint64_t read_int_drm(int cardno, char *fname)
 }
 
 /**
- * umr_scan_config - Scan the debugfs confiruration data
+ * umr_scan_config - Scan the debugfs configuration data
  */
 int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 {
@@ -246,7 +246,8 @@ gca_config:
 		case 4: parse_rev4(asic, data, &r);
 			break;
 		default:
-			printf("Invalid gca config data header\n");
+			asic->err_msg("Invalid or unknown GCA config data header version:%d\n",
+				      data[0]);
 			return -1;
 	}
 
