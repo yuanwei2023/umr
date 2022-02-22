@@ -46,7 +46,6 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 
 	f = umr_database_open(options->database_path, filename);
 	if (!f) {
-		errout("[ERROR]: Cannot find asic file [%s] in database see README for more information\n", filename);
 		return NULL;
 	}
 
