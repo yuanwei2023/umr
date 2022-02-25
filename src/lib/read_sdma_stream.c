@@ -63,11 +63,10 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
 
 		// copy ring data into linear array
 		lineardata = calloc(ringsize, sizeof(*lineardata));
-		linearsize = 0;
-		while (start != stop) {
-			lineardata[linearsize++] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
-			start = (start + 1) % ringsize;
-		}
+		for (linearsize = 0;
+		     start != stop && linearsize < ringsize;
+		     linearsize++, start = (start + 1) % ringsize)
+			lineardata[linearsize] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
 
 		ps = umr_sdma_decode_stream(asic, -1, 0, 0, lineardata, linearsize);
 		free(lineardata);
