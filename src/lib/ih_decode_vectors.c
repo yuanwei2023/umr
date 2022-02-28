@@ -77,6 +77,7 @@ int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, ui
 			}
 			return off / 8;
 
+			case FAMILY_CONFIGURE:
 			case FAMILY_SI:
 			case FAMILY_CIK:
 			case FAMILY_NPI:
