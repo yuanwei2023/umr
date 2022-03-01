@@ -46,8 +46,10 @@ static int umr_do_scan(struct umr_database_scan_item *it, char *path)
 			char p[512];
 			sprintf(p, "%s/%s", path, di->d_name);
 			r = umr_do_scan(it, p);
-			if (r)
+			if (r) {
+				closedir(dir);
 				return r;
+			}
 		}
 		if (strstr(di->d_name, ".reg")) { // we only care about register files
 			strcpy(it->path, path);
@@ -58,6 +60,7 @@ static int umr_do_scan(struct umr_database_scan_item *it, char *path)
 			it->next = calloc(1, sizeof *it);
 			if (!it->next) {
 				fprintf(stderr, "[ERROR]: Out of memory\n");
+				closedir(dir);
 				return -1;
 			}
 			it = it->next;
