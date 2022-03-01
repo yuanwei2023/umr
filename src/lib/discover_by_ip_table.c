@@ -99,11 +99,16 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 				fgets(databuf, sizeof databuf, f);
 				sscanf(databuf, "%d", &(*det)->instance);
 			fclose(f);
-			(*det)->next = calloc(1, sizeof **det);
+			// convert name to lowercase
 			strcpy((*det)->ipname, ipname);
 			for (x = 0; (*det)->ipname[x]; x++)
 				(*det)->ipname[x] = tolower((*det)->ipname[x]);
-
+			// add next
+			(*det)->next = calloc(1, sizeof **det);
+			if (!(*det)->next) {
+				closedir(ipdir);
+				return;
+			}
 			*det = (*det)->next;
 			++(*nblocks);
 		}
@@ -128,7 +133,7 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 */
 struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblocks, umr_err_output errout)
 {
-	DIR *top, *die;
+	DIR *top = NULL, *die = NULL;
 	char linebuf[512];
 	struct umr_discovery_table_entry *pdet, *det;
 	struct dirent *de;
@@ -167,8 +172,10 @@ struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblo
 	return pdet;
 error:
 	*nblocks = 0;
-	closedir(top);
-	closedir(die);
+	if (top)
+		closedir(top);
+	if (die)
+		closedir(die);
 	det = pdet;
 	while (det) {
 		pdet = det->next;
@@ -325,6 +332,8 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr
 	asic->no_blocks = used_blocks - 1;
 
 	// scan blocks for missing {0}
+	// to be consistent if there is more than one instance of
+	// an IP block we number them ALL including the 0'th
 	for (x = 0; x < asic->no_blocks; x++) {
 		if (!strstr(asic->blocks[x]->ipname, "{")) {
 			for (y = 0; y < asic->no_blocks; y++) {
