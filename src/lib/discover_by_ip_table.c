@@ -284,7 +284,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr
 	det = umr_parse_ip_discovery(options->instance, &numblocks, errout);
 
 	// create database of IP
-	it = umr_database_scan(NULL);
+	it = umr_database_scan(options->database_path);
 
 	asic = calloc(1, sizeof *asic);
 	asic->asicname = strdup(asicname);
@@ -325,8 +325,13 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr
 
 		nit = umr_database_find_ip(it, cmnname,
 			det->maj, det->min, det->rev, options->desired_path[0] ? options->desired_path : NULL);
-		if (nit)
+		if (nit) {
+			if (options->verbose)
+				errout("[VERBOSE]: Using %s/%s (%d.%d.%d) for %s (%d.%d.%d)\n",
+					nit->path, nit->fname, nit->maj, nit->min, nit->rev,
+					det->ipname, det->maj, det->min, det->rev);
 			asic->blocks[used_blocks++] = read_ip_block(asic, det, nit);
+		}
 		det = det->next;
 	}
 	asic->no_blocks = used_blocks - 1;
