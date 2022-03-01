@@ -55,8 +55,11 @@ for f in ${pk}/include/*ip_offset.h; do
 	if [ ${asicname} == arct ]; then
 		asicname=arcturus
 	fi
-	../comp/compiler ${f} > ../database/${asicname}.soc15
-	x=`expr ${x} + 1`
+	grep ${asicname}.asic ../database/pci.did > /dev/null
+	if [ $? == 0 ]; then
+		../comp/compiler ${f} > ../database/${asicname}.soc15
+		x=`expr ${x} + 1`
+	fi
 done
 echo "Parsed ${x} IP offset files..."
 
