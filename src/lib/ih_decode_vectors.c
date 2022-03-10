@@ -77,11 +77,11 @@ int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, ui
 		}
 		return off / 8;
 
-	case FAMILY_CONFIGURE:
 	case FAMILY_SI:
 	case FAMILY_CIK:
 	case FAMILY_NPI:
-		asic->err_msg("[BUG]: unhandled family case in umr_ih_decode_vectors()\n");
+	default:
+		asic->err_msg("[BUG]: unhandled family case:%d in umr_ih_decode_vectors()\n", asic->family);
 		return -1;
 	}
 	return 0;
