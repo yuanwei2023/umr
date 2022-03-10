@@ -41,48 +41,48 @@ int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, ui
 	uint32_t off = 0;
 
 	switch (asic->family) {
-		case FAMILY_VI: // oss30
-			while (length) {
-				ui->start_vector(ui, off);
-				ui->add_field(ui, off + 0, "SourceID",   BITS(ih_data[off + 0], 0, 8), NULL, 10); // TODO: add ID to name translation
-				ui->add_field(ui, off + 1, "SourceData", BITS(ih_data[off + 1], 0, 24), NULL, 16);
-				ui->add_field(ui, off + 2, "VMID",       BITS(ih_data[off + 2], 8, 16), NULL, 10);
-				ui->add_field(ui, off + 2, "PASID",      BITS(ih_data[off + 2], 16, 32), NULL, 10);
-				ui->add_field(ui, off + 3, "ContextID0", ih_data[off + 3], NULL, 16);
-				ui->done(ui);
-				length -= 16;
-				off += 4;
-			}
-			return off / 4;
+	case FAMILY_VI: // oss30
+		while (length) {
+			ui->start_vector(ui, off);
+			ui->add_field(ui, off + 0, "SourceID",   BITS(ih_data[off + 0], 0, 8), NULL, 10); // TODO: add ID to name translation
+			ui->add_field(ui, off + 1, "SourceData", BITS(ih_data[off + 1], 0, 24), NULL, 16);
+			ui->add_field(ui, off + 2, "VMID",       BITS(ih_data[off + 2], 8, 16), NULL, 10);
+			ui->add_field(ui, off + 2, "PASID",      BITS(ih_data[off + 2], 16, 32), NULL, 10);
+			ui->add_field(ui, off + 3, "ContextID0", ih_data[off + 3], NULL, 16);
+			ui->done(ui);
+			length -= 16;
+			off += 4;
+		}
+		return off / 4;
 
-		case FAMILY_NV: // oss40/50
-		case FAMILY_AI:
-			while (length) {
-				ui->start_vector(ui, off);
-				ui->add_field(ui, off + 0, "ClientID", BITS(ih_data[off + 0], 0, 8), NULL, 10); // TODO: add ID to name translation
-				ui->add_field(ui, off + 0, "SourceID", BITS(ih_data[off + 0], 8, 16), NULL, 10); // TODO: add ID to name translation
-				ui->add_field(ui, off + 0, "RingID",   BITS(ih_data[off + 0], 16, 24), NULL, 10);
-				ui->add_field(ui, off + 0, "VMID",     BITS(ih_data[off + 0], 24, 28), NULL, 10);
-				ui->add_field(ui, off + 0, "VMID_TYPE", BITS(ih_data[off + 0], 31, 32), NULL, 10);
-				ui->add_field(ui, off + 1, "Timestamp", ih_data[off + 1] + ((uint64_t)BITS(ih_data[off+2], 0, 16) << 32), NULL, 10);
-				ui->add_field(ui, off + 2, "Timestamp_SRC", BITS(ih_data[off + 2], 31, 32), NULL, 10);
-				ui->add_field(ui, off + 3, "PASID", BITS(ih_data[off + 3], 0, 16), NULL, 16);
-				ui->add_field(ui, off + 4, "ContextID0", ih_data[off + 4], NULL, 16);
-				ui->add_field(ui, off + 5, "ContextID1", ih_data[off + 5], NULL, 16);
-				ui->add_field(ui, off + 6, "ContextID2", ih_data[off + 6], NULL, 16);
-				ui->add_field(ui, off + 7, "ContextID3", ih_data[off + 7], NULL, 16);
-				ui->done(ui);
-				length -= 32;
-				off += 8;
-			}
-			return off / 8;
+	case FAMILY_NV: // oss40/50
+	case FAMILY_AI:
+		while (length) {
+			ui->start_vector(ui, off);
+			ui->add_field(ui, off + 0, "ClientID", BITS(ih_data[off + 0], 0, 8), NULL, 10); // TODO: add ID to name translation
+			ui->add_field(ui, off + 0, "SourceID", BITS(ih_data[off + 0], 8, 16), NULL, 10); // TODO: add ID to name translation
+			ui->add_field(ui, off + 0, "RingID",   BITS(ih_data[off + 0], 16, 24), NULL, 10);
+			ui->add_field(ui, off + 0, "VMID",     BITS(ih_data[off + 0], 24, 28), NULL, 10);
+			ui->add_field(ui, off + 0, "VMID_TYPE", BITS(ih_data[off + 0], 31, 32), NULL, 10);
+			ui->add_field(ui, off + 1, "Timestamp", ih_data[off + 1] + ((uint64_t)BITS(ih_data[off+2], 0, 16) << 32), NULL, 10);
+			ui->add_field(ui, off + 2, "Timestamp_SRC", BITS(ih_data[off + 2], 31, 32), NULL, 10);
+			ui->add_field(ui, off + 3, "PASID", BITS(ih_data[off + 3], 0, 16), NULL, 16);
+			ui->add_field(ui, off + 4, "ContextID0", ih_data[off + 4], NULL, 16);
+			ui->add_field(ui, off + 5, "ContextID1", ih_data[off + 5], NULL, 16);
+			ui->add_field(ui, off + 6, "ContextID2", ih_data[off + 6], NULL, 16);
+			ui->add_field(ui, off + 7, "ContextID3", ih_data[off + 7], NULL, 16);
+			ui->done(ui);
+			length -= 32;
+			off += 8;
+		}
+		return off / 8;
 
-			case FAMILY_CONFIGURE:
-			case FAMILY_SI:
-			case FAMILY_CIK:
-			case FAMILY_NPI:
-				asic->err_msg("[BUG]: unhandled family case in umr_ih_decode_vectors()\n");
-				return -1;
+	case FAMILY_CONFIGURE:
+	case FAMILY_SI:
+	case FAMILY_CIK:
+	case FAMILY_NPI:
+		asic->err_msg("[BUG]: unhandled family case in umr_ih_decode_vectors()\n");
+		return -1;
 	}
 	return 0;
 }
