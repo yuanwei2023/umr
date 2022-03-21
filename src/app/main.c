@@ -892,6 +892,7 @@ int main(int argc, char **argv)
 				th = umr_create_test_harness_file(argv[i + 1]);
 				options.th = th;
 				options.test_log = 1;
+				options.test_log_fd = NULL;
 				if (!asic)
 					asic = get_asic();
 				umr_attach_test_harness(th, asic);

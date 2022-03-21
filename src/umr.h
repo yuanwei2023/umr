@@ -260,7 +260,7 @@ struct umr_sq_blocks {
 struct umr_test_harness {
 	struct umr_asic *asic;
 
-	struct umr_ram_blocks vram, sysram, config;
+	struct umr_ram_blocks vram, sysram, config, discovery;
 	struct umr_mmio_blocks mmio, ws, vgpr, sgpr, wave, ring;
 	struct umr_sq_blocks sq;
 

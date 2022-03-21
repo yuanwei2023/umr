@@ -29,6 +29,9 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+// size of serialized umr_discovery_table_entry
+#define DET_REC_SIZE (128 + 5 * 2 + 8 * 16)
+
 struct umr_discovery_table_entry {
 	char ipname[128];
 	int die, instance, maj, min, rev;
@@ -273,6 +276,52 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	return ip;
 }
 
+static void dump_discovery_to_log(struct umr_discovery_table_entry *det, struct umr_options *options)
+{
+	fprintf(options->test_log_fd, "DISCOVERY = { ");
+	while (det) {
+		int x;
+		for (x = 0; x < 128; x++) fprintf(options->test_log_fd, "%02" PRIx8, (unsigned)(det->ipname[x] & 0xFF));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->die >> 8), (unsigned)(det->die));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->instance >> 8), (unsigned)(det->instance));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->maj >> 8), (unsigned)(det->maj));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->min >> 8), (unsigned)(det->min));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->rev >> 8), (unsigned)(det->rev));
+		for (x = 0; x < 16; x++) fprintf(options->test_log_fd, "%016" PRIx64, det->segments[x]);
+		det = det->next;
+	}
+	fprintf(options->test_log_fd, "}\n");
+}
+
+static struct umr_discovery_table_entry *import_det_from_log(struct umr_options *options, int *nblocks)
+{
+	struct umr_discovery_table_entry *det, *pdet;
+	int x, y, z;
+	uint8_t *data;
+
+	*nblocks = (options->th->discovery.size) / DET_REC_SIZE;
+	data = &options->th->discovery.contents[0];
+
+	det = pdet = calloc(1, sizeof *det);
+	for (x = 0; x < *nblocks; x++) {
+		memcpy(det->ipname, data, 128); data += 128;
+		det->die = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
+		det->instance = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
+		det->maj = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
+		det->min = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
+		det->rev = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
+		for (y = 0; y < 16; y++) {
+			for (z = 0; z < 8; z++)
+				det->segments[y] = (det->segments[y] << 8) | ((uint64_t)*data++);
+		}
+		if (x < (*nblocks - 1)) {
+			det->next = calloc(1, sizeof *det);
+			det = det->next;
+		}
+	}
+	return pdet;
+}
+
 struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr_options *options, umr_err_output errout)
 {
 	struct umr_discovery_table_entry *det, *pdet;
@@ -281,7 +330,16 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr
 	struct umr_asic *asic;
 
 	// create discovery table
-	det = umr_parse_ip_discovery(options->instance, &numblocks, errout);
+	if (options->test_log && !options->test_log_fd) {
+		det = import_det_from_log(options, &numblocks);
+	} else {
+		det = umr_parse_ip_discovery(options->instance, &numblocks, errout);
+	}
+
+	// dump discovered data to test log if open
+	if (options->test_log && options->test_log_fd) {
+		dump_discovery_to_log(det, options);
+	}
 
 	// create database of IP
 	it = umr_database_scan(options->database_path);
