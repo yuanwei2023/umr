@@ -208,7 +208,7 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 
 	/* process GFX block */
 gca_config:
-	if (asic->options.test_log && !asic->fd.test_log) {
+	if (asic->options.test_log && !asic->options.test_log_fd) {
 		// grab from test harness instead of system
 		r = umr_test_harness_get_config_data(asic, (uint8_t *)data);
 	} else {
@@ -223,14 +223,14 @@ gca_config:
 			return -1;
 
 		// store in test vector if open
-		if (asic->options.test_log && asic->fd.test_log) {
+		if (asic->options.test_log && asic->options.test_log_fd) {
 			int x;
 			uint8_t *d = (uint8_t *)data;
-			fprintf(asic->fd.test_log, "GCACONFIG = { ");
+			fprintf(asic->options.test_log_fd, "GCACONFIG = { ");
 			for (x = 0; x < r; x++) {
-				fprintf(asic->fd.test_log, "%02"PRIx8, d[x]);
+				fprintf(asic->options.test_log_fd, "%02"PRIx8, d[x]);
 			}
-			fprintf(asic->fd.test_log, " }\n");
+			fprintf(asic->options.test_log_fd, " }\n");
 		}
 	}
 

@@ -79,15 +79,15 @@ static int umr_read_sgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 		if (r < 0)
 			return r;
 
-		if (asic->options.test_log && asic->fd.test_log) {
+		if (asic->options.test_log && asic->options.test_log_fd) {
 			int x;
-			fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+			fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr);
 			for (x = 0; x < r; x += 4) {
-				fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+				fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
 				if (x < (r - 4))
-					fprintf(asic->fd.test_log, ", ");
+					fprintf(asic->options.test_log_fd, ", ");
 			}
-			fprintf(asic->fd.test_log, "}\n");
+			fprintf(asic->options.test_log_fd, "}\n");
 		}
 
 		// read trap if any
@@ -96,15 +96,15 @@ static int umr_read_sgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 			lseek(asic->fd.gpr, addr, SEEK_SET);
 			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
 			if (r > 0) {
-				if (asic->options.test_log && asic->fd.test_log) {
+				if (asic->options.test_log && asic->options.test_log_fd) {
 					int x;
-					fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+					fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr);
 					for (x = 0; x < r; x += 4) {
-						fprintf(asic->fd.test_log, "0x%"PRIx32, dst[0x6C + x/4]);
+						fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[0x6C + x/4]);
 						if (x < (r - 4))
-							fprintf(asic->fd.test_log, ", ");
+							fprintf(asic->options.test_log_fd, ", ");
 					}
-					fprintf(asic->fd.test_log, "}\n");
+					fprintf(asic->options.test_log_fd, "}\n");
 				}
 			}
 		}
@@ -170,15 +170,15 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 		if (r < 0)
 			return r;
 
-		if (asic->options.test_log && asic->fd.test_log) {
+		if (asic->options.test_log && asic->options.test_log_fd) {
 			int x;
-			fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+			fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr);
 			for (x = 0; x < r; x += 4) {
-				fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+				fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
 				if (x < (r - 4))
-					fprintf(asic->fd.test_log, ", ");
+					fprintf(asic->options.test_log_fd, ", ");
 			}
-			fprintf(asic->fd.test_log, "}\n");
+			fprintf(asic->options.test_log_fd, "}\n");
 		}
 
 		// read trap if any
@@ -187,15 +187,15 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 			lseek(asic->fd.gpr, addr, SEEK_SET);
 			r = read(asic->fd.gpr, &dst[0x6C], 4 * 16);
 			if (r > 0) {
-				if (asic->options.test_log && asic->fd.test_log) {
+				if (asic->options.test_log && asic->options.test_log_fd) {
 					int x;
-					fprintf(asic->fd.test_log, "SGPR@0x%"PRIx64" = { ", addr);
+					fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr);
 					for (x = 0; x < r; x += 4) {
-						fprintf(asic->fd.test_log, "0x%"PRIx32, dst[0x6C + x/4]);
+						fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[0x6C + x/4]);
 						if (x < (r - 4))
-							fprintf(asic->fd.test_log, ", ");
+							fprintf(asic->options.test_log_fd, ", ");
 					}
-					fprintf(asic->fd.test_log, "}\n");
+					fprintf(asic->options.test_log_fd, "}\n");
 				}
 			}
 		}
@@ -241,15 +241,15 @@ static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 		lseek(asic->fd.gpr, addr, SEEK_SET);
 		r = read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
 		if (r > 0) {
-			if (asic->options.test_log && asic->fd.test_log) {
+			if (asic->options.test_log && asic->options.test_log_fd) {
 				int x;
-				fprintf(asic->fd.test_log, "VGPR@0x%"PRIx64" = { ", addr);
+				fprintf(asic->options.test_log_fd, "VGPR@0x%"PRIx64" = { ", addr);
 				for (x = 0; x < r; x += 4) {
-					fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+					fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
 					if (x < (r - 4))
-						fprintf(asic->fd.test_log, ", ");
+						fprintf(asic->options.test_log_fd, ", ");
 				}
-				fprintf(asic->fd.test_log, "}\n");
+				fprintf(asic->options.test_log_fd, "}\n");
 			}
 		}
 		return r;
@@ -286,15 +286,15 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 		lseek(asic->fd.gpr, addr, SEEK_SET);
 		r = read(asic->fd.gpr, dst, 4 * ((ws->gpr_alloc.vgpr_size + 1) << granularity));
 		if (r > 0) {
-			if (asic->options.test_log && asic->fd.test_log) {
+			if (asic->options.test_log && asic->options.test_log_fd) {
 				int x;
-				fprintf(asic->fd.test_log, "VGPR@0x%"PRIx64" = { ", addr);
+				fprintf(asic->options.test_log_fd, "VGPR@0x%"PRIx64" = { ", addr);
 				for (x = 0; x < r; x += 4) {
-					fprintf(asic->fd.test_log, "0x%"PRIx32, dst[x/4]);
+					fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
 					if (x < (r - 4))
-						fprintf(asic->fd.test_log, ", ");
+						fprintf(asic->options.test_log_fd, ", ");
 				}
-				fprintf(asic->fd.test_log, "}\n");
+				fprintf(asic->options.test_log_fd, "}\n");
 			}
 		}
 		return r;

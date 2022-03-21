@@ -311,6 +311,8 @@ struct umr_options {
 		    func;
 		char name[32];
 	} pci;
+
+	FILE *test_log_fd;
 };
 
 typedef struct {
@@ -500,7 +502,6 @@ struct umr_asic {
 		    iova,
 		    iomem,
 		    gfxoff;
-		FILE *test_log;
 	} fd;
 	struct {
 		uint64_t sq_ind_index;

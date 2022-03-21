@@ -43,7 +43,7 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 	void *ring_data;
 	char fname[128];
 
-	if (asic->options.test_log && !asic->fd.test_log) {
+	if (asic->options.test_log && !asic->options.test_log_fd) {
 		return umr_test_harness_get_ring_data(asic, ringsize);
 	} else {
 		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_ring_%s", asic->instance, ringname);
@@ -73,16 +73,16 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 		}
 
 		// store in test vector if open
-		if (asic->options.test_log && asic->fd.test_log) {
+		if (asic->options.test_log && asic->options.test_log_fd) {
 			uint32_t *rd = ring_data, x;
-			fprintf(asic->fd.test_log, "RINGDATA = { ");
+			fprintf(asic->options.test_log_fd, "RINGDATA = { ");
 			for (x = 0; x < (*ringsize + 12); x += 4) {
 				if (x) {
-					fprintf(asic->fd.test_log, ", ");
+					fprintf(asic->options.test_log_fd, ", ");
 				}
-				fprintf(asic->fd.test_log, "0x%"PRIx32, rd[x/4]);
+				fprintf(asic->options.test_log_fd, "0x%"PRIx32, rd[x/4]);
 			}
-			fprintf(asic->fd.test_log, "}\n");
+			fprintf(asic->options.test_log_fd, "}\n");
 		}
 	}
 

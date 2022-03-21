@@ -292,11 +292,11 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 			break;
 	}
 
-	if (asic->options.test_log && asic->fd.test_log) {
+	if (asic->options.test_log && asic->options.test_log_fd) {
 		if (strstr(umr_reg_name(asic, addr>>2), "SQ_IND_DATA")) {
-			fprintf(asic->fd.test_log, "SQ@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", asic->test_harness.sq_ind_index, value, umr_reg_name(asic, addr>>2));
+			fprintf(asic->options.test_log_fd, "SQ@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", asic->test_harness.sq_ind_index, value, umr_reg_name(asic, addr>>2));
 		} else {
-			fprintf(asic->fd.test_log, "MMIO@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", mmio_addr, value, umr_reg_name(asic, addr>>2));
+			fprintf(asic->options.test_log_fd, "MMIO@0x%"PRIx64" = { 0x%"PRIx32" } ; %s\n", mmio_addr, value, umr_reg_name(asic, addr>>2));
 		}
 	}
 
@@ -363,7 +363,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 					}
 				}
 			}
-			if (asic->options.test_log && asic->fd.test_log) {
+			if (asic->options.test_log && asic->options.test_log_fd) {
 				if (strstr(umr_reg_name(asic, addr>>2), "SQ_IND_INDEX")) {
 					asic->test_harness.sq_ind_index = value;
 				}

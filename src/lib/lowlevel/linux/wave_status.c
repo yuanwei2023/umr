@@ -43,15 +43,15 @@ static int umr_get_wave_status_vi_ai(struct umr_asic *asic, unsigned se, unsigne
 		r = read(asic->fd.wave, &buf, 32*4);
 		if (r <= 0)
 			return -1;
-		if (asic->options.test_log && asic->fd.test_log) {
+		if (asic->options.test_log && asic->options.test_log_fd) {
 			int x;
-			fprintf(asic->fd.test_log, "WAVESTATUS@0x%"PRIx64" = { ", addr);
+			fprintf(asic->options.test_log_fd, "WAVESTATUS@0x%"PRIx64" = { ", addr);
 			for (x = 0; x < r; x += 4) {
-				fprintf(asic->fd.test_log, "0x%"PRIx32, buf[x/4]);
+				fprintf(asic->options.test_log_fd, "0x%"PRIx32, buf[x/4]);
 				if (x < (r - 4))
-					fprintf(asic->fd.test_log, ", ");
+					fprintf(asic->options.test_log_fd, ", ");
 			}
-			fprintf(asic->fd.test_log, "}\n");
+			fprintf(asic->options.test_log_fd, "}\n");
 		}
 	} else {
 		int n = 0;
@@ -91,15 +91,15 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 		lseek(asic->fd.wave, addr, SEEK_SET);
 		if ((r = read(asic->fd.wave, &buf, 32*4)) < 0)
 			return -1;
-		if (asic->options.test_log && asic->fd.test_log) {
+		if (asic->options.test_log && asic->options.test_log_fd) {
 			int x;
-			fprintf(asic->fd.test_log, "WAVESTATUS@0x%"PRIx64" = { ", addr);
+			fprintf(asic->options.test_log_fd, "WAVESTATUS@0x%"PRIx64" = { ", addr);
 			for (x = 0; x < r; x += 4) {
-				fprintf(asic->fd.test_log, "0x%"PRIx32, buf[x/4]);
+				fprintf(asic->options.test_log_fd, "0x%"PRIx32, buf[x/4]);
 				if (x < (r - 4))
-					fprintf(asic->fd.test_log, ", ");
+					fprintf(asic->options.test_log_fd, ", ");
 			}
-			fprintf(asic->fd.test_log, "}\n");
+			fprintf(asic->options.test_log_fd, "}\n");
 		}
 	} else {
 		int n = 0;

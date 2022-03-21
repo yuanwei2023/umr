@@ -877,10 +877,10 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: Cannot print vbios info.\n");
 		} else if (!strcmp(argv[i], "--test-log") || !strcmp(argv[i], "-tl")) {
 			if (i + 1 < argc) {
+				options.test_log_fd = fopen(argv[i + 1], "w");
+				options.test_log = 1;
 				if (!asic)
 					asic = get_asic();
-				asic->fd.test_log = fopen(argv[i + 1], "w");
-				asic->options.test_log = 1;
 				umr_scan_config(asic, 0);
 				++i;
 			} else {
