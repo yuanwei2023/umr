@@ -233,6 +233,41 @@ struct umr_fw_config {
 
 #define NUM_HBM_INSTANCES 4
 
+// struct for sysram and vram blocks
+struct umr_ram_blocks {
+	uint64_t base_address; // base address in bytes
+	uint32_t size;         // size in bytes
+	uint8_t *contents;
+	struct umr_ram_blocks *next;
+};
+
+struct umr_mmio_blocks {
+	uint64_t mmio_address;  // dword address
+	uint32_t *values;       // values for this register
+	uint32_t no_values;     // number of values slotted in this spot
+	uint32_t cur_slot;      // index to current value to return
+	struct umr_mmio_blocks *next;
+};
+
+struct umr_sq_blocks {
+	uint32_t sq_address;    // value for SQ_IND_INDEX
+	uint32_t *values;       // values for this register
+	uint32_t no_values;     // number of values slotted in this spot
+	uint32_t cur_slot;      // index to current value to return
+	struct umr_sq_blocks *next;
+};
+
+struct umr_test_harness {
+	struct umr_asic *asic;
+
+	struct umr_ram_blocks vram, sysram, config;
+	struct umr_mmio_blocks mmio, ws, vgpr, sgpr, wave, ring;
+	struct umr_sq_blocks sq;
+
+	uint64_t vram_mm_index; // when these are written they are shadowed here
+	uint32_t sq_ind_index;
+};
+
 struct umr_options {
 	int instance,
 	    need_scan,
@@ -313,6 +348,7 @@ struct umr_options {
 	} pci;
 
 	FILE *test_log_fd;
+	struct umr_test_harness *th;
 };
 
 typedef struct {
@@ -1368,40 +1404,6 @@ int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t siz
 #define umr_write_vram(asic, partition, vmid, address, size, src) umr_access_vram(asic, partition, vmid, address, size, src, 1)
 
 // test harness support
-// struct for sysram and vram blocks
-struct umr_ram_blocks {
-	uint64_t base_address; // base address in bytes
-	uint32_t size;         // size in bytes
-	uint8_t *contents;
-	struct umr_ram_blocks *next;
-};
-
-struct umr_mmio_blocks {
-	uint64_t mmio_address;  // dword address
-	uint32_t *values;       // values for this register
-	uint32_t no_values;     // number of values slotted in this spot
-	uint32_t cur_slot;      // index to current value to return
-	struct umr_mmio_blocks *next;
-};
-
-struct umr_sq_blocks {
-	uint32_t sq_address;    // value for SQ_IND_INDEX
-	uint32_t *values;       // values for this register
-	uint32_t no_values;     // number of values slotted in this spot
-	uint32_t cur_slot;      // index to current value to return
-	struct umr_sq_blocks *next;
-};
-
-struct umr_test_harness {
-	struct umr_asic *asic;
-
-	struct umr_ram_blocks vram, sysram, config;
-	struct umr_mmio_blocks mmio, ws, vgpr, sgpr, wave, ring;
-	struct umr_sq_blocks sq;
-
-	uint64_t vram_mm_index; // when these are written they are shadowed here
-	uint32_t sq_ind_index;
-};
 
 struct umr_test_harness *umr_create_test_harness_file(const char *fname);
 struct umr_test_harness *umr_create_test_harness(const char *script);

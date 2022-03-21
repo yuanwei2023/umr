@@ -889,10 +889,11 @@ int main(int argc, char **argv)
 			}
 		} else if (!strcmp(argv[i], "--test-harness") || !strcmp(argv[i], "-th")) {
 			if (i + 1 < argc) {
+				th = umr_create_test_harness_file(argv[i + 1]);
+				options.th = th;
+				options.test_log = 1;
 				if (!asic)
 					asic = get_asic();
-				asic->options.test_log = 1;
-				th = umr_create_test_harness_file(argv[i + 1]);
 				umr_attach_test_harness(th, asic);
 				umr_scan_config(asic, 0);
 				++i;
