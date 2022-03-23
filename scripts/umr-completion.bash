@@ -55,27 +55,6 @@ _umr_comp_blocks()
     fi
 }
 
-_umr_comp_regs()
-{
-    _umr_setup_ips
-
-    if [[ "$cur" =~ ^[^.]*'.'[^.]*'.'[^.]*$ ]]; then
-        cur_asic="${cur%%.*}"
-        substr="${cur#*.}"
-        cur_ip="${substr%.*}"
-        if [[ "${ip_names[@]}" =~ "$cur_ip" ]] && [[ $cur_asic = $asicname || $cur_asic = "*" ]]; then
-            reg_names=( $(sudo $(which umr) $select_gpu -lr $asicname.$cur_ip | grep -o "$asicname\.$cur_ip\.\w\+") )
-            COMPREPLY=( $(compgen -W "${reg_names[*]/$asicname/$cur_asic}" -- "$cur") )
-        fi
-    elif [ -n "$cur" ]; then
-        local array=( "${ips[@]}" "${ip_names[@]/#/*.}" )
-        COMPREPLY=( $(compgen -W "${array[*]/%/.}" -- "$cur") )
-        compopt -o nospace
-    else
-        COMPREPLY=( $(compgen -W "${ips[*]/%/.}" -- "$cur") )
-    fi
-}
-
 _umr_comp_option_flags()
 {
     local FLAGS=(bits bitsfull empty_log follow no_follow_ib use_pci use_colour read_smc quiet no_kernel verbose halt_waves disasm_early_term no_disasm disasm_anyways wave64 full_shader no_fold_vm_decode no_scan_waves)
@@ -396,13 +375,10 @@ _umr_completion()
         -lr|--list-regs|-s|--scan)
             _umr_comp_blocks
             ;;
-        -r|--read|-w|--write)
-            _umr_comp_regs
-            ;;
 	--lookup|-lu)
 	    _umr_comp_lookup
 	    ;;
-	--writebit|-wb)
+	-r|--read|-w|--write|--writebit|-wb)
 	    _umr_comp_asic_ipblock_registers
 	    ;;
 	--waves|-wa)
