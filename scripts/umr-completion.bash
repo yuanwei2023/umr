@@ -16,45 +16,6 @@ if [[ ! -d $UMR_DATABASE_PATH ]]; then
     echo " See the FILES section in umr(1)."
 fi
 
-_umr_setup_ips()
-{
-    select_gpu=""
-    if [ $COMP_CWORD -ge 4 ]; then
-        for i in ${!COMP_WORDS[@]}; do
-            if [[ ${COMP_WORDS[$i]} = "--gpu" ]] ||
-                [[ ${COMP_WORDS[$i]} = "-g" ]] ||
-                [[ ${COMP_WORDS[$i]} = "--instance" ]] ||
-                [[ ${COMP_WORDS[$i]} = "-i" ]]; then
-                select_gpu=${COMP_WORDS[$i]}" "${COMP_WORDS[$i+1]}
-                break
-            fi
-        done
-    fi
-
-    ips=( $( sudo $(which umr) $select_gpu -lb ) )
-    asicname=${ips%%.*}
-    unset ip_names
-    for ip in ${ips[@]}
-    do
-        ipname=${ip#*.}
-        ip_names+=($ipname)
-    done
-}
-
-_umr_comp_blocks()
-{
-    _umr_setup_ips
-
-    if [ -z "$cur" ]; then
-        COMPREPLY=( $(compgen -W "${ips[*]}" -- "$cur") )
-    fi
-
-    if [ -n "$cur" ]; then
-        local array=( "${ips[@]}" "${ip_names[@]}" "${ip_names[@]/#/*.}" )
-        COMPREPLY=( $(compgen -W "${array[*]}" -- "$cur") )
-    fi
-}
-
 _umr_comp_option_flags()
 {
     local FLAGS=(bits bitsfull empty_log follow no_follow_ib use_pci use_colour read_smc quiet no_kernel verbose halt_waves disasm_early_term no_disasm disasm_anyways wave64 full_shader no_fold_vm_decode no_scan_waves)
@@ -289,6 +250,38 @@ _umr_comp_lookup()
     unset GPU_NAME GPU_NAME2 DEFAULT_GPU_NAME IP_BLOCKS
 }
 
+_umr_comp_ipblock()
+{
+    # Handle --list-regs and --scan, using the --scan model
+
+    _umr_setup_gpu_ipblocks
+
+    # If compline specifes a GPU, then complete a block of that GPU;
+    # else complete all GPUs and the current GPU's blocks in one list.
+
+    if [[ $COMP_LINE =~ (--force|-f|--gpu|-g|--instance|-i) ]] ; then
+	COMPREPLY=( $(compgen -W "${IP_BLOCKS[*]}" -- "$cur") )
+    elif [[ $cur =~ .*\..* ]] ; then
+	# The ASIC here is the default one recommended in the "else"
+	# case below.  Because of this, we don't use "--force" with
+	# "--list-block" and so also get the instance numbers of the
+	# blocks. Then we combine that with the ASIC and offer it as
+	# completion. See _umr_comp_asic_ipblock_registers() below.
+	local asic=${cur%%.*}
+	local blocks=( `sudo umr --list-blocks | sed -E -e "s/^[[:space:]]*.*\.(.*) \(.*$/\1/g"` )
+	local F=( $(compgen -P "${asic}." -W "${blocks[*]}") )
+	COMPREPLY=( $(compgen -W "${F[*]}" -- "$cur") )
+    else
+	COMPREPLY=( $(compgen -W "${DEFAULT_GPU_NAME}. ${IP_BLOCKS[*]}" -- "$cur") )
+	# This uses the zero element
+	if [[ $COMPREPLY =~ .*\. ]] ; then
+	    compopt -o nospace
+	fi
+    fi
+
+    unset GPU_NAME GPU_NAME2 DEFAULT_GPU_NAME IP_BLOCKS
+}
+
 _umr_comp_asic_ipblock_registers()
 {
     # The format is --writebit asic.ipblock.regname,
@@ -373,7 +366,7 @@ _umr_completion()
 	    COMPREPLY=( $(compgen -W "0 1" -- "$cur") )
 	    ;;
         -lr|--list-regs|-s|--scan)
-            _umr_comp_blocks
+            _umr_comp_ipblock
             ;;
 	--lookup|-lu)
 	    _umr_comp_lookup
