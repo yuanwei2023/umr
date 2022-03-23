@@ -60,7 +60,7 @@ _comp_regs()
     fi
 }
 
-_umr()
+_umr_completion()
 {
     local cur prev 
 
@@ -79,5 +79,5 @@ _umr()
             ;;
     esac
 }
-complete -F _umr umr
 
+complete -F _umr_completion umr
