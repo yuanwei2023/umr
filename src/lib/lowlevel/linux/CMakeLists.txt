@@ -1,4 +1,5 @@
 add_library(umrlow STATIC
+  build_discovery_entry_table.c
   discover.c
   mmio.c
   query_drm.c

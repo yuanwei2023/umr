@@ -1079,6 +1079,15 @@ struct field_info {
 int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
 
 /* discover */
+// size of serialized umr_discovery_table_entry
+#define DET_REC_SIZE (128 + 5 * 2 + 8 * 16)
+
+struct umr_discovery_table_entry {
+	char ipname[128];
+	int die, instance, maj, min, rev;
+	uint64_t segments[16];
+	struct umr_discovery_table_entry *next;
+};
 struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout);
 struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout);
 struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name, umr_err_output errout);
