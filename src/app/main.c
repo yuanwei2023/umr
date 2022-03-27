@@ -863,7 +863,9 @@ int main(int argc, char **argv)
 				if (umr_print_pp_table(asic, NULL) != 0)
 					fprintf(stderr, "[ERROR]: can not print pp table info.\n");
 			}
-		} else if (!strcmp(argv[i], "--gpu_metrics") || !strcmp(argv[i], "-gm")) {
+		} else if (!strcmp(argv[i], "--gpu-metrics") ||
+			   !strcmp(argv[i], "--gpu_metrics") ||
+			   !strcmp(argv[i], "-gm")) {
 			if (!asic)
 				asic = get_asic();
 			if (umr_print_gpu_metrics(asic) != 0)
