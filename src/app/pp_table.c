@@ -20,27 +20,32 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+
+#include <errno.h>
 #include "umrapp.h"
 #include "smu_pptable_navi10.h"
 
-int umr_print_pp_table(struct umr_asic *asic, const char* param)
+int umr_print_pp_table(struct umr_asic *asic, const char *param)
 {
-	FILE* fp;
-	int ret = -1;
+	FILE *fp;
+	int res;
 	char name[256];
 
 	snprintf(name, sizeof(name)-1, \
-		"/sys/class/drm/card%d/device/pp_table", asic->instance);
+		 "/sys/class/drm/card%d/device/pp_table", asic->instance);
 	fp = fopen(name, "r");
-	if (fp) {
-		if (strcmp(asic->asicname, "navi10") == 0 || strcmp(asic->asicname, "navi14") == 0) {
-			ret = umr_navi10_pptable_print(param, fp);
-		}
-		fclose(fp);
-	} else {
-		printf("Powerplay table feature only support on Navi10/Navi14 now.");
-		return -1;
+	if (!fp) {
+		asic->err_msg("fopen: %s: %d\n", strerror(errno), errno);
+		return -errno;
 	}
+	if (strcmp(asic->asicname, "navi10") == 0 ||
+	    strcmp(asic->asicname, "navi14") == 0) {
+		res = umr_navi10_pptable_print(param, fp);
+	} else {
+		asic->err_msg("The powerplay table feature is currently supported only on Navi10/Navi14.\n");
+		res = -1;
+	}
+	fclose(fp);
 
-	return ret;
+	return res;
 }
