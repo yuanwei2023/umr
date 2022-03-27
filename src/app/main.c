@@ -850,7 +850,9 @@ int main(int argc, char **argv)
 			umr_set_clock_performance(asic, "auto");
 			if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
 				printf("power_dpm_force_performance_level: %s", clockperformance);
-		} else if (!strcmp(argv[i], "--ppt_read") || !strcmp(argv[i], "-pptr")) {
+		} else if (!strcmp(argv[i], "--ppt-read") ||
+			   !strcmp(argv[i], "--ppt_read") ||
+			   !strcmp(argv[i], "-pptr")) {
 			if (!asic)
 				asic = get_asic();
 			if (i + 1 < argc) {
