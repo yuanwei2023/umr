@@ -133,7 +133,6 @@ struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblo
 	snprintf(linebuf, (sizeof linebuf) - 1, "/sys/class/drm/card%d/device/ip_discovery/die", instance);
 	top = opendir(linebuf);
 	if (!top) {
-		errout("Cannot open IP discovery directory\n");
 		return NULL;
 	}
 

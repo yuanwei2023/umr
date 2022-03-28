@@ -90,7 +90,13 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did,
 	while (fgets(linebuf, sizeof linebuf, f)) {
 		sscanf(linebuf, "%"SCNx32" %s", &ldid, lname);
 		if (ldid == did && strstr(lname, ".asic")) {
-			asic = umr_database_read_asic(options, lname, errout);
+			if (options->force_asic_file) {
+				asic = umr_database_read_asic(options, lname, errout);
+			} else {
+				asic = umr_discover_asic_by_discovery_table(lname, options, errout);
+				if (!asic)
+					asic = umr_database_read_asic(options, lname, errout);
+			}
 			break;
 		} else if (ldid == did) {
 			asic = umr_discover_asic_by_discovery_table(lname, options, errout);

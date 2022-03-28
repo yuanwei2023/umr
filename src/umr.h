@@ -300,7 +300,8 @@ struct umr_options {
 	    pg_lock,
 	    test_log,
 	    vm_partition,
-	    is_virtual;
+	    is_virtual,
+	    force_asic_file;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {

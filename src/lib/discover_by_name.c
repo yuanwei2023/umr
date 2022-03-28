@@ -41,14 +41,24 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 
 	asic = NULL;
 	sprintf(tmpname, "%s.asic", name);
-	asic = umr_database_read_asic(options, tmpname, errout);
-	if (!asic) {
+
+	if (options->force_asic_file) {
+		asic = umr_database_read_asic(options, tmpname, errout);
+		if (!asic) {
+			asic = umr_discover_asic_by_discovery_table(name, options, errout);
+		}
+	} else {
 		asic = umr_discover_asic_by_discovery_table(name, options, errout);
 		if (!asic) {
-			errout("[ERROR]: Cannot find asic file [%s] in database see README for more information\n", tmpname);
-			return NULL;
+			asic = umr_database_read_asic(options, tmpname, errout);
 		}
 	}
+
+	if (!asic) {
+		errout("[ERROR]: Cannot find asic file [%s] in database see README for more information\n", tmpname);
+		return NULL;
+	}
+
 
 	if (asic) {
 		asic->did = 0;

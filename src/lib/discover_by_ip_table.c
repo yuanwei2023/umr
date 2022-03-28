@@ -177,6 +177,9 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr
 		det = umr_parse_ip_discovery(options->instance, &numblocks, errout);
 	}
 
+	if (!det)
+		return NULL;
+
 	// dump discovered data to test log if open
 	if (options->test_log && options->test_log_fd) {
 		dump_discovery_to_log(det, options);
