@@ -20,8 +20,8 @@
 0x131B kaveri.asic
 0x131C kaveri.asic
 0x131D kaveri.asic
-0x13FE cyan_skillfish
-0x143F cyan_skillfish
+0x13FE cyan_skillfish.asic
+0x143F cyan_skillfish.asic
 0x15D8 picasso.asic
 0x15DD raven1.asic
 0x15E7 renoir.asic
