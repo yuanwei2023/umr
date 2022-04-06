@@ -869,8 +869,8 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 					if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose) {
 						print_pde_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr,
 								pde_idx, pde_entry, address, va_mask, pde_fields);
-						memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 					}
+					memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 				} else {
 					pte_entry = pde_entry;
 					pte_idx = 0;
