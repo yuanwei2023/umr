@@ -26,6 +26,7 @@
 
 #define p(x) printf("\t" #x " == %lu\n" , (unsigned long)asic->config. x)
 #define px(x) printf("\t" #x " == %08lx\n" , (unsigned long)asic->config. x)
+#define plx(x) printf("\t" #x " == %08" PRIx64 "\n" , (uint64_t)asic->config. x)
 
 #define pp(x) printf("\tpci." #x " == %lu\n" , (unsigned long)asic->pci.pdevice-> x)
 #define ppx(x) printf("\tpci." #x " == %lx\n" , (unsigned long)asic->pci.pdevice-> x)
@@ -34,7 +35,7 @@
 
 struct {
 	char *name;
-	unsigned long mask;
+	uint64_t mask;
 } cg_masks[] = {
 M(AMD_CG_SUPPORT_GFX_MGCG, 1UL << 0)
 M(AMD_CG_SUPPORT_GFX_MGLS, 1UL << 1)
@@ -73,7 +74,7 @@ M(AMD_CG_SUPPORT_GFX_FGCG, 1UL << 31)
 
 struct {
 	char *name;
-	unsigned long mask;
+	uint64_t mask;
 } pg_masks[] = {
 M(AMD_PG_SUPPORT_GFX_PG, 1UL << 0)
 M(AMD_PG_SUPPORT_GFX_SMG, 1UL << 1)
@@ -187,11 +188,11 @@ void umr_print_config(struct umr_asic *asic)
 	p(is_apu);
 	px(gfx.rev_id);
 	px(gfx.external_rev_id);
-	px(gfx.cg_flags);
+	plx(gfx.cg_flags);
 	for (x = 0; cg_masks[x].name; x++)
 		if (asic->config.gfx.cg_flags & cg_masks[x].mask)
 			printf("\t\t%s\n", cg_masks[x].name);
-	px(gfx.pg_flags);
+	plx(gfx.pg_flags);
 	for (x = 0; pg_masks[x].name; x++)
 		if (asic->config.gfx.pg_flags & pg_masks[x].mask)
 			printf("\t\t%s\n", pg_masks[x].name);

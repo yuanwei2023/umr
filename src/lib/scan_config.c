@@ -89,6 +89,13 @@ static void parse_rev4(struct umr_asic *asic, uint32_t *data, int *r)
 	asic->config.is_apu = data[(*r)++];
 }
 
+static void parse_rev5(struct umr_asic *asic, uint32_t *data, int *r)
+{
+	parse_rev4(asic, data, r);
+	asic->config.gfx.pg_flags |= ((uint64_t)data[(*r)++]) << 32;
+	asic->config.gfx.cg_flags |= ((uint64_t)data[(*r)++]) << 32;
+}
+
 static uint64_t read_int(char *pci_name, char *fname)
 {
 	char buf[256];
@@ -244,6 +251,8 @@ gca_config:
 		case 3: parse_rev3(asic, data, &r);
 			break;
 		case 4: parse_rev4(asic, data, &r);
+			break;
+		case 5: parse_rev5(asic, data, &r);
 			break;
 		default:
 			asic->err_msg("Invalid or unknown GCA config data header version:%d\n",

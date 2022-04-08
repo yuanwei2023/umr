@@ -208,8 +208,8 @@ struct umr_gfx_config {
 	unsigned num_rbs;
 
 	unsigned rev_id;
-	unsigned cg_flags;
-	unsigned pg_flags;
+	uint64_t cg_flags;
+	uint64_t pg_flags;
 
 	unsigned family;
 	unsigned external_rev_id;
