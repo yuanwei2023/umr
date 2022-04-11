@@ -234,9 +234,6 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			return NULL;
 		}
 		asic = umr_discover_asic_by_did(options, did, errout);
-		if (!asic) {
-			printf("foo!\n");
-		}
 	} else {
 		if (options->dev_name[0]) {
 			asic = umr_discover_asic_by_name(options, options->dev_name, errout);
