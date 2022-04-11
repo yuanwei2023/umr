@@ -234,11 +234,21 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			return NULL;
 		}
 		asic = umr_discover_asic_by_did(options, did, errout);
+		if (!asic) {
+			printf("foo!\n");
+		}
 	} else {
 		if (options->dev_name[0]) {
 			asic = umr_discover_asic_by_name(options, options->dev_name, errout);
 		} else {
 			asic = umr_discover_asic_by_did(options, trydid, errout);
+			if (!asic) {
+				char buf[16];
+				sprintf(buf, "0x%04" PRIx64, (uint64_t)trydid);
+				asic = umr_discover_asic_by_name(options, buf, errout);
+				if (asic)
+					errout("[WARNING]: Unknown ASIC [%s] should be added to pci.did to get proper name\n", buf);
+			}
 		}
 	}
 
