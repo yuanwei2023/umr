@@ -192,7 +192,7 @@ retry:
 	}
 
 	if (!k)
-		asic->err_msg("[BUG]: reg [%s] not found on asic [%s]\n", oregname, asic->asicname);
+		asic->err_msg("[BUG]: reg [%s](%d) not found on asic [%s]\n", oregname, inst, asic->asicname);
 	return NULL;
 }
 
