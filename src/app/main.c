@@ -768,6 +768,8 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--option") || !strcmp(argv[i], "-O")) {
+			if (asic)
+				options = asic->options;
 			if (i + 1 < argc) {
 				parse_options(argv[i+1]);
 				++i;
@@ -776,7 +778,7 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 			}
 			if (asic)
-					asic->options = options;
+				asic->options = options;
 		} else if (!strcmp(argv[i], "--header-dump") || !strcmp(argv[i], "-hd")) {
 			if (!asic)
 				asic = get_asic();
