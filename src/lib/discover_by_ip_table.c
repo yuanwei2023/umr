@@ -163,12 +163,19 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 	return pdet;
 }
 
-struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr_options *options, umr_err_output errout)
+struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_options *options, umr_err_output errout)
 {
 	struct umr_discovery_table_entry *det, *pdet;
 	struct umr_database_scan_item *it, *nit;
 	int numblocks, used_blocks, x, y;
 	struct umr_asic *asic;
+	char asicname[128], *dasic;
+
+	// copy name and remove ".asic" if any
+	strcpy(asicname, aname);
+	dasic = strstr(asicname, ".asic");
+	if (dasic)
+		*dasic = 0;
 
 	// create discovery table
 	if (options->test_log && !options->test_log_fd) {
