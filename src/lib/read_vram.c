@@ -444,7 +444,7 @@ static void print_pde_ai(struct umr_asic *asic,
 }
 
 static void print_pte_ai(struct umr_asic *asic,
-		const char * indentation, int pde_cnt, uint64_t prev_addr,
+		const char * indentation, int pde_cnt, int page_table_depth_count, uint64_t prev_addr,
 		uint64_t pte_idx, uint64_t pte_entry, uint64_t address,
 		uint64_t va_mask, pte_fields_ai_t pte_fields)
 {
@@ -454,7 +454,7 @@ static void print_pte_ai(struct umr_asic *asic,
 		asic->mem_funcs.vm_message("%s ",
 				&indentation[18-pde_cnt*3]);
 		if (pte_fields.pde)
-			asic->mem_funcs.vm_message("PDE0-as-PTE");
+			asic->mem_funcs.vm_message("PDE%d-as-PTE", page_table_depth_count - pde_cnt);
 		else
 			asic->mem_funcs.vm_message("PTE");
 	}
@@ -976,7 +976,7 @@ pde_is_pte:
 					print_pde_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr,
 							pte_idx, pte_entry, address, va_mask, pde_fields);
 				} else {
-					print_pte_ai(asic, indentation, pde_cnt, prev_addr, pte_idx,
+					print_pte_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr, pte_idx,
 							pte_entry, address, va_mask, pte_fields);
 					pte_fields.pte_mask = va_mask;
 				}
@@ -1055,7 +1055,7 @@ pde_is_pte:
 			pte_fields = decode_pte_entry_ai(pte_entry);
 
 			if (asic->options.verbose)
-				print_pte_ai(asic, NULL, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
+				print_pte_ai(asic, NULL, 0, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
 						~((uint64_t)0xFFF), pte_fields);
 
 			if (pdst && !pte_fields.valid)
