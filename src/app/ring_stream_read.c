@@ -1249,8 +1249,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 {
 	char ringname[32], from[32], to[32];
 	int  enable_decoder, start, end;
-	uint32_t vmid, nwords;
-	uint64_t addr;
+	uint32_t vmid = 0, nwords;
+	uint64_t addr = 0;
 
 	start = end = 0;
 	nwords = 0;
@@ -1276,7 +1276,7 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 			!memcmp(ringname, "comp", 4)) {
 			enable_decoder = 4;
 		} else if (!memcmp(ringname, "sdma", 4) ||
-			       !memcmp(ringname, "page", 4)) {
+			   !memcmp(ringname, "page", 4)) {
 			enable_decoder = 3;
 		} else {
 			enable_decoder = 0;
