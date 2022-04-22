@@ -719,6 +719,7 @@ static void init_asics() {
 		if (asics[i]->family > FAMILY_VI)
 			asics[i]->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
 
+		umr_scan_config(asics[i], 1);
 		i++;
 
 		memset(&opt, 0, sizeof(opt));

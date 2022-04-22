@@ -32,7 +32,7 @@ public:
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		static const char *families[] = {
-			"SI", "CIK", "VI", "AI", "NV", "NPI"
+			"SI", "CIK", "VI", "AI", "NV", "NPI", "CFG",
 		};
 
 		ImGui::BeginChild("Info", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);

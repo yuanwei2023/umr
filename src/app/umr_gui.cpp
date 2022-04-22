@@ -128,12 +128,13 @@ static bool done;
 
 struct AsicData {
 	AsicData(JSON_Object *answer, long did, int instance) {
-		options.no_kernel = true;
+		memset(&options, 0, sizeof options);
 		options.instance = instance;
 		options.database_path[0] = '\0';
 		options.no_disasm = 0;
 		asic = umr_discover_asic_by_did(&options, did, printf);
 		asic->instance = instance;
+		umr_scan_config(asic, 1);
 
 		panels.push_back(new InfoPanel(asic));
 		panels.push_back(new RegistersPanel(asic));
