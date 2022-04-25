@@ -38,7 +38,7 @@ execute_process(COMMAND  git branch --show-current
 add_definitions(-DUMR_BUILD_VER=${RELEASE_VERSION})
 add_definitions(-DUMR_BUILD_REV=\"${GIT_REV}\")
 add_definitions(-DUMR_BUILD_BRANCH=\"${GIT_BRANCH}\")
-add_definitions(-DUMR_DB_DIR=\"${CMAKE_INSTALL_FULL_BINDIR}/../share/umr/database/\")
+add_definitions(-DUMR_DB_DIR=\"${CMAKE_INSTALL_FULL_DATADIR}/umr/database/\")
 add_definitions(-DUMR_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\")
 
 # Add local repository for FindXXX.cmake modules.
