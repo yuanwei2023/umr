@@ -674,7 +674,7 @@ static void sdma_done(struct umr_sdma_stream_decode_ui *ui) {
 
 static struct umr_asic *asics[16] = {0};
 
-static void init_asics() {
+static void init_asics(int allow_ip_discovery) {
 	int i = 0;
 	struct umr_options opt = {0};
 	opt.need_scan = 1;
@@ -682,6 +682,11 @@ static void init_asics() {
 	opt.scanblock = "";
 	opt.instance = 0;
 	opt.vm_partition = -1;
+	/* Disable IP discovery in server mode for now because the client
+	 * may not be able to build the same umr_asic struct (eg: if IP discovery
+	 * is not supported or if the GPU is a different model).
+	 */
+	opt.force_asic_file = !allow_ip_discovery;
 	while ((asics[i] = umr_discover_asic(&opt, NULL))) {
 		// assign linux callbacks
 		asics[i]->mem_funcs.vm_message = dummy_printf;
@@ -912,7 +917,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 	}
 
 	if (asics[0] == NULL)
-		init_asics();
+		init_asics(0);
 
 	struct umr_asic *asic = NULL;
 	JSON_Object *asc = json_object_get_object(request, "asic");
@@ -1444,7 +1449,7 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 	if (asic) {
 		asics[0] = asic;
 	} else {
-		init_asics();
+		init_asics(1);
 	}
 
 	/* Everything is ready. Wait for commands */
