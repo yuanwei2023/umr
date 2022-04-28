@@ -26,6 +26,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <errno.h>
 #if UMR_GUI_REMOTE
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
@@ -1018,11 +1019,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
 		const char *content_before = read_file(path);
 
-		struct timespec req;
-		req.tv_sec = 0;
-		req.tv_nsec = step_ms * 1000000;
+		struct timespec req, rem;
 		int steps = period_ms / step_ms;
 		for (int i = 0; i < steps; i++) {
+			req.tv_sec = 0;
+			req.tv_nsec = step_ms * 1000000;
+
 			for (int j = 0; j < num_reg; j++) {
 				uint64_t value = (uint64_t)asic->reg_funcs.read_reg(asic,
 																	reg[j]->addr * (reg[j]->type == REG_MMIO ? 4 : 1),
@@ -1033,7 +1035,9 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 				}
 			}
 
-			nanosleep(&req, NULL);
+			while (nanosleep(&req, &rem) == EINTR) {
+				req = rem;
+			}
 		}
 
 		char *copy = strdup(content_before);
