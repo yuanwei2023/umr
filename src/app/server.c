@@ -1022,6 +1022,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		int period_ms = json_object_get_number(request, "period");
 		unsigned *counters = calloc(32 * num_reg, sizeof(unsigned));
 
+		/* Disable GFXOFF */
+		if (asic->fd.gfxoff >= 0) {
+			uint32_t value = 0;
+			write(asic->fd.gfxoff, &value, sizeof(value));
+		}
+
 		char path[256];
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
 		const char *content_before = read_file(path);
@@ -1045,6 +1051,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			while (nanosleep(&req, &rem) == EINTR) {
 				req = rem;
 			}
+		}
+
+		/* Re-enable GFXOFF */
+		if (asic->fd.gfxoff >= 0) {
+			uint32_t value = 1;
+			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
 		char *copy = strdup(content_before);
