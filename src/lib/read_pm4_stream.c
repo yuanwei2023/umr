@@ -401,9 +401,8 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 	// since the kernel returned values might be unwrapped.
 	ringdata = umr_read_ring_data(asic, ringname, &ringsize);
 	
-	if ((stop != -1) && (uint32_t)stop >= ringsize)
+	if ((stop != -1) && (uint32_t)(stop * 4) >= ringsize)
 		stop = (ringsize / 4) - 1;
-
 
 	if (ringdata) {
 		ringsize /= 4;
