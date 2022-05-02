@@ -534,9 +534,9 @@ static void print_count_value(uint64_t count)
 		attron(COLOR_PAIR(i)|A_BOLD);
 	}
 	if (top_options.high_precision)
-		printw("%5d.%d %%", count/10, count%10);
+		printw("%5" PRIu64 ".%" PRIu64 " %%", count/10, count%10);
 	else
-		printw("%5d %%  ", count);
+		printw("%5" PRIu64 " %%  ", count);
 	if (options.use_colour)
 		attroff(COLOR_PAIR(i)|A_BOLD);
 }
@@ -565,22 +565,22 @@ static void print_sensors(struct umr_bitfield *bits, uint64_t *counts)
 			printw(namefmt, bits[i].regname);
 			switch (bits[i].stop >> 4) {
 				default:
-					printw("%5d    ", counts[i]);
+					printw("%5" PRIu64 "    ", counts[i]);
 					break;
 				case SENSOR_MHZ:
-					printw("%5d MHz", counts[i]);
+					printw("%5" PRIu64 " MHz", counts[i]);
 					break;
 				case SENSOR_MILLIVOLT:
-					printw("%5d.%3d", counts[i]/1000, counts[i]%1000);
+					printw("%5" PRIu64 ".%3" PRIu64, counts[i]/1000, counts[i]%1000);
 					break;
 				case SENSOR_PERCENT:
-					printw("%5d %%  ", counts[i]);
+					printw("%5" PRIu64 " %%  ", counts[i]);
 					break;
 				case SENSOR_TEMP:
-					printw("%5d C  ", counts[i]);
+					printw("%5" PRIu64 " C  ", counts[i]);
 					break;
 				case SENSOR_POWER:
-					printw("%3d.%02d W ", counts[i]/100, counts[i]%100);
+					printw("%3" PRIu64 ".%02" PRIu64 " W ", counts[i]/100, counts[i]%100);
 					break;
 			};
 			if ((++print_j & (top_options.wide ? 3 : 1)) != 0)
@@ -600,7 +600,7 @@ static void print_drm(struct umr_bitfield *bits, uint64_t *counts)
 			printw(namefmt, bits[i].regname);
 			switch (bits[i].stop) {
 				case DRM_INFO_COUNT:
-					printw("%5d    ", counts[i]);
+					printw("%5" PRIu64 "    ", counts[i]);
 					break;
 				case DRM_INFO_BYTES:
 					if (counts[i] < 1024)
@@ -787,7 +787,7 @@ static void grab_vram(struct umr_asic *asic)
 		}
 		fclose(f);
 
-		printw("\nVRAM: %lu/%lu vis %lu/%llu (MiB)\n",
+		printw("\nVRAM: %lu/%lu vis %lu/%" PRIu64" (MiB)\n",
 		       (used * 4096) / 1048576, (total * 4096) / 1048576,
 		       vis_usage, visible_vram_size >> 20);
 	}
