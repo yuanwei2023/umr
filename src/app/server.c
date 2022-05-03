@@ -519,6 +519,58 @@ static uint32_t parse_sensor_value(enum sensor_maps map, uint32_t value)
 	return result;
 }
 
+JSON_Object *parse_pp_features_sysfs_file(const char *content)
+{
+	/* Max 64 bits */
+	char label[64];
+	const char *ptr = content;
+	uint64_t raw_value = 0;
+	JSON_Object *out = json_object(json_value_init_object());
+	JSON_Array *features = json_array(json_value_init_array());
+	json_object_set_value(out, "features", json_array_get_wrapping_value(features));
+	for (int i = 0; i < 64; i++) {
+		sprintf(label, "%02d.", i);
+		const char *feature = lookup_field(&ptr, label, ' ');
+		if (!feature)
+			break;
+		const char *sp = strchr(feature, ' ');
+		if (!sp) {
+			json_value_free(json_object_get_wrapping_value(out));
+			return NULL;
+		}
+		JSON_Object *feat = json_object(json_value_init_object());
+		json_object_set_string_with_len(feat, "name", feature, sp - feature);
+		int on = strstr(feature, "enabled") != NULL;
+		json_object_set_boolean(feat, "on", on);
+		int implicit_bit = json_array_get_count(features);
+		int bit;
+		/* Skip spaces */
+		while (*sp == ' ')
+			sp++;
+		/* Parse bit */
+		if (sscanf(sp, "(%d)", &bit) == 1) {
+			/* If there's a gap insert dummy values, so array index can be used
+			 * as bit index. */
+			if (implicit_bit < bit) {
+				int delta = bit - implicit_bit;
+				for (int j = 0; j < delta; j++)
+					json_array_append_value(features, json_value_init_object());
+			}
+		} else {
+			json_value_free(json_object_get_wrapping_value(out));
+			return NULL;
+		}
+
+		json_array_append_value(features, json_object_get_wrapping_value(feat));
+		if (on) {
+			raw_value |= 1lu << bit;
+		}
+	}
+	json_object_set_number(out, "raw_value", raw_value);
+
+	return out;
+}
+
 struct {
 	uint64_t pba;
 	uint64_t va_mask;
@@ -1369,6 +1421,29 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			}
 			close(asic->fd.sensors);
 			json_object_set_value(json_object(answer), "values", json_array_get_wrapping_value(values));
+		}
+	} else if (strcmp(command, "pp_features") == 0) {
+		char path[512];
+		sprintf(path, "/sys/class/drm/card%d/device/pp_features", asic->instance);
+		if (!json_object_has_value(request, "set")) {
+			char *content = read_file(path);
+			if (content) {
+				answer = json_object_get_wrapping_value(parse_pp_features_sysfs_file(content));
+			} else {
+				last_error = "unsupported";
+				goto error;
+			}
+		} else {
+			FILE *fd = fopen(path, "w");
+			if (fd) {
+				char tmp[64];
+				sprintf(tmp, "0x%lx", (uint64_t)json_object_get_number(request, "set"));
+				fwrite(tmp, 1, strlen(tmp), fd);
+				fclose(fd);
+			}
+
+			char *content = read_file(path);
+			answer = json_object_get_wrapping_value(parse_pp_features_sysfs_file(content));
 		}
 	} else if (!strcmp(command, "memory-usage")) {
 		const char *names[] = {

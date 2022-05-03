@@ -6,6 +6,7 @@ extern JSON_Value *compare_fence_infos(const char *before, const char *after);
 extern JSON_Array *parse_vm_info(const char *content);
 extern JSON_Array *parse_kms_framebuffer_sysfs_file(const char *content);
 extern JSON_Object *parse_kms_state_sysfs_file(const char *content);
+extern JSON_Object *parse_pp_features_sysfs_file(const char *content);
 
 enum TEST_RESULT test_parse_sysfs_clock_file()
 {
@@ -271,10 +272,117 @@ enum TEST_RESULT test_parse_sysfs_state()
     return TEST_SUCCESS;
 }
 
+enum TEST_RESULT test_parse_sysfs_pp_features()
+{
+    const char *content =
+        "features high: 0x00003763 low: 0xa37f7dff\n"
+        "No. Feature               Bit : State\n"
+        "00. DPM_PREFETCHER       ( 0) : enabled\n"
+        "01. DPM_GFXCLK           ( 1) : enabled\n"
+        "02. DPM_GFX_GPO          ( 2) : enabled\n"
+        "03. DPM_UCLK             ( 3) : enabled\n"
+        "04. DPM_FCLK             ( 4) : enabled\n"
+        "05. DPM_SOCCLK           ( 5) : enabled\n"
+        "06. DPM_MP0CLK           ( 6) : enabled\n"
+        "07. DPM_LINK             ( 7) : enabled\n"
+        "08. DPM_DCEFCLK          ( 8) : enabled\n"
+        "09. DPM_XGMI             ( 9) : disabled\n"
+        "10. MEM_VDDCI_SCALING    (10) : enabled\n"
+        "11. MEM_MVDD_SCALING     (11) : enabled\n"
+        "12. DS_GFXCLK            (12) : enabled\n"
+        "13. DS_SOCCLK            (13) : enabled\n"
+        "14. DS_FCLK              (14) : enabled\n"
+        "15. DS_LCLK              (15) : disabled\n"
+        "16. DS_DCEFCLK           (16) : enabled\n"
+        "17. DS_UCLK              (17) : enabled\n"
+        "18. GFX_ULV              (18) : enabled\n"
+        "19. FW_DSTATE            (19) : enabled\n"
+        "20. GFXOFF               (20) : enabled\n"
+        "21. BACO                 (21) : enabled\n"
+        "22. MM_DPM_PG            (22) : enabled\n"
+        "23. PPT                  (24) : enabled\n"
+        "24. TDC                  (25) : enabled\n"
+        "25. APCC_PLUS            (26) : disabled\n"
+        "26. GTHR                 (27) : disabled\n"
+        "27. ACDC                 (28) : disabled\n"
+        "28. VR0HOT               (29) : enabled\n"
+        "29. VR1HOT               (30) : disabled\n"
+        "30. FW_CTF               (31) : enabled\n"
+        "31. FAN_CONTROL          (32) : enabled\n"
+        "32. THERMAL              (33) : enabled\n"
+        "33. GFX_DCS              (34) : disabled\n"
+        "34. RM                   (35) : disabled\n"
+        "35. LED_DISPLAY          (36) : disabled\n"
+        "36. GFX_SS               (37) : enabled\n"
+        "37. OUT_OF_BAND_MONITOR  (38) : enabled\n"
+        "38. TEMP_DEPENDENT_VMIN  (39) : disabled\n"
+        "39. MMHUB_PG             (40) : enabled\n"
+        "40. ATHUB_PG             (41) : enabled\n"
+        "41. APCC_DFLL            (42) : enabled\n"
+        "42. RSMU_SMN_CG          (44) : enabled;\n";
+
+    JSON_Object *out = parse_pp_features_sysfs_file(content);
+
+    const char *exp = "{\"raw_value\":25716712242687, \"features\":["
+        "{\"name\":\"DPM_PREFETCHER\", \"on\":true},"
+        "{\"name\":\"DPM_GFXCLK\", \"on\":true},"
+        "{\"name\":\"DPM_GFX_GPO\", \"on\":true},"
+        "{\"name\":\"DPM_UCLK\", \"on\":true},"
+        "{\"name\":\"DPM_FCLK\", \"on\":true},"
+        "{\"name\":\"DPM_SOCCLK\", \"on\":true},"
+        "{\"name\":\"DPM_MP0CLK\", \"on\":true},"
+        "{\"name\":\"DPM_LINK\", \"on\":true},"
+        "{\"name\":\"DPM_DCEFCLK\", \"on\":true},"
+        "{\"name\":\"DPM_XGMI\", \"on\":false},"
+        "{\"name\":\"MEM_VDDCI_SCALING\", \"on\":true},"
+        "{\"name\":\"MEM_MVDD_SCALING\", \"on\":true},"
+        "{\"name\":\"DS_GFXCLK\", \"on\":true},"
+        "{\"name\":\"DS_SOCCLK\", \"on\":true},"
+        "{\"name\":\"DS_FCLK\", \"on\":true},"
+        "{\"name\":\"DS_LCLK\", \"on\":false},"
+        "{\"name\":\"DS_DCEFCLK\", \"on\":true},"
+        "{\"name\":\"DS_UCLK\", \"on\":true},"
+        "{\"name\":\"GFX_ULV\", \"on\":true},"
+        "{\"name\":\"FW_DSTATE\", \"on\":true},"
+        "{\"name\":\"GFXOFF\", \"on\":true},"
+        "{\"name\":\"BACO\", \"on\":true},"
+        "{\"name\":\"MM_DPM_PG\", \"on\":true},"
+        "{},"
+        "{\"name\":\"PPT\", \"on\":true},"
+        "{\"name\":\"TDC\", \"on\":true},"
+        "{\"name\":\"APCC_PLUS\", \"on\":false},"
+        "{\"name\":\"GTHR\", \"on\":false},"
+        "{\"name\":\"ACDC\", \"on\":false},"
+        "{\"name\":\"VR0HOT\", \"on\":true},"
+        "{\"name\":\"VR1HOT\", \"on\":false},"
+        "{\"name\":\"FW_CTF\", \"on\":true},"
+        "{\"name\":\"FAN_CONTROL\", \"on\":true},"
+        "{\"name\":\"THERMAL\", \"on\":true},"
+        "{\"name\":\"GFX_DCS\", \"on\":false},"
+        "{\"name\":\"RM\", \"on\":false},"
+        "{\"name\":\"LED_DISPLAY\", \"on\":false},"
+        "{\"name\":\"GFX_SS\", \"on\":true},"
+        "{\"name\":\"OUT_OF_BAND_MONITOR\", \"on\":true},"
+        "{\"name\":\"TEMP_DEPENDENT_VMIN\", \"on\":false},"
+        "{\"name\":\"MMHUB_PG\", \"on\":true},"
+        "{\"name\":\"ATHUB_PG\", \"on\":true},"
+        "{\"name\":\"APCC_DFLL\", \"on\":true},"
+        "{},"
+        "{\"name\":\"RSMU_SMN_CG\", \"on\":true}"
+    "]}";
+
+    JSON_Value *expected = json_parse_string(exp);
+
+    ASSERT_EQ(json_value_equals(json_object_get_wrapping_value(out), expected), 1);
+
+    return TEST_SUCCESS;
+}
+
 DEFINE_TESTS(server_tests)
 TEST(test_parse_sysfs_clock_file, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_fence_info, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_vm_info, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_framebuffer, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_state, "navi_reg_only.envdef", "navi10"),
+TEST(test_parse_sysfs_pp_features, "navi_reg_only.envdef", "navi10"),
 END_TESTS(server_tests);
