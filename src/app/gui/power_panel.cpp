@@ -28,6 +28,7 @@ class PowerPanel : public Panel {
 public:
 	PowerPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL),
 		sensors_last_answer(NULL),
+		pp_last_answer(NULL),
 		consumed(false),
 		sensor_previous_values(NULL) {}
 
@@ -46,17 +47,20 @@ public:
 			if (last_answer)
 				json_value_free(json_object_get_wrapping_value(last_answer));
 			last_answer = json_object(json_value_deep_copy(answer));
-			consumed = false;
 		} else if (!strcmp(command, "sensors")) {
 			if (sensors_last_answer)
 				json_value_free(json_object_get_wrapping_value(sensors_last_answer));
 			sensors_last_answer = json_object(json_value_deep_copy(answer));
 			consumed = false;
+		} else if (!strcmp(command, "pp_features")) {
+			if (pp_last_answer)
+				json_value_free(json_object_get_wrapping_value(pp_last_answer));
+			pp_last_answer = json_object(json_value_deep_copy(answer));
 		}
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
-		ImGui::BeginChild("power profiles", ImVec2(avail.x / 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::BeginChild("power profiles", ImVec2(avail.x / 5, 0), false, ImGuiWindowFlags_NoTitleBar);
 		static float last_sensor_read = 0;
 		static float sensor_read_interval = 0.5;
 		if (!last_answer) {
@@ -82,11 +86,12 @@ public:
 		}
 		ImGui::EndChild();
 		ImGui::SameLine();
-		ImGui::BeginChild("power sensors", ImVec2(avail.x * 2.0/ 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::BeginChild("power sensors", ImVec2(avail.x * 1.0 / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
 		ImGui::Text("Sensors values:");
 		if (last_sensor_read > sensor_read_interval) {
 			if (can_send_request) {
 				send_sensors_command();
+				send_pp_features_command(0, false);
 				last_sensor_read = 0;
 			}
 		} else {
@@ -94,6 +99,7 @@ public:
 		}
 
 		if (sensors_last_answer) {
+			ImGui::SetNextItemWidth(avail.x / 4);
 			ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
 
 			const int old_value_count = 100;
@@ -129,6 +135,40 @@ public:
 			}
 		}
 		ImGui::EndChild();
+		ImGui::SameLine();
+		ImGui::BeginChild("power features", ImVec2(0, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::Text("PowerPlay features:");
+		if (pp_last_answer) {
+			uint64_t raw_value = json_object_get_number(pp_last_answer, "raw_value");
+			uint64_t original = raw_value;
+			ImGui::BeginTable("shader", 2, ImGuiTableFlags_Borders);
+			JSON_Array *bits = json_object_get_array(pp_last_answer, "features");
+			for (size_t i = 0; i < json_array_get_count(bits); i++) {
+				JSON_Object *feat = json_object(json_array_get_value(bits, i));
+				if (!json_object_has_value(feat, "name"))
+					continue;
+				if ((i % 2) == 0) {
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+				} else {
+					ImGui::TableSetColumnIndex(1);
+				}
+				bool v = json_object_get_boolean(feat, "on");
+				if (ImGui::Checkbox(json_object_get_string(feat, "name"), &v)) {
+					uint64_t b = 1lu << i;
+					if (v)
+						raw_value |= b;
+					else
+						raw_value &= ~b;
+				}
+			}
+			ImGui::EndTable();
+			if (raw_value != original)
+				send_pp_features_command(raw_value, true);
+		} else {
+			ImGui::Text("(only available for Vega10 and later dGPUs)");
+		}
+		ImGui::EndChild();
 		return sensors_last_answer != NULL;
 	}
 
@@ -147,9 +187,18 @@ private:
 		send_request(req);
 	}
 
+	void send_pp_features_command(uint64_t new_value, bool set) {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "pp_features");
+		if (set)
+			json_object_set_number(json_object(req), "set", new_value);
+		send_request(req);
+	}
+
 private:
 	JSON_Object *last_answer;
 	JSON_Object *sensors_last_answer;
+	JSON_Object *pp_last_answer;
 	bool consumed;
 	float *sensor_previous_values;
 	int sensor_values_offset;
