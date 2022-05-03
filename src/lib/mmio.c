@@ -258,6 +258,7 @@ int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint3
 {
 	struct umr_reg *grbm_idx;
 	uint32_t data = 0;
+	int bank, r;
 
 	grbm_idx = umr_find_reg_data(asic, "mmGRBM_GFX_INDEX");
 	if (grbm_idx) {
@@ -284,7 +285,11 @@ int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint3
 				data |= umr_bitslice_compose_value(asic, grbm_idx, "SA_INDEX", sh);
 			}
 		}
-		return umr_write_reg(asic, grbm_idx->addr * 4, data, REG_MMIO);
+		bank = asic->options.use_bank;
+		asic->options.use_bank = 0;
+		r = umr_write_reg(asic, grbm_idx->addr * 4, data, REG_MMIO);
+		asic->options.use_bank = bank;
+		return r;
 	} else {
 		return -1;
 	}
@@ -294,6 +299,7 @@ int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uin
 {
 	struct umr_reg *srbm_idx;
 	uint32_t data = 0;
+	int bank, r;
 
 	if (asic->family >= FAMILY_AI)
 		srbm_idx = umr_find_reg_data(asic, "mmGRBM_GFX_CNTL");
@@ -305,7 +311,11 @@ int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uin
 		data |= umr_bitslice_compose_value(asic, srbm_idx, "MEID", me);
 		data |= umr_bitslice_compose_value(asic, srbm_idx, "VMID", vmid);
 		data |= umr_bitslice_compose_value(asic, srbm_idx, "QUEUEID", queue);
-		return umr_write_reg(asic, srbm_idx->addr * 4, data, REG_MMIO);
+		bank = asic->options.use_bank;
+		asic->options.use_bank = 0;
+		r = umr_write_reg(asic, srbm_idx->addr * 4, data, REG_MMIO);
+		asic->options.use_bank = bank;
+		return r;
 	} else {
 		return -1;
 	}
