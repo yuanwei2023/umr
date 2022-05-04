@@ -160,7 +160,14 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 			det = det->next;
 		}
 	}
-	return pdet;
+
+	// no discovery data in log so return NULL to error out
+	if (det == pdet) {
+		free(det);
+		return NULL;
+	} else {
+		return pdet;
+	}
 }
 
 struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_options *options, umr_err_output errout)
