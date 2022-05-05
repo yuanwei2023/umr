@@ -111,12 +111,22 @@ public:
 				sensor_values_offset = 0;
 			}
 
+			ImVec2 previous_cursor;
 			for (int i = 0; i < sensors_count; i++) {
 				JSON_Object *v = json_object(json_array_get_value(values, i));
 				sensor_previous_values[i * old_value_count + sensor_values_offset] =
 					(int)json_object_get_number(v, "value");
 
-				ImGui::PlotLines(json_object_get_string(v, "name"),
+				int same_graph = 0;
+
+				if (i < sensors_count - 1) {
+					previous_cursor = ImGui::GetCursorScreenPos();
+				} else {
+					same_graph = 1;
+					ImGui::SetCursorScreenPos(previous_cursor);
+				}
+
+				ImGui::PlotLines(same_graph ? "" : json_object_get_string(v, "name"),
 									 &sensor_previous_values[i * old_value_count],
 									 old_value_count,
 									 sensor_values_offset + 1,
@@ -125,7 +135,13 @@ public:
 									 json_object_get_number(v, "max"),
 									 ImVec2(0, avail.y / (2 + sensors_count)));
 				ImGui::SameLine();
-				ImGui::Text(": %d %s",
+				if (same_graph) {
+					ImVec2 c = ImGui::GetCursorScreenPos();
+					c.y += ImGui::GetTextLineHeightWithSpacing();
+					ImGui::SetCursorScreenPos(c);
+				}
+				ImGui::Text("%s: %d %s",
+					same_graph ? json_object_get_string(v, "name") : "",
 					(int)sensor_previous_values[i * old_value_count + sensor_values_offset],
 					json_object_get_string(v, "unit"));
 			}
