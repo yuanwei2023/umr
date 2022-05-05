@@ -44,6 +44,7 @@ add_library(umrapp STATIC
   ring_stream_read.c
   vbios.c
   discovery.c
+  print_cpc.c
   ${GUI_SOURCE}
 )
 
