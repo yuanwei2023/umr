@@ -29,7 +29,8 @@ public:
 	PowerPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL),
 		sensors_last_answer(NULL),
 		pp_last_answer(NULL),
-		consumed(false),
+		hwmon_last_answer(NULL),
+		consumed(true),
 		sensor_previous_values(NULL) {}
 
 	~PowerPanel() {
@@ -37,6 +38,10 @@ public:
 			json_value_free(json_object_get_wrapping_value(last_answer));
 		if (sensors_last_answer)
 			json_value_free(json_object_get_wrapping_value(sensors_last_answer));
+		if (pp_last_answer)
+			json_value_free(json_object_get_wrapping_value(pp_last_answer));
+		if (hwmon_last_answer)
+			json_value_free(json_object_get_wrapping_value(hwmon_last_answer));
 		free(sensor_previous_values);
 	}
 
@@ -56,6 +61,12 @@ public:
 			if (pp_last_answer)
 				json_value_free(json_object_get_wrapping_value(pp_last_answer));
 			pp_last_answer = json_object(json_value_deep_copy(answer));
+		} else if (!strcmp(command, "hwmon")) {
+			if (hwmon_last_answer)
+				json_value_free(json_object_get_wrapping_value(hwmon_last_answer));
+			hwmon_last_answer = NULL;
+			if (json_object_has_value(json_object(answer), "hwmons"))
+				hwmon_last_answer = json_object(json_value_deep_copy(answer));
 		}
 	}
 
@@ -92,6 +103,7 @@ public:
 			if (can_send_request) {
 				send_sensors_command();
 				send_pp_features_command(0, false);
+				send_fans_command(-1, -1, -1);
 				last_sensor_read = 0;
 			}
 		} else {
@@ -133,7 +145,9 @@ public:
 									 NULL,
 									 json_object_get_number(v, "min"),
 									 json_object_get_number(v, "max"),
-									 ImVec2(0, avail.y / (2 + sensors_count)));
+									 ImVec2(0, avail.y / (2 + sensors_count)),
+									 sizeof(float),
+									 same_graph);
 				ImGui::SameLine();
 				if (same_graph) {
 					ImVec2 c = ImGui::GetCursorScreenPos();
@@ -148,6 +162,63 @@ public:
 			if (!consumed) {
 				sensor_values_offset = (sensor_values_offset + 1) % old_value_count;
 				consumed = true;
+			}
+		}
+
+		if (hwmon_last_answer) {
+			JSON_Array *hwmons = json_object_get_array(hwmon_last_answer, "hwmons");
+
+			for (int i = 0; i < json_array_get_count(hwmons); i++) {
+				JSON_Object *hwmon = json_object(json_array_get_value(hwmons, i));
+				int hwmon_id = json_object_get_number(hwmon, "id");
+				ImGui::Text("hwmon%d:", hwmon_id);
+				ImGui::Text("   Fan:");
+				ImGui::Separator();
+				JSON_Object *fan = json_object(json_object_get_value(hwmon, "fan"));
+				float v = json_object_get_number(fan, "value");
+				float min = json_object_get_number(fan, "min");
+				float max = json_object_get_number(fan, "max");
+				int mode = (int) json_object_get_number(fan, "mode");
+				int new_mode = -1, new_pwm = -1;
+				float percent = 100.0f * v / 255;
+
+				if (ImGui::SliderFloat("", &percent, 0, 100, "%.0f %%"))
+					new_pwm = (int) (255.0 * percent / 100.0) ;
+
+				const char *modes[] = { "none (!)", "manual (!)", "auto" };
+				ImGui::SameLine();
+				ImGui::Text("Control Mode:");
+				ImGui::SameLine();
+				ImGui::BeginGroup();
+				for (int i = 2; i >= 1; i--) {
+					if (ImGui::RadioButton(modes[i], mode == i)) {
+						new_mode = i;
+					}
+				}
+				ImGui::EndGroup();
+
+				if (new_mode >= 0 || new_pwm >= 0) {
+					send_fans_command(hwmon_id, new_mode, new_pwm);
+				}
+
+				JSON_Array *temps = json_object_get_array(hwmon, "temp");
+				ImGui::Text("   Temperatures:");
+				ImGui::BeginTable("temps", 3, ImGuiTableFlags_Borders);
+				ImGui::TableSetupColumn("Label");
+				ImGui::TableSetupColumn("Value (°C)");
+				ImGui::TableSetupColumn("Critical (°C)");
+				ImGui::TableHeadersRow();
+				for (int j = 0; j < json_array_get_count(temps); j++) {
+					JSON_Object *temp = json_object(json_array_get_value(temps, j));
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::Text("%s", json_object_get_string(temp, "label"));
+					ImGui::TableSetColumnIndex(1);
+					ImGui::Text("%d", (int) json_object_get_number(temp, "value") / 1000);
+					ImGui::TableSetColumnIndex(2);
+					ImGui::Text("%d", (int) json_object_get_number(temp, "critical") / 1000);
+				}
+				ImGui::EndTable();
 			}
 		}
 		ImGui::EndChild();
@@ -211,10 +282,24 @@ private:
 		send_request(req);
 	}
 
+	void send_fans_command(int hwmon, int new_mode, int new_pwm) {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "hwmon");
+		if (hwmon >= 0) {
+			JSON_Value *set = json_value_init_object();
+			json_object_set_number(json_object(set), "hwmon", hwmon);
+			json_object_set_number(json_object(set), "mode", new_mode);
+			json_object_set_number(json_object(set), "value", new_pwm);
+			json_object_set_value(json_object(req), "set", set);
+		}
+		send_request(req);
+	}
+
 private:
 	JSON_Object *last_answer;
 	JSON_Object *sensors_last_answer;
 	JSON_Object *pp_last_answer;
+	JSON_Object *hwmon_last_answer;
 	bool consumed;
 	float *sensor_previous_values;
 	int sensor_values_offset;
