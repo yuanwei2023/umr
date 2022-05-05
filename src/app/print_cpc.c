@@ -86,7 +86,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			}
 
 			uint32_t iptr = read_banked_reg(asic, iptr_name);
-			if (asic->family <= FAMILY_AI) {
+			if (asic->family < FAMILY_AI) {
 				uint32_t istat = read_banked_reg(asic, istat_name);
 				printf("ME %u Pipe %u: INSTR_PTR 0x%x  INT_STAT_DEBUG 0x%x\n", me, pipe, iptr, istat);
 			} else {
