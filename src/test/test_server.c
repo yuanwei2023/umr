@@ -378,6 +378,92 @@ enum TEST_RESULT test_parse_sysfs_pp_features()
     return TEST_SUCCESS;
 }
 
+enum TEST_RESULT test_parse_sysfs_pp_features2()
+{
+    const char *content =
+        "Current ppfeatures: 0x0000000019f0e3cf\n"
+        "FEATURES            BITMASK                ENABLEMENT\n"
+        "DPM_PREFETCHER      0x0000000000000001      Y\n"
+        "GFXCLK_DPM          0x0000000000000002      Y\n"
+        "UCLK_DPM            0x0000000000000004      Y\n"
+        "SOCCLK_DPM          0x0000000000000008      Y\n"
+        "UVD_DPM             0x0000000000000010      N\n"
+        "VCE_DPM             0x0000000000000020      N\n"
+        "ULV                 0x0000000000000040      Y\n"
+        "MP0CLK_DPM          0x0000000000000080      Y\n"
+        "LINK_DPM            0x0000000000000100      Y\n"
+        "DCEFCLK_DPM         0x0000000000000200      Y\n"
+        "GFXCLK_DS           0x0000000000000400      N\n"
+        "SOCCLK_DS           0x0000000000000800      N\n"
+        "LCLK_DS             0x0000000000001000      N\n"
+        "PPT                 0x0000000000002000      Y\n"
+        "TDC                 0x0000000000004000      Y\n"
+        "THERMAL             0x0000000000008000      Y\n"
+        "GFX_PER_CU_CG       0x0000000000010000      N\n"
+        "RM                  0x0000000000020000      N\n"
+        "DCEFCLK_DS          0x0000000000040000      N\n"
+        "ACDC                0x0000000000080000      N\n"
+        "VR0HOT              0x0000000000100000      Y\n"
+        "VR1HOT              0x0000000000200000      Y\n"
+        "FW_CTF              0x0000000000400000      Y\n"
+        "LED_DISPLAY         0x0000000000800000      Y\n"
+        "FAN_CONTROL         0x0000000001000000      Y\n"
+        "GFX_EDC             0x0000000002000000      N\n"
+        "GFXOFF              0x0000000004000000      N\n"
+        "CG                  0x0000000008000000      Y\n"
+        "FCLK_DPM            0x0000000010000000      Y\n"
+        "FCLK_DS             0x0000000020000000      N\n"
+        "MP1CLK_DS           0x0000000040000000      N\n"
+        "MP0CLK_DS           0x0000000080000000      N\n"
+        "XGMI                0x0000000100000000      N\n"
+        "ECC                 0x0000000200000000      N\n";
+
+    JSON_Object *out = parse_pp_features_sysfs_file(content);
+
+    const char *exp = "{\"raw_value\":435217359, \"features\":["
+        "{\"name\":\"DPM_PREFETCHER\", \"on\":true},"
+        "{\"name\":\"GFXCLK_DPM\", \"on\":true},"
+        "{\"name\":\"UCLK_DPM\", \"on\":true},"
+        "{\"name\":\"SOCCLK_DPM\", \"on\":true},"
+        "{\"name\":\"UVD_DPM\", \"on\":false},"
+        "{\"name\":\"VCE_DPM\", \"on\":false},"
+        "{\"name\":\"ULV\", \"on\":true},"
+        "{\"name\":\"MP0CLK_DPM\", \"on\":true},"
+        "{\"name\":\"LINK_DPM\", \"on\":true},"
+        "{\"name\":\"DCEFCLK_DPM\", \"on\":true},"
+        "{\"name\":\"GFXCLK_DS\", \"on\":false},"
+        "{\"name\":\"SOCCLK_DS\", \"on\":false},"
+        "{\"name\":\"LCLK_DS\", \"on\":false},"
+        "{\"name\":\"PPT\", \"on\":true},"
+        "{\"name\":\"TDC\", \"on\":true},"
+        "{\"name\":\"THERMAL\", \"on\":true},"
+        "{\"name\":\"GFX_PER_CU_CG\", \"on\":false},"
+        "{\"name\":\"RM\", \"on\":false},"
+        "{\"name\":\"DCEFCLK_DS\", \"on\":false},"
+        "{\"name\":\"ACDC\", \"on\":false},"
+        "{\"name\":\"VR0HOT\", \"on\":true},"
+        "{\"name\":\"VR1HOT\", \"on\":true},"
+        "{\"name\":\"FW_CTF\", \"on\":true},"
+        "{\"name\":\"LED_DISPLAY\", \"on\":true},"
+        "{\"name\":\"FAN_CONTROL\", \"on\":true},"
+        "{\"name\":\"GFX_EDC\", \"on\":false},"
+        "{\"name\":\"GFXOFF\", \"on\":false},"
+        "{\"name\":\"CG\", \"on\":true},"
+        "{\"name\":\"FCLK_DPM\", \"on\":true},"
+        "{\"name\":\"FCLK_DS\", \"on\":false},"
+        "{\"name\":\"MP1CLK_DS\", \"on\":false},"
+        "{\"name\":\"MP0CLK_DS\", \"on\":false},"
+        "{\"name\":\"XGMI\", \"on\":false},"
+        "{\"name\":\"ECC\", \"on\":false}"
+    "]}";
+
+    JSON_Value *expected = json_parse_string(exp);
+
+    ASSERT_EQ(json_value_equals(json_object_get_wrapping_value(out), expected), 1);
+
+    return TEST_SUCCESS;
+}
+
 DEFINE_TESTS(server_tests)
 TEST(test_parse_sysfs_clock_file, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_fence_info, "navi_reg_only.envdef", "navi10"),
@@ -385,4 +471,5 @@ TEST(test_parse_vm_info, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_framebuffer, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_state, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_pp_features, "navi_reg_only.envdef", "navi10"),
+TEST(test_parse_sysfs_pp_features2, "navi_reg_only.envdef", "navi10"),
 END_TESTS(server_tests);

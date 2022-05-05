@@ -519,52 +519,114 @@ static uint32_t parse_sensor_value(enum sensor_maps map, uint32_t value)
 	return result;
 }
 
+int parse_pp_feature_vega_line(const char *line, const char **name_start, const char **name_end, int *bit, int *enabled)
+{
+	/* NAME      0x0000000000000000    Y */
+	*name_start = line;
+	*name_end = strchr(line, ' ');
+
+	if (*name_end == NULL)
+		return -1;
+
+	const char *ptr = *name_end;
+	while (*ptr == ' ')
+		ptr++;
+
+	uint64_t bitmask;
+	*bit = -1;
+	if (sscanf(ptr, "0x%" PRIx64, &bitmask) == 1) {
+		for (int b = 0; b < 64; b++)
+			if (bitmask & (1lu << b)) {
+				*bit = b;
+				break;
+			}
+	}
+
+
+	if (*bit >= 0) {
+		/* Skip the 16 bytes hex value */
+		ptr += 18;
+		while (*ptr == ' ') ptr++;
+		*enabled = *ptr == 'Y';
+		return 0;
+	}
+
+	return -1;
+}
+
+int parse_pp_feature_line(const char *line, int i, const char **name_start, const char **name_end, int *bit, int *enabled)
+{
+	const char *ptr = line;
+	char label[64];
+	sprintf(label, "%02d.", i);
+	const char *feature = lookup_field(&ptr, label, ' ');
+	if (!feature)
+		return -1;
+	const char *sp = strchr(feature, ' ');
+	if (!sp)
+		return -1;
+	*name_start = feature;
+	*name_end = sp;
+	*enabled = strstr(feature, "enabled") != NULL;
+
+	/* Skip spaces */
+	while (*sp == ' ')
+		sp++;
+	/* Parse bit */
+	if (sscanf(sp, "(%d)", bit) == 1)
+		return 0;
+
+	return -1;
+}
+
 JSON_Object *parse_pp_features_sysfs_file(const char *content)
 {
-	/* Max 64 bits */
-	char label[64];
 	const char *ptr = content;
 	uint64_t raw_value = 0;
 	JSON_Object *out = json_object(json_value_init_object());
 	JSON_Array *features = json_array(json_value_init_array());
 	json_object_set_value(out, "features", json_array_get_wrapping_value(features));
+
+	int vega_format = 0;
+
+	/* 2 possible formats: Vega dGPU or newer ones */
+	vega_format = strncmp(ptr, "Current ppfeatures", strlen("Current ppfeatures")) == 0;
+
+	/* Strip the first 2 lines */
+	ptr = strchr(ptr, '\n') + 1;
+	ptr = strchr(ptr, '\n') + 1;
+
 	for (int i = 0; i < 64; i++) {
-		sprintf(label, "%02d.", i);
-		const char *feature = lookup_field(&ptr, label, ' ');
-		if (!feature)
-			break;
-		const char *sp = strchr(feature, ' ');
-		if (!sp) {
-			json_value_free(json_object_get_wrapping_value(out));
-			return NULL;
-		}
-		JSON_Object *feat = json_object(json_value_init_object());
-		json_object_set_string_with_len(feat, "name", feature, sp - feature);
-		int on = strstr(feature, "enabled") != NULL;
-		json_object_set_boolean(feat, "on", on);
-		int implicit_bit = json_array_get_count(features);
-		int bit;
-		/* Skip spaces */
-		while (*sp == ' ')
-			sp++;
-		/* Parse bit */
-		if (sscanf(sp, "(%d)", &bit) == 1) {
-			/* If there's a gap insert dummy values, so array index can be used
-			 * as bit index. */
-			if (implicit_bit < bit) {
-				int delta = bit - implicit_bit;
-				for (int j = 0; j < delta; j++)
-					json_array_append_value(features, json_value_init_object());
-			}
+		const char *name_start, *name_end;
+		int bit, enabled;
+		int r;
+		if (vega_format) {
+			r = parse_pp_feature_vega_line(ptr, &name_start, &name_end, &bit, &enabled);
 		} else {
-			json_value_free(json_object_get_wrapping_value(out));
-			return NULL;
+			r = parse_pp_feature_line(ptr, i, &name_start, &name_end, &bit, &enabled);
+		}
+
+		if (r < 0)
+			break;
+
+		JSON_Object *feat = json_object(json_value_init_object());
+		json_object_set_string_with_len(feat, "name", name_start, name_end - name_start);
+		json_object_set_boolean(feat, "on", enabled);
+
+		int implicit_bit = json_array_get_count(features);
+		/* If there's a gap insert dummy values, so array index can be used
+		 * as bit index. */
+		if (implicit_bit < bit) {
+			int delta = bit - implicit_bit;
+			for (int j = 0; j < delta; j++)
+				json_array_append_value(features, json_value_init_object());
 		}
 
 		json_array_append_value(features, json_object_get_wrapping_value(feat));
-		if (on) {
+		if (enabled)
 			raw_value |= 1lu << bit;
-		}
+
+		ptr = strchr(ptr, '\n') + 1;
 	}
 	json_object_set_number(out, "raw_value", raw_value);
 
