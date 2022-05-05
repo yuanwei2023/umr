@@ -917,6 +917,10 @@ int main(int argc, char **argv)
                         if (!asic)
                                 asic = get_asic();
                         umr_print_cpc(asic);
+                } else if (!strcmp(argv[i], "--print-sdma") || !strcmp(argv[i], "-sdma")) {
+                        if (!asic)
+                                asic = get_asic();
+                        umr_print_sdma(asic);
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2021, AMD Inc.\n"
 "\n*** Device Selection ***\n"
@@ -1031,7 +1035,9 @@ printf(
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
 	"\n\t\thuman readable string.\n"
 "\n\t--print-cpc, -cpc"
-	"\n\t\tPrint CPC register data.\n");
+	"\n\t\tPrint CPC register data.\n"
+"\n\t--print-sdma, -sdma"
+	"\n\t\tPrint SDMA register data.\n");
 
 printf(
 "\n*** Power and clock ***\n"

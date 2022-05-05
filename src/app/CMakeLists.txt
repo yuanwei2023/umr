@@ -45,6 +45,7 @@ add_library(umrapp STATIC
   vbios.c
   discovery.c
   print_cpc.c
+  print_sdma.c
   ${GUI_SOURCE}
 )
 

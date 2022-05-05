@@ -66,3 +66,4 @@ void umr_enumerate_devices(umr_err_output errout);
 
 int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream);
 void umr_print_cpc(struct umr_asic *asic);
+void umr_print_sdma(struct umr_asic *asic);
