@@ -1483,6 +1483,102 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			close(asic->fd.sensors);
 			json_object_set_value(json_object(answer), "values", json_array_get_wrapping_value(values));
 		}
+	} else if (strcmp(command, "hwmon") == 0) {
+		char dname[256], fname[1024];
+		int values[4];
+
+		if (json_object_has_value(request, "set")) {
+			JSON_Object *set = json_object_get_object(request, "set");
+			int fan_idx = json_object_get_number(set, "hwmon");
+			int new_mode = json_object_get_number(set, "mode");
+			if (new_mode >= 0) {
+				snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1_enable", asic->instance, fan_idx);
+				FILE *fd = fopen(fname, "w");
+				if (fd) {
+					fprintf(fd, "%d", new_mode);
+					fclose(fd);
+				}
+			}
+			int new_pwm = json_object_get_number(set, "value");
+			if (new_pwm >= 0) {
+				snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1", asic->instance, fan_idx);
+				FILE *fd = fopen(fname, "w");
+				if (fd) {
+					fprintf(fd, "%d", new_pwm);
+					fclose(fd);
+				}
+			}
+		}
+
+		const char * files[] = { "pwm1_enable", "fan1_min", "fan1_max", "pwm1" };
+		answer = json_value_init_object();
+		JSON_Array *hwmons = json_array(json_value_init_array());
+
+		struct dirent *dir;
+		sprintf(dname, "/sys/class/drm/card%d/device/hwmon/", asic->instance);
+		DIR *d = opendir(dname);
+		if (d) {
+			while ((dir = readdir(d))) {
+				if (strncmp(dir->d_name, "hwmon", 5) == 0) {
+					int hwmon_id = 0;
+					if (sscanf(dir->d_name + 5, "%d", &hwmon_id) == 1) {
+						int r = 0;
+
+						JSON_Object *hwmon = json_object(json_value_init_object());
+						/* Read fan1 data */
+						for (int i = 0; i < 4 && r == i; i++) {
+							sprintf(fname, "%s/%s/%s", dname, dir->d_name, files[i]);
+							r += sscanf(read_file(fname), "%d", &values[i]);
+						}
+						if (r == 4) {
+							JSON_Value *fan = json_value_init_object();
+							json_object_set_number(json_object(fan), "mode", values[0]);
+							json_object_set_number(json_object(fan), "min", values[1]);
+							json_object_set_number(json_object(fan), "max", values[2]);
+							json_object_set_number(json_object(fan), "value", values[3]);
+							json_object_set_number(hwmon, "id", hwmon_id);
+							json_object_set_value(hwmon, "fan", fan);
+						} else {
+							json_value_free(json_object_get_wrapping_value(hwmon));
+							continue;
+						}
+
+						json_array_append_value(hwmons, json_object_get_wrapping_value(hwmon));
+
+						JSON_Array *temps = json_array(json_value_init_array());
+						/* Read temp data */
+						for (int i = 1;; i++) {
+							int r = 0;
+							sprintf(fname, "%s/%s/temp%d_input", dname, dir->d_name, i);
+							r += sscanf(read_file(fname), "%d", &values[0]);
+							sprintf(fname, "%s/%s/temp%d_crit", dname, dir->d_name, i);
+							r += sscanf(read_file(fname), "%d", &values[1]);
+							if (r == 2) {
+								sprintf(fname, "%s/%s/temp%d_label", dname, dir->d_name, i);
+								const char *label = read_file(fname);
+
+								JSON_Object *temp = json_object(json_value_init_object());
+								json_object_set_string_with_len(temp, "label", label, strlen(label) - 1);
+								json_object_set_number(temp, "value", values[0]);
+								json_object_set_number(temp, "critical", values[1]);
+								json_array_append_value(temps, json_object_get_wrapping_value(temp));
+							} else {
+								break;
+							}
+						}
+						if (json_array_get_count(temps))
+							json_object_set_value(hwmon, "temp", json_array_get_wrapping_value(temps));
+						else
+							json_value_free(json_array_get_wrapping_value(temps));
+
+					}
+				}
+			}
+			closedir(d);
+			if (json_array_get_count(hwmons))
+				json_object_set_value(json_object(answer), "hwmons", json_array_get_wrapping_value(hwmons));
+		}
+
 	} else if (strcmp(command, "pp_features") == 0) {
 		char path[512];
 		sprintf(path, "/sys/class/drm/card%d/device/pp_features", asic->instance);
