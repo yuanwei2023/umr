@@ -1589,7 +1589,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		sprintf(path, "/sys/class/drm/card%d/device/pp_features", asic->instance);
 		if (!json_object_has_value(request, "set")) {
 			char *content = read_file(path);
-			if (content) {
+			if (content && strlen(content)) {
 				answer = json_object_get_wrapping_value(parse_pp_features_sysfs_file(content));
 			} else {
 				last_error = "unsupported";
