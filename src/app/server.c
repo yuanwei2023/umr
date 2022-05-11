@@ -1127,11 +1127,16 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		const int num_reg = json_array_get_count(regs);
 		char *ipname = (char*) json_object_get_string(request, "block");
 		struct umr_reg **reg = malloc(num_reg * sizeof(struct umr_reg*));
-		for (int i = 0; i < num_reg; i++)
+		for (int i = 0; i < num_reg; i++) {
 			reg[i] = umr_find_reg_data_by_ip(asic, ipname, json_array_get_string(regs, i));
+			if (!reg[i]) {
+				printf("Inconsistent state detected: server and client disagree on ASIC definition.\n");
+				free(reg);
+				goto error;
+			}
+		}
 
 		answer = json_value_init_object();
-
 		int step_ms = json_object_get_number(request, "step_ms");
 		int period_ms = json_object_get_number(request, "period");
 		unsigned *counters = calloc(32 * num_reg, sizeof(unsigned));
