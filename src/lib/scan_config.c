@@ -261,6 +261,7 @@ gca_config:
 	}
 
 	if (asic->family == FAMILY_CONFIGURE) {
+		asic->was_ip_discovered = 1;
 		asic->is_apu = asic->config.is_apu;
 		if (asic->config.gfx.family >= 143) {
 			asic->family = FAMILY_NV;

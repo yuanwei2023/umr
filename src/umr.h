@@ -502,6 +502,7 @@ struct umr_asic {
 	int instance;
 	enum chipfamily family;
 	int is_apu;
+	int was_ip_discovered;
 	unsigned did;
 	struct umr_ip_block **blocks;
 	struct {
