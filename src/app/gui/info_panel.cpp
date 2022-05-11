@@ -79,7 +79,16 @@ public:
 		ImGui::EndTable();
 		ImGui::EndChild();
 		ImGui::SameLine();
-		ImGui::BeginChild("Misc", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::BeginChild("IP Discovery", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::BeginTable("HW blocks", 1, ImGuiTableFlags_Borders);
+		ImGui::TableSetupColumn("HW block names");
+		ImGui::TableHeadersRow();
+		for (int i = 0; i < asic->no_blocks; i++) {
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::TextUnformatted(asic->blocks[i]->ipname);
+		}
+		ImGui::EndTable();
 		JSON_Object *pcie = json_object(json_object_get_value(info, "pcie"));
 		if (pcie) {
 			ImGui::BeginTable("PCIe", 2, ImGuiTableFlags_Borders);
