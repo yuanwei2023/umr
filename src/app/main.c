@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Advanced Micro Devices, Inc.
+ * Copyright 2022 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -922,7 +922,7 @@ int main(int argc, char **argv)
                                 asic = get_asic();
                         umr_print_sdma(asic);
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2021, AMD Inc.\n"
+			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2022, AMD Inc.\n"
 "\n*** Device Selection ***\n"
 "\n\t--database-path, -dbp <path>"
 	"\n\t\tSpecify a database path for register, ip, and asic model data.\n"
@@ -1111,7 +1111,7 @@ printf(
 	}
 
 	if (!asic) {
-		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2021, AMD Inc.\n\n"
+		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2022, AMD Inc.\n\n"
 			   "Use '--help' for a list of commands and options.\n",
 			    UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
 	}
