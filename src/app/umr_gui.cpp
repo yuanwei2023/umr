@@ -133,11 +133,33 @@ struct AsicData {
 		options.instance = instance;
 		options.database_path[0] = '\0';
 		options.no_disasm = 0;
-		/* Disable IP discovery if we're using a remote connection */
-		options.force_asic_file = lnk.use_sock;
-		asic = umr_discover_asic_by_did(&options, did, printf, &tryipdiscovery);
+		if (json_object_has_value(answer, "ip_discovery_dump")) {
+			const char *script = json_object_get_string(answer, "ip_discovery_dump");
+			struct umr_test_harness *th = umr_create_test_harness(script);
+
+			options.test_log = 1;
+			options.th = th;
+			asic = umr_discover_asic_by_discovery_table(
+				(char*)json_object_get_string(answer, "name"),
+				&options,
+				printf);
+			umr_scan_config(asic, 0);
+			asic->did = did;
+			umr_free_test_harness(th);
+		} else {
+			/* Don't rely on local IP discovery data zvzn if available, because
+			 * it probably won't match the one on the server.
+			 */
+			options.force_asic_file = 1;
+			asic = umr_discover_asic_by_did(&options, did, printf, &tryipdiscovery);
+		}
+
+		if (!asic) {
+			fprintf(stderr, "Failed to create asic, aborting.\n");
+			abort();
+		}
+
 		asic->instance = instance;
-		umr_scan_config(asic, 1);
 
 		panels.push_back(new InfoPanel(asic));
 		panels.push_back(new RegistersPanel(asic));
