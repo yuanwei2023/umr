@@ -128,13 +128,14 @@ static bool done;
 
 struct AsicData {
 	AsicData(JSON_Object *answer, long did, int instance) {
+		int tryipdiscovery = 0;
 		memset(&options, 0, sizeof options);
 		options.instance = instance;
 		options.database_path[0] = '\0';
 		options.no_disasm = 0;
 		/* Disable IP discovery if we're using a remote connection */
 		options.force_asic_file = lnk.use_sock;
-		asic = umr_discover_asic_by_did(&options, did, printf);
+		asic = umr_discover_asic_by_did(&options, did, printf, &tryipdiscovery);
 		asic->instance = instance;
 		umr_scan_config(asic, 1);
 

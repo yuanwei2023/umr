@@ -34,6 +34,8 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 	f = umr_database_open(path, filename);
 	if (!f) {
 		errout("[ERROR]: SOC15 offset file [%s] not found\n", filename);
+		errout("[ERROR]: These files are typically found in the source tree under [database/]\n");
+		errout("[ERROR]: If you have manually relocated the database tree use the '-dbp' option to tell UMR where they are\n");
 		return NULL;
 	}
 

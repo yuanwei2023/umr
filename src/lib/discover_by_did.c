@@ -73,7 +73,7 @@ static int find_first_did(long did, long start_instance)
  * instance that matches.  Optionally @options->instance can be set
  * to indicate which device you want to look for.
  */
-struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout)
+struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout, int *tryipdiscovery)
 {
 	struct umr_asic *asic;
 	FILE *f;
@@ -82,14 +82,19 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did,
 
 	f = umr_database_open(options->database_path, "pci.did");
 	if (!f) {
-		errout("[ERROR]: Can't find pci.did file in database\n");
+		errout("[ERROR]: Can't find [pci.did] file in database, required to map PCI DID to name\n");
+		errout("[ERROR]: The file [pci.did] is found in the source tree at 'database/pci.did'\n");
+		errout("[ERROR]: Without this file non-IP discovery ASICs cannot be instantiated.\n");
+		errout("[ERROR]: If you have manually relocated the database tree use the '-dbp' option to tell UMR where they are\n");
 		return NULL;
 	}
 
+	*tryipdiscovery = 1;
 	asic = NULL;
 	while (fgets(linebuf, sizeof linebuf, f)) {
 		sscanf(linebuf, "%"SCNx32" %s", &ldid, lname);
 		if (ldid == did && strstr(lname, ".asic")) {
+			*tryipdiscovery = 0;
 			if (options->force_asic_file) {
 				asic = umr_database_read_asic(options, lname, errout);
 			} else {
@@ -99,6 +104,7 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did,
 			}
 			break;
 		} else if (ldid == did) {
+			*tryipdiscovery = 0;
 			asic = umr_discover_asic_by_discovery_table(lname, options, errout);
 			break;
 		}

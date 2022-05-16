@@ -31,11 +31,12 @@ static int is_did_match(struct umr_asic *asic, unsigned did)
 {
 	struct umr_asic *tmp;
 	int r = 0, q;
+	int tryipdiscovery = 0;
 
 	q = asic->options.quiet;
 	asic->options.quiet = 1;
 
-	tmp = umr_discover_asic_by_did(&asic->options, did, asic->err_msg);
+	tmp = umr_discover_asic_by_did(&asic->options, did, asic->err_msg, &tryipdiscovery);
 	if (tmp) {
 		if (!strcmp(tmp->asicname, asic->asicname)) {
 			asic->did = did;
@@ -126,6 +127,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 	struct umr_asic *asic;
 	long trydid = options->forcedid;
 	int busmatch = 0, parsed_did, need_config_scan = 0;
+	int tryipdiscovery = 0;
 
 	// virtual device
 	if (options->dev_name[0] == '.') {
@@ -233,13 +235,13 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			if (!options->quiet) printf("Could not read device id");
 			return NULL;
 		}
-		asic = umr_discover_asic_by_did(options, did, errout);
+		asic = umr_discover_asic_by_did(options, did, errout, &tryipdiscovery);
 	} else {
 		if (options->dev_name[0]) {
 			asic = umr_discover_asic_by_name(options, options->dev_name, errout);
 		} else {
-			asic = umr_discover_asic_by_did(options, trydid, errout);
-			if (!asic) {
+			asic = umr_discover_asic_by_did(options, trydid, errout, &tryipdiscovery);
+			if (!asic && tryipdiscovery) {
 				char buf[16];
 				sprintf(buf, "0x%04" PRIx64, (uint64_t)trydid);
 				asic = umr_discover_asic_by_name(options, buf, errout);

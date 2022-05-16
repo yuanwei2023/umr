@@ -83,15 +83,20 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 		fgets(linebuf, sizeof linebuf, f);
 		if (sscanf(linebuf, "%s %s %d %s", ipcmnname, ipsocname, &instance, regfile) != 4) {
 			asic->err_msg("[ERROR]: Invalid IP header line [%s]\n", linebuf);
-			umr_database_free_soc15(soc15);
-			umr_free_asic_blocks(asic);
-			fclose(f);
-			return NULL;
+			goto error;
 		}
 		asic->blocks[x] = umr_database_read_ipblock(soc15, options->database_path, regfile, ipcmnname, ipsocname, instance, errout);
+		if (!asic->blocks[x])
+			goto error;
 	}
 
 	umr_database_free_soc15(soc15);
 	fclose(f);
 	return asic;
+error:
+	umr_database_free_soc15(soc15);
+	umr_free_asic_blocks(asic);
+	fclose(f);
+	return NULL;
+
 }

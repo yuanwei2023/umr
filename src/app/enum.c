@@ -41,6 +41,7 @@ void umr_enumerate_devices(umr_err_output errout)
 	struct pci_device *pdevice;
 	char path[128];
 	FILE *dri;
+	int tryipdiscovery = 0;
 
 	devices = 0;
 	memset(asics, 0, sizeof(asics));
@@ -59,7 +60,7 @@ void umr_enumerate_devices(umr_err_output errout)
 			pdevice = pci_device_next(pci_iter);
 		} while (pdevice && pdevice->vendor_id != 0x1002);
 
-		if (pdevice && (asics[devices].asic = umr_discover_asic_by_did(&options, pdevice->device_id, errout))) {
+		if (pdevice && (asics[devices].asic = umr_discover_asic_by_did(&options, pdevice->device_id, errout, &tryipdiscovery))) {
 			asics[devices].instance = -1;
 			asics[devices].asic->pci.pdevice = &asics[devices].pcopy;
 			asics[devices++].pcopy = *pdevice;

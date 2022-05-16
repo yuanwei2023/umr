@@ -1090,7 +1090,7 @@ struct umr_discovery_table_entry {
 	struct umr_discovery_table_entry *next;
 };
 struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout);
-struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout);
+struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout, int *tryipdiscovery);
 struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *name, umr_err_output errout);
 struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblocks, umr_err_output errout);
 struct umr_asic *umr_discover_asic_by_discovery_table(char *asicname, struct umr_options *options, umr_err_output errout);
