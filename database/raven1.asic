@@ -1,4 +1,4 @@
-raven1 vega10.soc15 3 11 2 1
+raven1 vega10.soc15 3 10 2 1
 gfx910 GC 0 ip/gc_9_1_0.reg
 vcn100 VCN 0 ip/vcn_1_0_0.reg
 dcn100 DCN 0 ip/dcn_1_0_0.reg
