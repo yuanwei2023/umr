@@ -393,7 +393,7 @@ int main(int argc, char **argv)
 	}
 
 	if (argc == 3) {
-		f = fopen(argv[1], "r");
+		f = fopen(argv[1], "rb");
 		if (!f) {
 			fprintf(stderr, "[ERROR]: Could not open file '%s'\n", argv[1]);
 			return EXIT_FAILURE;
@@ -405,7 +405,7 @@ int main(int argc, char **argv)
 		fread(rf, 1, size, f);
 		fclose(f);
 
-		f = fopen(argv[2], "r");
+		f = fopen(argv[2], "rb");
 		if (!f) {
 			fprintf(stderr, "[ERROR]: Could not open file '%s'\n", argv[2]);
 			return EXIT_FAILURE;
@@ -434,7 +434,7 @@ int main(int argc, char **argv)
 			r = r->next;
 		}
 	} else {
-		f = fopen(argv[1], "r");
+		f = fopen(argv[1], "rb");
 		if (!f) {
 			fprintf(stderr, "[ERROR]: Could not open file '%s'\n", argv[1]);
 			return EXIT_FAILURE;
