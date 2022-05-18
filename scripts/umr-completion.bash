@@ -128,10 +128,10 @@ _umr_comp_gpu()
     for F in ${INSTANCE[*]} ; do
 	PCI_BUS_DIR_NAMES+=("/sys/kernel/debug/dri/$F/name")
     done
-    PCI_BUS_IDS=( `sudo cat ${PCI_BUS_DIR_NAMES[*]} | sed -E -e 's/^.* (dev=(.*)) .*$/\2/g' | sort | uniq` )
+    PCI_BUS_IDS=( `sudo cat ${PCI_BUS_DIR_NAMES[*]} | sed -E -e 's/^.* (dev=([:.[:xdigit:]]+)) .*$/\2/g' | sort | uniq` )
 
     for F in ${INSTANCE[*]} ; do
-	local PCI_ID=`sudo cat  "/sys/kernel/debug/dri/$F/name" | sed -E -e 's/^.* (dev=(.*)) .*$/\2/g'`
+	local PCI_ID=`sudo cat  "/sys/kernel/debug/dri/$F/name" | sed -E -e 's/^.* (dev=([:.[:xdigit:]]+)) .*$/\2/g'`
 	local DEV_ID=`cat /sys/class/pci_bus/${PCI_ID%:??.?}/device/$PCI_ID/device`
 	local DEV_ID_NAME=`grep -i $DEV_ID ${UMR_DATABASE_PATH}/pci.did | awk '{ print $2; }' | sed -E -e 's/.asic//g'`
 	TEMP_ASIC_NAMES+=($DEV_ID_NAME)
