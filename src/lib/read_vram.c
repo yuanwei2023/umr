@@ -654,8 +654,10 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 	// update addresses for APUs
 	if (asic->is_apu) {
-		registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
-		registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
+		if (umr_find_reg(asic, "@mmVGA_MEMORY_BASE_ADDRESS") != 0xFFFFFFFF) {
+			registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
+			registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
+		}
 		sprintf(buf, "mm%sMC_VM_FB_OFFSET", regprefix);
 		registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		vm_fb_offset      = (uint64_t)registers.mmMC_VM_FB_OFFSET << 24;
