@@ -77,6 +77,10 @@ struct umr_database_scan_item *umr_database_scan(char *path)
 	char p[512];
 
 	pit = it = calloc(1, sizeof *it);
+	if (!it) {
+		return NULL;
+	}
+
 	if (path && *path) {
 		r = umr_do_scan(it, path);
 		if (r)
