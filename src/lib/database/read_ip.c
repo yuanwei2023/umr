@@ -53,6 +53,10 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 	}
 
 	ip = calloc(1, sizeof *ip);
+	if (!ip) {
+		fclose(f);
+		return NULL;
+	}
 
 	fgets(linebuf, sizeof(linebuf), f);
 	sscanf(linebuf, "%"SCNu32, &no_regs);
