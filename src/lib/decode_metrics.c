@@ -383,7 +383,7 @@ static struct field_info metrics_v2_2[] = {
 	METRICS_INFO_V2_2_LIST(METRICS_V2_2_INFO)
 };
 
-static void umr_dump_field_info(FILE *stream, const struct field_info *info,
+static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *info,
 				const uint32_t count, const char *prefix, const uint8_t *ref)
 {
 	uint32_t i;
@@ -396,16 +396,16 @@ static void umr_dump_field_info(FILE *stream, const struct field_info *info,
 	for (i = 0, tmp = &info[i]; i < count; i++, tmp = &info[i]) {
 		switch (tmp->size) {
 		case 1:
-			fprintf(stream, fmt, prefix, tmp->name, *(uint8_t *)(ref + tmp->offset));
+			asic->std_msg(fmt, prefix, tmp->name, *(uint8_t *)(ref + tmp->offset));
 			break;
 		case 2:
-			fprintf(stream, fmt, prefix, tmp->name, *(uint16_t *)(ref + tmp->offset));
+			asic->std_msg(fmt, prefix, tmp->name, *(uint16_t *)(ref + tmp->offset));
 			break;
 		case 4:
-			fprintf(stream, fmt, prefix, tmp->name, *(uint32_t *)(ref + tmp->offset));
+			asic->std_msg(fmt, prefix, tmp->name, *(uint32_t *)(ref + tmp->offset));
 			break;
 		case 8:
-			fprintf(stream, fmt, prefix, tmp->name, *(uint64_t *)(ref + tmp->offset));
+			asic->std_msg(fmt, prefix, tmp->name, *(uint64_t *)(ref + tmp->offset));
 			break;
 		default:
 			break;
@@ -413,7 +413,7 @@ static void umr_dump_field_info(FILE *stream, const struct field_info *info,
 	}
 }
 
-int umr_dump_metrics(FILE *stream, const void *table, uint32_t size)
+int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size)
 {
 	struct umr_metrics_table_header *header =
 		(struct umr_metrics_table_header *)table;
@@ -421,34 +421,34 @@ int umr_dump_metrics(FILE *stream, const void *table, uint32_t size)
 	if (!table || !size)
 		return -1;
 
-	umr_dump_field_info(stream, metrics_header, ARRAY_SIZE(metrics_header), " hdr.", table);
+	umr_dump_field_info(asic, metrics_header, ARRAY_SIZE(metrics_header), " hdr.", table);
 
 #define METRICS_VERSION(a, b)	((a << 16) | b )
 
 	switch (METRICS_VERSION(header->format_revision, header->content_revision)) {
 	case METRICS_VERSION(1, 0):
-		umr_dump_field_info(stream, metrics_v1_0, ARRAY_SIZE(metrics_v1_0), "v1_0.", table);
+		umr_dump_field_info(asic, metrics_v1_0, ARRAY_SIZE(metrics_v1_0), "v1_0.", table);
 		break;
 	case METRICS_VERSION(1, 1):
-		umr_dump_field_info(stream, metrics_v1_1, ARRAY_SIZE(metrics_v1_1), "v1_1.", table);
+		umr_dump_field_info(asic, metrics_v1_1, ARRAY_SIZE(metrics_v1_1), "v1_1.", table);
 		break;
 	case METRICS_VERSION(1, 2):
-		umr_dump_field_info(stream, metrics_v1_2, ARRAY_SIZE(metrics_v1_2), "v1_2.", table);
+		umr_dump_field_info(asic, metrics_v1_2, ARRAY_SIZE(metrics_v1_2), "v1_2.", table);
 		break;
 	case METRICS_VERSION(1, 3):
-		umr_dump_field_info(stream, metrics_v1_3, ARRAY_SIZE(metrics_v1_3), "v1_3.", table);
+		umr_dump_field_info(asic, metrics_v1_3, ARRAY_SIZE(metrics_v1_3), "v1_3.", table);
 		break;
 	case METRICS_VERSION(2, 0):
-		umr_dump_field_info(stream, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table);
+		umr_dump_field_info(asic, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table);
 		break;
 	case METRICS_VERSION(2, 1):
-		umr_dump_field_info(stream, metrics_v2_1, ARRAY_SIZE(metrics_v2_1), "v2_1.", table);
+		umr_dump_field_info(asic, metrics_v2_1, ARRAY_SIZE(metrics_v2_1), "v2_1.", table);
 		break;
 	case METRICS_VERSION(2, 2):
-		umr_dump_field_info(stream, metrics_v2_2, ARRAY_SIZE(metrics_v2_2), "v2_2.", table);
+		umr_dump_field_info(asic, metrics_v2_2, ARRAY_SIZE(metrics_v2_2), "v2_2.", table);
 		break;
 	default:
-		fprintf(stderr, "[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);
+		asic->err_msg("[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);
 		return -1;
 	}
 

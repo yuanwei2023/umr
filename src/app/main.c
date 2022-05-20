@@ -37,7 +37,19 @@ void sigint(int signo)
 
 struct umr_options options;
 
-static int vm_printf(const char *fmt, ...)
+static int std_printf(const char *fmt, ...)
+{
+	va_list ap;
+	int r;
+
+	va_start(ap, fmt);
+	r = vfprintf(stdout, fmt, ap);
+	fflush(stderr);
+	va_end(ap);
+	return r;
+}
+
+static int err_printf(const char *fmt, ...)
 {
 	va_list ap;
 	int r;
@@ -49,10 +61,11 @@ static int vm_printf(const char *fmt, ...)
 	return r;
 }
 
+
 static struct umr_asic *get_asic(void)
 {
 	struct umr_asic *asic;
-	asic = umr_discover_asic(&options, vm_printf);
+	asic = umr_discover_asic(&options, std_printf);
 	if (!asic) {
 		printf("ASIC not found (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
 		exit(EXIT_FAILURE);
@@ -60,8 +73,9 @@ static struct umr_asic *get_asic(void)
 	umr_scan_config(asic, 1);
 
 	// assign linux callbacks
-	asic->err_msg = vm_printf;
-	asic->mem_funcs.vm_message = vm_printf;
+	asic->err_msg = err_printf;
+	asic->std_msg = std_printf;
+	asic->mem_funcs.vm_message = std_printf;
 	asic->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
 	asic->mem_funcs.access_sram = umr_access_sram;
 
@@ -568,7 +582,7 @@ int main(int argc, char **argv)
 			if (asic->fd.gfxoff >= 0)
 				write(asic->fd.gfxoff, &value, sizeof(value));
 		} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
-			umr_enumerate_devices(vm_printf);
+			umr_enumerate_devices(std_printf);
 			return 0;
 		} else if (!strcmp(argv[i], "-mm")) {
 			if (i + 1 < argc) {

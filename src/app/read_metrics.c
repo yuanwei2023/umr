@@ -51,7 +51,7 @@ int umr_print_gpu_metrics(struct umr_asic *asic)
 	fread(pp_data, 1, size, f);
 	fclose(f);
 
-	r = umr_dump_metrics(stdout, pp_data, size);
+	r = umr_dump_metrics(asic, pp_data, size);
 	if (r)
 		goto error;
 

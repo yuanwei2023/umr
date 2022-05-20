@@ -561,6 +561,7 @@ struct umr_asic {
 	struct umr_shader_disasm_funcs shader_disasm_funcs;
 	struct umr_read_gpr_funcs gpr_read_funcs;
 	int (*err_msg)(const char *fmt, ...);
+	int (*std_msg)(const char *fmt, ...);
 };
 
 typedef	int (*umr_err_output)(const char *, ...);
@@ -1267,7 +1268,7 @@ struct field_info {
 #define FIELD_INFO(TYPE, MEMBER)	\
 { #MEMBER, sizeof_field(TYPE, MEMBER), offsetof(TYPE, MEMBER) }
 
-int umr_dump_metrics(FILE *stream, const void *table, uint32_t size);
+int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size);
 
 /* discover */
 // size of serialized umr_discovery_table_entry
