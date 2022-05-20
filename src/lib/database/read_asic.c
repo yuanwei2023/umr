@@ -50,6 +50,9 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 	}
 
 	asic = calloc(1, sizeof *asic);
+	if (!asic)
+		return NULL;
+
 	asic->err_msg = errout;
 	fgets(linebuf, sizeof linebuf, f);
 	if (sscanf(linebuf, "%s %s %d %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity, &asic_fields.is_apu) != 6) {
