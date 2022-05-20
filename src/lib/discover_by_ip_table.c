@@ -43,6 +43,10 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 		return NULL;
 	}
 	ip = calloc(1, sizeof *ip);
+	if (!ip) {
+		fclose(f);
+		return NULL;
+	}
 
 	fgets(linebuf, sizeof(linebuf) - 1, f);
 	sscanf(linebuf, "%"SCNu32, &no_regs);
@@ -144,6 +148,9 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 	data = &options->th->discovery.contents[0];
 
 	det = pdet = calloc(1, sizeof *det);
+	if (!det) {
+		return NULL;
+	}
 	for (x = 0; x < *nblocks; x++) {
 		memcpy(det->ipname, data, 128); data += 128;
 		det->die = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
@@ -157,6 +164,14 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 		}
 		if (x < (*nblocks - 1)) {
 			det->next = calloc(1, sizeof *det);
+			if (!det->next) {
+				while (pdet) {
+					det = pdet->next;
+					free(pdet);
+					pdet = det;
+				}
+				return NULL;
+			}
 			det = det->next;
 		}
 	}
@@ -203,6 +218,10 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 	it = umr_database_scan(options->database_path);
 
 	asic = calloc(1, sizeof *asic);
+	if (!asic) {
+		errout("[ERROR]: Out of memory allocating ASIC model\n");
+		goto done;
+	}
 	asic->asicname = strdup(asicname);
 	asic->options = *options;
 	asic->no_blocks = numblocks;
@@ -271,6 +290,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 		}
 	}
 
+done:
 	det = pdet;
 	while (det) {
 		pdet = det->next;
