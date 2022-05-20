@@ -368,9 +368,11 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				switch (pkttype) {
 					case 7:
 						str = calloc(1, 1 + pktlen * 4 - 12);
-						memcpy(str, &stream->words[3], pktlen * 4 - 12);
-						ui->add_field(ui, ib_addr + 12, ib_vmid, "COMMENT_STRING", 0, str, 0);
-						free(str);
+						if (str) {
+							memcpy(str, &stream->words[3], pktlen * 4 - 12);
+							ui->add_field(ui, ib_addr + 12, ib_vmid, "COMMENT_STRING", 0, str, 0);
+							free(str);
+						}	
 						break;
 				}
 			} else if (stream->words[0] == 0x3337F77D) { // magic value for BINARY data
