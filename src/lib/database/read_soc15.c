@@ -40,6 +40,10 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 	}
 
 	os = s = calloc(1, sizeof *s);
+	if (!s) {
+		fclose(f);
+		return NULL;
+	}
 
 	while (fgets(linebuf, sizeof(linebuf), f)) {
 		linebuf[strlen(linebuf)-1] = 0; // chomp
@@ -53,6 +57,15 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 			}
 		}
 		s->next = calloc(1, sizeof *s);
+		if (!s->next) {
+			while (os) {
+				s = os->next;
+				free(os);
+				os = s;
+			}
+			fclose(f);
+			return NULL;
+		}
 		s = s->next;
 	}
 	fclose(f);
