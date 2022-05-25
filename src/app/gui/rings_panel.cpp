@@ -47,7 +47,8 @@ class RingsPanel : public Panel {
 public:
 	RingsPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL) {
 		/* PKT3_ */
-		ib_syntax.add_definition("(PKT3_[A-Z_0-9]*)", { "#3097a1" });
+		/* PKT3_DRAW_ | PKT3_DISPATCH */
+		ib_syntax.add_definition("(PKT3_DRAW[A-Z_0-9]*|PKT3_DISPATCH[A-Z_0-9]*)", { "#a42721" });
 		/* number */
 		ib_syntax.add_definition("(0x[a-z0-9]*)", { "#dbde79" });
 		/* keyword */
@@ -214,16 +215,20 @@ private:
 
 		ImGuiListClipper clipper;
 		clipper.Begin(json_array_get_count(raw));
-		ImGui::BeginTable("dis", 4, ImGuiTableFlags_BordersV);
+		ImGui::BeginTable("dis", rptr >= 0 ? 5 : 4, ImGuiTableFlags_BordersV);
 		ImGui::TableSetupColumn(rptr >= 0 ? "Index" : "Address", ImGuiTableColumnFlags_WidthFixed,
 			rptr >= 0 ? ImGui::CalcTextSize(" Index ").x : ImGui::CalcTextSize(" 0x0000000000000000 + 0x0000").x);
 		ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed,
 			ImGui::CalcTextSize(" 00000000 ").x);
-		ImGui::TableSetupColumn("Pointers", ImGuiTableColumnFlags_WidthFixed,
-			ImGui::CalcTextSize("Pointers").x);
+		if (rptr >= 0)
+			ImGui::TableSetupColumn("Pointers", ImGuiTableColumnFlags_WidthFixed,
+				ImGui::CalcTextSize("Pointers").x);
+		ImGui::TableSetupColumn("Opcode", ImGuiTableColumnFlags_WidthFixed,
+				ImGui::CalcTextSize("PKT3_XXXXXXXXXXXXXXXXXXXXXXX").x);
 		ImGui::TableSetupColumn("Disassembly");
 		ImGui::TableHeadersRow();
 
+		int draw_dispatch_count = 0;
 		while (clipper.Step()) {
 			struct umr_ring_decoder decoder;
 			memset(&decoder, 0, sizeof decoder);
@@ -234,18 +239,47 @@ private:
 			asic->options.use_colour = 0;
 			asic->options.bitfields = 0;
 
+			bool is_new_pkt;
+			int pkt_count = 1;
+			bool current_pkt3_is_draw = false;
+			bool previous_pkt3_was_draw = false;
 			for (int i = 0 ; i < clipper.DisplayEnd; i++) {
+				int col = 0;
 				uint32_t raw_value = json_array_get_number(raw, i);
 
 				ring_decode_buffer_offset = 0;
 				umr_print_decode(asic, &decoder, raw_value, ring_decode_fn);
 
+				char *line = ring_decode_buffer;
+
+				/* New PKT3 packet */
+				is_new_pkt =
+					(strncmp(line, "PKT3,", 5) == 0 && strstr(line, "OPCODE") != NULL) ||
+					strncmp(line, "OPCODE:", strlen("OPCODE:")) == 0;
+				if (is_new_pkt) {
+					if (decoder_type == 4) {
+						line = &line[strlen("PKT3,")];
+						previous_pkt3_was_draw = current_pkt3_is_draw;
+						current_pkt3_is_draw =
+							strstr(line, "PKT3_DRAW_") != NULL ||
+							strstr(line, "PKT3_DISPATCH") != NULL;
+						if (previous_pkt3_was_draw)
+							draw_dispatch_count++;
+					}
+
+					pkt_count++;
+				}
+
 				if (i < clipper.DisplayStart)
 					continue;
 
+				if (is_new_pkt && previous_pkt3_was_draw) {
+					ImGui::TableHeadersRow();
+				}
 				ImGui::TableNextRow();
+				ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0,
+					ImGui::GetColorU32((pkt_count % 2) + ImGuiCol_TableRowBg));
 
-				char *line = ring_decode_buffer;
 				bool indent = false;
 
 				char *ind = strstr(line, "---+");
@@ -256,35 +290,62 @@ private:
 				if (strncmp(line, "PKT3 ", strlen("PKT3 ")) == 0)
 					line = &line[5];
 
-				ImGui::TableSetColumnIndex(0);
+				ImGui::TableSetColumnIndex(col++);
 				if (rptr >= 0) {
 					ImGui::Text("%04d", i);
 				} else {
-
 					ImGui::Text("0x%" PRIx64 " + #0083d80x%x", base, 4 * i);
 				}
 
-				ImGui::TableSetColumnIndex(1);
+				ImGui::TableSetColumnIndex(col++);
 				ImGui::Text("%08x", raw_value);
 
-				ImGui::TableSetColumnIndex(2);
-				if (i == rptr) {
-					ImGui::TextUnformatted("#d33682R");
-				}
-				if (i == wptr) {
-					ImGui::SameLine();
-					ImGui::TextUnformatted("#b58900W");
-				}
-				if (i == drv_wptr) {
-					ImGui::SameLine();
-					ImGui::TextUnformatted("#586e75DW");;
+				if (rptr >= 0) {
+					ImGui::TableSetColumnIndex(col++);
+					if (i == rptr) {
+						ImGui::TextUnformatted("#d33682R");
+					}
+					if (i == wptr) {
+						ImGui::SameLine();
+						ImGui::TextUnformatted("#b58900W");
+					}
+					if (i == drv_wptr) {
+						ImGui::SameLine();
+						ImGui::TextUnformatted("#586e75DW");;
+					}
 				}
 
-				ImGui::TableSetColumnIndex(3);
 				char *colored = (char*) ib_syntax.transform(line);
 
-				if (indent)
+				ImGui::TableSetColumnIndex(col++);
+				char *opcode_start = NULL;
+				char *opcode_end = NULL;
+				if (is_new_pkt) {
+					opcode_start = strstr(colored, "OPCODE");
+					if (opcode_start) {
+						opcode_start = strchr(opcode_start, '[');
+						if (opcode_start) {
+							opcode_end = strchr(opcode_start, ']');
+							ImGui::TextUnformatted(opcode_start + 1, opcode_end);
+							opcode_end++;
+							/* Advance opcode_end to the first alpha-numerical char */
+							while (*opcode_end && !isalnum(*opcode_end))
+								opcode_end++;
+						}
+					}
+					if (decoder_type == 3) {
+						/* sdma packet starts by the opcode, so display the rest of the line. */
+						colored = opcode_end;
+						opcode_start = NULL;
+					}
+				}
+
+				ImGui::TableSetColumnIndex(col++);
+
+				if (indent) {
 					ImGui::Indent();
+					ImGui::Indent();
+				}
 
 				char *lnk = strstr(colored, "IB_BASE_LO: ");
 				if (lnk) {
@@ -301,9 +362,11 @@ private:
 					}
 				}
 
-				ImGui::TextUnformatted(colored);
-				if (indent)
+				ImGui::TextUnformatted(colored, opcode_start);
+				if (indent) {
 					ImGui::Unindent();
+					ImGui::Unindent();
+				}
 			}
 		}
 
