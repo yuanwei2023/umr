@@ -743,20 +743,20 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				break;
 			case 2: // inside system aperture is mapped, otherwise unmapped
 				if (!(address >= system_aperture_low && address < system_aperture_high)) {
-					if (address >= fb_bottom && address < fb_top)
-						//return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
-						return (dst) ? asic->mem_funcs.access_sram(asic, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
-					else
+					if (address >= fb_bottom && address < fb_top) {
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en) : 0;
+					} else {
 						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+					}
 				}
 				break;
 			case 3: // inside system aperture is unmapped, otherwise mapped
 				if (address >= system_aperture_low && address < system_aperture_high) {
-					if (address >= fb_bottom && address < fb_top)
-						//return (dst) ? umr_access_vram(asic, UMR_LINEAR_HUB, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
-						return (dst) ? asic->mem_funcs.access_sram(asic, address - fb_bottom + vm_fb_offset, size, dst, write_en) : 0;
-					else
+					if (address >= fb_bottom && address < fb_top) {
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en) : 0;
+					} else {
 						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en) : 0;
+					}
 				}
 				break;
 			default:
