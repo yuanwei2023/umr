@@ -765,6 +765,14 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		}
 	}
 
+	// Addresses after this point should be virtual and within the span of the root page table.
+	uint64_t page_table_last_byte_addr = page_table_end_addr + 0xFFF;
+	if (address < page_table_start_addr || address > page_table_last_byte_addr) {
+		asic->mem_funcs.vm_message("[ERROR]: Address %u@%" PRIx64 " is not in range of memory spanned by root page table of VM context\n",
+								   vmid, address);
+		return -1;
+	}
+
 	// fallthrough, and/or VMIDs for >= 1 are always mapped
 	address -= page_table_start_addr;
 
