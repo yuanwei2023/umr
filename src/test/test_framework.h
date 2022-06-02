@@ -36,6 +36,7 @@ typedef enum TEST_RESULT (*test_func) (struct umr_asic*);
 #define ASSERT_NOT_NULL(_x) if (!(_x)) {fprintf(stderr, "%s:%d: Assertion failed: %s is NULL\n", __FILE__, __LINE__, #_x); return TEST_FATAL_FAIL;}
 #define ASSERT_STR_EQ(_x, _y) if (strcmp((_x),(_y))) {fprintf(stderr, "%s:%d: Assertion failed: '%s' != '%s'\n", __FILE__, __LINE__, #_x, #_y); return TEST_FATAL_FAIL;}
 #define ASSERT_SUCCESS(_x) if (_x < 0) {fprintf(stderr, "%s:%d: Assertion failed: %s failed\n", __FILE__, __LINE__, #_x); return TEST_FATAL_FAIL;}
+#define ASSERT_FAILURE(_x) if (_x >= 0) {fprintf(stderr, "%s:%d: Assertion failed: %s failed\n", __FILE__, __LINE__, #_x); return TEST_FATAL_FAIL;}
 
 
 /**DEFINE_TESTS()/END_TESTS()

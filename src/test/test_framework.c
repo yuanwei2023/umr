@@ -72,6 +72,7 @@ static enum TEST_RESULT run_test(struct global_config* global_config, struct tes
     options.verbose = global_config->verbose;
     asic = umr_discover_asic_by_name(&options, test_config->asic_name, vm_printf);
     asic->options.verbose = global_config->verbose;
+    asic->std_msg = vm_printf;
 
     umr_attach_test_harness(th, asic);
 

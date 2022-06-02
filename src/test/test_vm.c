@@ -135,6 +135,15 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct15(struct umr_asic* asic)
     return TEST_SUCCESS;
 }
 
+// read from outside the page table span on navi10
+enum TEST_RESULT test_can_read_from_vm_memory_direct16(struct umr_asic* asic)
+{
+    uint64_t read_data = 0;
+    asic->std_msg("[NOTE]: We expect an error message from the 16'th test\n");
+    ASSERT_FAILURE(umr_read_vram(asic, -1, UMR_GFX_HUB, 0xffffe11000, sizeof(read_data), &read_data));
+    return TEST_SUCCESS;
+}
+
 
 DEFINE_TESTS(vm_tests)
 #if 0
@@ -156,5 +165,6 @@ TEST(test_can_read_from_vm_memory_direct12, "direct_vm_test12.envdef", "vega10")
 TEST(test_can_read_from_vm_memory_direct13, "direct_vm_test13.envdef", "polaris11"),
 TEST(test_can_read_from_vm_memory_direct14, "direct_vm_test14.envdef", "polaris11"),
 TEST(test_can_read_from_vm_memory_direct15, "direct_vm_test15.envdef", "navi10"),
+TEST(test_can_read_from_vm_memory_direct16, "direct_vm_test16.envdef", "navi10"),
 #endif
 END_TESTS(vm_tests);
