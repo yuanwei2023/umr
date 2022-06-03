@@ -315,7 +315,7 @@ uint32_t update_regs(struct regs *r)
 
 struct soc15 {
 	char name[MAXLEN];
-	uint64_t off[8][8]; // inst, seg
+	uint64_t off[32][8]; // inst, seg
 	struct soc15 *next;
 };
 
@@ -448,7 +448,7 @@ int main(int argc, char **argv)
 		s = compile_soc15(rf);
 		while (s) {
 			printf("%s\n", s->name);
-			for (x = 0; x < 8; x++) {
+			for (x = 0; x < 32; x++) {
 				printf("\t");
 				for (y = 0; y < 8; y++) {
 					printf("0x%08"PRIx64" ", s->off[x][y]);

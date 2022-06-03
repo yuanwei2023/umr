@@ -1668,7 +1668,7 @@ struct umr_database_scan_item {
 
 struct umr_soc15_database {
 	char ipname[64];
-	uint64_t off[8][8];
+	uint64_t off[32][8];
 	struct umr_soc15_database *next;
 };
 

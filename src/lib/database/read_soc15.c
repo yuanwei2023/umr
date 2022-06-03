@@ -46,14 +46,33 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 	}
 
 	while (fgets(linebuf, sizeof(linebuf), f)) {
+retry8:
 		linebuf[strlen(linebuf)-1] = 0; // chomp
 		strcpy(s->ipname, linebuf);
-		for (x = 0; x < 8; x++) {
+		for (x = 0; x < 32; x++) {
 			fgets(linebuf, sizeof(linebuf), f);
 			if (sscanf(linebuf, "\t0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64,
 					&s->off[x][0], &s->off[x][1], &s->off[x][2], &s->off[x][3],
 					&s->off[x][4], &s->off[x][5], &s->off[x][6], &s->off[x][7]) != 8) {
-						errout("[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
+						if (x == 8) {
+							// originally there were only 8 instances
+							// now we support upto 32, so if we die on the 8'th line
+							// it's probably just the next IP block
+							s->next = calloc(1, sizeof *s);
+							if (!s->next) {
+								while (os) {
+									s = os->next;
+									free(os);
+									os = s;
+								}
+								fclose(f);
+								return NULL;
+							}
+							s = s->next;
+							goto retry8;
+						} else {
+							errout("[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
+						}
 			}
 		}
 		s->next = calloc(1, sizeof *s);
