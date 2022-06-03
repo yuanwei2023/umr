@@ -1,0 +1,24 @@
+default:
+  tags:
+    - docker
+
+image: "dmitriigalantsev/umr:latest"
+
+stages:
+  - build
+  - test
+
+build:
+  stage: build
+  script:
+    - cmake -DUMR_NO_GUI=ON -B build
+    - cmake --build build
+  artifacts:
+    paths:
+    - build/src/app/umr
+
+test_help:
+  needs: [build]
+  stage: test
+  script:
+    - ./build/src/app/umr -h
