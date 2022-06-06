@@ -713,6 +713,25 @@ struct umr_wave_status {
 			excp_group_mask,
 			utc_error;
 	} trapsts;
+
+	struct {
+		uint32_t
+			value,
+			fp_round,
+			fp_denorm,
+			dx10_clamp,
+			ieee,
+			lod_clamped,
+			debug_en,
+			excp_en,
+			fp16_ovfl,
+			pops_packer0,
+			pops_packer1,
+			disable_perf,
+			gpr_idx_en,
+			vskip,
+			csp;
+	} mode;
 };
 
 struct umr_wave_data {

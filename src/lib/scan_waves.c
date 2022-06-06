@@ -139,6 +139,7 @@ int umr_read_wave_status_via_mmio_gfx8_9(struct umr_asic *asic, uint32_t simd, u
 	}
 	dst[(*no_fields)++] = wave_read_ind(asic, simd, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_DBG0")->addr);
 	dst[(*no_fields)++] = wave_read_ind(asic, simd, wave, umr_find_reg_data(asic, "ixSQ_WAVE_M0")->addr);
+	dst[(*no_fields)++] = wave_read_ind(asic, simd, wave, umr_find_reg_data(asic, "ixSQ_WAVE_MODE")->addr);
 
 	return 0;
 }
@@ -163,6 +164,7 @@ int umr_read_wave_status_via_mmio_gfx10(struct umr_asic *asic, uint32_t wave, ui
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS2")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_DBG1")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_M0")->addr);
+	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_MODE")->addr);
 
 	return 0;
 }
@@ -258,6 +260,19 @@ static int umr_parse_wave_data_gfx_8(struct umr_asic *asic, struct umr_wave_stat
 	ws->tma_hi = buf[x++];
 	ws->ib_dbg0 = buf[x++];
 	ws->m0 = buf[x++];
+
+	ws->mode.value = value = buf[x++];
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_MODE");
+		ws->mode.fp_round = umr_bitslice_reg(asic, reg, "FP_ROUND", value);
+		ws->mode.fp_denorm = umr_bitslice_reg(asic, reg, "FP_DENORM", value);
+		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
+		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
+		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
+		ws->mode.debug_en = umr_bitslice_reg(asic, reg, "DEBUG_EN", value);
+		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
+		ws->mode.gpr_idx_en = umr_bitslice_reg(asic, reg, "GPR_IDX_EN", value);
+		ws->mode.vskip = umr_bitslice_reg(asic, reg, "VSKIP", value);
+		ws->mode.csp = umr_bitslice_reg(asic, reg, "CSP", value);
 	return 0;
 }
 
@@ -348,6 +363,23 @@ static int umr_parse_wave_data_gfx_9(struct umr_asic *asic, struct umr_wave_stat
 
 	ws->ib_dbg0 = buf[x++];
 	ws->m0 = buf[x++];
+
+	ws->mode.value = value = buf[x++];
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_MODE");
+		ws->mode.fp_round = umr_bitslice_reg(asic, reg, "FP_ROUND", value);
+		ws->mode.fp_denorm = umr_bitslice_reg(asic, reg, "FP_DENORM", value);
+		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
+		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
+		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
+		ws->mode.debug_en = umr_bitslice_reg(asic, reg, "DEBUG_EN", value);
+		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
+		ws->mode.fp16_ovfl = umr_bitslice_reg(asic, reg, "FP16_OVFL", value);
+		ws->mode.pops_packer0 = umr_bitslice_reg(asic, reg, "POPS_PACKER0", value);
+		ws->mode.pops_packer1 = umr_bitslice_reg(asic, reg, "POPS_PACKER1", value);
+		ws->mode.disable_perf = umr_bitslice_reg(asic, reg, "DISABLE_PERF", value);
+		ws->mode.gpr_idx_en = umr_bitslice_reg(asic, reg, "GPR_IDX_EN", value);
+		ws->mode.vskip = umr_bitslice_reg(asic, reg, "VSKIP", value);
+		ws->mode.csp = umr_bitslice_reg(asic, reg, "CSP", value);
 	return 0;
 }
 
@@ -468,6 +500,18 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 
 	ws->ib_dbg1 = buf[x++];
 	ws->m0 = buf[x++];
+
+	ws->mode.value = value = buf[x++];
+		reg = umr_find_reg_data(asic, "ixSQ_WAVE_MODE");
+		ws->mode.fp_round = umr_bitslice_reg(asic, reg, "FP_ROUND", value);
+		ws->mode.fp_denorm = umr_bitslice_reg(asic, reg, "FP_DENORM", value);
+		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
+		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
+		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
+		ws->mode.debug_en = umr_bitslice_reg(asic, reg, "DEBUG_EN", value);
+		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
+		ws->mode.fp16_ovfl = umr_bitslice_reg(asic, reg, "FP16_OVFL", value);
+		ws->mode.disable_perf = umr_bitslice_reg(asic, reg, "DISABLE_PERF", value);
 	return 0;
 }
 

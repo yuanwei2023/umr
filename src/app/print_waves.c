@@ -91,7 +91,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		if (!asic->options.bitfields && first) {
 			static const char* titles[] = {
 				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "INST_DW1", "EXEC_HI", "EXEC_LO", "HW_ID", "GPRALLOC",
-				"LDSALLOC", "TRAPSTS", "IBSTS", "TBA_HI", "TBA_LO", "TMA_HI", "TMA_LO", "IB_DBG0", "M0", NULL
+				"LDSALLOC", "TRAPSTS", "IBSTS", "TBA_HI", "TBA_LO", "TMA_HI", "TMA_LO", "IB_DBG0", "M0", "MODE", NULL
 			};
 			first = 0;
 			printf("SE SH CU SIMD WAVE# ");
@@ -106,13 +106,13 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 "   %08lx %08lx %08lx " // wave_status pc/hi/lo
 "%08lx %08lx %08lx %08lx " // inst0/1 exec hi/lo
 "%08lx %08lx %08lx %08lx %08lx " // HW_ID GPR/LDSALLOC TRAP/IB STS
-"%08lx %08lx %08lx %08lx %08lx %08lx " // TBA_HI TBA_LO TMA_HI TMA_LO IB_DBG0 M0\n");
+"%08lx %08lx %08lx %08lx %08lx %08lx %08lx " // TBA_HI TBA_LO TMA_HI TMA_LO IB_DBG0 M0 MODE\n");
 "\n",
 (unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id.simd_id, (unsigned)wd->ws.hw_id.wave_id,
 (unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
 (unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.wave_inst_dw1, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
 (unsigned long)wd->ws.hw_id.value, (unsigned long)wd->ws.gpr_alloc.value, (unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value, (unsigned long)wd->ws.ib_sts.value,
-(unsigned long)wd->ws.tba_hi, (unsigned long)wd->ws.tba_lo, (unsigned long)wd->ws.tma_hi, (unsigned long)wd->ws.tma_lo, (unsigned long)wd->ws.ib_dbg0, (unsigned long)wd->ws.m0
+(unsigned long)wd->ws.tba_hi, (unsigned long)wd->ws.tba_lo, (unsigned long)wd->ws.tma_hi, (unsigned long)wd->ws.tma_lo, (unsigned long)wd->ws.ib_dbg0, (unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value
 );
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
 				for (x = 0; x < ((wd->ws.gpr_alloc.sgpr_size + 1) << shift); x += 4)
@@ -318,6 +318,24 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 			PP(trapsts, excp_cycle);
 			PP(trapsts, dp_rate);
 
+			Hv("MODE", wd->ws.mode.value);
+			PP(mode, fp_round);
+			PP(mode, fp_denorm);
+			PP(mode, dx10_clamp);
+			PP(mode, ieee);
+			PP(mode, lod_clamped);
+			PP(mode, debug_en);
+			PP(mode, excp_en);
+			if (asic->family > FAMILY_VI)
+				PP(mode, fp16_ovfl);
+			PP(mode, pops_packer0);
+			PP(mode, pops_packer1);
+			if (asic->family > FAMILY_VI)
+				PP(mode, disable_perf);
+			PP(mode, gpr_idx_en);
+			PP(mode, vskip);
+			PP(mode, csp);
+
 			printf("\n"); col = 0;
 		}
 		wd = wd->next;
@@ -393,7 +411,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	while (wd) {
 		if (!asic->options.bitfields && first) {
 			static const char* titles[] = {
-				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "EXEC_HI", "EXEC_LO", "HW_ID1", "HW_ID2", "GPRALLOC", "LDSALLOC", "TRAPSTS", "IBSTS1", "IBSTS2", "IB_DBG1", "M0", NULL
+				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "EXEC_HI", "EXEC_LO", "HW_ID1", "HW_ID2", "GPRALLOC", "LDSALLOC", "TRAPSTS", "IBSTS1", "IBSTS2", "IB_DBG1", "M0", "MODE", NULL
 			};
 			first = 0;
 			printf("SE SA WGP SIMD WAVE# ");
@@ -408,13 +426,13 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 "   %08lx %08lx %08lx " // wave_status pc/hi/lo
 "%08lx %08lx %08lx " // inst0 exec hi/lo
 "%08lx %08lx %08lx %08lx %08lx %08lx %08lx " // HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
-"%08lx %08lx " // IB_DBG1 M0\n");
+"%08lx %08lx %08lx " // IB_DBG1 M0 MODE\n");
 "\n",
 (unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id, (unsigned)wd->ws.hw_id1.wave_id, // TODO: wgp printed out won't match geometry for now w.r.t. to SPI
 (unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
 (unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
 (unsigned long)wd->ws.hw_id1.value, (unsigned long)wd->ws.hw_id2.value, (unsigned long)wd->ws.gpr_alloc.value, (unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value,
-(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1, (unsigned long)wd->ws.m0);
+(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1, (unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
 				for (x = 0; x < 112; x += 4)
 					printf(">SGPRS[%u..%u] = { %08lx, %08lx, %08lx, %08lx }\n",
@@ -626,6 +644,17 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			PP(trapsts, dp_rate);
 			PP(trapsts, excp_group_mask);
 			PP(trapsts, utc_error);
+
+			Hv("MODE", wd->ws.mode.value);
+			PP(mode, fp_round);
+			PP(mode, fp_denorm);
+			PP(mode, dx10_clamp);
+			PP(mode, ieee);
+			PP(mode, lod_clamped);
+			PP(mode, debug_en);
+			PP(mode, excp_en);
+			PP(mode, fp16_ovfl);
+			PP(mode, disable_perf);
 
 			printf("\n"); col = 0;
 		}
