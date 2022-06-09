@@ -175,7 +175,15 @@ retry:
 		// optionally require the ip block name to partially match (allows for ignoring version numbers)
 		if (ip && memcmp(asic->blocks[i]->ipname, ip, strlen(ip)))
 			continue;
+
+		// if we are looking for an instance require the {inst} as well
 		if (inst >= 0 && !strstr(asic->blocks[i]->ipname, instname))
+			continue;
+
+		// if we are not looking for an instance skip over IP blocks with an instance
+		// this is mostly to catch UMR bugs that don't forward say
+		// --vm-partition to a register function on partitioned hosts
+		if (inst < 0 && strstr(asic->blocks[i]->ipname, "{"))
 			continue;
 		for (j = 0; j < asic->blocks[i]->no_regs; j++)
 			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname))
