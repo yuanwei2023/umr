@@ -171,16 +171,23 @@ public:
 					char **opcode_strs = NULL;
 					umr_shader_disasm(asic, (uint8_t *)copy, json_array_get_count(op) * 4, base, &opcode_strs);
 
+					sprintf(tmp, "0x%" PRIx64, base);
+
 					ImGui::BeginChild(tmp);
 					ImGui::BeginTable("shader", 3, ImGuiTableFlags_Borders);
-					ImGui::TableSetupColumn("Index", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x00000000 + 0x0000 ").x);
+					ImGui::TableSetupColumn(tmp, ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x0000000000 ").x);
 					ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("0x00000000  ").x);
 					ImGui::TableSetupColumn("Disassembly");
 					ImGui::TableHeadersRow();
 					for (size_t j = 0; j < json_array_get_count(op); j++) {
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
-						ImGui::Text("0x%08" PRIx64 " + 0x%lx", base, j * 4);
+						ImGui::Text("+ 0x%lx", j * 4);
+						if (ImGui::IsItemHovered()) {
+							ImGui::BeginTooltip();
+							ImGui::Text("0x%" PRIx64, base + j * 4);
+							ImGui::EndTooltip();
+						}
 						ImGui::TableSetColumnIndex(1);
 						ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
 						ImGui::TableSetColumnIndex(2);
