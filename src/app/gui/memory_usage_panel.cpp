@@ -26,9 +26,15 @@
 
 #include <algorithm>
 
+#define NUM_DRM_COUNTERS            3
+#define NUM_DRM_COUNTERS_VALUES   100
+
 class MemoryUsagePanel : public Panel {
 public:
-	MemoryUsagePanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), last_vm_read(10), autorefresh(-1) { }
+	MemoryUsagePanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), last_vm_read(10), autorefresh(1) {
+		got_first_drm_counters = false;
+		drm_counters_offset = 0;
+	}
 	~MemoryUsagePanel() {
 		if (last_answer)
 			json_value_free(json_object_get_wrapping_value(last_answer));
@@ -41,6 +47,25 @@ public:
 			if (last_answer)
 				json_value_free(json_object_get_wrapping_value(last_answer));
 			last_answer = json_object(json_value_deep_copy(answer));
+		} else if (!strcmp(command, "drm-counters")) {
+			double values[3];
+			values[0] = json_object_get_number(json_object(answer), "bytes-moved") / (1024.0 * 1024.0 * 1024);
+			values[1] = json_object_get_number(json_object(answer), "num-evictions");
+			values[2] = json_object_get_number(json_object(answer), "cpu-page-faults");
+			if (got_first_drm_counters) {
+				for (int i = 0; i < NUM_DRM_COUNTERS; i++) {
+					drm_counters[i * NUM_DRM_COUNTERS_VALUES + drm_counters_offset] = (float) values[i];
+				}
+				drm_counters_offset = (drm_counters_offset + 1) % NUM_DRM_COUNTERS_VALUES;
+			} else {
+				got_first_drm_counters = true;
+				for (int i = 0; i < NUM_DRM_COUNTERS; i++) {
+					for (int j = 0; j < NUM_DRM_COUNTERS_VALUES; j++) {
+						drm_counters[i * NUM_DRM_COUNTERS_VALUES + j] = (float) values[i];
+					}
+					drm_counters_min[i] = (float)values[i];
+				}
+			}
 		}
 	}
 
@@ -48,6 +73,7 @@ public:
 		if (can_send_request) {
 			if (!last_answer || (autorefresh > 0 && last_vm_read > autorefresh)) {
 				send_memory_usage_command();
+				send_drm_counters_command();
 				last_vm_read = 0;
 			}
 			last_vm_read += dt;
@@ -55,6 +81,7 @@ public:
 
 		if (ImGui::Button("Refresh")) {
 			send_memory_usage_command();
+			send_drm_counters_command();
 			last_vm_read = 0;
 		}
 		ImGui::SameLine();
@@ -73,6 +100,7 @@ public:
 			ImGui::DragFloat(" (drag to modify)", &autorefresh, 0.1, 0, 10, "%.1f sec");
 		}
 		ImGui::Separator();
+		ImGui::BeginChild("bars", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
 		if (last_answer) {
 			const char * titles[] = { "VRAM", "GTT", "Visible VRAM" };
 			const char * names[] = { "vram", "gtt", "vis_vram" };
@@ -112,7 +140,7 @@ public:
 				if (strlen(name))
 					strcat(label, name);
 				uint64_t s = ((uint64_t)json_object_get_number(pid, "total")) / (1024 * 1024);
-				ImGui::PushID(pid);
+				ImGui::PushID(name);
 				sprintf(overlay, "%ld MB", s);
 				ImGui::ProgressBar(s / (float)max, ImVec2(avail.x / 5, 0), overlay);
 				ImGui::SameLine();
@@ -200,6 +228,30 @@ public:
 			}
 			ImGui::EndChild();
 		}
+		ImGui::EndChild();
+		ImGui::SameLine();
+		ImGui::BeginChild("counters", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
+		const char *labels[] = {
+			"GB moved", " evictions", "CPU page faults"
+		};
+		for (int i = 0; i < NUM_DRM_COUNTERS; i++) {
+			float max = drm_counters[i * NUM_DRM_COUNTERS_VALUES + drm_counters_offset - 1];
+			char l[128];
+			if (i == 0)
+				sprintf(l, "%.1f %s", max, labels[i]);
+			else
+				sprintf(l, "%d %s", (int)max, labels[i]);
+			ImGui::PushID(labels[i]);
+			ImGui::PlotLines("",
+				 &drm_counters[i * NUM_DRM_COUNTERS_VALUES],
+				 NUM_DRM_COUNTERS_VALUES,
+				 drm_counters_offset,
+				 l,
+				 drm_counters_min[i], FLT_MAX,
+				 ImVec2(0, avail.y / 4));
+			ImGui::PopID();
+		}
+		ImGui::EndChild();
 
 		return autorefresh;
 	}
@@ -209,8 +261,18 @@ private:
 		json_object_set_string(json_object(req), "command", "memory-usage");
 		send_request(req);
 	}
+	void send_drm_counters_command() {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "drm-counters");
+		send_request(req);
+	}
+
 private:
 	JSON_Object *last_answer;
+	float drm_counters[NUM_DRM_COUNTERS * NUM_DRM_COUNTERS_VALUES];
 	float last_vm_read;
 	float autorefresh;
+	bool got_first_drm_counters;
+	float drm_counters_min[NUM_DRM_COUNTERS];
+	int drm_counters_offset;
 };
