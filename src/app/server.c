@@ -845,6 +845,12 @@ static void init_asics() {
 			asics[i]->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
 
 		umr_scan_config(asics[i], 1);
+		if (asics[i]->fd.drm < 0) {
+			char fname[64];
+			snprintf(fname, sizeof(fname) - 1, "/dev/dri/card%d", asics[i]->instance);
+			asics[i]->fd.drm = open(fname, O_RDWR);
+		}
+
 		i++;
 
 		if (opt.test_log_fd) {
@@ -1653,6 +1659,15 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 		JSON_Array *pids = parse_vm_info(read_file(path));
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
+	} else if (!strcmp(command, "drm-counters")) {
+		uint64_t values[3] = { 0 };
+		umr_query_drm(asic, 0x0f /* AMDGPU_INFO_NUM_BYTES_MOVED */, &values[0], sizeof(values[0]));
+		umr_query_drm(asic, 0x18 /* AMDGPU_INFO_NUM_EVICTIONS */, &values[1], sizeof(values[0]));
+		umr_query_drm(asic, 0x1E /* AMDGPU_INFO_NUM_VRAM_CPU_PAGE_FAULTS */, &values[2], sizeof(values[0]));
+		answer = json_value_init_object();
+		json_object_set_number(json_object(answer), "bytes-moved", (double)values[0]);
+		json_object_set_number(json_object(answer), "num-evictions", (double)values[1]);
+		json_object_set_number(json_object(answer), "cpu-page-faults", (double)values[2]);
 	} else if (!strcmp(command, "kms")) {
 		char path[256];
 		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
