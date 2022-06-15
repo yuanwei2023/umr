@@ -100,6 +100,7 @@ public:
 			ImGui::DragFloat(" (drag to modify)", &autorefresh, 0.1, 0, 10, "%.1f sec");
 		}
 		ImGui::Separator();
+		const char *evict_labels[] = { "Evict VRAM", "Evict GTT" };
 		ImGui::BeginChild("bars", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
 		if (last_answer) {
 			const char * titles[] = { "VRAM", "GTT", "Visible VRAM" };
@@ -114,7 +115,14 @@ public:
 				uint64_t total = ((uint64_t) json_object_get_number(o, "total")) / (1024 * 1024);
 				float ratio = used / (float)total;
 				sprintf(overlay, "%.1f%% (of %" PRId64 " MB)", 100 * ratio, total);
-				ImGui::ProgressBar(ratio, ImVec2(-1, 0), overlay);
+				ImGui::ProgressBar(ratio, ImVec2(avail.x / 3, 0), overlay);
+
+				if (i < 2) {
+					ImGui::SameLine();
+					if (ImGui::Button("Evict")) {
+						send_evict_command(i);
+					}
+				}
 			}
 
 			ImGui::Separator();
@@ -264,6 +272,12 @@ private:
 	void send_drm_counters_command() {
 		JSON_Value *req = json_value_init_object();
 		json_object_set_string(json_object(req), "command", "drm-counters");
+		send_request(req);
+	}
+	void send_evict_command(int type) {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "evict");
+		json_object_set_number(json_object(req), "type", type);
 		send_request(req);
 	}
 

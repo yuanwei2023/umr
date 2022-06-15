@@ -1668,6 +1668,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		json_object_set_number(json_object(answer), "bytes-moved", (double)values[0]);
 		json_object_set_number(json_object(answer), "num-evictions", (double)values[1]);
 		json_object_set_number(json_object(answer), "cpu-page-faults", (double)values[2]);
+	} else if (!strcmp(command, "evict")) {
+		char path[256];
+		int type = json_object_get_number(request, "type");
+		const char *mem = type == 0 ? "vram" : "gtt";
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_evict_%s", asic->instance, mem);
+		read_file(path);
 	} else if (!strcmp(command, "kms")) {
 		char path[256];
 		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
