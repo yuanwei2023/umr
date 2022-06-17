@@ -1142,11 +1142,16 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			i++;
 		}
 	} else if (strcmp(command, "read") == 0) {
+		const char *block = json_object_get_string(request, "block");
 		struct umr_reg *r = umr_find_reg_data_by_ip(
-			asic, json_object_get_string(request, "block"), json_object_get_string(request, "register"));
+			asic, block, json_object_get_string(request, "register"));
+
+		if (r == NULL) {
+			last_error = "unknown register";
+			goto error;
+		}
 
 		answer = json_value_init_object();
-
 		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
 		json_object_set_number(json_object(answer), "value", value);
 	} else if (strcmp(command, "accumulate") == 0) {
@@ -1227,6 +1232,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 	} else if (strcmp(command, "write") == 0) {
 		struct umr_reg *r = umr_find_reg_data_by_ip(
 			asic, json_object_get_string(request, "block"), json_object_get_string(request, "register"));
+
+		if (r == NULL) {
+			last_error = "unknown register";
+			goto error;
+		}
 
 		answer = json_value_init_object();
 
