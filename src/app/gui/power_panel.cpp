@@ -194,6 +194,9 @@ public:
 					if (ImGui::RadioButton(modes[i], mode == i)) {
 						new_mode = i;
 					}
+					if (i == 1 && ImGui::IsItemHovered()) {
+						ImGui::SetTooltip("#dbde79Warning: monitor the temperatures to avoid damaging the GPU");
+					}
 				}
 				ImGui::EndGroup();
 
