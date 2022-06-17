@@ -149,7 +149,13 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter*
  */
 struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, const char* regname)
 {
-	return umr_find_reg_data_by_ip_by_instance(asic, ip, -1, regname);
+	int instance = -1;
+	char *p;
+
+	p = strstr(ip, "{");
+	if (p)
+		sscanf(p, "{%d}", &instance);
+	return umr_find_reg_data_by_ip_by_instance(asic, ip, instance, regname);
 }
 
 struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname)
