@@ -1703,6 +1703,18 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 				}
 			}
 		}
+
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_dm_visual_confirm", asic->instance);
+		if (json_object_has_value(request, "dm_visual_confirm")) {
+			FILE *fd = fopen(path, "w");
+			if (fd) {
+				const char *v = json_object_get_boolean(request, "dm_visual_confirm") ? "1" : "0";
+				fwrite(v, 1, 1, fd);
+				fclose(fd);
+			}
+		}
+		json_object_set_number(json_object(answer), "dm_visual_confirm", read_sysfs_uint64(path));
+
 	} else {
 		last_error = "unknown command";
 		goto error;

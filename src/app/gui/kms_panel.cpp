@@ -29,6 +29,7 @@ class KmsPanel : public Panel {
 public:
 	KmsPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), read_interval(0.5) {
 		delta_since_last_read = 10;
+		visual_plane_debug = false;
 	}
 
 	~KmsPanel() {
@@ -43,6 +44,7 @@ public:
 			if (last_answer)
 				json_value_free(json_object_get_wrapping_value(last_answer));
 			last_answer = json_object(json_value_deep_copy(answer));
+			visual_plane_debug = json_object_get_number(last_answer, "dm_visual_confirm");
 		}
 	}
 
@@ -124,14 +126,30 @@ public:
 		}
 
 		ImGui::BeginDisabled(!can_send_request);
+
+		ImGui::Text("KMS plane visual indicator:");
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip(
+				"Toggle amdgpu_dm_visual_confirm debug.\n"
+				"Note: this needs a planes reconfiguration to be effective.\n"
+				"(see https://www.kernel.org/doc/html/latest/gpu/amdgpu/display/dc-debug.html)");
+		}
+		ImGui::SameLine();
+		ImGui::PushID("visual_plane_debug");
+		if (ImGui::Checkbox("", &visual_plane_debug)) {
+			send_kms_command(visual_plane_debug ? 1 : 0);
+		}
+		ImGui::PopID();
+		ImGui::SameLine();
+		ImGui::Dummy(ImVec2(30.0, 0));
+		ImGui::SameLine();
 		if (ImGui::Button("Refresh")) {
 			send_kms_command();
 			delta_since_last_read = 0;
 		}
 		ImGui::EndDisabled();
-
 		ImGui::SameLine();
-		ImGui::Text("Auto-refresh");
+		ImGui::Text("Auto-refresh:");
 		ImGui::SameLine();
 		bool autorefresh_enabled = read_interval >= 0;
 		ImGui::PushID("autorefresh");
@@ -442,9 +460,12 @@ public:
 	}
 
 private:
-	void send_kms_command() {
+	void send_kms_command(int enable_visual_debug = -1) {
 		JSON_Value *req = json_value_init_object();
 		json_object_set_string(json_object(req), "command", "kms");
+		if (enable_visual_debug != -1) {
+			json_object_set_boolean(json_object(req), "dm_visual_confirm", enable_visual_debug);
+		}
 		send_request(req);
 	}
 
@@ -453,5 +474,6 @@ private:
 	float delta_since_last_read;
 	float read_interval;
 	ImVec2 fullscreen_top_left, fullscreen_bottom_right;
+	bool visual_plane_debug;
 };
 
