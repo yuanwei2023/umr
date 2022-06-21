@@ -656,6 +656,8 @@ static void my_va_decode(pde_fields_ai_t *pdes, int num_pde, pte_fields_ai_t pte
 		page_table[num_page_table_entries].pba = pte.page_base_addr;
 		page_table[num_page_table_entries].system = pte.system;
 		page_table[num_page_table_entries].va_mask = pte.pte_mask;
+		page_table[num_page_table_entries].tmz = pte.tmz;
+		page_table[num_page_table_entries].mtype = pte.mtype;
 		num_page_table_entries++;
 	}
 }
