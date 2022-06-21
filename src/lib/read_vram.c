@@ -351,12 +351,13 @@ static pde_fields_ai_t decode_pde_entry_ai(uint64_t pde_entry)
 
 /*
  * PTE format on AI and PI:
- * 58:57 mtype
+ * 58:57 mtype (AI only)
  * 56 further
  * 54 reserved
  *   But if it is set, then this is actually a PDE with 'P'
  *   bit set, which makes the PDE act like a PTE.
  * 51 prt
+ * 48:50 mtype (NV only)
  * 47:12 4k physical page base address
  * 11:7 fragment
  * 6 write
@@ -367,7 +368,7 @@ static pde_fields_ai_t decode_pde_entry_ai(uint64_t pde_entry)
  * 1 system
  * 0 valid
  */
-static pte_fields_ai_t decode_pte_entry_ai(uint64_t pte_entry)
+static pte_fields_ai_t decode_pte_entry_ai(int is_gfx9, uint64_t pte_entry)
 {
 	pte_fields_ai_t pte_fields;
 	pte_fields.valid          = pte_entry & 1;
@@ -381,7 +382,7 @@ static pte_fields_ai_t decode_pte_entry_ai(uint64_t pte_entry)
 	pte_fields.prt            = (pte_entry >> 51) & 1;
 	pte_fields.pde            = (pte_entry >> 54) & 1;
 	pte_fields.further        = (pte_entry >> 56) & 1;
-	pte_fields.mtype          = (pte_entry >> 57) & 3;
+	pte_fields.mtype          = (pte_entry >> (is_gfx9 ? 57 : 48)) & 3;
 
 	// PTEs hold physical address in 47:12
 	// PDEs hold physical address in 47:6, so if this is a PTE-as-PDE (further), need a differnt mask
@@ -935,7 +936,7 @@ pte_further:
 			}
 
 pde_is_pte:
-			pte_fields = decode_pte_entry_ai(pte_entry);
+			pte_fields = decode_pte_entry_ai(asic->family == FAMILY_AI, pte_entry);
 
 			// How many bits in the address are used to index into the PTB?
 			// If further is set, that means we jumped back to pde_is_pte,
@@ -1054,7 +1055,7 @@ pde_is_pte:
 					return -1;
 			}
 
-			pte_fields = decode_pte_entry_ai(pte_entry);
+			pte_fields = decode_pte_entry_ai(asic->family == FAMILY_AI, pte_entry);
 
 			if (asic->options.verbose)
 				print_pte_ai(asic, NULL, 0, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
