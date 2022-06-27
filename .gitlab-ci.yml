@@ -1,23 +1,46 @@
-default:
-  tags:
-    - google-freedreno-db410c
+# CI templates from
+# https://gitlab.freedesktop.org/freedesktop/ci-templates
+.templates_sha: &templates_sha 9dc112a981fb523b7c34f00b386b4e3b2e7da2c6
 
-image: "dmitriigalantsev/umr:latest"
+include:
+  - project: 'freedesktop/ci-templates'
+    ref: *templates_sha
+    file: '/templates/alpine.yml'
 
 stages:
+  - build_docker
   - build
   - test
 
+.umr_docker_vars:
+  variables:
+    FDO_DISTRIBUTION_TAG: 'built-on-2022-06-27'
+    FDO_UPSTREAM_REPO: 'tomstdenis/umr'
+
+build_umr_docker:
+  extends:
+  - .fdo.container-build@alpine
+  - .umr_docker_vars
+  stage: build_docker
+  variables:
+    FDO_DISTRIBUTION_PACKAGES: 'cmake g++ gcc libdrm-dev libpciaccess-dev libxml2-dev llvm llvm13 llvm13-dev llvm13-static make ncurses-dev'
+
 build:
+  extends:
+  - .fdo.distribution-image@alpine
+  - .umr_docker_vars
   stage: build
   script:
     - cmake -DUMR_NO_GUI=ON -B build
-    - cmake --build build
+    - cmake --build build -j $FDO_CI_CONCURRENT
   artifacts:
     paths:
     - build/src/app/umr
 
 test_help:
+  extends:
+  - .fdo.distribution-image@alpine
+  - .umr_docker_vars
   needs: [build]
   stage: test
   script:
