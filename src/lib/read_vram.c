@@ -727,14 +727,6 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
 		sam = umr_bitslice_reg_by_name_by_ip(asic, hub, buf, "SYSTEM_ACCESS_MODE", registers.mmMC_VM_MX_L1_TLB_CNTL);
 
-#if 0
-		if (asic->options.verbose)
-			asic->mem_funcs.vm_message("SYSTEM_ACCESS_MODE == %" PRIu32 "\n", sam);
-
-		if (asic->options.verbose)
-			asic->mem_funcs.vm_message("%" PRIx64 ", %" PRIx64 ", %" PRIx64 ", %" PRIx64 ", %" PRIx64 ", %" PRIx64 "\n", system_aperture_low, address, system_aperture_high, fb_bottom, fb_top, vm_fb_offset);
-#endif
-
 		// addresses in VMID0 need special handling w.r.t. PAGE_TABLE_START_ADDR
 		switch (sam) {
 			case 0: // physical access
@@ -1076,8 +1068,6 @@ pde_is_pte:
 		}
 
 next_page:
-		// read upto 4K from it
-		// FIXME: Support page sizes >4KB
 		if (((start_addr & pte_page_mask) + size) & ~pte_page_mask) {
 			chunk_size = (1 + pte_page_mask) - (start_addr & pte_page_mask);
 		} else {
@@ -1141,6 +1131,7 @@ next_page:
 		size -= chunk_size;
 		address += chunk_size;
 	} while (size);
+
 	if (asic->options.verbose)
 		asic->mem_funcs.vm_message("\n=== Completed VM Decoding ===\n");
 
