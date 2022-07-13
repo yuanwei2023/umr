@@ -30,6 +30,7 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 	FILE *f;
 	uint32_t no_regs, x;
 	char linebuf[256];
+	int maj, min, rev;
 
 	if (soc15) {
 		// find soc15 entry
@@ -63,6 +64,13 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 	ip->no_regs = no_regs;
 	ip->regs = calloc(no_regs, sizeof(*(ip->regs)));
 	ip->ipname = strdup(cmnname);
+
+	// try to parse version out of filename
+	if (sscanf(filename,"%[a-zA-Z/]_%d_%d_%d.reg", linebuf, &maj, &min, &rev) == 4) {
+		ip->discoverable.maj = maj;
+		ip->discoverable.min = min;
+		ip->discoverable.rev = rev;
+	}
 
 	x = 0;
 	while (fgets(linebuf, sizeof linebuf, f)) {

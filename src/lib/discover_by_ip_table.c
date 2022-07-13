@@ -52,6 +52,10 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	sscanf(linebuf, "%"SCNu32, &no_regs);
 	ip->no_regs = no_regs;
 	ip->regs = calloc(no_regs, sizeof(*(ip->regs)));
+	ip->discoverable.die = det->die;
+	ip->discoverable.maj = det->maj;
+	ip->discoverable.min = det->min;
+	ip->discoverable.rev = det->rev;
 
 	// swap for common names
 	if (!strcmp(det->ipname, "gc")) {

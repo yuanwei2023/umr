@@ -169,6 +169,9 @@ struct umr_ip_block {
 	char *ipname;
 	int no_regs;
 	struct umr_reg *regs;
+	struct {
+		int die, maj, min, rev;
+	} discoverable;
 };
 
 struct umr_find_reg_iter_result {
