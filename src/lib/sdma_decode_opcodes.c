@@ -993,6 +993,11 @@ static void unhandled(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asi
 {
 }
 
+static int unhandled_size(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream)
+{
+	return 1;
+}
+
 static void *unhandled_subop(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream)
 {
 }
@@ -1005,7 +1010,7 @@ static void done(struct umr_sdma_stream_decode_ui *ui)
 	printf("Done decoding IB\n");
 }
 
-static struct  umr_sdma_stream_decode_ui demo_ui = { start_ib, start_opcode, add_field, unhandled, unhandled_subop, done, NULL };
+static struct  umr_sdma_stream_decode_ui demo_ui = { start_ib, start_opcode, add_field, unhandled, unhandled_size, unhandled_subop, done, NULL };
 
 static const uint32_t gcr_data[] = {
 0x11,

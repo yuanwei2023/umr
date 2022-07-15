@@ -779,6 +779,11 @@ static void sdma_unhandled(struct umr_sdma_stream_decode_ui *ui, struct umr_asic
 	/* Ignore */
 }
 
+static int sdma_unhandled_size(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream) {
+	/* Ignore */
+	return 1;
+}
+
 static void sdma_unhandled_subop(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream) {
 	/* Ignore */
 }
@@ -1374,8 +1379,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 
 		if (!memcmp(ring_name, "sdma", 4) ||
 			!memcmp(ring_name, "page", 4)) {
-			struct umr_sdma_stream_decode_ui fn = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_subop, sdma_done, &data };
-			struct umr_sdma_stream *ps = umr_sdma_decode_ring(asic, ring_name, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
+			struct umr_sdma_stream_decode_ui fn = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_size, sdma_unhandled_subop, sdma_done, &data };
+			struct umr_sdma_stream *ps = umr_sdma_decode_ring(asic, &fn, ring_name, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
 
 			if (ps) {
 				/* Ring content */

@@ -33,7 +33,7 @@
  *
  * Return a sdma stream if successful.
  */
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop)
+struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, char *ringname, int start, int stop)
 {
 	void *ps;
 	uint32_t *ringdata, ringsize;
@@ -68,7 +68,7 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
 		     linearsize++, start = (start + 1) % ringsize)
 			lineardata[linearsize] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
 
-		ps = umr_sdma_decode_stream(asic, -1, 0, 0, lineardata, linearsize);
+		ps = umr_sdma_decode_stream(asic, ui, -1, 0, 0, lineardata, linearsize);
 		free(lineardata);
 		free(ringdata);
 	} else {
@@ -82,12 +82,14 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringna
  * umr_sdma_decode_stream - Decode an array of sdma packets into a sdma stream
  *
  * @vmid:  The VMID (or zero) that this array comes from (if say an IB)
+ * @ui: UI callbacks for tracking and modifying parse state (e.g. handling private op codes)
  * @stream: An array of DWORDS which contain the sdma packets
  * @nwords:  The number of words in the stream
  *
  * Returns a sdma stream if successfully decoded.
  */
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition,
+					       uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
 	uint32_t *ostream = stream;
@@ -155,7 +157,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_par
 				if (!asic->options.no_follow_ib) {
 					uint32_t *data = calloc(sizeof(*data), ps->ib.size);
 					if (umr_read_vram(asic, vm_partition, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0) {
-						ps->next_ib = umr_sdma_decode_stream(asic, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
+						ps->next_ib = umr_sdma_decode_stream(asic, ui, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
 						if (ps->next_ib) {
 							ps->next_ib->from.addr = from_addr + (((intptr_t)(stream - ostream)) << 2);
 							ps->next_ib->from.vmid = from_vmid;
@@ -214,9 +216,13 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_par
 				ps->nwords = 4;
 				break;
 			default:
-				asic->err_msg("[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
-				umr_free_sdma_stream(ops);
-				return NULL;
+				if (!ui || !ui->unhandled_size || ui->unhandled_size(ui, asic, ps)) {
+					asic->err_msg("[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
+					umr_free_sdma_stream(ops);
+					return NULL;
+				}
+				// Callback succeeded to populate size in stream->nwrods.
+				break;
 		}
 
 		if (nwords < 1 + ps->nwords) {
@@ -233,7 +239,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_par
 		// grab rest of words
 		ps->words = calloc(ps->nwords, sizeof(ps->words[0]));
 		memcpy(ps->words, stream, ps->nwords * sizeof(ps->words[0]));
-		
+
 		// advance stream
 		stream += ps->nwords;
 		nwords -= 1 + ps->nwords;
@@ -247,7 +253,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_par
 	return ops;
 }
 
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
 {
 	uint32_t *words;
 	struct umr_sdma_stream *str;
@@ -264,7 +270,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, int vm_
 		free(words);
 		return NULL;
 	}
-	str = umr_sdma_decode_stream(asic, vm_partition, addr, vmid, words, nwords);
+	str = umr_sdma_decode_stream(asic, ui, vm_partition, addr, vmid, words, nwords);
 	free(words);
 	return str;
 }

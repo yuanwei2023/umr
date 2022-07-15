@@ -1514,11 +1514,6 @@ struct umr_sdma_stream {
 	struct umr_sdma_stream *next, *next_ib;
 };
 
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname, int start, int stop);
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
-void umr_free_sdma_stream(struct umr_sdma_stream *stream);
-
 struct umr_sdma_stream_decode_ui {
 
 	/** start_ib -- Start a new IB
@@ -1553,6 +1548,19 @@ struct umr_sdma_stream_decode_ui {
 	 */
 	void (*unhandled)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
 
+	/** unhandled_size -- For returning size of packets for unhandled (private) opcodes.
+	 * To use, populate stream->nwords with the size of the current packet (should not include header DWORD) and then
+	 * return 0 to signal success. Returning non-zero will signal failure to handle opcode.
+	 *
+	 * asic: The ASIC the IB stream is bound to
+	 * stream:  The pointer to the current stream opcode being handled. Write the size of the packet to stream->nwords.
+	 *
+	 * return: Return non-zero if size of packet is unknown.
+	 *
+	 * Can be NULL to drop support for unhandled opcodes.
+	 */
+	int (*unhandled_size)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream);
+
 	/** unhandled_subop -- Decoder for unhandled (private) sub-opcodes
 	 * asic: The ASIC the IB stream is bound to
 	 * ib_addr:ib_vmid: The address where the sdma opcode comes from
@@ -1568,6 +1576,11 @@ struct umr_sdma_stream_decode_ui {
 	/** data -- opaque pointer that can be used to track state information */
 	void *data;
 };
+
+struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, char *ringname, int start, int stop);
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, struct umr_sdma_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 

@@ -1187,6 +1187,14 @@ static void sdma_unhandled(struct umr_sdma_stream_decode_ui *ui, struct umr_asic
 	(void)stream;
 }
 
+static int sdma_unhandled_size(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream)
+{
+	(void)ui;
+	(void)asic;
+	(void)stream;
+	return 1;
+}
+
 static void sdma_unhandled_subop(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream)
 {
 	(void)ui;
@@ -1204,25 +1212,24 @@ static void sdma_done(struct umr_sdma_stream_decode_ui *ui)
 	--(data->sp);
 }
 
-static struct  umr_sdma_stream_decode_ui sdma_ui = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_subop, sdma_done, NULL };
+static struct  umr_sdma_stream_decode_ui sdma_ui = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_size, sdma_unhandled_subop, sdma_done, NULL };
 
 static void present_sdma(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
 {
 	struct umr_sdma_stream *stream;
+	struct umr_sdma_stream_decode_ui myui;
+	myui = sdma_ui;
 
 	if (ringname)
-		stream = umr_sdma_decode_ring(asic, ringname, start, end);
+		stream = umr_sdma_decode_ring(asic, &myui, ringname, start, end);
 	else
-		stream = umr_sdma_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords, UMR_RING_SDMA);
+		stream = umr_sdma_decode_stream_vm(asic, &myui, asic->options.vm_partition, vmid, addr, nwords, UMR_RING_SDMA);
 
 	if (stream) {
-		struct umr_sdma_stream_decode_ui myui;
 		struct sdma_ui_data *data;
 		int x;
 		char tmpname[64], buf[256];
 		FILE *f;
-
-		myui = sdma_ui;
 
 		// assign our opaque structure
 		data = myui.data = calloc(1, sizeof(struct sdma_ui_data));
