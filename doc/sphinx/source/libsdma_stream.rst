@@ -13,7 +13,7 @@ To decode a ring into a stream the following function can be used:
 
 ::
 
-	struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, char *ringname);
+	struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, char *ringname, int start, int stop)
 
 Which will decode the ring named by ringname and return a pointer to
 the following structure if successful:
@@ -49,7 +49,8 @@ can be used:
 
 ::
 
-	struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, int vm_partition, int vmid, uint32_t *stream, uint32_t nwords);
+	struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition,
+												   uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
 
 This will return a structure pointer if successful.
 
@@ -83,7 +84,11 @@ to by this stream.
 
 It returns the address of the first undecoded packet in the stream.
 
-The function uses the following callback structure to pass information back to the caller:
+-------------------------
+Packet Decoding Callbacks
+-------------------------
+
+These functions use the following callback structure to pass information back and forth from the caller:
 
 ::
 
@@ -120,6 +125,28 @@ The function uses the following callback structure to pass information back to t
 		 * Can be NULL to drop support for unhandled opcodes.
 		 */
 		void (*unhandled)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
+
+		/** unhandled_size -- For returning size of packets for unhandled (private) opcodes.
+		* To use, populate stream->nwords with the size of the current packet (should not include header DWORD) and then
+		* return 0 to signal success. Returning non-zero will signal failure to handle opcode.
+		*
+		* asic: The ASIC the IB stream is bound to
+		* stream:  The pointer to the current stream opcode being handled. Write the size of the packet to stream->nwords.
+		*
+		* return: Return non-zero if size of packet is unknown.
+		*
+		* Can be NULL to drop support for unhandled opcodes.
+		*/
+		int (*unhandled_size)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream);
+
+		/** unhandled_subop -- Decoder for unhandled (private) sub-opcodes
+		* asic: The ASIC the IB stream is bound to
+		* ib_addr:ib_vmid: The address where the sdma opcode comes from
+		* stream:  The pointer to the current stream opcode being handled
+		*
+		* Can be NULL to drop support for unhandled opcodes.
+		*/
+		void (*unhandled_subop)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
 
 		void (*done)(struct umr_sdma_stream_decode_ui *ui);
 
