@@ -107,7 +107,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 
 		switch (ps->opcode) {
 			case 0: // NOP
-				ps->nwords = 0; // no words other than header
+				ps->nwords += (ps->header_dw >> 16) & 0x3FFF;
 				break;
 			case 1: // COPY
 				switch (ps->sub_opcode) {
@@ -120,7 +120,11 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 						}
 						break;
 					case 1: // TILED
-						ps->nwords = asic->family >= FAMILY_AI ? 12 : 11;
+						if (ps->header_dw & (3UL << 26)) { // L2T Broadcast/F2F
+							ps->nwords = asic->family >= FAMILY_AI ? 15 : 14;
+						} else {
+							ps->nwords = asic->family >= FAMILY_AI ? 12 : 11;
+						}
 						break;
 					case 3: // STRUCTURE/SOA
 						ps->nwords = 7;
@@ -129,10 +133,39 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 						ps->nwords = 12;
 						break;
 					case 5: // TILED_SUB_WINDOW
-						ps->nwords = 13;
+						ps->nwords = asic->family >= FAMILY_NV ? 16 : 13;
 						break;
 					case 6: // T2T_SUB_WIND
+						ps->nwords = asic->family >= FAMILY_NV ? 17 : 14;
+						break;
+					case 7: // DIRTY_PAGE
+						ps->nwords = 6;
+						break;
+					case 8: // LINEAR_PHY
+						ps->nwords = 6;
+						ps->nwords += 4 * (stream[0] >> 24);
+						break;
+					case 16: // LINEAR_BC
+						ps->nwords = 6;
+						break;
+					case 17: // TILED_BC
+						if (ps->header_dw & (3UL << 26)) {
+							ps->nwords = 15; // L2T Broadcast/F2F
+						} else {
+							ps->nwords = 12;
+						}
+						break;
+					case 20: // LINEAR_SUB_WINDOW_BC
+						ps->nwords = 12;
+						break;
+					case 21: // TILED_SUB_WIMDOW_BC
+						ps->nwords = 13;
+						break;
+					case 22: // T2T_SUB_WIND_BC
 						ps->nwords = 14;
+						break;
+					case 36: // LINEAR_SUB_WINDOW_LARGE
+						ps->nwords = 19;
 						break;
 				}
 				break;
@@ -144,6 +177,11 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 						break;
 					case 1: // TILED
 						ps->nwords = 9;
+						ps->nwords += stream[7] & 0xFFFFF;
+						break;
+					case 2: // TILED_BC
+						ps->nwords = 9;
+						ps->nwords += stream[7] & 0xFFFFF;
 						break;
 				}
 				break;
@@ -172,11 +210,27 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 			case 6: // TRAP
 				ps->nwords = 1;
 				break;
-			case 7: // SEM
+			case 7: // SEM and MEM_INCR
 				ps->nwords = 2;
 				break;
 			case 8: // POLL_REGMEM
-				ps->nwords = ps->sub_opcode ? 3 : 5;
+				switch (ps->sub_opcode) {
+					case 0: // MEM
+						ps->nwords = 5;
+						break;
+					case 1: // REG
+						ps->nwords = 3;
+						break;
+					case 2: // DBIT
+						ps->nwords = 4;
+						break;
+					case 3: // MEM_VERIFY
+						ps->nwords = 12;
+						break;
+					case 4: // INVALIDATION
+						ps->nwords = 3;
+						break;
+				}
 				break;
 			case 9: // COND_EXE
 				ps->nwords = 4;
@@ -184,35 +238,59 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 			case 10: // ATOMIC
 				ps->nwords = 7;
 				break;
-			case 11: // CONST_FILL
-				ps->nwords = 4;
+			case 11: // FILL
+				switch (ps->sub_opcode) {
+					case 0: // CONST_FILL
+						ps->nwords = 4;
+						break;
+					case 1: // FILL_MULTI
+						ps->nwords = 5;
+						break;
+				}
 				break;
-			case 12: // GEN_PTEPDE
-				ps->nwords = 9;
+			case 12: // PTE
+				switch (ps->sub_opcode) {
+					case 0: // GEN_PTEPDE (aka WRITE_INCR)
+						ps->nwords = 9;
+						break;
+					case 1: // COPY_PTEPDE
+						ps->nwords = 7;
+						break;
+					case 2: // RMW_PTEPDE
+						ps->nwords = 7;
+						break;
+				}
 				break;
 			case 13: // TIMESTAMP
 				switch (ps->sub_opcode) {
-					case 0:
+					case 0: // SET_LOCAL
 						ps->nwords = 2;
 						break;
-					case 1:
+					case 1: // GET_LOCAL
 						ps->nwords = 2;
 						break;
-					case 2:
+					case 2: // GET_GLOBAL
 						ps->nwords = 2;
 						break;
 				}
 				break;
-			case 14: // SRBM_WRITE
-				ps->nwords = 2;
+			case 14:
+				switch (ps->sub_opcode) {
+					case 0: // SRBM_WRITE
+						ps->nwords = 2;
+						break;
+					case 1: // RMW_REGISTER
+						ps->nwords = 3;
+						break;
+				}
 				break;
 			case 15: // PRE_EXE
 				ps->nwords = 1;
 				break;
-			case 16: // GPUVM_INV
+			case 16: // GPUVM_TLB_INV
 				ps->nwords = 3;
 				break;
-			case 17: // GRC
+			case 17: // GCR
 				ps->nwords = 4;
 				break;
 			default:
