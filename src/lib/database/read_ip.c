@@ -24,13 +24,44 @@
 
 #include "umr.h"
 
+// We try to parse paths like "my_ip/sdma0_4_0_0.reg" to major, minor, and
+// revision version number. We also accept paths like "gc_5_0.reg" to parse into
+// just major and minor version numbers.
+static void fill_ipver_from_path(char* ip_path, struct umr_ip_block* ip_block) {
+	char* (pos[3]) = {NULL};
+	int len = strlen(ip_path);
+	int i;
+	int found = 0;
+	int maj, min, rev;
+
+	// find last 3 underscores and store their position in pos
+	for (i = len - 1; i >= 0 && found < 3; i--) {
+		if (ip_path[i] == '_') {
+			pos[found++] = &ip_path[i];
+		}
+	}
+
+	if (found == 3 && sscanf(pos[2], "_%d_%d_%d.reg", &maj, &min, &rev) == 3) {
+		// case *_maj_min_rev.reg
+		ip_block->discoverable.die = 0;
+		ip_block->discoverable.maj = maj;
+		ip_block->discoverable.min = min;
+		ip_block->discoverable.rev = rev;
+	} else if (found >= 2 && sscanf(pos[1], "_%d_%d.reg", &maj, &min) == 2) {
+		// case *_maj_min.reg
+		ip_block->discoverable.die = 0;
+		ip_block->discoverable.maj = maj;
+		ip_block->discoverable.min = min;
+		ip_block->discoverable.rev = 0;
+	}
+}
+
 struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15, char *path, char *filename, char *cmnname, char *soc15name, int inst, umr_err_output errout)
 {
 	struct umr_ip_block *ip;
 	FILE *f;
 	uint32_t no_regs, x;
 	char linebuf[256];
-	int maj, min, rev;
 
 	if (soc15) {
 		// find soc15 entry
@@ -65,11 +96,9 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 	ip->regs = calloc(no_regs, sizeof(*(ip->regs)));
 	ip->ipname = strdup(cmnname);
 
-	// try to parse version out of filename
-	if (sscanf(filename,"%[a-zA-Z/]_%d_%d_%d.reg", linebuf, &maj, &min, &rev) == 4) {
-		ip->discoverable.maj = maj;
-		ip->discoverable.min = min;
-		ip->discoverable.rev = rev;
+	// try to parse version out of filename (assume path has no spaces)
+	if (sscanf(filename, "%s", linebuf)) {
+		fill_ipver_from_path(linebuf, ip);
 	}
 
 	x = 0;
