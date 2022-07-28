@@ -271,13 +271,13 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_regs_smc", asic->instance);
 			asic->fd.smc = open(fname, O_RDWR);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_sensors", asic->instance);
-			asic->fd.sensors = open(fname, O_RDWR);
+			asic->fd.sensors = open(fname, O_RDONLY);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_wave", asic->instance);
-			asic->fd.wave = open(fname, O_RDWR);
+			asic->fd.wave = open(fname, O_RDONLY);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_vram", asic->instance);
 			asic->fd.vram = open(fname, O_RDWR);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gpr", asic->instance);
-			asic->fd.gpr = open(fname, O_RDWR);
+			asic->fd.gpr = open(fname, O_RDONLY);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_iova", asic->instance);
 			asic->fd.iova = open(fname, O_RDWR);
 			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_iomem", asic->instance);

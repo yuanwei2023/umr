@@ -47,7 +47,7 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 		return umr_test_harness_get_ring_data(asic, ringsize);
 	} else {
 		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_ring_%s", asic->instance, ringname);
-		fd = open(fname, O_RDWR);
+		fd = open(fname, O_RDONLY);
 		if (fd < 0) {
 			asic->err_msg("[ERROR]: Could not open ring debugfs file '%s'\n", fname);
 			if (asic->family >= FAMILY_NV && !strcmp(ringname, "gfx"))
