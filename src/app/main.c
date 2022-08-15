@@ -190,6 +190,8 @@ static void parse_options(char *str)
 			options.no_scan_waves = 1;
 		} else if (!strcmp(option, "force_asic_file")) {
 			options.force_asic_file = 1;
+		} else if (!strcmp(option, "export_model")) {
+			options.export_model = 1;
 		} else {
 			printf("error: Unknown option [%s]\n", option);
 			exit(EXIT_FAILURE);
@@ -1140,5 +1142,9 @@ printf(
 
 	if (th) {
 		umr_free_test_harness(th);
+	}
+	
+	if (options.export_model) {
+		fprintf(stderr, "[NOTE]: ASIC model exported uses FAMILY_NV family and IS_APU=0 flag, change these as appropriate.\n");
 	}
 }

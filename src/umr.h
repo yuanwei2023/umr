@@ -170,7 +170,7 @@ struct umr_ip_block {
 	int no_regs;
 	struct umr_reg *regs;
 	struct {
-		int die, maj, min, rev;
+		int die, maj, min, rev, instance;
 	} discoverable;
 };
 
@@ -304,7 +304,8 @@ struct umr_options {
 	    test_log,
 	    vm_partition,
 	    is_virtual,
-	    force_asic_file;
+	    force_asic_file,
+	    export_model;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {

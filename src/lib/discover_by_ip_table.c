@@ -56,6 +56,7 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	ip->discoverable.maj = det->maj;
 	ip->discoverable.min = det->min;
 	ip->discoverable.rev = det->rev;
+	ip->discoverable.instance = det->instance;
 
 	// swap for common names
 	if (!strcmp(det->ipname, "gc")) {
@@ -196,6 +197,12 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 	int numblocks, used_blocks, x, y;
 	struct umr_asic *asic;
 	char asicname[128], *dasic;
+	struct export_data {
+		struct umr_discovery_table_entry *det;
+		struct umr_database_scan_item *nit;
+		int soc15;
+		struct export_data *next;
+	} exp_data = { 0 }, *pexp_data = NULL;
 
 	// copy name and remove ".asic" if any
 	strcpy(asicname, aname);
@@ -265,6 +272,16 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 		nit = umr_database_find_ip(it, cmnname,
 			det->maj, det->min, det->rev, options->desired_path[0] ? options->desired_path : NULL);
 		if (nit) {
+			if (options->export_model) {
+				if (pexp_data == NULL) {
+					pexp_data = &exp_data;
+				} else {
+					pexp_data->next = calloc(1, sizeof(exp_data));
+					pexp_data = pexp_data->next;
+				}
+				pexp_data->nit = nit;
+				pexp_data->det = det;
+			}
 			if (options->verbose)
 				errout("[VERBOSE]: Using %s/%s (%d.%d.%d) for %s (%d.%d.%d)\n",
 					nit->path, nit->fname, nit->maj, nit->min, nit->rev,
@@ -293,6 +310,62 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 			}
 		}
 	}
+
+	if (options->export_model) {
+		FILE *fexp;
+		struct export_data *ppexp;
+		char buf[128];
+		int x, z;
+
+		// dump SOC15 contents first
+		snprintf(buf, sizeof(buf), "%s.soc15", asic->asicname);
+		fexp = fopen(buf, "w");
+		pexp_data = &exp_data;
+		while (pexp_data && strlen(pexp_data->det->ipname)) {
+			if (!pexp_data->soc15) {
+				fprintf(fexp, "%s\n", pexp_data->det->ipname);
+				ppexp = pexp_data;
+				z = 0;
+				do {
+					if (!ppexp->soc15 && !strcmp(pexp_data->det->ipname, ppexp->det->ipname)) {
+						ppexp->soc15 = 1;
+						fprintf(fexp, "\t");
+						for (x = 0; x < 8; x++) {
+							fprintf(fexp, "0x%08" PRIx64 " ", ppexp->det->segments[x]);
+						}
+						fprintf(fexp, "\n");
+						++z;
+					}
+					ppexp = ppexp->next;
+				} while (ppexp);
+
+				// at this point we've output Z of 32 rows, so zero out the rest
+				for (; z < 32; z++) {
+					fprintf(fexp, "\t0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000\n");
+				}
+			}
+			pexp_data = pexp_data->next;
+		}
+		fclose(fexp);
+
+		// output ASIC data
+		snprintf(buf, sizeof(buf), "%s.asic", asic->asicname);
+		fexp = fopen(buf, "w");
+		pexp_data = &exp_data;
+
+		// NOTE: we default to FAMILY_NV, VGPR=2, APU=0
+		fprintf(fexp, "%s %s.soc15 %d %d 2 0\n", asic->asicname, asic->asicname, FAMILY_NV, asic->no_blocks);
+		for (x = 0; x < asic->no_blocks; x++) {
+			fprintf(fexp, "%s %s %d %s/%s\n",
+				asic->blocks[x]->ipname,
+				pexp_data->det->ipname,
+				asic->blocks[x]->discoverable.instance,
+				pexp_data->nit->path, pexp_data->nit->fname);
+			pexp_data = pexp_data->next;
+		}
+	}
+
+
 
 done:
 	det = pdet;
