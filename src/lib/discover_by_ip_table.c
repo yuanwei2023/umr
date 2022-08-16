@@ -363,6 +363,15 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 				pexp_data->nit->path, pexp_data->nit->fname);
 			pexp_data = pexp_data->next;
 		}
+		fclose(fexp);
+
+		// free memory
+		pexp_data = exp_data.next;
+		while (pexp_data) {
+			ppexp = pexp_data->next;
+			free(pexp_data);
+			pexp_data = ppexp;
+		}
 	}
 
 
