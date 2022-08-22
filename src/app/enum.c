@@ -88,6 +88,14 @@ void umr_enumerate_devices(umr_err_output errout)
 					ok = 1;
 				}
 			}
+			if (!ok) {
+				fseek(dri, 0, SEEK_SET);
+				if (fscanf(dri, "amdgpu dev=%04x:%02u:%02u.%01u unique=%04x:%02u:%02u.%01u",
+					&dummy, &dummy, &dummy, &dummy,
+					&domain, &bus, &dev, &func) == 8) {
+					ok = 1;
+				}
+			}
 			fclose(dri);
 
 			if (ok) {
