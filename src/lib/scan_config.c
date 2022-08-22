@@ -65,6 +65,7 @@ static void parse_rev1(struct umr_asic *asic, uint32_t *data, int *r)
 	asic->config.gfx.rev_id = data[(*r)++];
 	asic->config.gfx.pg_flags = data[(*r)++];
 	asic->config.gfx.cg_flags = data[(*r)++];
+	asic->config.is_apu = asic->is_apu; // (for print config)
 }
 
 static void parse_rev2(struct umr_asic *asic, uint32_t *data, int *r)
@@ -87,6 +88,7 @@ static void parse_rev4(struct umr_asic *asic, uint32_t *data, int *r)
 {
 	parse_rev3(asic, data, r);
 	asic->config.is_apu = data[(*r)++];
+	asic->is_apu = asic->config.is_apu; // (to ensure flag is set)
 }
 
 static void parse_rev5(struct umr_asic *asic, uint32_t *data, int *r)
@@ -262,7 +264,6 @@ gca_config:
 
 	if (asic->family == FAMILY_CONFIGURE) {
 		asic->was_ip_discovered = 1;
-		asic->is_apu = asic->config.is_apu;
 		if (asic->config.gfx.family >= 143) {
 			asic->family = FAMILY_NV;
 		} else if (asic->config.gfx.family >= 141) {
