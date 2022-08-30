@@ -16,7 +16,6 @@ add_library(umrcore STATIC
   discover_by_ip_table.c
   discovery_table.c
   dump_ib.c
-  find_ip.c
   find_reg.c
   free_asic_blocks.c
   ih_decode_vectors.c
