@@ -1334,6 +1334,9 @@ int umr_read_sensor(struct umr_asic *asic, int sensor, void *dst, int *size);
 // init the mmio lookup table
 int umr_create_mmio_accel(struct umr_asic *asic);
 
+// find an IP block by optional instance
+struct umr_ip_block *umr_find_ip_block(const struct umr_asic *asic, const char *ipname, int instance);
+
 // find the word address of a register
 uint32_t umr_find_reg(struct umr_asic *asic, const char *regname);
 
