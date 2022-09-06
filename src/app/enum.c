@@ -73,26 +73,18 @@ void umr_enumerate_devices(umr_err_output errout)
 		dri = fopen(path, "r");
 		if (dri) {
 			unsigned dummy, domain, dev, bus, func;
+			char *p, line[256];
 			int ok = 0;
-			if (fscanf(dri, "amdgpu %04x:%02u:%02u.%01u pci:%04x:%02u:%02u.%01u",
-				&dummy, &dummy, &dummy, &dummy,
-				&domain, &bus, &dev, &func) == 8) {
+			fgets(line, sizeof line, dri);
+			p = strstr(line, "pci");
+			if (p && sscanf(p, "pci:%04x:%02x:%02x.%01x",
+				&domain, &bus, &dev, &func) == 4) {
 				ok = 1;
 			}
-			// try a second time (for kernels > 4.7)
 			if (!ok) {
-				fseek(dri, 0, SEEK_SET);
-				if (fscanf(dri, "amdgpu dev=%04x:%02u:%02u.%01u master=pci:%04x:%02u:%02u.%01u",
-					&dummy, &dummy, &dummy, &dummy,
-					&domain, &bus, &dev, &func) == 8) {
-					ok = 1;
-				}
-			}
-			if (!ok) {
-				fseek(dri, 0, SEEK_SET);
-				if (fscanf(dri, "amdgpu dev=%04x:%02u:%02u.%01u unique=%04x:%02u:%02u.%01u",
-					&dummy, &dummy, &dummy, &dummy,
-					&domain, &bus, &dev, &func) == 8) {
+				p = strstr(line, "unique=");
+				if (p && sscanf(p, "unique=%04x:%02x:%02x.%01x",
+					&domain, &bus, &dev, &func) == 4) {
 					ok = 1;
 				}
 			}
