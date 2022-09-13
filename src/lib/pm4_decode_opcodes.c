@@ -191,7 +191,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_MAP_QUEUES", // a2
 	"PKT3_UNMAP_QUEUES", // a3
 	"PKT3_QUERY_STATUS", // a4
-	"UNK", // a5
+	"PKT3_MES_RUN_LIST", // a5
 	"UNK", // a6
 	"UNK", // a7
 	"UNK", // a8
@@ -345,6 +345,72 @@ static void decode_pkt0(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 	uint32_t n;
 	for (n = 0; n < stream->n_words; n++)
 		ui->add_field(ui, ib_addr + 4 * (n + 1), ib_vmid, umr_reg_name(asic, stream->pkt0off + n), stream->words[n], NULL, 16);
+}
+
+// for packets 0x5F, 0x60, 0x61
+static void load_X_reg(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
+{
+	char *str, tmpstr[256];
+	uint32_t str_size, *data, j, k, m, n, reg_base;
+	uint64_t base_addr;
+
+	switch (stream->opcode) {
+		case 0x5F: reg_base = 0x2C00; break; // LOAD_SH_REG
+		case 0x60: reg_base = 0x2000; break; // LOAD_CONFIG_REG
+		case 0x61: reg_base = 0xA000; break; // LOAD_CONTEXT_REG
+	}
+
+	base_addr = stream->words[0] & ~2UL;
+	base_addr |= ((uint64_t)stream->words[1]) << 32;
+
+	ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_ADDR_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
+	ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_ADDR_HI", stream->words[1], NULL, 16);
+
+	for (n = 2; n < stream->n_words; n += 2) {
+		k = BITS(stream->words[n], 0, 16); // REG_OFFSET
+		m = BITS(stream->words[n + 1], 0, 14); // NUM_DWORDS
+
+		str_size = 4096;
+		str = calloc(1, str_size);
+		if (!str) {
+			asic->err_msg("[ERROR]: Out of memory");
+			return;
+		}
+
+		// fetch data
+		data = calloc(sizeof data[0], m);
+		if (!data) {
+			asic->err_msg("[ERROR]: Out of memory");
+			free(str);
+			return;
+		}
+
+		if (!umr_read_vram(asic, asic->options.vm_partition, ib_vmid, base_addr, 4 * m, data)) {
+			// turn into data string
+			for (j = 0; j < m; j++) {
+				snprintf(tmpstr, sizeof tmpstr, "%s <= %"PRIx32"\n", umr_reg_name(asic, reg_base + k + j), data[j]);
+				while (strlen(tmpstr) + strlen(str) >= str_size) {
+					char *tmp;
+					str_size += 4096;
+					tmp = realloc(str, str_size);
+					if (!tmp) {
+						asic->err_msg("[ERROR]: Out of memory\n");
+						free(data);
+						free(str);
+						return;
+					}
+					str = tmp;
+				}
+				strcat(str, tmpstr);
+			}
+		}
+		free(data);
+		base_addr += 4 * m;
+
+		ui->add_field(ui, ib_addr + 12 + ((n - 2) * 4), ib_vmid, "REG_OFFSET", reg_base + k, umr_reg_name(asic, reg_base + k), 16);
+		ui->add_field(ui, ib_addr + 16 + ((n - 2) * 4), ib_vmid, "NUM_DWORD", m, str, 10);
+		free(str);
+	}
 }
 
 static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
@@ -646,15 +712,9 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", BITS(stream->words[5], 0, 16), NULL, 10);
 			break;
 		case 0x5F: // LOAD_SH_REG
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_ADDRESS_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_ADDRESS_HI", stream->words[1], NULL, 16);
-			{
-				uint32_t n;
-				for (n = 2; n < stream->n_words; n += 2) {
-					ui->add_field(ui, ib_addr + 12 + ((n - 2) * 4), ib_vmid, "REG_OFFSET", 0x2C00 + BITS(stream->words[n], 0, 16), umr_reg_name(asic, 0x2C00 + BITS(stream->words[n], 0, 16)), 16);
-					ui->add_field(ui, ib_addr + 16 + ((n - 2) * 4), ib_vmid, "NUM_DWORD", BITS(stream->words[n + 1], 0, 14), NULL, 10);
-				}
-			}
+		case 0x60: // LOAD_CONFIG_REG
+		case 0x61: // LOAD_CONTEXT_REG
+			load_X_reg(asic, ui, stream, ib_addr, ib_vmid);
 			break;
 		case 0x63: // LOAD_SH_REG_INDEX
 			if (BITS(stream->words[0], 0, 1))
@@ -1015,6 +1075,18 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 				ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", stream->words[4], NULL, 16);
 				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", stream->words[5], NULL, 16);
 			}
+			break;
+		case 0xA5:	// PKT3_MES_RUN_LIST
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "IB_BASE_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "IB_BASE_HI", stream->words[1], NULL, 16);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_SIZE", BITS(stream->words[2], 0, 20), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "CHAIN", BITS(stream->words[2], 20, 21), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "OFFLOAD_POLLING", BITS(stream->words[2], 21, 22), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "VALID", BITS(stream->words[2], 23, 24), NULL, 10);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "PROCESS_CNT", BITS(stream->words[2], 24, 28), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "LEVEL_1_STATIC_QUEUE_CNT", BITS(stream->words[3], 0, 4), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "LEVEL_2_STATIC_QUEUE_CNT", BITS(stream->words[3], 4, 8), NULL, 10);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "LEVEL_3_STATIC_QUEUE_CNT", BITS(stream->words[3], 8, 12), NULL, 10);
 			break;
 		case 0xA9: 	// PKT3_DISPATCH_TASK_STATE_INIT
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTROL_BUF_ADDR_LO", BITS(stream->words[0], 2, 32) << 2, NULL, 16);
