@@ -133,8 +133,8 @@ struct AsicData {
 		options.instance = instance;
 		options.database_path[0] = '\0';
 		options.no_disasm = 0;
-		if (json_object_has_value(answer, "ip_discovery_dump")) {
-			const char *script = json_object_get_string(answer, "ip_discovery_dump");
+		const char *script = json_object_get_string(answer, "ip_discovery_dump");
+		if (script && strlen(script)) {
 			struct umr_test_harness *th = umr_create_test_harness(script);
 
 			options.test_log = 1;
@@ -143,8 +143,11 @@ struct AsicData {
 				(char*)json_object_get_string(answer, "name"),
 				&options,
 				printf);
-			umr_scan_config(asic, 0);
-			asic->did = did;
+
+			if (asic) {
+				umr_scan_config(asic, 0);
+				asic->did = did;
+			}
 			umr_free_test_harness(th);
 		} else {
 			/* Don't rely on local IP discovery data zvzn if available, because
