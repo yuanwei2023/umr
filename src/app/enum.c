@@ -72,7 +72,7 @@ void umr_enumerate_devices(umr_err_output errout)
 		snprintf(path, sizeof(path)-1, "/sys/kernel/debug/dri/%d/name", y);
 		dri = fopen(path, "r");
 		if (dri) {
-			unsigned dummy, domain, dev, bus, func;
+			unsigned domain, dev, bus, func;
 			char *p, line[256];
 			int ok = 0;
 			fgets(line, sizeof line, dri);
