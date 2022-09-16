@@ -141,6 +141,17 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter*
 }
 
 /**
+ * umr_find_reg_data - Find a register by name
+ *
+ * Returns the umr_reg structure for a register with a specific name
+ * in the first IP block that contains it.
+ */
+struct umr_reg* umr_find_reg_data(struct umr_asic* asic, const char* regname)
+{
+	return umr_find_reg_data_by_ip(asic, NULL, regname);
+}
+
+/**
  * umr_find_reg_data_by_ip - Find a register by name for a given IP
  *
  * Returns the umr_reg structure for a register for a given IP block
@@ -160,11 +171,31 @@ struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, c
 	return umr_find_reg_data_by_ip_by_instance(asic, ip, instance, regname);
 }
 
+/**
+ * umr_find_reg_by_name - Find a register by name
+ *
+ * Returns the umr_reg structure for a register with a specific name
+ * in the first IP block that contains it. If @ip is not NULL it will also
+ * store the IP block pointer for the register as well.
+ */
+struct umr_reg* umr_find_reg_by_name(struct umr_asic* asic, const char* regname, struct umr_ip_block** ip)
+{
+	return umr_find_reg_data_by_ip_by_instance_with_ip(asic, NULL, -1, regname, ip);
+}
+
 struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname)
+{
+	return umr_find_reg_data_by_ip_by_instance_with_ip(asic, ip, inst, regname, NULL);
+}
+
+struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp)
 {
 	int i, j, k;
 	char tmpregname[96], instname[16];
 	const char *oregname = regname;
+
+	if (ipp)
+		*ipp = NULL;
 
 	// compute INST name for IP block
 	if (inst >= 0) {
@@ -193,9 +224,33 @@ retry:
 		// --vm-partition to a register function on partitioned hosts
 		if (inst < 0 && strstr(asic->blocks[i]->ipname, "{"))
 			continue;
-		for (j = 0; j < asic->blocks[i]->no_regs; j++)
-			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname))
-				return &asic->blocks[i]->regs[j];
+		{
+			int bot, top, mid, diff;
+			bot = 0;
+			top = asic->blocks[i]->no_regs;
+			mid = (bot + top) >> 1;
+
+			while (top - bot > 1) {
+				diff = strcmp(asic->blocks[i]->regs[mid].regname, regname);
+				if (!diff)
+					break;
+				if (diff < 0) {
+					// needle is above mid
+					bot = mid;
+				} else {
+					// needle is below mid
+					top = mid;
+				}
+				mid = (bot + top) >> 1;
+			}
+			for (j = bot; j < top; j++) {
+				if (istr_cmp(asic->blocks[i]->regs[j].regname, regname)) {
+					if (ipp)
+						*ipp = asic->blocks[i];
+					return &asic->blocks[i]->regs[j];
+				}
+			}
+		}
 	}
 
 	// if regname starts with 'mm' search for variant with 'reg' prefix
@@ -209,62 +264,6 @@ retry:
 
 	if (!k)
 		asic->err_msg("[BUG]: reg [%s](%d) not found on asic [%s]\n", oregname, inst, asic->asicname);
-	return NULL;
-}
-
-/**
- * umr_find_reg_data - Find a register by name
- *
- * Returns the umr_reg structure for a register with a specific name
- * in the first IP block that contains it.
- */
-struct umr_reg* umr_find_reg_data(struct umr_asic* asic, const char* regname)
-{
-	return umr_find_reg_data_by_ip(asic, NULL, regname);
-}
-
-/**
- * umr_find_reg_by_name - Find a register by name
- *
- * Returns the umr_reg structure for a register with a specific name
- * in the first IP block that contains it. If @ip is not NULL it will also
- * store the IP block pointer for the register as well.
- */
-struct umr_reg* umr_find_reg_by_name(struct umr_asic* asic, const char* regname, struct umr_ip_block** ip)
-{
-	int i, j, k;
-	char tmpregname[96];
-	const char *oregname = regname;
-
-	k = regname[0] == '@';
-	if (k)
-		++regname;
-
-	if (*ip)
-		ip = NULL;
-
-	oregname = regname;
-retry:
-	for (i = 0; i < asic->no_blocks; i++) {
-		for (j = 0; j < asic->blocks[i]->no_regs; j++)
-			if (istr_cmp(asic->blocks[i]->regs[j].regname, regname)) {
-				if (ip)
-					*ip = asic->blocks[i];
-				return &asic->blocks[i]->regs[j];
-			}
-	}
-
-	// if regname starts with 'mm' search for variant with 'reg' prefix
-	// this avoids having to recode a lot of logic.
-	if (!memcmp(regname, "mm", 2)) {
-		strncpy(tmpregname, "reg", sizeof(tmpregname));
-		strncpy(tmpregname + 3, regname + 2, sizeof(tmpregname) - 3);
-		regname = (const char *)tmpregname;
-		goto retry;
-	}
-
-	if (!k)
-		asic->err_msg("[BUG]: reg [%s] not found on asic [%s]\n", oregname, asic->asicname);
 	return NULL;
 }
 
@@ -296,10 +295,34 @@ struct umr_reg* umr_find_reg_by_addr(struct umr_asic* asic, uint64_t addr, struc
 	if (ip)
 		*ip = NULL;
 
-	if (asic->mmio_accel.reglist && asic->mmio_accel.reglist[addr]) {
-		if (ip && asic->mmio_accel.iplist)
-			*ip = asic->mmio_accel.iplist[addr];
-		return asic->mmio_accel.reglist[addr];
+	if (asic->mmio_accel) {
+		uint32_t bot, mid, top;
+		bot = 0;
+		top = asic->mmio_accel_size;
+		mid = (bot + top) >> 1;
+
+		while ((top - bot) > 1) {
+			if (asic->mmio_accel[mid].mmio_addr == addr) {
+				if (ip)
+					*ip = asic->mmio_accel[mid].ip;
+				return asic->mmio_accel[mid].reg;
+			}
+			if (addr > asic->mmio_accel[mid].mmio_addr) {
+				bot = mid;
+			} else if (addr < asic->mmio_accel[mid].mmio_addr) {
+				top = mid;
+			}
+			mid = (bot + top) >> 1;
+		}
+
+		for (; bot < top; bot++) {
+			if (asic->mmio_accel[bot].mmio_addr == addr) {
+				if (ip)
+					*ip = asic->mmio_accel[bot].ip;
+				return asic->mmio_accel[bot].reg;
+			}
+		}
+		return NULL;
 	}
 
 	for (i = 0; i < asic->no_blocks; i++)

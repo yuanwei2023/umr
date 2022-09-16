@@ -102,7 +102,7 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 	}
 
 	x = 0;
-	while (fgets(linebuf, sizeof linebuf, f)) {
+	while (x != ip->no_regs && fgets(linebuf, sizeof linebuf, f)) {
 		uint32_t y;
 		struct {
 			char name[128];

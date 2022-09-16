@@ -1,10 +1,8 @@
 4
-mmUMCCH0_0_EccErrCntSel 0 0x360 3 0 0
-	EccErrCntCsSel 0 3
-	EccErrInt 12 13
-	EccErrCntEn 15 15
-mmUMCCH0_0_EccErrCnt 0 0x361 1 0 0
-	EccErrCnt 0 15
+mmMCA_UMC_UMC0_MCUMC_ADDRT0 0 0x3c4 3 1 0
+	ErrorAddr 0 55
+	LSB 56 61
+	Reserved 62 63
 mmMCA_UMC_UMC0_MCUMC_STATUST0 0 0x3c2 24 1 0
 	ErrorCode 0 15
 	ErrorCodeExt 16 21
@@ -30,7 +28,9 @@ mmMCA_UMC_UMC0_MCUMC_STATUST0 0 0x3c2 24 1 0
 	UC 61 61
 	Overflow 62 62
 	Val 63 63
-mmMCA_UMC_UMC0_MCUMC_ADDRT0 0 0x3c4 3 1 0
-	ErrorAddr 0 55
-	LSB 56 61
-	Reserved 62 63
+mmUMCCH0_0_EccErrCnt 0 0x361 1 0 0
+	EccErrCnt 0 15
+mmUMCCH0_0_EccErrCntSel 0 0x360 3 0 0
+	EccErrCntCsSel 0 3
+	EccErrInt 12 13
+	EccErrCntEn 15 15

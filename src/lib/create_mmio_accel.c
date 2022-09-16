@@ -24,7 +24,15 @@
  */
 #include "umr.h"
 
-#define LIST_SIZE (1UL << 18)
+static int sort_addr(const void *A, const void *B)
+{
+	const struct umr_mmio_accel_data *a = A, *b = B;
+	if (a->mmio_addr > b->mmio_addr)
+		return 1;
+	if (a->mmio_addr < b->mmio_addr)
+		return -1;
+	return 0;
+}
 
 /**
  * umr_create_mmio_accel - Create MMIO accelerator table
@@ -38,27 +46,35 @@
 int umr_create_mmio_accel(struct umr_asic *asic)
 {
 	int i, j;
+	uint32_t no_regs, x;
 
-	// create flat array of registers
-	asic->mmio_accel.reglist = calloc(LIST_SIZE, sizeof *asic->mmio_accel.reglist);
-	asic->mmio_accel.iplist  = calloc(LIST_SIZE, sizeof *asic->mmio_accel.iplist);
-	if (!asic->mmio_accel.reglist || !asic->mmio_accel.iplist) {
-		free(asic->mmio_accel.iplist);
-		free(asic->mmio_accel.reglist);
-		return -1;
-	}
-
-	for (i = 0; i < asic->no_blocks; i++) {
+	for (no_regs = i = 0; i < asic->no_blocks; i++) {
 		for (j = 0; j < asic->blocks[i]->no_regs; j++) {
 			if (asic->blocks[i]->regs[j].type == REG_MMIO) {
-				if (asic->blocks[i]->regs[j].addr >= LIST_SIZE) {
-					asic->err_msg("[BUG]: Register address width too large for scan_log\n");
-					continue;
-				}
-				asic->mmio_accel.reglist[asic->blocks[i]->regs[j].addr] = &asic->blocks[i]->regs[j];
-				asic->mmio_accel.iplist[asic->blocks[i]->regs[j].addr]  = asic->blocks[i];
+				++no_regs;
 			}
 		}
 	}
+
+	asic->mmio_accel = calloc(sizeof asic->mmio_accel[0], no_regs);
+	asic->mmio_accel_size = no_regs;
+	if (!asic->mmio_accel) {
+		asic->err_msg("[ERROR]: Out of memory\n");
+		return -1;
+	}
+
+
+	for (x = i = 0; i < asic->no_blocks; i++) {
+		for (j = 0; j < asic->blocks[i]->no_regs; j++) {
+			if (asic->blocks[i]->regs[j].type == REG_MMIO) {
+				asic->mmio_accel[x].mmio_addr = asic->blocks[i]->regs[j].addr;
+				asic->mmio_accel[x].ip = asic->blocks[i];
+				asic->mmio_accel[x++].reg = &asic->blocks[i]->regs[j];
+			}
+		}
+	}
+
+	qsort(asic->mmio_accel, no_regs, sizeof asic->mmio_accel[0], sort_addr);
+
 	return 0;
 }

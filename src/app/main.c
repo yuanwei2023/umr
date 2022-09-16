@@ -936,6 +936,70 @@ int main(int argc, char **argv)
                         if (!asic)
                                 asic = get_asic();
                         umr_print_sdma(asic);
+                } else if (!strcmp(argv[i], "--delme")) {
+			int i, j, k;
+			struct umr_reg *reg;
+                        if (!asic)
+                                asic = get_asic();
+			k = 0;
+                        for (i = 0; i < asic->no_blocks; i++) {
+				for (j = 0; j < asic->blocks[i]->no_regs; j++) {
+					reg = umr_find_reg_data_by_ip(asic, asic->blocks[i]->ipname, asic->blocks[i]->regs[j].regname);
+					if (!reg) {
+						printf("\n\n\nERROR: %s not found!\n", asic->blocks[i]->regs[j].regname);
+						return -1;
+					}
+					if (reg != &asic->blocks[i]->regs[j]) {
+						if (!strcmp(reg->regname, asic->blocks[i]->regs[j].regname)) {
+							printf("dup: %s\n", asic->blocks[i]->regs[j].regname);
+						} else {
+							printf("\n\n\nERROR: %s not found correctly!\n", asic->blocks[i]->regs[j].regname);
+							return -1;
+						}
+					}
+					++k;
+				}
+			}
+			printf("Scanned %d regs\n", k);
+                } else if (!strcmp(argv[i], "--delme2")) {
+			uint32_t addr, cnt;
+			struct umr_reg *reg;
+			struct umr_ip_block *ip;
+
+                        if (!asic)
+                                asic = get_asic();
+			cnt = 0;
+			for (addr = 0; addr < (1 << 16UL); addr++) {
+				reg = umr_find_reg_by_addr(asic, addr, &ip);
+				if (reg) {
+					++cnt;
+					if (reg->addr != addr) {
+						printf("\n\n\n\nERROR: %"PRIx32" not found as %"PRIx32" .\n", addr, reg->addr);
+						return -1;
+					}
+				}
+			}
+			printf("Scanned %d regs\n", cnt);
+                } else if (!strcmp(argv[i], "--delme3")) {
+			uint32_t addr, cnt;
+			struct umr_reg *reg;
+			struct umr_ip_block *ip;
+
+                        if (!asic)
+                                asic = get_asic();
+                        umr_create_mmio_accel(asic);
+			cnt = 0;
+			for (addr = 0; addr < (1 << 16ULL); addr++) {
+				reg = umr_find_reg_by_addr(asic, addr, &ip);
+				if (reg) {
+					++cnt;
+					if (reg->addr != addr) {
+						printf("\n\n\n\nERROR: %"PRIx32" not found as %"PRIx32" .\n", addr, reg->addr);
+						return -1;
+					}
+				}
+			}
+			printf("Scanned %d regs\n", cnt);
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
 			printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2022, AMD Inc.\n"
 "\n*** Device Selection ***\n"

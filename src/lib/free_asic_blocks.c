@@ -45,8 +45,7 @@ void umr_free_asic_blocks(struct umr_asic *asic)
 		free(asic->blocks[x]);
 	}
 	free(asic->blocks);
-	free(asic->mmio_accel.reglist);
-	free(asic->mmio_accel.iplist);
+	free(asic->mmio_accel);
 	free(asic->asicname);
 	free(asic);
 }

@@ -1,10 +1,4 @@
 44
-mmFabricConfigAccessControl 0 0x410 3 0 0
-	CfgRegInstAccEn 0 0
-	CfgRegInstAccRegLock 1 1
-	CfgRegInstID 16 23
-mmDF_PIE_AON0_DfGlobalClkGater 0 0xfc 1 0 0
-	MGCGMode 0 3
 mmDF_CS_UMC_AON0_DfGlobalCtrl 0 0xfe 3 0 0
 	GlbHashIntlvCtl64K 20 20
 	GlbHashIntlvCtl2M 21 21
@@ -15,47 +9,6 @@ mmDF_CS_UMC_AON0_DramBaseAddress0 0 0x44 5 0 0
 	IntLvNumChan 2 5
 	IntLvAddrSel 9 11
 	DramBaseAddr 12 31
-mmDF_GCM_AON0_DramMegaBaseAddress0 0 0x64 0 0 0
-smnPerfMonCtlLo0 4 0x1d440 0 0 4294967295
-smnPerfMonCtlHi0 4 0x1d444 0 0 4294967295
-smnPerfMonCtlLo1 4 0x1d450 0 0 4294967295
-smnPerfMonCtlHi1 4 0x1d454 0 0 4294967295
-smnPerfMonCtlLo2 4 0x1d460 0 0 4294967295
-smnPerfMonCtlHi2 4 0x1d464 0 0 4294967295
-smnPerfMonCtlLo3 4 0x1d470 0 0 4294967295
-smnPerfMonCtlHi3 4 0x1d474 0 0 4294967295
-smnPerfMonCtlLo4 4 0x1d880 0 0 4294967295
-smnPerfMonCtlHi4 4 0x1d884 0 0 4294967295
-smnPerfMonCtlLo5 4 0x1d888 0 0 4294967295
-smnPerfMonCtlHi5 4 0x1d88c 0 0 4294967295
-smnPerfMonCtlLo6 4 0x1d890 0 0 4294967295
-smnPerfMonCtlHi6 4 0x1d894 0 0 4294967295
-smnPerfMonCtlLo7 4 0x1d898 0 0 4294967295
-smnPerfMonCtlHi7 4 0x1d89c 0 0 4294967295
-smnPerfMonCtrLo0 4 0x1d448 0 0 4294967295
-smnPerfMonCtrHi0 4 0x1d44c 0 0 4294967295
-smnPerfMonCtrLo1 4 0x1d458 0 0 4294967295
-smnPerfMonCtrHi1 4 0x1d45c 0 0 4294967295
-smnPerfMonCtrLo2 4 0x1d468 0 0 4294967295
-smnPerfMonCtrHi2 4 0x1d46c 0 0 4294967295
-smnPerfMonCtrLo3 4 0x1d478 0 0 4294967295
-smnPerfMonCtrHi3 4 0x1d47c 0 0 4294967295
-smnPerfMonCtrLo4 4 0x1d790 0 0 4294967295
-smnPerfMonCtrHi4 4 0x1d794 0 0 4294967295
-smnPerfMonCtrLo5 4 0x1d798 0 0 4294967295
-smnPerfMonCtrHi5 4 0x1d79c 0 0 4294967295
-smnPerfMonCtrLo6 4 0x1d7a0 0 0 4294967295
-smnPerfMonCtrHi6 4 0x1d7a4 0 0 4294967295
-smnPerfMonCtrLo7 4 0x1d7a8 0 0 4294967295
-smnPerfMonCtrHi7 4 0x1d7ac 0 0 4294967295
-smnDF_PIE_AON_FabricIndirectConfigAccessAddress3 4 0x1d05c 0 0 4294967295
-smnDF_PIE_AON_FabricIndirectConfigAccessDataLo3 4 0x1d098 0 0 4294967295
-smnDF_PIE_AON_FabricIndirectConfigAccessDataHi3 4 0x1d09c 0 0 4294967295
-smnDF_CS_UMC_AON0_DramBaseAddress0 4 0x1c110 0 0 4294967295
-smnDF_CS_UMC_AON0_DramLimitAddress0 4 0x1c114 3 0 4294967295
-	DstFabricID 0 9
-	AllowReqIO 10 10
-	DramLimitAddr 12 31
 mmDF_CS_UMC_AON0_HardwareAssertMaskLow 0 0x67e 32 0 0
 	HWAssertMsk0 0 0
 	HWAssertMsk1 1 1
@@ -89,6 +42,7 @@ mmDF_CS_UMC_AON0_HardwareAssertMaskLow 0 0x67e 32 0 0
 	HWAssertMsk29 29 29
 	HWAssertMsk30 30 30
 	HWAssertMsk31 31 31
+mmDF_GCM_AON0_DramMegaBaseAddress0 0 0x64 0 0 0
 mmDF_NCS_PG0_HardwareAssertMaskHigh 0 0x67f 32 0 0
 	HWAssertMsk0 0 0
 	HWAssertMsk1 1 1
@@ -122,3 +76,49 @@ mmDF_NCS_PG0_HardwareAssertMaskHigh 0 0x67f 32 0 0
 	HWAssertMsk29 29 29
 	HWAssertMsk30 30 30
 	HWAssertMsk31 31 31
+mmDF_PIE_AON0_DfGlobalClkGater 0 0xfc 1 0 0
+	MGCGMode 0 3
+mmFabricConfigAccessControl 0 0x410 3 0 0
+	CfgRegInstAccEn 0 0
+	CfgRegInstAccRegLock 1 1
+	CfgRegInstID 16 23
+smnDF_CS_UMC_AON0_DramBaseAddress0 4 0x1c110 0 0 4294967295
+smnDF_CS_UMC_AON0_DramLimitAddress0 4 0x1c114 3 0 4294967295
+	DstFabricID 0 9
+	AllowReqIO 10 10
+	DramLimitAddr 12 31
+smnDF_PIE_AON_FabricIndirectConfigAccessAddress3 4 0x1d05c 0 0 4294967295
+smnDF_PIE_AON_FabricIndirectConfigAccessDataHi3 4 0x1d09c 0 0 4294967295
+smnDF_PIE_AON_FabricIndirectConfigAccessDataLo3 4 0x1d098 0 0 4294967295
+smnPerfMonCtlHi0 4 0x1d444 0 0 4294967295
+smnPerfMonCtlHi1 4 0x1d454 0 0 4294967295
+smnPerfMonCtlHi2 4 0x1d464 0 0 4294967295
+smnPerfMonCtlHi3 4 0x1d474 0 0 4294967295
+smnPerfMonCtlHi4 4 0x1d884 0 0 4294967295
+smnPerfMonCtlHi5 4 0x1d88c 0 0 4294967295
+smnPerfMonCtlHi6 4 0x1d894 0 0 4294967295
+smnPerfMonCtlHi7 4 0x1d89c 0 0 4294967295
+smnPerfMonCtlLo0 4 0x1d440 0 0 4294967295
+smnPerfMonCtlLo1 4 0x1d450 0 0 4294967295
+smnPerfMonCtlLo2 4 0x1d460 0 0 4294967295
+smnPerfMonCtlLo3 4 0x1d470 0 0 4294967295
+smnPerfMonCtlLo4 4 0x1d880 0 0 4294967295
+smnPerfMonCtlLo5 4 0x1d888 0 0 4294967295
+smnPerfMonCtlLo6 4 0x1d890 0 0 4294967295
+smnPerfMonCtlLo7 4 0x1d898 0 0 4294967295
+smnPerfMonCtrHi0 4 0x1d44c 0 0 4294967295
+smnPerfMonCtrHi1 4 0x1d45c 0 0 4294967295
+smnPerfMonCtrHi2 4 0x1d46c 0 0 4294967295
+smnPerfMonCtrHi3 4 0x1d47c 0 0 4294967295
+smnPerfMonCtrHi4 4 0x1d794 0 0 4294967295
+smnPerfMonCtrHi5 4 0x1d79c 0 0 4294967295
+smnPerfMonCtrHi6 4 0x1d7a4 0 0 4294967295
+smnPerfMonCtrHi7 4 0x1d7ac 0 0 4294967295
+smnPerfMonCtrLo0 4 0x1d448 0 0 4294967295
+smnPerfMonCtrLo1 4 0x1d458 0 0 4294967295
+smnPerfMonCtrLo2 4 0x1d468 0 0 4294967295
+smnPerfMonCtrLo3 4 0x1d478 0 0 4294967295
+smnPerfMonCtrLo4 4 0x1d790 0 0 4294967295
+smnPerfMonCtrLo5 4 0x1d798 0 0 4294967295
+smnPerfMonCtrLo6 4 0x1d7a0 0 0 4294967295
+smnPerfMonCtrLo7 4 0x1d7a8 0 0 4294967295

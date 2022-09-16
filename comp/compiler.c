@@ -373,13 +373,19 @@ struct soc15 *compile_soc15(char *s)
 	return soc;
 }
 
+static int reg_sort(const void *a, const void *b)
+{
+	const struct regs **A = a, **B = b;
+	return strcmp((*A)->name, (*B)->name);
+}
 
 int main(int argc, char **argv)
 {
 	char *rf, *bf;
 	FILE *f;
 	uint64_t size;
-	struct regs *r;
+	uint32_t no_regs;
+	struct regs *r, **sr;
 	struct bitfield *b;
 	struct soc15 *s;
 	int x, y;
@@ -422,16 +428,25 @@ int main(int argc, char **argv)
 		fprintf(stderr, "\nCompiling bits...                                                     \n");
 		compile_bits(r, bf);
 		fprintf(stderr, "\nUpdating registers...                                                 \n");
-		printf("%"PRIu32"\n", update_regs(r));
+		no_regs = update_regs(r);
+		printf("%"PRIu32"\n", no_regs);
 		fprintf(stderr, "Done...\n");
+
+		sr = calloc(sizeof *sr, no_regs);
+		x = 0;
 		while (r && r->addr != 0xFFFFFFFF) {
+			sr[x++] = r;
+			r = r->next;
+		}
+		qsort(sr, no_regs, sizeof sr[0], reg_sort);
+		for (x = 0; x < no_regs; x++) {
+			r = sr[x];
 			printf("%s %d 0x%"PRIx64" %"PRIu32" %"PRIu32" %"PRIu32"\n", r->name, r->type, r->addr, r->nobits, r->is64, r->idx);
 			b = r->bits;
 			while (b) {
 				printf("\t%s %d %d\n", b->name, b->start, b->stop);
 				b = b->next;
 			}
-			r = r->next;
 		}
 	} else {
 		f = fopen(argv[1], "rb");

@@ -106,9 +106,6 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 
 	otext = texts = calloc(1, sizeof *texts);
 
-	if (!asic->mmio_accel.reglist)
-		umr_create_mmio_accel(asic);
-
 	ringname = asic->options.ring_name[0] ? asic->options.ring_name : "gfx";
 	gprs = asic->options.skip_gprs;
 

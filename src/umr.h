@@ -500,6 +500,12 @@ struct umr_hive_info {
 	struct umr_asic *asic;
 };
 
+struct umr_mmio_accel_data {
+	uint64_t mmio_addr;
+	struct umr_ip_block *ip;
+	struct umr_reg *reg;
+};
+
 struct umr_asic {
 	char *asicname;
 	int no_blocks;
@@ -554,16 +560,14 @@ struct umr_asic {
 		int region;
 	} pci;
 	struct umr_options options;
-	struct {
-		struct umr_ip_block **iplist;
-		struct umr_reg **reglist;
-	} mmio_accel;
 	struct umr_dma_maps *maps;
 	struct umr_memory_access_funcs mem_funcs;
 	struct umr_register_access_funcs reg_funcs;
 	struct umr_wave_access_funcs wave_funcs;
 	struct umr_shader_disasm_funcs shader_disasm_funcs;
 	struct umr_read_gpr_funcs gpr_read_funcs;
+	struct umr_mmio_accel_data *mmio_accel;
+	uint32_t mmio_accel_size;
 	int (*err_msg)(const char *fmt, ...);
 	int (*std_msg)(const char *fmt, ...);
 };
@@ -1349,6 +1353,7 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter 
 char *umr_reg_name(struct umr_asic *asic, uint64_t addr);
 
 // find the register data for a register
+struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp);
 struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname);
 struct umr_reg *umr_find_reg_data_by_ip(struct umr_asic *asic, const char *ip, const char *regname);
 struct umr_reg *umr_find_reg_data(struct umr_asic *asic, const char *regname);
