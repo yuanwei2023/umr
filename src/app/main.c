@@ -109,6 +109,8 @@ static struct umr_asic *get_asic(void)
 	if (asic->family > FAMILY_VI)
 		asic->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
 
+	umr_create_mmio_accel(asic);
+
 	return asic;
 }
 
