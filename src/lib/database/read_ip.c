@@ -60,7 +60,8 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 {
 	struct umr_ip_block *ip;
 	FILE *f;
-	uint32_t no_regs, x;
+	uint32_t no_regs;
+	int x;
 	char linebuf[256];
 
 	if (soc15) {
