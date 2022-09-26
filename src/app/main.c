@@ -104,7 +104,6 @@ static struct umr_asic *get_asic(void)
 	asic->options.shader_enable.enable_es_shader   = 1;
 	asic->options.shader_enable.enable_ls_shader   = 1;
 	asic->options.shader_enable.enable_comp_shader = 1;
-	asic->options.vm_partition = -1;
 
 	if (asic->family > FAMILY_VI)
 		asic->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
@@ -225,6 +224,7 @@ int main(int argc, char **argv)
 	options.need_scan = 1;
 	options.forcedid = -1;
 	options.scanblock = "";
+	options.vm_partition = -1;
 
 	for (i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--database-path") || !strcmp(argv[i], "-dbp")) {
