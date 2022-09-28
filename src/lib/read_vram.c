@@ -659,12 +659,11 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			registers.mmVGA_MEMORY_BASE_ADDRESS = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS");
 			registers.mmVGA_MEMORY_BASE_ADDRESS_HIGH = umr_read_reg_by_name(asic, "mmVGA_MEMORY_BASE_ADDRESS_HIGH");
 		}
-		sprintf(buf, "mm%sMC_VM_FB_OFFSET", regprefix);
-		registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-		vm_fb_offset      = (uint64_t)registers.mmMC_VM_FB_OFFSET << 24;
-	} else {
-		vm_fb_offset = 0;
 	}
+
+	sprintf(buf, "mm%sMC_VM_FB_OFFSET", regprefix);
+	registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+	vm_fb_offset      = (uint64_t)registers.mmMC_VM_FB_OFFSET << 24;
 
 	if (asic->options.verbose) {
 		asic->mem_funcs.vm_message("\n\n=== VM Decoding of address %d@0x%" PRIx64 " ===\n", vmid, address);
