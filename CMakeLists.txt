@@ -4,47 +4,44 @@ set(CPACK_RPM_COMPONENT_INSTALL ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 cmake_minimum_required(VERSION 3.0.1)
 
-project(umr)
+# Add local repository for FindXXX.cmake modules.
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" ${CMAKE_MODULE_PATH})
+
+include(GitVersion)
+get_version_from_tag("1.0.0")
+
+project(umr
+    VERSION "${VERSION_STRING}"
+    HOMEPAGE_URL "https://gitlab.freedesktop.org/tomstdenis/umr")
 
 include(GNUInstallDirs)
 
-SET(MAJOR_VERSION 1)
-SET(MINOR_VERSION 0)
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "User mode register debugger for AMDGPU devices using IP cleared registers/definitions.")
+set(CPACK_PACKAGE_VENDOR "AMD")
+set(CPACK_PACKAGE_CONTACT "tom.stdenis@amd.com")
+set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RPM_PACKAGE_GROUP "System/Monitoring")
+set(CPACK_PACKAGE_VERSION_MAJOR ${VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${VERSION_MINOR})
+set(CPACK_GENERATOR "RPM;DEB" CACHE STRING "Package binary using these generators")
+set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" CACHE STRING "Default packaging prefix." )
+mark_as_advanced(CPACK_GENERATOR)
 
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "User mode register debugger for AMDGPU devices using IP cleared registers/definitions.")
-SET(CPACK_PACKAGE_VENDOR "AMD")
-SET(CPACK_PACKAGE_CONTACT "tom.stdenis@amd.com")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README")
-SET(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-SET(CPACK_RPM_PACKAGE_GROUP "System/Monitoring")
-SET(CPACK_PACKAGE_VERSION_MAJOR ${MAJOR_VERSION})
-SET(CPACK_PACKAGE_VERSION_MINOR ${MINOR_VERSION})
-SET(CPACK_GENERATOR "RPM;DEB")
-SET(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" CACHE STRING "Default packaging prefix." )
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm11, zlib1g-dev")
 
+set(CPACK_RPM_PACKAGE_AUTOREQ 0)
+set(CPACK_RPM_PACKAGE_AUTOPROV 0)
+set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm11-libs, zlib")
 
 include(CPack)
 
-
-SET(RELEASE_VERSION \"${MAJOR_VERSION}.${MINOR_VERSION}\")
-execute_process(COMMAND  git describe --abbrev=12 --always
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    OUTPUT_VARIABLE GIT_REV
-)
-execute_process(COMMAND  git branch --show-current
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    OUTPUT_VARIABLE GIT_BRANCH
-)
+set(RELEASE_VERSION \"${VERSION_STRING}\")
 add_definitions(-DUMR_BUILD_VER=${RELEASE_VERSION})
-add_definitions(-DUMR_BUILD_REV=\"${GIT_REV}\")
-add_definitions(-DUMR_BUILD_BRANCH=\"${GIT_BRANCH}\")
+add_definitions(-DUMR_BUILD_REV=\"${VERSION_REV}\")
+add_definitions(-DUMR_BUILD_BRANCH=\"${VERSION_BRANCH}\")
 add_definitions(-DUMR_DB_DIR=\"${CMAKE_INSTALL_FULL_DATADIR}/umr/database/\")
 add_definitions(-DUMR_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\")
-
-# Add local repository for FindXXX.cmake modules.
-SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" ${CMAKE_MODULE_PATH})
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)

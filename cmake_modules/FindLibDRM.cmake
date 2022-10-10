@@ -15,6 +15,7 @@ find_path(LIBDRM_INCLUDE_DIR NAMES amdgpu_drm.h
     ${PC_LIBDRM_INCLUDEDIR}
     ${PC_LIBDRM_INCLUDE_DIRS}
     /usr/include
+    /usr/include/libdrm
 )
 
 find_library(LIBDRM_LIBRARY NAMES libdrm_amdgpu.so.1
@@ -23,6 +24,7 @@ find_library(LIBDRM_LIBRARY NAMES libdrm_amdgpu.so.1
     ${PC_LIBDRM_LIBRARY_DIRS}
     /usr/lib64
     /usr/lib
+    /usr/lib/x86_64-linux-gnu
 )
 
 SET(LIBDRM_LIBRARIES ${LIBDRM_LIBRARY})

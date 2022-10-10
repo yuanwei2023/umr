@@ -1,47 +1,231 @@
 # CI templates from
 # https://gitlab.freedesktop.org/freedesktop/ci-templates
-.templates_sha: &templates_sha 9dc112a981fb523b7c34f00b386b4e3b2e7da2c6
+.templates_sha: &templates_sha d5aa3941aa03c2f716595116354fb81eb8012acb
 
 include:
   - project: 'freedesktop/ci-templates'
     ref: *templates_sha
-    file: '/templates/alpine.yml'
+    file:
+      - '/templates/alpine.yml'
+      - '/templates/fedora.yml'
+      - '/templates/debian.yml'
+      - '/templates/arch.yml'
 
 stages:
   - build_docker
   - build
   - test
+  - release
 
-.umr_docker_vars:
-  variables:
-    FDO_DISTRIBUTION_TAG: 'built-on-2022-06-27'
-    FDO_UPSTREAM_REPO: 'tomstdenis/umr'
+variables:
+  FDO_DISTRIBUTION_VERSION: latest
+  FDO_UPSTREAM_REPO: 'tomstdenis/umr'
+  FDO_DISTRIBUTION_TAG: 'built-on-2022-10-11'
 
-build_umr_docker:
+# this is for general compilation/testing/day-to-day CI
+build_docker_alpine:
   extends:
   - .fdo.container-build@alpine
-  - .umr_docker_vars
   stage: build_docker
   variables:
-    FDO_DISTRIBUTION_PACKAGES: 'cmake g++ gcc libdrm-dev libpciaccess-dev libxml2-dev llvm llvm13 llvm13-dev llvm13-static make ncurses-dev'
+    FDO_DISTRIBUTION_PACKAGES: >
+      cmake
+      dpkg
+      g++
+      gcc
+      libdrm-dev
+      libpciaccess-dev
+      libxml2-dev
+      llvm
+      llvm13
+      llvm13-dev
+      llvm13-static
+      make
+      ncurses-dev
+      rpm-dev
 
-build:
+# build template
+.build: &build
   extends:
-  - .fdo.distribution-image@alpine
-  - .umr_docker_vars
+    - .fdo.distribution-image@alpine
   stage: build
   script:
-    - cmake -DUMR_NO_GUI=ON -B build
-    - cmake --build build -j $FDO_CI_CONCURRENT
+    - cmake -DUMR_NO_GUI=ON -G'Unix Makefiles' -B build $CMAKE_EXTRA_ARGS
+    - make -C build -j $FDO_CI_CONCURRENT $MAKE_EXTRA_ARGS
   artifacts:
     paths:
     - build/src/app/umr
 
+build:
+  <<: *build
+
 test_help:
   extends:
-  - .fdo.distribution-image@alpine
-  - .umr_docker_vars
+    - .fdo.distribution-image@alpine
   needs: [build]
   stage: test
   script:
     - ./build/src/app/umr -h
+
+
+###
+### Below instructions are only relevant for release builds
+###
+
+.release_rules:
+  rules:
+    - if: $CI_COMMIT_TAG # Run this job when a tag is created manually
+
+# this is for umr.deb release
+build_docker_debian:
+  extends:
+    - .fdo.container-build@debian
+    - .release_rules
+  stage: build_docker
+  variables:
+    FDO_DISTRIBUTION_PACKAGES: >
+      build-essential
+      cmake
+      git
+      libdrm-dev
+      libncurses-dev
+      libpciaccess-dev
+      llvm-11-dev
+      pkgconf
+      rpm
+      zlib1g-dev
+
+# this is for umr.rpm release
+build_docker_fedora:
+  extends:
+    - .fdo.container-build@fedora
+    - .release_rules
+  stage: build_docker
+  variables:
+    FDO_DISTRIBUTION_PACKAGES: >
+      cmake
+      g++
+      gcc
+      git
+      libdrm-devel
+      libpciaccess-devel
+      llvm11-devel
+      make
+      ncurses-libs
+      rpm-build
+      zlib
+
+# this is for umr.pkg.tar.zst release
+build_docker_arch:
+  extends:
+    - .fdo.container-build@arch
+    - .release_rules
+  stage: build_docker
+  variables:
+    FDO_DISTRIBUTION_PACKAGES: >
+      binutils
+      cmake
+      fakeroot
+      gcc
+      git
+      libdrm
+      llvm
+      make
+
+build_deb:
+  <<: *build
+  extends:
+    - .fdo.distribution-image@debian
+    - .release_rules
+  variables:
+    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=DEB'
+    MAKE_EXTRA_ARGS: 'package'
+  artifacts:
+    paths:
+    - build/umr*.deb
+
+build_rpm:
+  <<: *build
+  extends:
+    - .fdo.distribution-image@fedora
+    - .release_rules
+  variables:
+    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=RPM -DLLVM_DIR=/usr/lib64/llvm11/lib/cmake/llvm'
+    MAKE_EXTRA_ARGS: 'package'
+  artifacts:
+    paths:
+    - build/umr*.rpm
+
+build_zst:
+  stage: build
+  extends:
+    - .fdo.distribution-image@arch
+    - .release_rules
+  script:
+    - mkdir -p build_arch
+    # must exclude directory where the archive is being created
+    # otherwise it will fail with 'file changed as we read it'
+    - tar cvfz build_arch/umr.tar --exclude='build_arch' ./
+    - cp PKGBUILD build_arch/
+    # MUST run makepkg as user...
+    - useradd fake_user_makepkg
+    - 'chown fake_user_makepkg build_arch -R'
+    - su fake_user_makepkg -c 'cd build_arch; makepkg'
+    - mkdir -p build
+    - cp build_arch/umr*.pkg.tar.zst build/
+  artifacts:
+    paths:
+    - build/umr*.pkg.tar.zst
+
+package_please:
+  extends:
+    - .release_rules
+  # special release image, see https://docs.gitlab.com/ee/ci/yaml/#release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  stage: release
+  needs: ['test_help', 'build_deb', 'build_rpm', 'build_zst']
+  script:
+    - echo 'Packaging artifacts...'
+    - pwd
+    - ls -lah
+    - ls -lah build/
+    - cp build/umr*.deb ./umr-${CI_COMMIT_TAG}-Linux.deb
+    - cp build/umr*.rpm ./umr-${CI_COMMIT_TAG}-Linux.rpm
+    - cp build/umr*.pkg.tar.zst ./umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: 'Release $CI_COMMIT_TAG'
+    description: '
+      Release created using the release-cli.
+
+
+      Debian/Ubuntu:
+
+
+      \`sudo apt install ./umr-${CI_COMMIT_TAG}-Linux.deb\`
+
+
+      Fedora/CentOS/RHEL:
+
+
+      \`sudo rpm -i ./umr-${CI_COMMIT_TAG}-Linux.rpm\`
+
+
+      Arch Linux:
+
+
+      \`sudo pacman -U ./umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst\`'
+    assets:
+      links:
+        - name: 'UMR DEB release'
+          url: 'https://gitlab.freedesktop.org/dmitrii.galantsev/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.deb'
+        - name: 'UMR RPM release'
+          url: 'https://gitlab.freedesktop.org/dmitrii.galantsev/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.rpm'
+        - name: 'UMR Arch Linux release'
+          url: 'https://gitlab.freedesktop.org/dmitrii.galantsev/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst'
+
+  artifacts:
+    paths:
+      - umr-${CI_COMMIT_TAG}-Linux.deb
+      - umr-${CI_COMMIT_TAG}-Linux.rpm
+      - umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst
