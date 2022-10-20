@@ -185,7 +185,7 @@ struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const
 
 struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp)
 {
-	int i, j, k;
+	int i, k;
 	char tmpregname[96], instname[16];
 	const char *oregname = regname;
 
@@ -217,6 +217,8 @@ retry:
 		// if we are not looking for an instance skip over IP blocks with an instance
 		// this is mostly to catch UMR bugs that don't forward say
 		// --vm-partition to a register function on partitioned hosts
+		//
+		// TODO: if inst == -2, then skip this check.
 		if (inst < 0 && strstr(asic->blocks[i]->ipname, "{"))
 			continue;
 		{
@@ -224,26 +226,21 @@ retry:
 			bot = 0;
 			top = asic->blocks[i]->no_regs;
 			mid = (bot + top) >> 1;
-
-			while (top - bot > 1) {
+			while (bot < top) {
+				mid = (bot + top) >> 1;
 				diff = istr_cmp(asic->blocks[i]->regs[mid].regname, regname);
-				if (!diff)
-					break;
 				if (diff < 0) {
 					// needle is above mid
-					bot = mid;
+					bot = mid + 1;
 				} else {
-					// needle is below mid
+					// needle is below or equal to mid
 					top = mid;
 				}
-				mid = (bot + top) >> 1;
 			}
-			for (j = bot; j < top; j++) {
-				if (!istr_cmp(asic->blocks[i]->regs[j].regname, regname)) {
-					if (ipp)
-						*ipp = asic->blocks[i];
-					return &asic->blocks[i]->regs[j];
-				}
+			if (bot < asic->blocks[i]->no_regs && !istr_cmp(asic->blocks[i]->regs[bot].regname, regname)) {
+				if (ipp)
+					*ipp = asic->blocks[i];
+				return &asic->blocks[i]->regs[bot];
 			}
 		}
 	}
@@ -294,28 +291,19 @@ struct umr_reg* umr_find_reg_by_addr(struct umr_asic* asic, uint64_t addr, struc
 		uint32_t bot, mid, top;
 		bot = 0;
 		top = asic->mmio_accel_size;
-		mid = (bot + top) >> 1;
 
-		while ((top - bot) > 1) {
-			if (asic->mmio_accel[mid].mmio_addr == addr) {
-				if (ip)
-					*ip = asic->mmio_accel[mid].ip;
-				return asic->mmio_accel[mid].reg;
-			}
-			if (addr > asic->mmio_accel[mid].mmio_addr) {
-				bot = mid;
-			} else if (addr < asic->mmio_accel[mid].mmio_addr) {
+		while (bot < top) {
+			mid = (bot + top) >> 1;
+			if (asic->mmio_accel[mid].mmio_addr < addr) {
+				bot = mid + 1;
+			} else {
 				top = mid;
 			}
-			mid = (bot + top) >> 1;
 		}
-
-		for (; bot < top; bot++) {
-			if (asic->mmio_accel[bot].mmio_addr == addr) {
-				if (ip)
-					*ip = asic->mmio_accel[bot].ip;
-				return asic->mmio_accel[bot].reg;
-			}
+		if (bot < asic->mmio_accel_size && asic->mmio_accel[bot].mmio_addr == addr) {
+			if (ip)
+				*ip = asic->mmio_accel[bot].ip;
+			return asic->mmio_accel[bot].reg;
 		}
 		return NULL;
 	}
