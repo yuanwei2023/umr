@@ -77508,6 +77508,26 @@ regOUTSTANDING_VC_ALLOC 0 0xe803 12 0 5
 	HST_OUTSTANDING_VC0_ALLOC 24 25
 	HST_OUTSTANDING_VC1_ALLOC 26 27
 	HST_OUTSTANDING_THRD 28 31
+regParityCorr_ACTION_CONTROL 0 0xe8803a 4 0 5
+	APML_ERR_En 0 0
+	IntrGenSel 1 2
+	LinkDis_En 3 3
+	SyncFlood_En 4 4
+regParityFatal_ACTION_CONTROL 0 0xe88038 4 0 5
+	APML_ERR_En 0 0
+	IntrGenSel 1 2
+	LinkDis_En 3 3
+	SyncFlood_En 4 4
+regParityNonFatal_ACTION_CONTROL 0 0xe88039 4 0 5
+	APML_ERR_En 0 0
+	IntrGenSel 1 2
+	LinkDis_En 3 3
+	SyncFlood_En 4 4
+regParitySerr_ACTION_CONTROL 0 0xe88037 4 0 5
+	APML_ERR_En 0 0
+	IntrGenSel 1 2
+	LinkDis_En 3 3
+	SyncFlood_En 4 4
 regPARITY_CONTROL_0 0 0xe88000 2 0 5
 	ParityCorrThreshold 0 15
 	ParityUCPThreshold 16 31
@@ -79360,26 +79380,6 @@ regP_DMA_DROPPED_LOG_UPPER 0 0xe84061 32 0 5
 	P_DMA_DROPPED_LOG_UPPER_29 29 29
 	P_DMA_DROPPED_LOG_UPPER_30 30 30
 	P_DMA_DROPPED_LOG_UPPER_31 31 31
-regParityCorr_ACTION_CONTROL 0 0xe8803a 4 0 5
-	APML_ERR_En 0 0
-	IntrGenSel 1 2
-	LinkDis_En 3 3
-	SyncFlood_En 4 4
-regParityFatal_ACTION_CONTROL 0 0xe88038 4 0 5
-	APML_ERR_En 0 0
-	IntrGenSel 1 2
-	LinkDis_En 3 3
-	SyncFlood_En 4 4
-regParityNonFatal_ACTION_CONTROL 0 0xe88039 4 0 5
-	APML_ERR_En 0 0
-	IntrGenSel 1 2
-	LinkDis_En 3 3
-	SyncFlood_En 4 4
-regParitySerr_ACTION_CONTROL 0 0xe88037 4 0 5
-	APML_ERR_En 0 0
-	IntrGenSel 1 2
-	LinkDis_En 3 3
-	SyncFlood_En 4 4
 regRAS_GLOBAL_STATUS_HI 0 0xe88009 10 0 5
 	PCIE0PortAErr 0 0
 	PCIE0PortBErr 1 1

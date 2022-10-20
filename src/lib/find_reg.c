@@ -27,25 +27,20 @@
 
 int istr_cmp(const char* a, const char* b)
 {
-	size_t size_a, i;
+	unsigned char a_up;
+	unsigned char b_up;
 
-	if (!a || !b) {
-		return 0;
-	}
+	for(;;) {
+		a_up = (unsigned char)toupper(*a);
+		b_up = (unsigned char)toupper(*b);
 
-	size_a = strlen(a);
-
-	if (strlen(b) != size_a){
-		return 0;
-	}
-
-	for (i = 0; i < size_a; i++, a++, b++) {
-		if(toupper(*a) != toupper(*b)) {
-			return 0;
+		if (a_up != b_up || !a_up) {
+			break;
 		}
+		a++;
+		b++;
 	}
-
-	return 1;
+    return a_up - b_up;
 }
 
 int expression_matches(const char* str, const char* pattern)
@@ -231,7 +226,7 @@ retry:
 			mid = (bot + top) >> 1;
 
 			while (top - bot > 1) {
-				diff = strcmp(asic->blocks[i]->regs[mid].regname, regname);
+				diff = istr_cmp(asic->blocks[i]->regs[mid].regname, regname);
 				if (!diff)
 					break;
 				if (diff < 0) {
@@ -244,7 +239,7 @@ retry:
 				mid = (bot + top) >> 1;
 			}
 			for (j = bot; j < top; j++) {
-				if (istr_cmp(asic->blocks[i]->regs[j].regname, regname)) {
+				if (!istr_cmp(asic->blocks[i]->regs[j].regname, regname)) {
 					if (ipp)
 						*ipp = asic->blocks[i];
 					return &asic->blocks[i]->regs[j];

@@ -373,10 +373,28 @@ struct soc15 *compile_soc15(char *s)
 	return soc;
 }
 
+int istr_cmp(const char* a, const char* b)
+{
+	unsigned char a_up;
+	unsigned char b_up;
+
+	for(;;) {
+		a_up = (unsigned char)toupper(*a);
+		b_up = (unsigned char)toupper(*b);
+
+		if (a_up != b_up || !a_up) {
+			break;
+		}
+		a++;
+		b++;
+	}
+    return a_up - b_up;
+}
+
 static int reg_sort(const void *a, const void *b)
 {
 	const struct regs **A = a, **B = b;
-	return strcmp((*A)->name, (*B)->name);
+	return istr_cmp((*A)->name, (*B)->name);
 }
 
 int main(int argc, char **argv)

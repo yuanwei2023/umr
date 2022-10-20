@@ -10743,6 +10743,38 @@ mmPA_UTCL1_CNTL2 0 0x2fa 17 0 0
 	SPARE5 25 25
 	FORCE_FRAG_2M_TO_64K 26 26
 	RESERVED 27 31
+mmport_a_addr 0 0x7c0 3 0 0
+	Index 0 7
+	Reserved 8 30
+	ReadEnable 31 31
+mmport_a_data_hi 0 0x7c2 1 0 0
+	Data 0 31
+mmport_a_data_lo 0 0x7c1 1 0 0
+	Data 0 31
+mmport_b_addr 0 0x7c3 3 0 0
+	Index 0 7
+	Reserved 8 30
+	ReadEnable 31 31
+mmport_b_data_hi 0 0x7c5 1 0 0
+	Data 0 31
+mmport_b_data_lo 0 0x7c4 1 0 0
+	Data 0 31
+mmport_c_addr 0 0x7c6 3 0 0
+	Index 0 7
+	Reserved 8 30
+	ReadEnable 31 31
+mmport_c_data_hi 0 0x7c8 1 0 0
+	Data 0 31
+mmport_c_data_lo 0 0x7c7 1 0 0
+	Data 0 31
+mmport_d_addr 0 0x7c9 3 0 0
+	Index 0 7
+	Reserved 8 30
+	ReadEnable 31 31
+mmport_d_data_hi 0 0x7cb 1 0 0
+	Data 0 31
+mmport_d_data_lo 0 0x7ca 1 0 0
+	Data 0 31
 mmRAS_BCI_SIGNATURE0 0 0x139e 1 0 0
 	SIGNATURE 0 31
 mmRAS_BCI_SIGNATURE1 0 0x139f 1 0 0
@@ -17381,35 +17413,3 @@ mmWD_UTCL1_STATUS 0 0x244 6 0 0
 	FAULT_UTCL1ID 8 13
 	RETRY_UTCL1ID 16 21
 	PRT_UTCL1ID 24 29
-mmport_a_addr 0 0x7c0 3 0 0
-	Index 0 7
-	Reserved 8 30
-	ReadEnable 31 31
-mmport_a_data_hi 0 0x7c2 1 0 0
-	Data 0 31
-mmport_a_data_lo 0 0x7c1 1 0 0
-	Data 0 31
-mmport_b_addr 0 0x7c3 3 0 0
-	Index 0 7
-	Reserved 8 30
-	ReadEnable 31 31
-mmport_b_data_hi 0 0x7c5 1 0 0
-	Data 0 31
-mmport_b_data_lo 0 0x7c4 1 0 0
-	Data 0 31
-mmport_c_addr 0 0x7c6 3 0 0
-	Index 0 7
-	Reserved 8 30
-	ReadEnable 31 31
-mmport_c_data_hi 0 0x7c8 1 0 0
-	Data 0 31
-mmport_c_data_lo 0 0x7c7 1 0 0
-	Data 0 31
-mmport_d_addr 0 0x7c9 3 0 0
-	Index 0 7
-	Reserved 8 30
-	ReadEnable 31 31
-mmport_d_data_hi 0 0x7cb 1 0 0
-	Data 0 31
-mmport_d_data_lo 0 0x7ca 1 0 0
-	Data 0 31

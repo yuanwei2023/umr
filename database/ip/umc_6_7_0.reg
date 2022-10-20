@@ -222,15 +222,15 @@ regUMCCH0_0_PerfMonCtrClk_Hi 0 0x342 2 0 0
 	Overflow 16 16
 regUMCCH0_0_PerfMonCtrClk_Lo 0 0x341 1 0 0
 	Data 0 31
+regUMCCH0_0_UmcLocalCap 0 0x306 3 0 0
+	EccDis 0 0
+	Spare 1 5
+	WrDis 31 31
 regUMCCH0_0_UMC_CONFIG 0 0x40 4 0 0
 	DDR_TYPE 0 2
 	BurstLength 8 9
 	BurstCtrl 10 11
 	DramReady 31 31
-regUMCCH0_0_UmcLocalCap 0 0x306 3 0 0
-	EccDis 0 0
-	Spare 1 5
-	WrDis 31 31
 regUMCCH0_1_AddrHashBank0 0 0x40032 3 0 1
 	XorEnable 0 0
 	ColXor 1 13
@@ -970,15 +970,15 @@ regUMCCH1_0_PerfMonCtrClk_Hi 0 0x742 2 0 0
 	Overflow 16 16
 regUMCCH1_0_PerfMonCtrClk_Lo 0 0x741 1 0 0
 	Data 0 31
+regUMCCH1_0_UmcLocalCap 0 0x706 3 0 0
+	EccDis 0 0
+	Spare 1 5
+	WrDis 31 31
 regUMCCH1_0_UMC_CONFIG 0 0x440 4 0 0
 	DDR_TYPE 0 2
 	BurstLength 8 9
 	BurstCtrl 10 11
 	DramReady 31 31
-regUMCCH1_0_UmcLocalCap 0 0x706 3 0 0
-	EccDis 0 0
-	Spare 1 5
-	WrDis 31 31
 regUMCCH1_1_AddrHashBank0 0 0x40432 3 0 1
 	XorEnable 0 0
 	ColXor 1 13
@@ -1718,15 +1718,15 @@ regUMCCH2_0_PerfMonCtrClk_Hi 0 0xb42 2 0 0
 	Overflow 16 16
 regUMCCH2_0_PerfMonCtrClk_Lo 0 0xb41 1 0 0
 	Data 0 31
+regUMCCH2_0_UmcLocalCap 0 0xb06 3 0 0
+	EccDis 0 0
+	Spare 1 5
+	WrDis 31 31
 regUMCCH2_0_UMC_CONFIG 0 0x840 4 0 0
 	DDR_TYPE 0 2
 	BurstLength 8 9
 	BurstCtrl 10 11
 	DramReady 31 31
-regUMCCH2_0_UmcLocalCap 0 0xb06 3 0 0
-	EccDis 0 0
-	Spare 1 5
-	WrDis 31 31
 regUMCCH2_1_AddrHashBank0 0 0x40832 3 0 1
 	XorEnable 0 0
 	ColXor 1 13
@@ -2466,15 +2466,15 @@ regUMCCH3_0_PerfMonCtrClk_Hi 0 0xf42 2 0 0
 	Overflow 16 16
 regUMCCH3_0_PerfMonCtrClk_Lo 0 0xf41 1 0 0
 	Data 0 31
+regUMCCH3_0_UmcLocalCap 0 0xf06 3 0 0
+	EccDis 0 0
+	Spare 1 5
+	WrDis 31 31
 regUMCCH3_0_UMC_CONFIG 0 0xc40 4 0 0
 	DDR_TYPE 0 2
 	BurstLength 8 9
 	BurstCtrl 10 11
 	DramReady 31 31
-regUMCCH3_0_UmcLocalCap 0 0xf06 3 0 0
-	EccDis 0 0
-	Spare 1 5
-	WrDis 31 31
 regUMCCH3_1_AddrHashBank0 0 0x40c32 3 0 1
 	XorEnable 0 0
 	ColXor 1 13
