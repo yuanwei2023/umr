@@ -502,6 +502,7 @@ struct umr_hive_info {
 
 struct umr_mmio_accel_data {
 	uint64_t mmio_addr;
+	uint32_t ord;
 	struct umr_ip_block *ip;
 	struct umr_reg *reg;
 };

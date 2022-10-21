@@ -31,6 +31,10 @@ static int sort_addr(const void *A, const void *B)
 		return 1;
 	if (a->mmio_addr < b->mmio_addr)
 		return -1;
+	if (a->ord > b->ord)
+		return 1;
+	if (a->ord < b->ord)
+		return -1;
 	return 0;
 }
 
@@ -69,7 +73,12 @@ int umr_create_mmio_accel(struct umr_asic *asic)
 			if (asic->blocks[i]->regs[j].type == REG_MMIO) {
 				asic->mmio_accel[x].mmio_addr = asic->blocks[i]->regs[j].addr;
 				asic->mmio_accel[x].ip = asic->blocks[i];
-				asic->mmio_accel[x++].reg = &asic->blocks[i]->regs[j];
+				asic->mmio_accel[x].reg = &asic->blocks[i]->regs[j];
+				// ord is used to stabilize the sort; regs with same offset
+				// appear in mmio_accel in the order they appeared in the
+				// register database (i.e. alphabetically ascending)
+				asic->mmio_accel[x].ord = x;
+				++x;
 			}
 		}
 	}
