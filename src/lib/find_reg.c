@@ -217,9 +217,7 @@ retry:
 		// if we are not looking for an instance skip over IP blocks with an instance
 		// this is mostly to catch UMR bugs that don't forward say
 		// --vm-partition to a register function on partitioned hosts
-		//
-		// TODO: if inst == -2, then skip this check.
-		if (inst < 0 && strstr(asic->blocks[i]->ipname, "{"))
+		if (inst < 0 && inst != -2 && strstr(asic->blocks[i]->ipname, "{"))
 			continue;
 		{
 			int bot, top, mid, diff;

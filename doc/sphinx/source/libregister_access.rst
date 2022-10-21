@@ -86,7 +86,9 @@ the same name the register data can be searched per IP block.
 This will search the ASIC for an IP block with a name that **begins with**
 the string 'ip' for a register that exactly matches 'regname'.  The IP
 block naming is partially matched to support blocks that have
-versions in the name,
+versions in the name. Blocks with '{inst}' in their name are not searched.
+To search blocks with '{inst}' in their name, see
+'umr_find_reg_data_by_ip_by_instance'.
 
 
 ``````````````````````````````````````````
@@ -94,8 +96,9 @@ Searching by Name and IP name and Instance
 ``````````````````````````````````````````
 
 This function allows searching for a specific register by both IP block
-and instance.  If the 'inst' is passed as -1 it is ignored (same as
-calling 'umr_find_reg_data_by_ip()').
+and instance.  If the 'inst' is passed as -1 it is ignored, and blocks
+with '{inst}' in their name are not included in the search (same as calling
+'umr_find_reg_data_by_ip()').
 
 ::
 
@@ -105,6 +108,8 @@ When 'inst' is 0 or above it searches for IP blocks that contain '{inst}' in
 the name.  For instance, passing 1 would search for IP blocks with '{1}' in
 the name.
 
+When 'inst' is -2 it is the same behaviour as when 'inst' is -1 except blocks
+with '{inst}' in their name are included in the search.
 
 '''''''''''''''''''''
 Searching by wildcard
