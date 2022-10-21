@@ -347,7 +347,7 @@ static void decode_pkt0(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 		ui->add_field(ui, ib_addr + 4 * (n + 1), ib_vmid, umr_reg_name(asic, stream->pkt0off + n), stream->words[n], NULL, 16);
 }
 
-// for packets 0x5F, 0x60, 0x61
+// for packets 0x5E, 0x5F, 0x60, 0x61
 static void load_X_reg(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {
 	char *str, tmpstr[256];
@@ -355,6 +355,7 @@ static void load_X_reg(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *u
 	uint64_t base_addr;
 
 	switch (stream->opcode) {
+		case 0x5E: reg_base = 0xC000; break; // LOAD_UCONFIG_REG
 		case 0x5F: reg_base = 0x2C00; break; // LOAD_SH_REG
 		case 0x60: reg_base = 0x2000; break; // LOAD_CONFIG_REG
 		case 0x61: reg_base = 0xA000; break; // LOAD_CONTEXT_REG
@@ -385,10 +386,10 @@ static void load_X_reg(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *u
 			return;
 		}
 
-		if (!umr_read_vram(asic, asic->options.vm_partition, ib_vmid, base_addr, 4 * m, data)) {
+		if (!umr_read_vram(asic, asic->options.vm_partition, ib_vmid, base_addr + 4 * k, 4 * m, data)) {
 			// turn into data string
 			for (j = 0; j < m; j++) {
-				snprintf(tmpstr, sizeof tmpstr, "%s <= %"PRIx32"\n", umr_reg_name(asic, reg_base + k + j), data[j]);
+				snprintf(tmpstr, sizeof tmpstr, "#%4"PRIx32":%s <= 0x%"PRIx32"\n", k + j, umr_reg_name(asic, reg_base + k + j), data[j]);
 				while (strlen(tmpstr) + strlen(str) >= str_size) {
 					char *tmp;
 					str_size += 4096;
@@ -405,7 +406,6 @@ static void load_X_reg(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *u
 			}
 		}
 		free(data);
-		base_addr += 4 * m;
 
 		ui->add_field(ui, ib_addr + 12 + ((n - 2) * 4), ib_vmid, "REG_OFFSET", reg_base + k, umr_reg_name(asic, reg_base + k), 16);
 		ui->add_field(ui, ib_addr + 16 + ((n - 2) * 4), ib_vmid, "NUM_DWORD", m, str, 10);
@@ -711,6 +711,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", BITS(stream->words[4], 0, 8), NULL, 16);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", BITS(stream->words[5], 0, 16), NULL, 10);
 			break;
+		case 0x5E: // LOAD_UCONFIG_REG
 		case 0x5F: // LOAD_SH_REG
 		case 0x60: // LOAD_CONFIG_REG
 		case 0x61: // LOAD_CONTEXT_REG
