@@ -23,6 +23,7 @@ add_library(umrcore STATIC
   get_ip_rev.c
   mmio.c
   pm4_decode_opcodes.c
+  read_mes_stream.c
   read_pm4_stream.c
   read_sdma_stream.c
   read_vram.c

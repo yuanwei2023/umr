@@ -1624,6 +1624,65 @@ struct umr_ih_decode_ui {
 // decode interrupt vectors
 int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, uint32_t *ih_data, uint32_t length);
 
+// MES library
+struct umr_mes_stream {
+	uint32_t *words,
+		 nwords,
+		 header,
+		 opcode,
+		 type;
+
+	struct umr_mes_stream *next;
+};
+
+struct umr_mes_stream_decode_ui {
+	/** start_ib -- Start a new IB
+	 * ib_addr/ib_vmid: Address of the IB
+	 * from_addr/from_vmid: Where does this reference come from?
+	 * size: size of IB in DWORDs
+	 * type: type of IB (which type of packets
+	 */
+	void (*start_ib)(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
+
+	/** start_opcode -- Start a new opcode
+	 * ib_addr/ib_vmid: Address of where packet is found
+	 * opcode: The numeric value of the ocpode
+	 * nwords: Number of DWORDS in this opcode
+	 * opcode_name: Printable string name of opcode
+	 * header: Raw header DWORD of this packet
+	 * raw_data: Pointer to a buffer of length nwords containing the raw data of this packet (does not include header DWORD)
+	 */
+	void (*start_opcode)(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data);
+
+	/** add_field -- Add a decoded field to a specific DWORD
+	 * ib_addr/ib_vmid:  Address of the word from which the field comes
+	 * field_name: printable name of the field
+	 * value:  Value of the field
+	 * ideal_radix: (10 decimal, 16 hex)
+	 */
+	void (*add_field)(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix);
+
+	/** unhandled -- Decoder for unhandled (private) opcodes
+	 * asic: The ASIC the IB stream is bound to
+	 * ib_addr:ib_vmid: The address where the mes opcode comes from
+	 * stream:  The pointer to the current stream opcode being handled
+	 *
+	 * Can be NULL to drop support for unhandled opcodes.
+	 */
+	void (*unhandled)(struct umr_mes_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_mes_stream *stream);
+
+	void (*done)(struct umr_mes_stream_decode_ui *ui);
+
+	/** data -- opaque pointer that can be used to track state information */
+	void *data;
+};
+
+struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
+struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_mes_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
+struct umr_mes_stream *umr_mes_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
+struct umr_mes_stream *umr_mes_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
+void umr_free_mes_stream(struct umr_mes_stream *stream);
+
 // various low level functions
 const char *umr_pm4_opcode_to_str(uint32_t header);
 void umr_print_decode(struct umr_asic *asic, struct umr_ring_decoder *decoder, uint32_t ib, int (*custom_message)(const char *fmt, ...));

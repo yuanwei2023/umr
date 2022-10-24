@@ -1252,6 +1252,167 @@ static void present_sdma(struct umr_asic *asic, char *ringname, int start, int e
 	}
 }
 
+struct mes_ui_data {
+	struct {
+		uint64_t ib_addr, f_addr, b_addr;
+		const uint32_t *rawdata;
+		uint32_t off;
+		FILE *f;
+	} stack[32];
+	int sp, no;
+	struct umr_asic *asic;
+};
+
+static void mes_next_level(struct umr_mes_stream_decode_ui *ui)
+{
+	struct mes_ui_data *data = ui->data;
+	char tmpname[64];
+	sprintf(tmpname, "/tmp/umr_ring_out.%d", (data->no)++);
+	++(data->sp);
+	data->stack[data->sp].f = fopen(tmpname, "w");
+}
+
+static void mes_start_ib(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type)
+{
+	struct mes_ui_data *data = ui->data;
+	struct umr_asic *asic = data->asic;
+
+	mes_next_level(ui);
+	data->stack[data->sp].ib_addr = ib_addr;
+	fprintf(data->stack[data->sp].f, "Decoding IB at %s%lu%s@%s0x%"PRIx64"%s from %s%lu%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)",
+	BLUE, (unsigned long)ib_vmid, RST,
+	YELLOW, ib_addr, RST,
+	BLUE, (unsigned long)from_vmid, RST,
+	YELLOW, from_addr, RST,
+	BLUE, (unsigned long)size, RST,
+	BLUE, type, RST);
+}
+
+static void mes_start_opcode(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data)
+{
+	struct mes_ui_data *data = ui->data;
+	struct umr_asic *asic = data->asic;
+	(void)raw_data;
+	data->stack[data->sp].b_addr = ib_addr + 4;
+	data->stack[data->sp].f_addr = ib_addr - 4;
+	data->stack[data->sp].rawdata = raw_data;
+	fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%016"PRIx64"%s]\t%sOpcode%s %s0x%lx%s [%s%s%s] (%s%lu%s words, type: %s%d%s, hdr: %s0x%"PRIx32"%s)",
+		BLUE, (unsigned long)ib_vmid, RST,
+		YELLOW, data->stack[data->sp].ib_addr, RST,
+		YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+		BMAGENTA, (uint64_t)header, RST,
+		BWHITE, RST, GREEN, (unsigned long)opcode, RST, GREEN, opcode_name, RST,
+		BLUE, (unsigned long)nwords, RST,
+		BLUE, 0, RST,
+		BLUE, header, RST);
+}
+
+static void mes_add_field(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix)
+{
+	struct mes_ui_data *data = ui->data;
+	struct umr_asic *asic = data->asic;
+	int i64 = ideal_radix >= 20;
+	if (i64)
+		ideal_radix -= 10;
+	if (data->stack[data->sp].f_addr != ib_addr) {
+		data->stack[data->sp].f_addr = ib_addr;
+		if (!i64) {
+			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
+				BLUE, (unsigned long)ib_vmid, RST,
+				YELLOW, data->stack[data->sp].ib_addr, RST,
+				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+				BMAGENTA, 0, data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
+		} else {
+			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
+				BLUE, (unsigned long)ib_vmid, RST,
+				YELLOW, data->stack[data->sp].ib_addr, RST,
+				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+				BMAGENTA,
+					data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/4],
+					data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4],
+				RST);
+		}
+	} else {
+		fprintf(data->stack[data->sp].f, ", ");
+	}
+
+	if (!strcmp(field_name, "REG") && ideal_radix == 16) {
+		// register name/value pairs
+		fprintf(data->stack[data->sp].f, "%s%s%s=%s0x%"PRIx64"%s",
+			RED, str, RST,
+			YELLOW, value, RST);
+	} else {
+		// default
+		fprintf(data->stack[data->sp].f, "%s%s%s=", CYAN, field_name, RST);
+		if (str)
+			fprintf(data->stack[data->sp].f, "[%s%s%s]", RED, str, RST);
+
+		if (str && (ideal_radix == 10 || ideal_radix == 16))
+			fprintf(data->stack[data->sp].f, "/");
+
+		switch (ideal_radix) {
+			case 10: fprintf(data->stack[data->sp].f, "%s%"PRIu64"%s", BBLUE, value, RST); break;
+			case 16: fprintf(data->stack[data->sp].f, "%s0x%"PRIx64"%s", YELLOW, value, RST); break;
+		}
+	}
+}
+
+static void mes_unhandled(struct umr_mes_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_mes_stream *stream)
+{
+	(void)ui;
+	(void)asic;
+	(void)ib_addr;
+	(void)ib_vmid;
+	(void)stream;
+}
+
+static void mes_done(struct umr_mes_stream_decode_ui *ui)
+{
+	struct mes_ui_data *data = ui->data;
+	fprintf(data->stack[data->sp].f, "\nDone decoding IB\n\n");
+	fclose(data->stack[data->sp].f);
+	--(data->sp);
+}
+
+static struct umr_mes_stream_decode_ui mes_ui = { mes_start_ib, mes_start_opcode, mes_add_field, mes_unhandled, mes_done, NULL };
+
+// top level present mes
+static void present_mes(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
+{
+	struct umr_mes_stream *str;
+
+	if (ringname)
+		str = umr_mes_decode_ring(asic, ringname, 0, start, end);
+	else
+		str = umr_mes_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords);
+	if (str) {
+		struct umr_mes_stream_decode_ui ui;
+		int x;
+		char tmpname[64], buf[256];
+		FILE *f;
+		struct mes_ui_data *data;
+
+		// print decode str
+		ui = mes_ui;
+		data = ui.data = calloc(1, sizeof(struct mes_ui_data));
+		data->sp = -1;
+		data->asic = asic;
+		umr_mes_decode_stream_opcodes(asic, &ui, str, addr, vmid, ~0UL);
+
+		for (x = 0; x < data->no; x++) {
+			sprintf(tmpname, "/tmp/umr_ring_out.%d", x);
+			f = fopen(tmpname, "r");
+			while (fgets(buf, sizeof buf, f)) {
+				printf("%s", buf);
+			}
+			fclose(f);
+			remove(tmpname);
+		}
+		free(ui.data);
+		umr_free_mes_stream(str);
+	}
+}
+
 void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 {
 	char ringname[32], from[32], to[32];
@@ -1285,6 +1446,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		} else if (!memcmp(ringname, "sdma", 4) ||
 			   !memcmp(ringname, "page", 4)) {
 			enable_decoder = 3;
+		} else if (!memcmp(ringname, "mes", 3)) {
+			enable_decoder = 2;
 		} else {
 			enable_decoder = 0;
 		}
@@ -1330,6 +1493,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		present_pm4(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
 	} else if (enable_decoder == 3) {
 		present_sdma(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
+	} else if (enable_decoder == 2) {
+		present_mes(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
 	} else {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
 	}
