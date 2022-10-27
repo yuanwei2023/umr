@@ -95,6 +95,26 @@ int umr_shader_disasm(struct umr_asic *asic,
 	else if (asic->family >= FAMILY_NV)
 		cpuname = "gfx1010";
 
+	struct umr_ip_block* gfx = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (gfx) {
+		if (gfx->discoverable.maj == 11) {
+			switch (gfx->discoverable.rev) {
+				case 0:
+					cpuname = "gfx1100";
+					break;
+				case 1:
+					cpuname = "gfx1101";
+					break;
+				case 2:
+					cpuname = "gfx1102";
+					break;
+				case 3:
+					cpuname = "gfx1103";
+					break;
+			}
+		}
+	}
+
 	// compute features
 	features = "";
 	if (asic->family >= FAMILY_NV && asic->options.wave64)
