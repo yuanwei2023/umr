@@ -364,8 +364,11 @@ typedef struct {
 		system,
 		coherent,
 		pte,
-		further;
-} pde_fields_ai_t;
+		further,
+		tfs_addr,
+		llc_noalloc,
+		mtype;
+} pde_fields_t;
 
 typedef struct {
 	uint64_t
@@ -382,8 +385,11 @@ typedef struct {
 		pde,
 		further,
 		mtype,
-		pte_mask;
-} pte_fields_ai_t;
+		pte_mask,
+		gcr,
+		llc_noalloc,
+		software;
+} pte_fields_t;
 
 struct umr_memory_access_funcs {
 	/** access_sram -- Access System RAM
@@ -422,7 +428,7 @@ struct umr_memory_access_funcs {
 	 */
 	int (*vm_message)(const char *fmt, ...);
 
-	void (*va_addr_decode)(pde_fields_ai_t *pdes, int num_pde, pte_fields_ai_t pte);
+	void (*va_addr_decode)(pde_fields_t *pdes, int num_pde, pte_fields_t pte);
 
 	/** data -- opaque pointer the callbacks can use for state tracking */
 	void *data;

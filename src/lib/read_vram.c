@@ -336,16 +336,44 @@ static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table
  * 1 system
  * 0 valid
  */
-static pde_fields_ai_t decode_pde_entry_ai(uint64_t pde_entry)
+static pde_fields_t decode_pde_entry(const struct umr_asic *asic, uint64_t pde_entry)
 {
-	pde_fields_ai_t pde_fields;
-	pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
-	pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
-	pde_fields.valid         = pde_entry & 1;
-	pde_fields.system        = (pde_entry >> 1) & 1;
-	pde_fields.coherent      = (pde_entry >> 2) & 1;
-	pde_fields.pte           = (pde_entry >> 54) & 1;
-	pde_fields.further       = (pde_entry >> 56) & 1;
+	pde_fields_t pde_fields = { 0 };
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return pde_fields;
+	}
+
+	switch (ip->discoverable.maj) {
+		case 9:
+		case 10:
+			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
+			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
+			pde_fields.valid         = pde_entry & 1;
+			pde_fields.system        = (pde_entry >> 1) & 1;
+			pde_fields.coherent      = (pde_entry >> 2) & 1;
+			pde_fields.pte           = (pde_entry >> 54) & 1;
+			pde_fields.further       = (pde_entry >> 56) & 1;
+			if (ip->discoverable.min >= 3) {
+				pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
+			}
+			break;
+		case 11:
+			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
+			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
+			pde_fields.valid         = pde_entry & 1;
+			pde_fields.system        = (pde_entry >> 1) & 1;
+			pde_fields.coherent      = (pde_entry >> 2) & 1;
+			pde_fields.mtype         = (pde_entry >> 48) & 7;
+			pde_fields.pte           = (pde_entry >> 54) & 1;
+			pde_fields.further       = (pde_entry >> 56) & 1;
+			pde_fields.tfs_addr      = (pde_entry >> 57) & 1;
+			pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
+			break;
+	}
 	return pde_fields;
 }
 
@@ -368,25 +396,76 @@ static pde_fields_ai_t decode_pde_entry_ai(uint64_t pde_entry)
  * 1 system
  * 0 valid
  */
-static pte_fields_ai_t decode_pte_entry_ai(int is_gfx9, uint64_t pte_entry)
+static pte_fields_t decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entry)
 {
-	pte_fields_ai_t pte_fields;
-	pte_fields.valid          = pte_entry & 1;
-	pte_fields.system         = (pte_entry >> 1) & 1;
-	pte_fields.coherent       = (pte_entry >> 2) & 1;
-	pte_fields.tmz            = (pte_entry >> 3) & 1;
-	pte_fields.execute        = (pte_entry >> 4) & 1;
-	pte_fields.read           = (pte_entry >> 5) & 1;
-	pte_fields.write          = (pte_entry >> 6) & 1;
-	pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
-	pte_fields.prt            = (pte_entry >> 51) & 1;
-	pte_fields.pde            = (pte_entry >> 54) & 1;
-	pte_fields.further        = (pte_entry >> 56) & 1;
-	pte_fields.mtype          = (pte_entry >> (is_gfx9 ? 57 : 48)) & 3;
+	pte_fields_t pte_fields = { 0 };
+	uint64_t is_pde = 0;
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return pte_fields;
+	}
+
+	switch (ip->discoverable.maj) {
+		case 9:
+			pte_fields.valid          = pte_entry & 1;
+			pte_fields.system         = (pte_entry >> 1) & 1;
+			pte_fields.coherent       = (pte_entry >> 2) & 1;
+			pte_fields.tmz            = (pte_entry >> 3) & 1;
+			pte_fields.execute        = (pte_entry >> 4) & 1;
+			pte_fields.read           = (pte_entry >> 5) & 1;
+			pte_fields.write          = (pte_entry >> 6) & 1;
+			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
+			pte_fields.prt            = (pte_entry >> 51) & 1;
+			pte_fields.pde            = (pte_entry >> 54) & 1;
+			pte_fields.further        = (pte_entry >> 56) & 1;
+			pte_fields.mtype          = (pte_entry >> 57) & 3;
+			is_pde                    = pte_fields.further;
+			break;
+		case 10:
+			pte_fields.valid          = pte_entry & 1;
+			pte_fields.system         = (pte_entry >> 1) & 1;
+			pte_fields.coherent       = (pte_entry >> 2) & 1;
+			pte_fields.tmz            = (pte_entry >> 3) & 1;
+			pte_fields.execute        = (pte_entry >> 4) & 1;
+			pte_fields.read           = (pte_entry >> 5) & 1;
+			pte_fields.write          = (pte_entry >> 6) & 1;
+			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
+			pte_fields.mtype          = (pte_entry >> 48) & 3;
+			pte_fields.prt            = (pte_entry >> 51) & 1;
+			pte_fields.pde            = (pte_entry >> 54) & 1;
+			pte_fields.further        = (pte_entry >> 56) & 1;
+			pte_fields.gcr            = (pte_entry >> 57) & 1;
+			if (ip->discoverable.min >= 3) {
+				pte_fields.llc_noalloc    = (pte_entry >> 58) & 1;
+			}
+			is_pde                    = pte_fields.further;
+			break;
+		case 11:
+			pte_fields.valid          = pte_entry & 1;
+			pte_fields.system         = (pte_entry >> 1) & 1;
+			pte_fields.coherent       = (pte_entry >> 2) & 1;
+			pte_fields.tmz            = (pte_entry >> 3) & 1;
+			pte_fields.execute        = (pte_entry >> 4) & 1;
+			pte_fields.read           = (pte_entry >> 5) & 1;
+			pte_fields.write          = (pte_entry >> 6) & 1;
+			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
+			pte_fields.mtype          = (pte_entry >> 48) & 3;
+			pte_fields.prt            = (pte_entry >> 51) & 1;
+			pte_fields.software       = (pte_entry >> 52) & 3;
+			pte_fields.pde            = (pte_entry >> 54) & 1;
+			pte_fields.further        = (pte_entry >> 56) & 1;
+			pte_fields.gcr            = (pte_entry >> 57) & 1;
+			pte_fields.llc_noalloc    = (pte_entry >> 58) & 1;
+			is_pde                    = pte_fields.further;
+			break;
+	}
 
 	// PTEs hold physical address in 47:12
 	// PDEs hold physical address in 47:6, so if this is a PTE-as-PDE (further), need a differnt mask
-	if (pte_fields.further)
+	if (is_pde)
 		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFFC0ULL;
 	else
 		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL;
@@ -394,25 +473,78 @@ static pte_fields_ai_t decode_pte_entry_ai(int is_gfx9, uint64_t pte_entry)
 	return pte_fields;
 }
 
-static void print_pde_fields_ai(struct umr_asic *asic,
-				pde_fields_ai_t pde_fields)
+static void print_pde_fields(struct umr_asic *asic,
+				pde_fields_t pde_fields)
 {
-	asic->mem_funcs.vm_message(
-			", PBA==0x%012" PRIx64 ", V=%" PRIu64
-			", S=%" PRIu64 ", C=%" PRIu64
-			", P=%" PRIu64 ", FS=%" PRIu64 "\n",
-			pde_fields.pte_base_addr,
-			pde_fields.valid,
-			pde_fields.system,
-			pde_fields.coherent,
-			pde_fields.pte,
-			pde_fields.frag_size);
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return;
+	}
+
+	switch (ip->discoverable.maj) {
+		case 9:
+		case 10:
+			if (ip->discoverable.maj == 9 || ip->discoverable.min < 2) {
+				asic->mem_funcs.vm_message(
+						", PBA==0x%012" PRIx64 ", V=%" PRIu64
+						", S=%" PRIu64 ", C=%" PRIu64
+						", P=%" PRIu64 ", FS=%" PRIu64 "\n",
+						pde_fields.pte_base_addr,
+						pde_fields.valid,
+						pde_fields.system,
+						pde_fields.coherent,
+						pde_fields.pte,
+						pde_fields.frag_size);
+			} else {
+				asic->mem_funcs.vm_message(
+						", PBA==0x%012" PRIx64 ", V=%" PRIu64
+						", S=%" PRIu64 ", C=%" PRIu64
+						", P=%" PRIu64 ", FS=%" PRIu64 ", Y=%" PRIu64 "\n",
+						pde_fields.pte_base_addr,
+						pde_fields.valid,
+						pde_fields.system,
+						pde_fields.coherent,
+						pde_fields.pte,
+						pde_fields.frag_size,
+						pde_fields.llc_noalloc);
+			}
+			break;
+		case 11:
+			asic->mem_funcs.vm_message(
+					", PBA==0x%012" PRIx64 ", V=%" PRIu64
+					", S=%" PRIu64 ", C=%" PRIu64
+					", MTYPE=%" PRIu64
+					", P=%" PRIu64 ", FS=%" PRIu64
+					", A=%" PRIu64 ", Y=%" PRIu64 "\n",
+					pde_fields.pte_base_addr,
+					pde_fields.valid,
+					pde_fields.system,
+					pde_fields.coherent,
+					pde_fields.mtype,
+					pde_fields.pte,
+					pde_fields.frag_size,
+					pde_fields.tfs_addr,
+					pde_fields.llc_noalloc);
+			break;
+	}
 }
-static void print_base_ai(struct umr_asic *asic,
+
+static void print_base(struct umr_asic *asic,
 			  uint64_t pde_entry, uint64_t address,
-			  uint64_t va_mask, pde_fields_ai_t pde_fields,
+			  uint64_t va_mask, pde_fields_t pde_fields,
 			  int is_base_not_pde)
 {
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return;
+	}
+
 	if (is_base_not_pde)
 		asic->mem_funcs.vm_message("BASE");
 	else
@@ -420,17 +552,25 @@ static void print_base_ai(struct umr_asic *asic,
 	asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64,
 			pde_entry,
 			address & va_mask);
-	print_pde_fields_ai(asic, pde_fields);
+	print_pde_fields(asic, pde_fields);
 }
 
-static void print_pde_ai(struct umr_asic *asic,
+static void print_pde(struct umr_asic *asic,
 		const char * indentation, int pde_cnt,
 		int page_table_depth, uint64_t prev_addr,
 		uint64_t pde_idx, uint64_t pde_entry, uint64_t address,
-		uint64_t va_mask, pde_fields_ai_t pde_fields)
+		uint64_t va_mask, pde_fields_t pde_fields, int was_pte)
 {
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return;
+	}
+
 	asic->mem_funcs.vm_message("%s ", &indentation[18-pde_cnt*3]);
-	if (pde_fields.further)
+	if (was_pte)
 		asic->mem_funcs.vm_message("PTE-FURTHER");
 	else
 		asic->mem_funcs.vm_message("PDE%d", page_table_depth - pde_cnt);
@@ -441,44 +581,102 @@ static void print_pde_ai(struct umr_asic *asic,
 			pde_idx,
 			pde_entry,
 			address & va_mask);
-	print_pde_fields_ai(asic, pde_fields);
+	print_pde_fields(asic, pde_fields);
 }
 
-static void print_pte_ai(struct umr_asic *asic,
+static void print_pte(struct umr_asic *asic,
 		const char * indentation, int pde_cnt, int page_table_depth_count, uint64_t prev_addr,
 		uint64_t pte_idx, uint64_t pte_entry, uint64_t address,
-		uint64_t va_mask, pte_fields_ai_t pte_fields)
+		uint64_t va_mask, pte_fields_t pte_fields, int was_pde)
 {
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return;
+	}
+
 	if (indentation == NULL) {
 		asic->mem_funcs.vm_message("\\-> PTE");
 	} else {
 		asic->mem_funcs.vm_message("%s ",
 				&indentation[18-pde_cnt*3]);
-		if (pte_fields.pde)
+		if (was_pde)
 			asic->mem_funcs.vm_message("PDE%d-as-PTE", page_table_depth_count - pde_cnt);
 		else
 			asic->mem_funcs.vm_message("PTE");
 	}
 	asic->mem_funcs.vm_message("@{0x%" PRIx64 "/0x%" PRIx64"}",
 			prev_addr, pte_idx);
-	asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
-			", PBA==0x%012" PRIx64 ", V=%" PRIu64
-			", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
-			", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
-			", FS=%" PRIu64 ", T=%" PRIu64 ", MTYPE=",
-			pte_entry,
-			address & va_mask,
-			pte_fields.page_base_addr,
-			pte_fields.valid,
-			pte_fields.system,
-			pte_fields.coherent,
-			pte_fields.tmz,
-			pte_fields.execute,
-			pte_fields.read,
-			pte_fields.write,
-			pte_fields.fragment,
-			pte_fields.prt,
-			pte_fields.mtype);
+
+	switch (ip->discoverable.maj) {
+		case 9:
+			asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
+					", PBA==0x%012" PRIx64 ", V=%" PRIu64
+					", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
+					", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
+					", FS=%" PRIu64 ", T=%" PRIu64 ", MTYPE=",
+					pte_entry,
+					address & va_mask,
+					pte_fields.page_base_addr,
+					pte_fields.valid,
+					pte_fields.system,
+					pte_fields.coherent,
+					pte_fields.tmz,
+					pte_fields.execute,
+					pte_fields.read,
+					pte_fields.write,
+					pte_fields.fragment,
+					pte_fields.prt,
+					pte_fields.mtype);
+			break;
+		case 10:
+			asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
+					", PBA==0x%012" PRIx64 ", V=%" PRIu64
+					", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
+					", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
+					", FS=%" PRIu64 ", T=%" PRIu64 ", G=%" PRIu64 ", MTYPE=",
+					pte_entry,
+					address & va_mask,
+					pte_fields.page_base_addr,
+					pte_fields.valid,
+					pte_fields.system,
+					pte_fields.coherent,
+					pte_fields.tmz,
+					pte_fields.execute,
+					pte_fields.read,
+					pte_fields.write,
+					pte_fields.fragment,
+					pte_fields.prt,
+					pte_fields.gcr,
+					pte_fields.mtype);
+			break;
+		case 11:
+			asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
+					", PBA==0x%012" PRIx64 ", V=%" PRIu64
+					", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
+					", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
+					", FS=%" PRIu64 ", T=%" PRIu64 ", SW=%" PRIu64
+					", G=%" PRIu64 ", Y=%" PRIu64 ", MTYPE=",
+					pte_entry,
+					address & va_mask,
+					pte_fields.page_base_addr,
+					pte_fields.valid,
+					pte_fields.system,
+					pte_fields.coherent,
+					pte_fields.tmz,
+					pte_fields.execute,
+					pte_fields.read,
+					pte_fields.write,
+					pte_fields.fragment,
+					pte_fields.prt,
+					pte_fields.software,
+					pte_fields.gcr,
+					pte_fields.llc_noalloc);
+			break;
+	}
+
 	switch (pte_fields.mtype) {
 		case 0:
 			asic->mem_funcs.vm_message("NC\n");
@@ -512,7 +710,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
 		 fb_top, fb_bottom, ptb_mask, pte_page_mask, agp_base, agp_bot, agp_top, prev_addr;
 	uint32_t chunk_size, tmp, pde0_block_fragment_size;
-	int pde_cnt, current_depth, page_table_depth, zfb, further;
+	int pde_cnt, current_depth, page_table_depth, zfb, further, pde_was_pte;
 	struct {
 		uint32_t
 			mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32,
@@ -535,14 +733,19 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			mmMC_VM_AGP_TOP;
 	} registers;
 
-	pde_fields_ai_t pde_fields, pde_array[8];
-	pte_fields_ai_t pte_fields;
+	pde_fields_t pde_fields, pde_array[8];
+	pte_fields_t pte_fields;
 	char buf[64];
 	unsigned char *pdst = dst;
 	char *hub, *vm0prefix, *regprefix;
 	unsigned hubid;
 	static const char *indentation = "                  \\->";
+	struct umr_ip_block *ip;
 
+	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (!ip) {
+			asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+	}
 	memset(&registers, 0, sizeof registers);
 	memset(&pde_array, 0xff, sizeof pde_array);
 
@@ -712,7 +915,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	}
 
 	// get PDE fields from page table base address
-	pde_fields = decode_pde_entry_ai(page_table_base_addr);
+	pde_fields = decode_pde_entry(asic, page_table_base_addr);
 
 	if (!pde_fields.system) {
 		// transform page_table_base (only if first PDB or the PTB is in VRAM)
@@ -777,9 +980,10 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		pte_page_mask = (1ULL << 12) - 1;
 		log2_ptb_entries = 9;
 		further = 0;
+		pde_was_pte = 0;
 
 		if (page_table_depth >= 1) {
-			pde_fields = decode_pde_entry_ai(pde_entry);
+			pde_fields = decode_pde_entry(asic, pde_entry);
 
 			// AI+ supports more than 1 level of PDEs so we iterate for all of the depths
 			pde_address = pde_fields.pte_base_addr;
@@ -803,7 +1007,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			va_mask <<= (total_vm_bits - top_pdb_bits);
 
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose)
-				print_base_ai(asic, pde_entry, address, va_mask, pde_fields, 1);
+				print_base(asic, pde_entry, address, va_mask, pde_fields, 1);
 			memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 
 			current_depth = page_table_depth;
@@ -851,7 +1055,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 					}
 				}
 
-				pde_fields = decode_pde_entry_ai(pde_entry);
+				pde_fields = decode_pde_entry(asic, pde_entry);
 				if (current_depth == 1) {
 					pde0_block_fragment_size = pde_fields.frag_size;
 					/*
@@ -869,13 +1073,14 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				}
 				if (!pde_fields.pte) {
 					if ((asic->options.no_fold_vm_decode || memcmp(&pde_fields, &pde_array[pde_cnt], sizeof pde_fields)) && asic->options.verbose) {
-						print_pde_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr,
-								pde_idx, pde_entry, address, va_mask, pde_fields);
+						print_pde(asic, indentation, pde_cnt, page_table_depth, prev_addr,
+								pde_idx, pde_entry, address, va_mask, pde_fields, 0);
 					}
 					memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 				} else {
 					pte_entry = pde_entry;
 					pte_idx = 0;
+					pde_was_pte = 1;
 					goto pde_is_pte;
 				}
 
@@ -935,7 +1140,7 @@ pte_further:
 			}
 
 pde_is_pte:
-			pte_fields = decode_pte_entry_ai(asic->family == FAMILY_AI, pte_entry);
+			pte_fields = decode_pte_entry(asic, pte_entry);
 
 			// How many bits in the address are used to index into the PTB?
 			// If further is set, that means we jumped back to pde_is_pte,
@@ -972,24 +1177,41 @@ pde_is_pte:
 				va_mask = va_mask & ~mask_to_ignore;
 			}
 
+			int pte_is_pde = pte_fields.further && pte_fields.valid;
+
 			if (asic->options.verbose) {
-				if (pte_fields.further) {
-					pde_fields = decode_pde_entry_ai(pte_entry);
-					print_pde_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr,
-							pte_idx, pte_entry, address, va_mask, pde_fields);
+				if (pte_is_pde) {
+					print_pde(asic, indentation, pde_cnt, page_table_depth, prev_addr,
+							pte_idx, pte_entry, address, va_mask, decode_pde_entry(asic, pte_entry), pte_is_pde);
+
 				} else {
-					print_pte_ai(asic, indentation, pde_cnt, page_table_depth, prev_addr, pte_idx,
-							pte_entry, address, va_mask, pte_fields);
+					print_pte(asic, indentation, pde_cnt, page_table_depth, prev_addr, pte_idx,
+							pte_entry, address, va_mask, pte_fields, pde_was_pte);
 					pte_fields.pte_mask = va_mask;
 				}
 			}
 
 			uint32_t pte_block_fragment_size = 0;
-			if (pte_fields.further) {
+
+			if (pte_is_pde) {
+				// If further bit is set, PTE is a PDE, so set pde_fields to PTE
+				// decoded as a PDE.
+				if (ip->discoverable.maj >= 11 && pde_fields.tfs_addr && current_depth == 0 && !pde_was_pte) {
+					// When PDE0 had TFS bit set, real address of PTB for PTE-as-PDE
+					// to point is PDE0.PBA + PTE-as-PDE.PBA.
+					uint64_t tmp_addr = pde_fields.pte_base_addr;
+					pde_fields = decode_pde_entry(asic, pte_entry);
+					pde_fields.pte_base_addr += tmp_addr;
+				} else {
+					pde_fields = decode_pde_entry(asic, pte_entry);
+					if (!pde_fields.system)
+						pde_fields.pte_base_addr -= vm_fb_offset;
+				}
+
 				// Going to go one more layer deep, so now we need the Further-PTE's
 				// block_fragment_size. This tells us how many 4K pages each
 				// last-layer-PTE covers.
-				pte_block_fragment_size = (pte_entry >> 59) & 0x1F;
+				pte_block_fragment_size = pde_fields.frag_size;
 
 				// Each entry covers the Further-PTE.block_fragment_size numbesr
 				// of 4K pages so we can potentially ignore some low-order bits.
@@ -1008,10 +1230,9 @@ pde_is_pte:
 				pte_page_mask = (1ULL << last_level_ptb_bits) - 1;
 				va_mask &= (upper_mask & ~pte_page_mask);
 
-				// grab PTE base address and other data from the PTE that has the F bit set.
-				pde_fields = decode_pde_entry_ai(pte_entry);
 				pde_cnt++;
 				further = 1;
+				// Jump back to translate from PTB pointed to by this PTE-as-PDE.
 				goto pte_further;
 			}
 
@@ -1032,12 +1253,12 @@ pde_is_pte:
 		} else {
 			// in AI+ the BASE_ADDR is treated like a PDE entry...
 			// decode PDE values
-			pde_fields = decode_pde_entry_ai(pde_entry);
+			pde_fields = decode_pde_entry(asic, pde_entry);
 			pde0_block_fragment_size = pde_fields.frag_size;
 			pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
 
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_array[0], &pde_fields, sizeof pde_fields)) && asic->options.verbose)
-				print_base_ai(asic, page_table_base_addr, address, -1, pde_fields, 0);
+				print_base(asic, page_table_base_addr, address, -1, pde_fields, 0);
 			memcpy(&pde_array[0], &pde_fields, sizeof pde_fields);
 
 			if (!pde_fields.valid)
@@ -1054,11 +1275,11 @@ pde_is_pte:
 					return -1;
 			}
 
-			pte_fields = decode_pte_entry_ai(asic->family == FAMILY_AI, pte_entry);
+			pte_fields = decode_pte_entry(asic, pte_entry);
 
 			if (asic->options.verbose)
-				print_pte_ai(asic, NULL, 0, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
-						~((uint64_t)0xFFF), pte_fields);
+				print_pte(asic, NULL, 0, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
+						~((uint64_t)0xFFF), pte_fields, 0);
 
 			if (pdst && !pte_fields.valid)
 				goto invalid_page;

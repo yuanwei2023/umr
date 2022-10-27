@@ -644,7 +644,7 @@ struct {
 } page_table[64];
 int num_page_table_entries;
 
-static void my_va_decode(pde_fields_ai_t *pdes, int num_pde, pte_fields_ai_t pte) {
+static void my_va_decode(pde_fields_t *pdes, int num_pde, pte_fields_t pte) {
 	for (int i = 0; i < num_pde; i++) {
 		page_table[num_page_table_entries].pba = pdes[i].pte_base_addr;
 		page_table[num_page_table_entries].type = i == 0 ? 0 : 1;
