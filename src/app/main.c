@@ -501,6 +501,7 @@ int main(int argc, char **argv)
 				uint32_t vmid, len;
 				int pm;
 				char str[128];
+				char prefix[] = { ' ', ' ', 'M', 'S', 'P' };
 
 				if (!asic)
 					asic = get_asic();
@@ -520,7 +521,7 @@ int main(int argc, char **argv)
 					pm = 4;
 					i += 2;
 				}
-				sprintf(str, "%c0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, pm == 4 ? 'P' : 'S', vmid, address, len);
+				sprintf(str, "%c0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, prefix[pm], vmid, address, len);
 				umr_read_ring_stream(asic, str);
 			} else {
 				fprintf(stderr, "[ERROR]: --dump-ib requires three parameters\n");
@@ -1043,10 +1044,10 @@ printf(
 "\n\t--dump-ib, -di [vmid@]address length [pm]"
 	"\n\t\tDump an IB packet at an address with an optional VMID.  The length is specified"
 	"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
-	"\n\t\tCan specify '3' for SDMA packets.\n"
+	"\n\t\tCan specify '3' for SDMA packets, and '2' for MES packets\n"
 "\n\t--dump-ib-file, -df filename [pm]"
 	"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line."
-	"\n\t\tOptionally supply a PM type, can specify '3' for SDMA IBs or '4' for"
+	"\n\t\tOptionally supply a PM type, can specify '2' for MES, '3' for SDMA IBs, or '4' for"
 	"\n\t\tPM4 IBs.  The default is PM4.\n"
 "\n\t--header-dump, -hd [HEADER_DUMP_reg]"
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"

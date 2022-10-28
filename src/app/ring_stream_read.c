@@ -1426,6 +1426,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		enable_decoder = 4;
 	} else if (sscanf(ringpath, "S%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 3;
+	} else if (sscanf(ringpath, "M%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+		enable_decoder = 2;
 	} else {
 		memset(ringname, 0, sizeof ringname);
 		memset(from, 0, sizeof from);
