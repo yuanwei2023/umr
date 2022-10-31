@@ -357,7 +357,7 @@ static pde_fields_t decode_pde_entry(const struct umr_asic *asic, uint64_t pde_e
 			pde_fields.coherent      = (pde_entry >> 2) & 1;
 			pde_fields.pte           = (pde_entry >> 54) & 1;
 			pde_fields.further       = (pde_entry >> 56) & 1;
-			if (ip->discoverable.min >= 3) {
+			if (ip->discoverable.maj == 10 && ip->discoverable.min >= 3) {
 				pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
 			}
 			break;
