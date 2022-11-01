@@ -218,11 +218,11 @@ package_please:
     assets:
       links:
         - name: 'UMR DEB release'
-          url: 'https://gitlab.freedesktop.org/dmitrii.galantsev/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.deb'
+          url: 'https://gitlab.freedesktop.org/tomstdenis/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.deb'
         - name: 'UMR RPM release'
-          url: 'https://gitlab.freedesktop.org/dmitrii.galantsev/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.rpm'
+          url: 'https://gitlab.freedesktop.org/tomstdenis/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.rpm'
         - name: 'UMR Arch Linux release'
-          url: 'https://gitlab.freedesktop.org/dmitrii.galantsev/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst'
+          url: 'https://gitlab.freedesktop.org/tomstdenis/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst'
 
   artifacts:
     paths:
