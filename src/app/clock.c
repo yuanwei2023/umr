@@ -36,7 +36,7 @@ static struct umr_asic_clocks asic_clocks = {
 static void print_clock(struct umr_clock_source clock_source, struct umr_asic *asic)
 {
 	int i = 0;
-	if (clock_source.clock_name != NULL && clock_source.clock_level != 0) {
+	if (strlen(clock_source.clock_name) && clock_source.clock_level != 0) {
 		printf("%s:\n", clock_source.clock_name);
 		for (i = 0; i < clock_source.clock_level; i++){
 			if (i == clock_source.current_clock)
@@ -73,7 +73,7 @@ void umr_clock_scan(struct umr_asic *asic, const char* clock_name)
 
 	asic_clocks.asic = asic;
 	if (clock_name == NULL){
-		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
+		for (i = 0; i < UMR_CLOCK_MAX && strlen(asic_clocks.clocks[i].clock_name); i++) {
 			if (umr_read_clock(asic, asic_clocks.clocks[i].clock_name, &asic_clocks.clocks[i]) == 0) {
 				if (strcmp(asic_clocks.clocks[i].clock_name, "pcie"))
 					print_clock(asic_clocks.clocks[i], asic);
@@ -85,7 +85,7 @@ void umr_clock_scan(struct umr_asic *asic, const char* clock_name)
 		}
 		input_flag = 1;
 	} else {
-		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
+		for (i = 0; i < UMR_CLOCK_MAX && strlen(asic_clocks.clocks[i].clock_name); i++) {
 			if (!strcmp(asic_clocks.clocks[i].clock_name, clock_name)) {
 				if (umr_read_clock(asic, asic_clocks.clocks[i].clock_name, &asic_clocks.clocks[i]) == 0){
 					if (strcmp(asic_clocks.clocks[i].clock_name, "pcie"))
@@ -110,7 +110,7 @@ void umr_clock_manual(struct umr_asic *asic, const char* clock_name, void* value
 	int i = 0;
 
 	if (clock_name != NULL && value != NULL){
-		for (i = 0; asic_clocks.clocks[i].clock_name != NULL && i < UMR_CLOCK_MAX; i++) {
+		for (i = 0; i < UMR_CLOCK_MAX && strlen(asic_clocks.clocks[i].clock_name); i++) {
 			if (!strcmp(asic_clocks.clocks[i].clock_name, clock_name)) {
 				if (umr_set_clock(asic, asic_clocks.clocks[i].clock_name, value) == 0)
 					print_clock(asic_clocks.clocks[i], asic);
