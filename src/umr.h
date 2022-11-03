@@ -1406,15 +1406,97 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 
 /* IB/ring decoding/dumping/etc */
 enum umr_ring_type {
-	UMR_RING_GFX=0,
-	UMR_RING_COMP,
-	UMR_RING_VCN,
-	UMR_RING_KIQ,
+	UMR_RING_PM4,
 	UMR_RING_SDMA,
+	UMR_RING_MES,
 
 	UMR_RING_UNK=0xFF, // if unknown
 };
 
+struct umr_stream_decode_ui {
+	enum umr_ring_type rt;
+
+	/** start_ib -- Start a new IB/buffer object
+	 * ib_addr/ib_vmid: Address of the IB
+	 * from_addr/from_vmid: Where does this reference come from?
+	 * size: size of IB in DWORDs
+	 * type: type of IB (which type of packets)
+	 */
+	void (*start_ib)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
+
+	/** start_opcode -- Start a new opcode
+	 * ib_addr/ib_vmid: Address of where packet is found
+	 * opcode: The numeric value of the ocpode
+	 * subop: any sub-opcode
+	 * nwords: Number of DWORDS in this opcode
+	 * opcode_name: Printable string name of opcode
+	 * header: Raw header DWORD of this packet
+	 * raw_data: Pointer to a buffer of length nwords containing the raw data of this packet (does not include header DWORD)
+	 */
+	void (*start_opcode)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t subop, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data);
+
+	/** add_field -- Add a decoded field to a specific DWORD
+	 * ib_addr/ib_vmid:  Address of the word from which the field comes
+	 * field_name: printable name of the field
+	 * value:  Value of the field
+	 * ideal_radix: (10 decimal, 16 hex)
+	 * field_size: number of bits in the field
+	 */
+	void (*add_field)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix, int field_size);
+
+	/** add_shader -- Add a reference to a shader found in the IB stream
+	 * ib_addr/ib_vmid:  Address of where reference comes from
+	 * asic:  The ASIC the IB stream and shader are bound to
+	 * shader: The shader reference
+	 */
+	void (*add_shader)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader);
+
+	/** add_data -- Add a reference to a data buffer found in the IB stream
+	 * ib_addr/ib_vmid:  Address of where reference comes from
+	 * asic:  The ASIC the IB stream and shader are bound to
+	 * data_addr/data_vmid: A GPUVM reference to the object
+	 * type: The type of object
+	 */
+	void (*add_data)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype);
+
+	/** unhandled -- Decoder for unhandled (private) opcodes
+	 * asic: The ASIC the IB stream is bound to
+	 * ib_addr:ib_vmid: The address where the PM4 opcode comes from
+	 * stream:  The pointer to the current stream opcode being handled
+	 *
+	 * Can be NULL to drop support for unhandled opcodes.
+	 */
+	void (*unhandled)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, void *stream, enum umr_ring_type stream_type);
+
+	/** unhandled_size -- For returning size of packets for unhandled (private) opcodes.
+	 * To use, populate stream->nwords with the size of the current packet (should not include header DWORD) and then
+	 * return 0 to signal success. Returning non-zero will signal failure to handle opcode.
+	 *
+	 * asic: The ASIC the IB stream is bound to
+	 * stream:  The pointer to the current stream opcode being handled. Write the size of the packet to stream->nwords.
+	 *
+	 * return: Return non-zero if size of packet is unknown.
+	 *
+	 * Can be NULL to drop support for unhandled opcodes.
+	 */
+	int (*unhandled_size)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, void *stream, enum umr_ring_type stream_type);
+
+	/** unhandled_subop -- Decoder for unhandled (private) sub-opcodes
+	 * asic: The ASIC the IB stream is bound to
+	 * ib_addr:ib_vmid: The address where the sdma opcode comes from
+	 * stream:  The pointer to the current stream opcode being handled
+	 *
+	 * Can be NULL to drop support for unhandled opcodes.
+	 */
+	void (*unhandled_subop)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, void *stream, enum umr_ring_type stream_type);
+
+	void (*done)(struct umr_stream_decode_ui *ui);
+
+	/** data -- opaque pointer that can be used to track state information */
+	void *data;
+};
+
+// PM4 decoding library
 struct umr_pm4_stream {
 	uint32_t pkttype,				// packet type (0==simple write, 3 == packet)
 			 pkt0off,				// base address for PKT0 writes
@@ -1432,81 +1514,21 @@ struct umr_pm4_stream {
 	} ib_source;					// where did an IB if any come from?
 
 	struct umr_shaders_pgm *shader; // shader program if any
-
-	enum umr_ring_type ring_type;
 };
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
 struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
-struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords);
+struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
 struct umr_shaders_pgm *umr_find_shader_in_ring(struct umr_asic *asic, char *ringname, unsigned vmid, uint64_t addr, int no_halt);
 int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname);
 
-// PM4 decoding library
-struct umr_pm4_stream_decode_ui {
 
-	/** start_ib -- Start a new IB
-	 * ib_addr/ib_vmid: Address of the IB
-	 * from_addr/from_vmid: Where does this reference come from?
-	 * size: size of IB in DWORDs
-	 * type: type of IB (which type of packets
-	 */
-	void (*start_ib)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
-
-	/** start_opcode -- Start a new opcode
-	 * ib_addr/ib_vmid: Address of where packet is found
-	 * opcode: The numeric value of the ocpode
-	 * nwords: Number of DWORDS in this opcode
-	 * opcode_name: Printable string name of opcode
-	 * header: Raw header DWORD of this packet
-	 * raw_data: Pointer to a buffer of length nwords containing the raw data of this packet (does not include header DWORD)
-	 */
-	void (*start_opcode)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data);
-
-	/** add_field -- Add a decoded field to a specific DWORD
-	 * ib_addr/ib_vmid:  Address of the word from which the field comes
-	 * field_name: printable name of the field
-	 * value:  Value of the field
-	 * ideal_radix: (10 decimal, 16 hex)
-	 */
-	void (*add_field)(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix);
-
-	/** add_shader -- Add a reference to a shader found in the IB stream
-	 * ib_addr/ib_vmid:  Address of where reference comes from
-	 * asic:  The ASIC the IB stream and shader are bound to
-	 * shader: The shader reference
-	 */
-	void (*add_shader)(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader);
-
-	/** add_data -- Add a reference to a data buffer found in the IB stream
-	 * ib_addr/ib_vmid:  Address of where reference comes from
-	 * asic:  The ASIC the IB stream and shader are bound to
-	 * data_addr/data_vmid: A GPUVM reference to the object
-	 * type: The type of object
-	 */
-	void (*add_data)(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype);
-
-	/** unhandled -- Decoder for unhandled (private) opcodes
-	 * asic: The ASIC the IB stream is bound to
-	 * ib_addr:ib_vmid: The address where the PM4 opcode comes from
-	 * stream:  The pointer to the current stream opcode being handled
-	 *
-	 * Can be NULL to drop support for unhandled opcodes.
-	 */
-	void (*unhandled)(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream);
-
-	void (*done)(struct umr_pm4_stream_decode_ui *ui);
-
-	/** data -- opaque pointer that can be used to track state information */
-	void *data;
-};
-
-struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
-int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, int vm_partition, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow, enum umr_ring_type rt);
+struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow);
 
 /* SDMA decoding */
 struct umr_sdma_stream {
@@ -1530,75 +1552,12 @@ struct umr_sdma_stream {
 	struct umr_sdma_stream *next, *next_ib;
 };
 
-struct umr_sdma_stream_decode_ui {
-
-	/** start_ib -- Start a new IB
-	 * ib_addr/ib_vmid: Address of the IB
-	 * from_addr/from_vmid: Where does this reference come from?
-	 * size: size of IB in DWORDs
-	 */
-	void (*start_ib)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size);
-
-	/** start_opcode -- Start a new opcode
-	 * ib_addr/ib_vmid: Address of where packet is found
-	 * opcode: The numeric value of the ocpode
-	 * nwords: number of DWORDS in this opcode
-	 * opcode_name: Printable string name of opcode
-	 */
-	void (*start_opcode)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t sub_opcode, uint32_t nwords, char *opcode_name, uint32_t header_dw, uint32_t *raw_data);
-
-	/** add_field -- Add a decoded field to a specific DWORD
-	 * ib_addr/ib_vmid:  Address of the word from which the field comes
-	 * field_name: printable name of the field
-	 * value:  Value of the field
-	 * ideal_radix: (10 decimal, 16 hex)
-	 */
-	void (*add_field)(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix);
-
-	/** unhandled -- Decoder for unhandled (private) opcodes
-	 * asic: The ASIC the IB stream is bound to
-	 * ib_addr:ib_vmid: The address where the sdma opcode comes from
-	 * stream:  The pointer to the current stream opcode being handled
-	 *
-	 * Can be NULL to drop support for unhandled opcodes.
-	 */
-	void (*unhandled)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
-
-	/** unhandled_size -- For returning size of packets for unhandled (private) opcodes.
-	 * To use, populate stream->nwords with the size of the current packet (should not include header DWORD) and then
-	 * return 0 to signal success. Returning non-zero will signal failure to handle opcode.
-	 *
-	 * asic: The ASIC the IB stream is bound to
-	 * stream:  The pointer to the current stream opcode being handled. Write the size of the packet to stream->nwords.
-	 *
-	 * return: Return non-zero if size of packet is unknown.
-	 *
-	 * Can be NULL to drop support for unhandled opcodes.
-	 */
-	int (*unhandled_size)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream);
-
-	/** unhandled_subop -- Decoder for unhandled (private) sub-opcodes
-	 * asic: The ASIC the IB stream is bound to
-	 * ib_addr:ib_vmid: The address where the sdma opcode comes from
-	 * stream:  The pointer to the current stream opcode being handled
-	 *
-	 * Can be NULL to drop support for unhandled opcodes.
-	 */
-	void (*unhandled_subop)(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream);
-
-
-	void (*done)(struct umr_sdma_stream_decode_ui *ui);
-
-	/** data -- opaque pointer that can be used to track state information */
-	void *data;
-};
-
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, char *ringname, int start, int stop);
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui, char *ringname, int start, int stop);
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
-struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, struct umr_sdma_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_sdma_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 
 /* IH decoding */
 struct umr_ih_decode_ui {
@@ -1641,50 +1600,8 @@ struct umr_mes_stream {
 	struct umr_mes_stream *next;
 };
 
-struct umr_mes_stream_decode_ui {
-	/** start_ib -- Start a new IB
-	 * ib_addr/ib_vmid: Address of the IB
-	 * from_addr/from_vmid: Where does this reference come from?
-	 * size: size of IB in DWORDs
-	 * type: type of IB (which type of packets
-	 */
-	void (*start_ib)(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
-
-	/** start_opcode -- Start a new opcode
-	 * ib_addr/ib_vmid: Address of where packet is found
-	 * opcode: The numeric value of the ocpode
-	 * nwords: Number of DWORDS in this opcode
-	 * opcode_name: Printable string name of opcode
-	 * header: Raw header DWORD of this packet
-	 * raw_data: Pointer to a buffer of length nwords containing the raw data of this packet (does not include header DWORD)
-	 */
-	void (*start_opcode)(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data);
-
-	/** add_field -- Add a decoded field to a specific DWORD
-	 * ib_addr/ib_vmid:  Address of the word from which the field comes
-	 * field_name: printable name of the field
-	 * value:  Value of the field
-	 * ideal_radix: (10 decimal, 16 hex)
-	 */
-	void (*add_field)(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix);
-
-	/** unhandled -- Decoder for unhandled (private) opcodes
-	 * asic: The ASIC the IB stream is bound to
-	 * ib_addr:ib_vmid: The address where the mes opcode comes from
-	 * stream:  The pointer to the current stream opcode being handled
-	 *
-	 * Can be NULL to drop support for unhandled opcodes.
-	 */
-	void (*unhandled)(struct umr_mes_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_mes_stream *stream);
-
-	void (*done)(struct umr_mes_stream_decode_ui *ui);
-
-	/** data -- opaque pointer that can be used to track state information */
-	void *data;
-};
-
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
-struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_mes_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
+struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
 struct umr_mes_stream *umr_mes_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
 struct umr_mes_stream *umr_mes_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
 void umr_free_mes_stream(struct umr_mes_stream *stream);

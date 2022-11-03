@@ -33,7 +33,7 @@
  *
  * Return a sdma stream if successful.
  */
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, char *ringname, int start, int stop)
+struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui, char *ringname, int start, int stop)
 {
 	void *ps;
 	uint32_t *ringdata, ringsize;
@@ -88,7 +88,7 @@ struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_s
  *
  * Returns a sdma stream if successfully decoded.
  */
-struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition,
+struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition,
 					       uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
@@ -294,7 +294,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 				ps->nwords = 4;
 				break;
 			default:
-				if (!ui || !ui->unhandled_size || ui->unhandled_size(ui, asic, ps)) {
+				if (!ui || !ui->unhandled_size || ui->unhandled_size(ui, asic, ps, UMR_RING_SDMA)) {
 					asic->err_msg("[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
 					umr_free_sdma_stream(ops);
 					return NULL;
@@ -331,12 +331,10 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 	return ops;
 }
 
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords)
 {
 	uint32_t *words;
 	struct umr_sdma_stream *str;
-
-	(void)rt;
 
 	words = calloc(sizeof *words, nwords);
 	if (!words) {

@@ -123,7 +123,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 				if (umr_read_vram(asic, vm_partition, tvmid, addr, size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, buf, size / 4, ps->ring_type);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, buf, size / 4);
 					ps->ib_source.addr = addr;
 					ps->ib_source.vmid = tvmid;
 				}
@@ -227,7 +227,7 @@ void umr_free_pm4_stream(struct umr_pm4_stream *stream)
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords, enum umr_ring_type rt)
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	struct {
@@ -244,7 +244,6 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
-	ps->ring_type = rt;
 
 	memset(&uvd_ib, 0, sizeof uvd_ib);
 
@@ -313,7 +312,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 				if (umr_read_vram(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, buf, uvd_ib.size / 4, ps->ring_type);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, buf, uvd_ib.size / 4);
 					ps->ib_source.addr = uvd_ib.addr;
 					ps->ib_source.vmid = uvd_ib.vmid;
 				}
@@ -377,22 +376,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 {
 	void *ps = NULL;
 	uint32_t *ringdata, ringsize;
-	enum umr_ring_type rt;
 	int only_active = 1;
-
-	// try to determine ring type from name
-	if (strstr(ringname, "comp"))
-		rt = UMR_RING_COMP;
-	else if (strstr(ringname, "gfx"))
-		rt = UMR_RING_GFX;
-	else if (strstr(ringname, "vcn") || strstr(ringname, "uvd") || strstr(ringname, "jpeg"))
-		rt = UMR_RING_VCN;
-	else if (strstr(ringname, "kiq"))
-		rt = UMR_RING_KIQ;
-	else if (strstr(ringname, "sdma"))
-		rt = UMR_RING_SDMA;
-	else
-		rt = UMR_RING_UNK;
 
 	if (!no_halt && asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
@@ -432,7 +416,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 				start = (start + 1) % ringsize;
 			}
 
-			ps = umr_pm4_decode_stream(asic, -1, 0, lineardata, linearsize, rt);
+			ps = umr_pm4_decode_stream(asic, -1, 0, lineardata, linearsize);
 			free(lineardata);
 		}
 	}
@@ -444,7 +428,7 @@ struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname
 	return ps;
 }
 
-struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords)
 {
 	uint32_t *words;
 	struct umr_pm4_stream *str;
@@ -459,7 +443,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_pa
 		free(words);
 		return NULL;
 	}
-	str = umr_pm4_decode_stream(asic, vm_partition, vmid, words, nwords, rt);
+	str = umr_pm4_decode_stream(asic, vm_partition, vmid, words, nwords);
 	free(words);
 	return str;
 }

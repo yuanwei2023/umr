@@ -30,7 +30,7 @@
  * tedious and a waste of time.
  */
 
-struct pm4_ui_data {
+struct ui_data {
 	struct {
 		uint64_t ib_addr, f_addr, b_addr;
 		const uint32_t *rawdata;
@@ -41,21 +41,21 @@ struct pm4_ui_data {
 	struct umr_asic *asic;
 };
 
-static void pm4_next_level(struct umr_pm4_stream_decode_ui *ui)
+static void next_level(struct umr_stream_decode_ui *ui)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	char tmpname[64];
 	sprintf(tmpname, "/tmp/umr_ring_out.%d", (data->no)++);
 	++(data->sp);
 	data->stack[data->sp].f = fopen(tmpname, "w");
 }
 
-static void pm4_start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type)
+static void start_ib(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	struct umr_asic *asic = data->asic;
 
-	pm4_next_level(ui);
+	next_level(ui);
 	data->stack[data->sp].ib_addr = ib_addr;
 	fprintf(data->stack[data->sp].f, "Decoding IB at %s%lu%s@%s0x%"PRIx64"%s from %s%lu%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)", 
 	BLUE, (unsigned long)ib_vmid, RST,
@@ -66,43 +66,67 @@ static void pm4_start_ib(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, 
 	BLUE, type, RST);
 }
 
-static void pm4_start_opcode(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data)
+static void start_opcode(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, int pkttype, uint32_t opcode, uint32_t subop, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	struct umr_asic *asic = data->asic;
 	(void)raw_data;
 	data->stack[data->sp].b_addr = ib_addr + 4;
 	data->stack[data->sp].f_addr = ib_addr - 4;
 	data->stack[data->sp].rawdata = raw_data;
-	fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%s]\t%sOpcode%s %s0x%lx%s [%s%s%s] (%s%lu%s words, type: %s%d%s, hdr: %s0x%"PRIx32"%s)",
-		BLUE, (unsigned long)ib_vmid, RST,
-		YELLOW, data->stack[data->sp].ib_addr, RST,
-		YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-		BMAGENTA, header, RST,
-		BWHITE, RST, GREEN, (unsigned long)opcode, RST, GREEN, opcode_name, RST,
-		BLUE, (unsigned long)nwords, RST,
-		BLUE, pkttype, RST,
-		BLUE, header, RST);
-}
-
-static void pm4_add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix)
-{
-	struct pm4_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-	if (data->stack[data->sp].f_addr != ib_addr) {
-		data->stack[data->sp].f_addr = ib_addr;
-		fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%s]\t|---> ",
-			BLUE, (unsigned long)ib_vmid, RST,
+	if (ui->rt == UMR_RING_SDMA) {
+		fprintf(data->stack[data->sp].f, "\n[%s%"PRIu32"%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%08"PRIx32"%s]\t%sOpcode%s %s0x%"PRIx32"%s/%s0x%"PRIx32"%s [%s%s%s] (%s%"PRIu32"%s words, type: %s%d%s, hdr: %s0x%"PRIx32"%s)",
+			BLUE, ib_vmid, RST,
 			YELLOW, data->stack[data->sp].ib_addr, RST,
 			YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-			BMAGENTA, data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
+			BMAGENTA, "", header, RST,
+			BWHITE, RST, GREEN, opcode, RST, GREEN, subop, RST, GREEN, opcode_name, RST,
+			BLUE, nwords, RST,
+			BLUE, pkttype, RST,
+			BLUE, header, RST);
+	} else {
+		fprintf(data->stack[data->sp].f, "\n[%s%"PRIu32"%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%08"PRIx32"%s]\t%sOpcode%s %s0x%"PRIx32"%s [%s%s%s] (%s%"PRIu32"%s words, type: %s%d%s, hdr: %s0x%"PRIx32"%s)",
+			BLUE, ib_vmid, RST,
+			YELLOW, data->stack[data->sp].ib_addr, RST,
+			YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+			BMAGENTA, "", header, RST,
+			BWHITE, RST, GREEN, opcode, RST, GREEN, opcode_name, RST,
+			BLUE, nwords, RST,
+			BLUE, pkttype, RST,
+			BLUE, header, RST);
+	}
+}
+
+static void add_field(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix, int field_size)
+{
+	struct ui_data *data = ui->data;
+	struct umr_asic *asic = data->asic;
+	int i64 = field_size > 32;
+	if (data->stack[data->sp].f_addr != ib_addr) {
+		data->stack[data->sp].f_addr = ib_addr;
+		if (!i64) {
+			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%08"PRIx32"%s]\t|---> ",
+				BLUE, (unsigned long)ib_vmid, RST,
+				YELLOW, data->stack[data->sp].ib_addr, RST,
+				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+				BMAGENTA, "", data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
+		} else {
+			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
+				BLUE, (unsigned long)ib_vmid, RST,
+				YELLOW, data->stack[data->sp].ib_addr, RST,
+				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+				BMAGENTA,
+					data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/4],
+					data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4],
+				RST);
+		}
 	} else {
 		fprintf(data->stack[data->sp].f, ", ");
 	}
 
 	if (!strcmp(field_name, "REG") && ideal_radix == 16) {
 		// register name/value pairs
-		fprintf(data->stack[data->sp].f, "%s%s%s=%s0x%"PRIx32"%s",
+		fprintf(data->stack[data->sp].f, "%s%s%s=%s0x%"PRIx64"%s",
 			RED, str, RST,
 			YELLOW, value, RST);
 	} else {
@@ -115,19 +139,19 @@ static void pm4_add_field(struct umr_pm4_stream_decode_ui *ui, uint64_t ib_addr,
 			fprintf(data->stack[data->sp].f, "/");
 
 		switch (ideal_radix) {
-			case 10: fprintf(data->stack[data->sp].f, "%s%"PRIu32"%s", BBLUE, value, RST); break;
-			case 16: fprintf(data->stack[data->sp].f, "%s0x%"PRIx32"%s", YELLOW, value, RST); break;
+			case 10: fprintf(data->stack[data->sp].f, "%s%"PRIu64"%s", BBLUE, value, RST); break;
+			case 16: fprintf(data->stack[data->sp].f, "%s0x%"PRIx64"%s", YELLOW, value, RST); break;
 		}
 	}
 }
 
-static void pm4_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader)
+static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	char **str;
 	int x;
 
-	pm4_next_level(ui);
+	next_level(ui);
 	fprintf(data->stack[data->sp].f, "Shader from %lu@[0x%"PRIx64" + 0x%"PRIx64"] at %lu@0x%"PRIx64", type %d, size %lu\n", (unsigned long)ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, (unsigned long)shader->vmid, shader->addr, shader->type, (unsigned long)shader->size);
 	umr_vm_disasm_to_str(asic, asic->options.vm_partition, shader->vmid, shader->addr, 0, shader->size, 0, &str);
 	x = 0;
@@ -141,9 +165,9 @@ static void pm4_add_shader(struct umr_pm4_stream_decode_ui *ui, struct umr_asic 
 	--(data->sp);
 }
 
-static void dump_mqd_compute_nv(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
+static void dump_mqd_compute_nv(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	static const struct {
 		uint32_t offset;
 		char *label;
@@ -374,9 +398,9 @@ static void dump_mqd_compute_nv(struct umr_asic *asic, struct umr_pm4_stream_dec
 	}
 }
 
-static void dump_mqd_graphics_nv(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
+static void dump_mqd_graphics_nv(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	static const struct {
 		uint32_t offset;
 		char *label;
@@ -622,9 +646,9 @@ static void dump_mqd_graphics_nv(struct umr_asic *asic, struct umr_pm4_stream_de
 	}
 }
 
-static void dump_mqd_sdma_nv(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
+static void dump_mqd_sdma_nv(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	static const struct {
 		uint32_t offset;
 		char *label;
@@ -691,9 +715,9 @@ static void dump_mqd_sdma_nv(struct umr_asic *asic, struct umr_pm4_stream_decode
 	}
 }
 
-static void dump_mqd_sdma_vi(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
+static void dump_mqd_sdma_vi(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	static const struct {
 		uint32_t offset;
 		char *label;
@@ -760,9 +784,9 @@ static void dump_mqd_sdma_vi(struct umr_asic *asic, struct umr_pm4_stream_decode
 	}
 }
 
-static void dump_mqd_compute_vi(struct umr_asic *asic, struct umr_pm4_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
+static void dump_mqd_compute_vi(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t buf_addr, uint32_t buf_vmid)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	static const struct {
 		uint32_t offset;
 		char *label;
@@ -996,11 +1020,11 @@ static void dump_mqd_compute_vi(struct umr_asic *asic, struct umr_pm4_stream_dec
 	}
 }
 
-static void pm4_add_data(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype)
+static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype)
 {
-	struct pm4_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 
-	pm4_next_level(ui);
+	next_level(ui);
 	fprintf(data->stack[data->sp].f, "Data block from %"PRIu32"@[0x%"PRIx64" + 0x%"PRIx64"] at %"PRIu32"@0x%"PRIx64", type %d, ", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, buf_vmid, buf_addr, type);
 	// what type is this
 		switch (type) {
@@ -1033,371 +1057,103 @@ static void pm4_add_data(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *a
 }
 
 
-static void pm4_unhandled(struct umr_pm4_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_pm4_stream *stream)
+static void unhandled(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, void *stream, enum umr_ring_type stream_type)
 {
 	(void)ui;
 	(void)asic;
 	(void)ib_addr;
 	(void)ib_vmid;
 	(void)stream;
+	(void)stream_type;
 }
 
-static void pm4_done(struct umr_pm4_stream_decode_ui *ui)
-{
-	struct pm4_ui_data *data = ui->data;
-	fprintf(data->stack[data->sp].f, "\nDone decoding IB\n\n");
-	fclose(data->stack[data->sp].f);
-	--(data->sp);
-}
-
-static struct umr_pm4_stream_decode_ui pm4_ui = { pm4_start_ib, pm4_start_opcode, pm4_add_field, pm4_add_shader, pm4_add_data, pm4_unhandled, pm4_done, NULL };
-
-// top level present pm4
-static void present_pm4(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
-{
-	struct umr_pm4_stream *str;
-
-	if (ringname)
-		str = umr_pm4_decode_ring(asic, ringname, 0, start, end);
-	else
-		str = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords, UMR_RING_GFX);
-	if (str) {
-		struct umr_pm4_stream_decode_ui ui;
-		int x;
-		char tmpname[64], buf[256];
-		FILE *f;
-		struct pm4_ui_data *data;
-
-		// print decode str
-		ui = pm4_ui;
-		data = ui.data = calloc(1, sizeof(struct pm4_ui_data));
-		data->sp = -1;
-		data->asic = asic;
-		umr_pm4_decode_stream_opcodes(asic, &ui, str, addr, vmid, 0, 0, ~0UL, 1);
-
-		for (x = 0; x < data->no; x++) {
-			sprintf(tmpname, "/tmp/umr_ring_out.%d", x);
-			f = fopen(tmpname, "r");
-			while (fgets(buf, sizeof buf, f)) {
-				printf("%s", buf);
-			}
-			fclose(f);
-			remove(tmpname);
-		}
-		free(ui.data);
-		umr_free_pm4_stream(str);
-	}
-}
-
-// example opaque data to keep track of offsets
-struct sdma_ui_data {
-	struct {
-		uint64_t ib_addr, f_addr, b_addr;
-		const uint32_t *rawdata;
-		uint32_t off;
-		FILE *f;
-	} stack[32];
-	int sp, no;
-	struct umr_asic *asic;
-};
-
-static void sdma_next_level(struct umr_sdma_stream_decode_ui *ui)
-{
-	struct sdma_ui_data *data = ui->data;
-	char tmpname[64];
-	sprintf(tmpname, "/tmp/umr_ring_out.%d", (data->no)++);
-	++(data->sp);
-	data->stack[data->sp].f = fopen(tmpname, "w");
-}
-
-static void sdma_start_ib(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size)
-{
-	struct sdma_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-	sdma_next_level(ui);
-	data->stack[data->sp].ib_addr = ib_addr;
-
-	fprintf(data->stack[data->sp].f, "Decoding IB at %s%lu%s@%s0x%"PRIx64"%s from %s%lu%s@%s0x%"PRIx64"%s of %s%lu%s words",
-	BLUE, (unsigned long)ib_vmid, RST,
-	YELLOW, ib_addr, RST,
-	BLUE, (unsigned long)from_vmid, RST,
-	YELLOW, from_addr, RST,
-	BLUE, (unsigned long)size, RST);
-}
-
-static void sdma_start_opcode(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t sub_opcode, uint32_t nwords, char *opcode_name, uint32_t header, uint32_t *raw_data)
-{
-	struct sdma_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-	data->stack[data->sp].b_addr = ib_addr + 4;
-	data->stack[data->sp].f_addr = ib_addr - 4;
-	data->stack[data->sp].rawdata = raw_data;
-	fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s] [%s0x%08"PRIx32"%s]\t%sOpcode%s %s0x%"PRIx32"%s [%s%s%s] Sub-Opcode %s%"PRIx32"%s (%s%lu%s words, hdr: %s0x%"PRIx32"%s)",
-		BLUE, (unsigned long)ib_vmid, RST,
-		YELLOW, data->stack[data->sp].ib_addr, RST,
-		YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-		BMAGENTA, header, RST,
-		BWHITE, RST, GREEN, opcode, RST, GREEN, opcode_name, RST, GREEN, sub_opcode, RST,
-		BLUE, (unsigned long)nwords, RST,
-		BLUE, header, RST);
-}
-
-static void sdma_add_field(struct umr_sdma_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint32_t value, char *str, int ideal_radix)
-{
-	struct sdma_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-	if (data->stack[data->sp].f_addr != ib_addr) {
-		data->stack[data->sp].f_addr = ib_addr;
-		fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s] [%s0x%08"PRIx32"%s]\t|---> ",
-			BLUE, (unsigned long)ib_vmid, RST,
-			YELLOW, data->stack[data->sp].ib_addr, RST,
-			YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-			BMAGENTA, data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
-	} else {
-		fprintf(data->stack[data->sp].f, ", ");
-	}
-
-	if (!strcmp(field_name, "REG") && ideal_radix == 16) {
-		// register name/value pairs
-		fprintf(data->stack[data->sp].f, "%s%s%s=%s0x%"PRIx32"%s",
-			RED, str, RST,
-			YELLOW, value, RST);
-	} else {
-		// default
-		fprintf(data->stack[data->sp].f, "%s%s%s=", CYAN, field_name, RST);
-		if (str)
-			fprintf(data->stack[data->sp].f, "[%s%s%s]", RED, str, RST);
-
-		if (str && (ideal_radix == 10 || ideal_radix == 16))
-			fprintf(data->stack[data->sp].f, "/");
-
-		switch (ideal_radix) {
-			case 10: fprintf(data->stack[data->sp].f, "%s%"PRIu32"%s", BBLUE, value, RST); break;
-			case 16: fprintf(data->stack[data->sp].f, "%s0x%"PRIx32"%s", YELLOW, value, RST); break;
-		}
-	}
-}
-
-static void sdma_unhandled(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream)
-{
-	(void)ui;
-	(void)asic;
-	(void)ib_addr;
-	(void)ib_vmid;
-	(void)stream;
-}
-
-static int sdma_unhandled_size(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, struct umr_sdma_stream *stream)
+static int unhandled_size(struct umr_stream_decode_ui *ui, struct umr_asic *asic, void *stream, enum umr_ring_type stream_type)
 {
 	(void)ui;
 	(void)asic;
 	(void)stream;
+	(void)stream_type;
 	return 1;
 }
 
-static void sdma_unhandled_subop(struct umr_sdma_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_sdma_stream *stream)
+static void unhandled_subop(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, void *stream, enum umr_ring_type stream_type)
 {
 	(void)ui;
 	(void)asic;
 	(void)ib_addr;
 	(void)ib_vmid;
 	(void)stream;
+	(void)stream_type;
 }
 
-static void sdma_done(struct umr_sdma_stream_decode_ui *ui)
+static void done(struct umr_stream_decode_ui *ui)
 {
-	struct sdma_ui_data *data = ui->data;
-	fprintf(data->stack[data->sp].f, "\nDone decoding IB\n");
-	fclose(data->stack[data->sp].f);
-	--(data->sp);
-}
-
-static struct  umr_sdma_stream_decode_ui sdma_ui = { sdma_start_ib, sdma_start_opcode, sdma_add_field, sdma_unhandled, sdma_unhandled_size, sdma_unhandled_subop, sdma_done, NULL };
-
-static void present_sdma(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
-{
-	struct umr_sdma_stream *stream;
-	struct umr_sdma_stream_decode_ui myui;
-	myui = sdma_ui;
-
-	if (ringname)
-		stream = umr_sdma_decode_ring(asic, &myui, ringname, start, end);
-	else
-		stream = umr_sdma_decode_stream_vm(asic, &myui, asic->options.vm_partition, vmid, addr, nwords, UMR_RING_SDMA);
-
-	if (stream) {
-		struct sdma_ui_data *data;
-		int x;
-		char tmpname[64], buf[256];
-		FILE *f;
-
-		// assign our opaque structure
-		data = myui.data = calloc(1, sizeof(struct sdma_ui_data));
-		data->sp = -1;
-		data->asic = asic;
-
-		umr_sdma_decode_stream_opcodes(asic, &myui, stream, 0, 0, 0, 0, ~0UL, 1);
-
-		for (x = 0; x < data->no; x++) {
-			sprintf(tmpname, "/tmp/umr_ring_out.%d", x);
-			f = fopen(tmpname, "r");
-			while (fgets(buf, sizeof buf, f)) {
-				printf("%s", buf);
-			}
-			fclose(f);
-			remove(tmpname);
-		}
-		umr_free_sdma_stream(stream);
-		free(myui.data);
-	}
-}
-
-struct mes_ui_data {
-	struct {
-		uint64_t ib_addr, f_addr, b_addr;
-		const uint32_t *rawdata;
-		uint32_t off;
-		FILE *f;
-	} stack[32];
-	int sp, no;
-	struct umr_asic *asic;
-};
-
-static void mes_next_level(struct umr_mes_stream_decode_ui *ui)
-{
-	struct mes_ui_data *data = ui->data;
-	char tmpname[64];
-	sprintf(tmpname, "/tmp/umr_ring_out.%d", (data->no)++);
-	++(data->sp);
-	data->stack[data->sp].f = fopen(tmpname, "w");
-}
-
-static void mes_start_ib(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type)
-{
-	struct mes_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-
-	mes_next_level(ui);
-	data->stack[data->sp].ib_addr = ib_addr;
-	fprintf(data->stack[data->sp].f, "Decoding IB at %s%lu%s@%s0x%"PRIx64"%s from %s%lu%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)",
-	BLUE, (unsigned long)ib_vmid, RST,
-	YELLOW, ib_addr, RST,
-	BLUE, (unsigned long)from_vmid, RST,
-	YELLOW, from_addr, RST,
-	BLUE, (unsigned long)size, RST,
-	BLUE, type, RST);
-}
-
-static void mes_start_opcode(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t opcode, uint32_t nwords, const char *opcode_name, uint32_t header, const uint32_t* raw_data)
-{
-	struct mes_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-	(void)raw_data;
-	data->stack[data->sp].b_addr = ib_addr + 4;
-	data->stack[data->sp].f_addr = ib_addr - 4;
-	data->stack[data->sp].rawdata = raw_data;
-	fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%016"PRIx64"%s]\t%sOpcode%s %s0x%lx%s [%s%s%s] (%s%lu%s words, type: %s%d%s, hdr: %s0x%"PRIx32"%s)",
-		BLUE, (unsigned long)ib_vmid, RST,
-		YELLOW, data->stack[data->sp].ib_addr, RST,
-		YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-		BMAGENTA, (uint64_t)header, RST,
-		BWHITE, RST, GREEN, (unsigned long)opcode, RST, GREEN, opcode_name, RST,
-		BLUE, (unsigned long)nwords, RST,
-		BLUE, 0, RST,
-		BLUE, header, RST);
-}
-
-static void mes_add_field(struct umr_mes_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, const char *field_name, uint64_t value, char *str, int ideal_radix)
-{
-	struct mes_ui_data *data = ui->data;
-	struct umr_asic *asic = data->asic;
-	int i64 = ideal_radix >= 20;
-	if (i64)
-		ideal_radix -= 10;
-	if (data->stack[data->sp].f_addr != ib_addr) {
-		data->stack[data->sp].f_addr = ib_addr;
-		if (!i64) {
-			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
-				BLUE, (unsigned long)ib_vmid, RST,
-				YELLOW, data->stack[data->sp].ib_addr, RST,
-				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-				BMAGENTA, 0, data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
-		} else {
-			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
-				BLUE, (unsigned long)ib_vmid, RST,
-				YELLOW, data->stack[data->sp].ib_addr, RST,
-				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-				BMAGENTA,
-					data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/4],
-					data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4],
-				RST);
-		}
-	} else {
-		fprintf(data->stack[data->sp].f, ", ");
-	}
-
-	if (!strcmp(field_name, "REG") && ideal_radix == 16) {
-		// register name/value pairs
-		fprintf(data->stack[data->sp].f, "%s%s%s=%s0x%"PRIx64"%s",
-			RED, str, RST,
-			YELLOW, value, RST);
-	} else {
-		// default
-		fprintf(data->stack[data->sp].f, "%s%s%s=", CYAN, field_name, RST);
-		if (str)
-			fprintf(data->stack[data->sp].f, "[%s%s%s]", RED, str, RST);
-
-		if (str && (ideal_radix == 10 || ideal_radix == 16))
-			fprintf(data->stack[data->sp].f, "/");
-
-		switch (ideal_radix) {
-			case 10: fprintf(data->stack[data->sp].f, "%s%"PRIu64"%s", BBLUE, value, RST); break;
-			case 16: fprintf(data->stack[data->sp].f, "%s0x%"PRIx64"%s", YELLOW, value, RST); break;
-		}
-	}
-}
-
-static void mes_unhandled(struct umr_mes_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_mes_stream *stream)
-{
-	(void)ui;
-	(void)asic;
-	(void)ib_addr;
-	(void)ib_vmid;
-	(void)stream;
-}
-
-static void mes_done(struct umr_mes_stream_decode_ui *ui)
-{
-	struct mes_ui_data *data = ui->data;
+	struct ui_data *data = ui->data;
 	fprintf(data->stack[data->sp].f, "\nDone decoding IB\n\n");
 	fclose(data->stack[data->sp].f);
 	--(data->sp);
 }
 
-static struct umr_mes_stream_decode_ui mes_ui = { mes_start_ib, mes_start_opcode, mes_add_field, mes_unhandled, mes_done, NULL };
+static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, start_opcode, add_field, add_shader, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
 
-// top level present mes
-static void present_mes(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords)
+static void present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
 {
-	struct umr_mes_stream *str;
+	void *str = NULL;
+	struct umr_stream_decode_ui ui;
+	int x;
+	char tmpname[64], buf[256];
+	FILE *f;
+	struct ui_data *data;
 
-	if (ringname)
-		str = umr_mes_decode_ring(asic, ringname, 0, start, end);
-	else
-		str = umr_mes_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords);
+	if (rt == UMR_RING_UNK)
+		return;
+
+	// print decode str
+	ui = umr_ui;
+	ui.rt = rt;
+	data = ui.data = calloc(1, sizeof(struct ui_data));
+	data->sp = -1;
+	data->asic = asic;
+
+	switch (rt) {
+		case UMR_RING_PM4:
+			if (ringname)
+				str = umr_pm4_decode_ring(asic, ringname, 0, start, end);
+			else
+				str = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords);
+			break;
+		case UMR_RING_SDMA:
+			if (ringname)
+				str = umr_sdma_decode_ring(asic, &ui, ringname, start, end);
+			else
+				str = umr_sdma_decode_stream_vm(asic, &ui, asic->options.vm_partition, vmid, addr, nwords);
+			break;
+		case UMR_RING_MES:
+			if (ringname)
+				str = umr_mes_decode_ring(asic, ringname, 0, start, end);
+			else
+				str = umr_mes_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords);
+			break;
+		case UMR_RING_UNK:
+			asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
+			break;
+	}
+
 	if (str) {
-		struct umr_mes_stream_decode_ui ui;
-		int x;
-		char tmpname[64], buf[256];
-		FILE *f;
-		struct mes_ui_data *data;
-
-		// print decode str
-		ui = mes_ui;
-		data = ui.data = calloc(1, sizeof(struct mes_ui_data));
-		data->sp = -1;
-		data->asic = asic;
-		umr_mes_decode_stream_opcodes(asic, &ui, str, addr, vmid, ~0UL);
+		switch (rt) {
+			case UMR_RING_PM4:
+				umr_pm4_decode_stream_opcodes(asic, &ui, str, addr, vmid, 0, 0, ~0UL, 1);
+				break;
+			case UMR_RING_SDMA:
+				umr_sdma_decode_stream_opcodes(asic, &ui, str, 0, 0, 0, 0, ~0UL, 1);
+				break;
+			case UMR_RING_MES:
+				umr_mes_decode_stream_opcodes(asic, &ui, str, addr, vmid, ~0UL);
+				break;
+			case UMR_RING_UNK:
+				asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
+				break;
+		}
 
 		for (x = 0; x < data->no; x++) {
 			sprintf(tmpname, "/tmp/umr_ring_out.%d", x);
@@ -1408,9 +1164,24 @@ static void present_mes(struct umr_asic *asic, char *ringname, int start, int en
 			fclose(f);
 			remove(tmpname);
 		}
-		free(ui.data);
-		umr_free_mes_stream(str);
+
+		switch (rt) {
+			case UMR_RING_PM4:
+				umr_free_pm4_stream(str);
+				break;
+			case UMR_RING_SDMA:
+				umr_free_sdma_stream(str);
+				break;
+			case UMR_RING_MES:
+				umr_free_mes_stream(str);
+				break;
+			case UMR_RING_UNK:
+				asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
+				break;
+		}
+
 	}
+	free(ui.data);
 }
 
 void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
@@ -1492,11 +1263,11 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 
 	/* pm4 streams */
 	if (enable_decoder == 4) {
-		present_pm4(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords, UMR_RING_PM4);
 	} else if (enable_decoder == 3) {
-		present_sdma(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords, UMR_RING_SDMA);
 	} else if (enable_decoder == 2) {
-		present_mes(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords);
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords, UMR_RING_MES);
 	} else {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
 	}
