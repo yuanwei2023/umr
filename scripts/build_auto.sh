@@ -63,4 +63,6 @@ for f in ${pk}/include/*ip_offset.h; do
 done
 echo "Parsed ${x} IP offset files..."
 
+rm -vf ../database/ip/gc_9_4_1.reg
+
 make -C ../comp clean
