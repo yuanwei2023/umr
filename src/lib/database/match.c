@@ -43,7 +43,7 @@ struct umr_database_scan_item *umr_database_find_ip(
 					} else {
 						if (abs(min - si->min) < abs(min - best->min)) {
 							best = si;
-						} else {
+						} else if (abs(min - si->min) == abs(min - best->min)) {
 							if (abs(rev - si->rev) < abs(rev - best->rev))
 								best = si;
 						}
