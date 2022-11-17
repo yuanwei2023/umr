@@ -1496,6 +1496,37 @@ struct umr_stream_decode_ui {
 	void *data;
 };
 
+// packet decoding library
+struct umr_packet_stream {
+	struct umr_asic *asic;
+	enum umr_ring_type type;
+
+	union {
+		struct umr_pm4_stream *pm4;
+		struct umr_sdma_stream *sdma;
+		struct umr_mes_stream *mes;
+	} stream;
+
+	void *cont;
+
+	struct umr_stream_decode_ui *ui;
+};
+
+struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+						   uint32_t from_vmid, uint32_t from_addr,
+						   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
+struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+						char *ringname, int halt_waves, int start, int stop, enum umr_ring_type rt);
+struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+						      uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+void umr_packet_free(struct umr_packet_stream *stream);
+struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream, unsigned vmid, uint64_t addr);
+struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream *stream, uint64_t ib_addr, uint32_t ib_vmid,
+							uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow, int cont);
+int umr_packet_disassemble_opcodes_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_vmid, int follow, enum umr_ring_type rt);
+
+
+
 // PM4 decoding library
 struct umr_pm4_stream {
 	uint32_t pkttype,				// packet type (0==simple write, 3 == packet)

@@ -1117,22 +1117,12 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 
 	switch (rt) {
 		case UMR_RING_PM4:
-			if (ringname)
-				str = umr_pm4_decode_ring(asic, ringname, 0, start, end);
-			else
-				str = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords);
-			break;
 		case UMR_RING_SDMA:
-			if (ringname)
-				str = umr_sdma_decode_ring(asic, &ui, ringname, start, end);
-			else
-				str = umr_sdma_decode_stream_vm(asic, &ui, asic->options.vm_partition, vmid, addr, nwords);
-			break;
 		case UMR_RING_MES:
 			if (ringname)
-				str = umr_mes_decode_ring(asic, ringname, 0, start, end);
+				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, start, end, rt);
 			else
-				str = umr_mes_decode_stream_vm(asic, asic->options.vm_partition, vmid, addr, nwords);
+				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt);
 			break;
 		case UMR_RING_UNK:
 			asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
@@ -1142,13 +1132,9 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 	if (str) {
 		switch (rt) {
 			case UMR_RING_PM4:
-				umr_pm4_decode_stream_opcodes(asic, &ui, str, addr, vmid, 0, 0, ~0UL, 1);
-				break;
 			case UMR_RING_SDMA:
-				umr_sdma_decode_stream_opcodes(asic, &ui, str, 0, 0, 0, 0, ~0UL, 1);
-				break;
 			case UMR_RING_MES:
-				umr_mes_decode_stream_opcodes(asic, &ui, str, addr, vmid, ~0UL);
+				umr_packet_disassemble_stream(str, addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
 			case UMR_RING_UNK:
 				asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
@@ -1167,13 +1153,9 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 
 		switch (rt) {
 			case UMR_RING_PM4:
-				umr_free_pm4_stream(str);
-				break;
 			case UMR_RING_SDMA:
-				umr_free_sdma_stream(str);
-				break;
 			case UMR_RING_MES:
-				umr_free_mes_stream(str);
+				umr_packet_free(str);
 				break;
 			case UMR_RING_UNK:
 				asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");

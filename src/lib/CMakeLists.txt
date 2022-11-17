@@ -22,6 +22,7 @@ add_library(umrcore STATIC
   ih_decode_vectors.c
   get_ip_rev.c
   mmio.c
+  packet_stream.c
   pm4_decode_opcodes.c
   read_mes_stream.c
   read_pm4_stream.c
