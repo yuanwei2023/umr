@@ -1117,6 +1117,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 
 	switch (rt) {
 		case UMR_RING_PM4:
+		case UMR_RING_PM4_LITE:
 		case UMR_RING_SDMA:
 		case UMR_RING_MES:
 			if (ringname)
@@ -1132,6 +1133,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 	if (str) {
 		switch (rt) {
 			case UMR_RING_PM4:
+			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
 			case UMR_RING_MES:
 				umr_packet_disassemble_stream(str, addr, vmid, 0, 0, ~0UL, 1, 0);
@@ -1153,6 +1155,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 
 		switch (rt) {
 			case UMR_RING_PM4:
+			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
 			case UMR_RING_MES:
 				umr_packet_free(str);

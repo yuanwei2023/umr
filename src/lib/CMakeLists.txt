@@ -24,6 +24,7 @@ add_library(umrcore STATIC
   mmio.c
   packet_stream.c
   pm4_decode_opcodes.c
+  pm4_lite.c
   read_mes_stream.c
   read_pm4_stream.c
   read_sdma_stream.c

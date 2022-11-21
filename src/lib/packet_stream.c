@@ -52,6 +52,9 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 		case UMR_RING_PM4:
 			p = str->stream.pm4 = umr_pm4_decode_stream(asic, asic->options.vm_partition, from_vmid, stream, nwords);
 			break;
+		case UMR_RING_PM4_LITE:
+			p = str->stream.pm4 = umr_pm4_lite_decode_stream(asic, asic->options.vm_partition, from_vmid, stream, nwords);
+			break;
 		case UMR_RING_SDMA:
 			p = str->stream.sdma = umr_sdma_decode_stream(asic, ui, asic->options.vm_partition, from_addr, from_vmid, stream, nwords);
 			break;
@@ -183,6 +186,7 @@ void umr_packet_free(struct umr_packet_stream *stream)
 	if (stream) {
 		switch (stream->type) {
 			case UMR_RING_PM4:
+			case UMR_RING_PM4_LITE:
 				umr_free_pm4_stream(stream->stream.pm4);
 				break;
 			case UMR_RING_SDMA:
@@ -211,6 +215,7 @@ struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream,
 {
 	switch (stream->type) {
 		case UMR_RING_PM4:
+		case UMR_RING_PM4_LITE:
 			return umr_find_shader_in_stream(stream->stream.pm4, vmid, addr);
 
 		case UMR_RING_SDMA:
@@ -243,6 +248,10 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
 	switch (stream->type) {
 		case UMR_RING_PM4:
 			stream->cont = umr_pm4_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.pm4, ib_addr, ib_vmid,
+							     from_addr, from_vmid, opcodes, follow);
+			break;
+		case UMR_RING_PM4_LITE:
+			stream->cont = umr_pm4_lite_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.pm4, ib_addr, ib_vmid,
 							     from_addr, from_vmid, opcodes, follow);
 			break;
 		case UMR_RING_SDMA:
