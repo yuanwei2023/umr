@@ -1169,8 +1169,9 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			else
 				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt);
 			break;
+		case UMR_RING_GUESS:
 		case UMR_RING_UNK:
-			asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
+			asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
 			break;
 	}
 
@@ -1182,8 +1183,9 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			case UMR_RING_MES:
 				umr_packet_disassemble_stream(str, addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
+			case UMR_RING_GUESS:
 			case UMR_RING_UNK:
-				asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
+				asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
 				break;
 		}
 
@@ -1204,8 +1206,9 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			case UMR_RING_MES:
 				umr_packet_free(str);
 				break;
+			case UMR_RING_GUESS:
 			case UMR_RING_UNK:
-				asic->err_msg("[BUG]: UMR_RING_UNK passed to ring stream present()\n");
+				asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
 				break;
 		}
 
@@ -1244,22 +1247,7 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 			return;
 		}
 
-		// only decode PM4 packets on certain rings
-		if (!memcmp(ringname, "gfx", 3) ||
-			!memcmp(ringname, "uvd", 3) ||
-			!memcmp(ringname, "vcn_dec", 7) ||
-			!memcmp(ringname, "vcn_enc", 7) ||
-			!memcmp(ringname, "kiq", 3) ||
-			!memcmp(ringname, "comp", 4)) {
-			enable_decoder = 4;
-		} else if (!memcmp(ringname, "sdma", 4) ||
-			   !memcmp(ringname, "page", 4)) {
-			enable_decoder = 3;
-		} else if (!memcmp(ringname, "mes", 3)) {
-			enable_decoder = 2;
-		} else {
-			enable_decoder = 0;
-		}
+		enable_decoder = 0;
 
 		/* default to reading entire ring */
 		if (!from[0]) {
@@ -1309,6 +1297,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_SDMA);
 	} else if (enable_decoder == 2) {
 		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_MES);
+	} else if (enable_decoder == 0) {
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_GUESS);
 	} else {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
 	}

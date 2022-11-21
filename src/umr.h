@@ -1411,6 +1411,7 @@ enum umr_ring_type {
 	UMR_RING_SDMA,
 	UMR_RING_MES,
 
+	UMR_RING_GUESS,
 	UMR_RING_UNK=0xFF, // if unknown
 };
 

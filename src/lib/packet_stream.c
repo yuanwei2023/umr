@@ -95,6 +95,26 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 	uint32_t *ringdata, ringsize;
 	int only_active = 1;
 
+	if (rt == UMR_RING_GUESS) {
+		// only decode PM4 packets on certain rings
+		if (!memcmp(ringname, "gfx", 3) ||
+			!memcmp(ringname, "uvd", 3) ||
+			!memcmp(ringname, "vcn_dec", 7) ||
+			!memcmp(ringname, "vcn_enc", 7) ||
+			!memcmp(ringname, "kiq", 3) ||
+			!memcmp(ringname, "comp", 4)) {
+			rt = UMR_RING_PM4;
+		} else if (!memcmp(ringname, "sdma", 4) ||
+			   !memcmp(ringname, "page", 4)) {
+			rt = UMR_RING_SDMA;
+		} else if (!memcmp(ringname, "mes", 3)) {
+			rt = UMR_RING_MES;
+		} else {
+			asic->err_msg("[ERROR]: Unknown ring type <%s> for umr_packet_decode_ring()\n", ringname);
+			return NULL;
+		}
+	}
+
 	if (halt_waves && asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
 
