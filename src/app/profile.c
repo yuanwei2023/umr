@@ -87,7 +87,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 	struct umr_profiler_shaders *shaders;
 	struct umr_profiler_text *texts, *otext;
 	struct umr_wave_data *owd, *wd;
-	struct umr_pm4_stream *stream;
+	struct umr_packet_stream *stream;
 	struct umr_shaders_pgm *shader;
 	unsigned nitems, nmax, nshaders, x, y, z, found;
 	char *ringname;
@@ -131,7 +131,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 		// processor is also halted so we can grab the
 		// stream.  This isn't 100% though it seems so race
 		// conditions might occur.
-		stream = umr_pm4_decode_ring(asic, ringname, 1, -1, -1);
+		stream = umr_packet_decode_ring(asic, NULL, ringname, 0, -1, -1, UMR_RING_GUESS);
 
 		// loop through data ...
 		sample_hit = 0;
@@ -144,7 +144,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 			// try to find shader in PM4 stream
 			shader = NULL;
 			if (stream)
-				shader = umr_find_shader_in_stream(stream, phit[nitems].vmid, phit[nitems].pc);
+				shader = umr_packet_find_shader(stream, phit[nitems].vmid, phit[nitems].pc);
 			if (shader) {
 				struct umr_profiler_text *shader_text;
 
@@ -228,7 +228,7 @@ throw_back:
 			++samples;
 
 		if (stream)
-			umr_free_pm4_stream(stream);
+			umr_packet_free(stream);
 	}
 
 	// we're done scanning so resume the waves

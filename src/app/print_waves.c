@@ -44,7 +44,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 	struct umr_wave_data *wd, *owd;
 	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
-	struct umr_pm4_stream *stream;
+	struct umr_packet_stream *stream;
 	struct {
 		uint32_t vmid, size;
 		uint64_t addr;
@@ -72,9 +72,9 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1, -1, -1);
+			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, -1, -1, UMR_RING_GUESS);
 		} else {
-			stream = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4);
+			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4);
 		}
 	} else {
 		ring_halted = 0;
@@ -279,7 +279,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 				printf("\n\nPGM_MEM:");
 				pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo);
 				if (stream)
-					shader = umr_find_shader_in_stream(stream, wd->ws.hw_id.vm_id, pgm_addr);
+					shader = umr_packet_find_shader(stream, wd->ws.hw_id.vm_id, pgm_addr);
 				if (shader) {
 					printf(" (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)\n",
 						BLUE, shader->vmid, RST,
@@ -351,7 +351,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 	}
 
 	if (stream)
-		umr_free_pm4_stream(stream);
+		umr_packet_free(stream);
 
 	if (asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
@@ -364,7 +364,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	struct umr_wave_data *wd, *owd;
 	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
-	struct umr_pm4_stream *stream;
+	struct umr_packet_stream *stream;
 	struct {
 		uint32_t vmid, size;
 		uint64_t addr;
@@ -397,9 +397,9 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_pm4_decode_ring(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 1, -1, -1);
+			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, -1, -1, UMR_RING_GUESS);
 		} else {
-			stream = umr_pm4_decode_stream_vm(asic, asic->options.vm_partition, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4);
+			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4);
 		}
 	} else {
 		ring_halted = 0;
@@ -588,7 +588,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 				printf("\n\nPGM_MEM:\n");
 				pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo);
 				if (stream)
-					shader = umr_find_shader_in_stream(stream, wd->ws.hw_id2.vm_id, pgm_addr);
+					shader = umr_packet_find_shader(stream, wd->ws.hw_id2.vm_id, pgm_addr);
 				if (shader) {
 					printf(" (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)\n",
 						BLUE, shader->vmid, RST,
@@ -672,7 +672,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	}
 
 	if (stream)
-		umr_free_pm4_stream(stream);
+		umr_packet_free(stream);
 
 	if (asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
