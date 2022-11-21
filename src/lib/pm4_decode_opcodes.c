@@ -340,6 +340,11 @@ static char *vgt_event_decode(unsigned tag)
 
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
 
+const char *umr_pm4_opcode_to_str(uint32_t header)
+{
+       return pm4_pkt3_opcode_names[(header >> 8) & 0xFF];
+}
+
 static void decode_pkt0(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {
 	uint32_t n;

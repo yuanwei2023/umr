@@ -474,17 +474,6 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --read requires one parameter\n");
 				return EXIT_FAILURE;
 			}
-		} else if (!strcmp(argv[i], "--ring") || !strcmp(argv[i], "-R")) {
-			if (i + 1 < argc) {
-				if (!asic)
-					asic = get_asic();
-				fprintf(stderr, "[WARNING]: The --ring command is deprecated and will be removed in a future release.  Please use the --ring-stream command.\n");
-				umr_read_ring(asic, argv[i+1]);
-				++i;
-			} else {
-				fprintf(stderr, "[ERROR]: --ring requires one parameter\n");
-				return EXIT_FAILURE;
-			}
 		} else if (!strcmp(argv[i], "--ring-stream") || !strcmp(argv[i], "-RS")) {
 			if (i + 1 < argc) {
 				if (!asic)
@@ -531,6 +520,8 @@ int main(int argc, char **argv)
 			if (i + 1 < argc) {
 				int pm;
 				char *name = argv[i+1];
+				char str[128];
+				char prefix[] = { ' ', ' ', 'm', 's', 'p' };
 
 				if (!asic)
 					asic = get_asic();
@@ -541,7 +532,9 @@ int main(int argc, char **argv)
 					pm = 4;
 					i += 1;
 				}
-				umr_ib_read_file(asic, name, pm);
+				
+				sprintf(str, "%c%s", prefix[pm], name);
+				umr_read_ring_stream(asic, str);
 			} else {
 				fprintf(stderr, "[ERROR]: --dump-ib-file requires two parameters\n");
 				return EXIT_FAILURE;

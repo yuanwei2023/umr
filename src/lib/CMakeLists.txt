@@ -15,7 +15,6 @@ add_library(umrcore STATIC
   discover_by_name.c
   discover_by_ip_table.c
   discovery_table.c
-  dump_ib.c
   find_ip.c
   find_reg.c
   free_asic_blocks.c
@@ -29,7 +28,6 @@ add_library(umrcore STATIC
   read_pm4_stream.c
   read_sdma_stream.c
   read_vram.c
-  ring_decode.c
   ring_is_halted.c
   scan_config.c
   scan_waves.c

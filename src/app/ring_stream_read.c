@@ -1096,7 +1096,49 @@ static void done(struct umr_stream_decode_ui *ui)
 
 static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, start_opcode, add_field, add_shader, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
 
-static void present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
+static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *nwords)
+{
+	FILE *infile;
+	char buf[128];
+	uint32_t  *data, x;
+
+	data = calloc(sizeof(*data), 1024);
+	if (!data) {
+		asic->err_msg("[ERROR]: Out of memory\n");
+		return NULL;
+	}
+
+	infile = fopen(filename, "r");
+	if (!infile) {
+		free(data);
+		asic->err_msg("Cannot open IB file");
+		return NULL;
+	}
+
+	x = 0;
+	while (fgets(buf, sizeof(buf)-1, infile) != NULL) {
+		// skip any line that isn't just a hex value
+		if (sscanf(buf, "%"SCNx32, &data[x]) == 1) {
+			++x;
+			if (!(x & 1023)) {
+				void *tmp = realloc(data, sizeof(*data) * (x + 1024));
+				if (tmp) {
+					data = tmp;
+				} else {
+					asic->err_msg("[ERROR]: Out of memory\n");
+					free(data);
+					fclose(infile);
+					return NULL;
+				}
+			}
+		}
+	}
+	fclose(infile);
+	*nwords = x;
+	return data;
+}
+
+static void present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t *words, uint32_t nwords, enum umr_ring_type rt)
 {
 	void *str = NULL;
 	struct umr_stream_decode_ui ui;
@@ -1122,6 +1164,8 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 		case UMR_RING_MES:
 			if (ringname)
 				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, start, end, rt);
+			else if (words)
+				str = umr_packet_decode_buffer(asic, &ui, vmid, addr, words, nwords, rt);
 			else
 				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt);
 			break;
@@ -1171,18 +1215,25 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 
 void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 {
-	char ringname[32], from[32], to[32];
+	char ringname[32], from[32], to[32], fname[128];
 	int  enable_decoder, start, end;
-	uint32_t vmid = 0, nwords;
+	uint32_t vmid = 0, nwords, *words = NULL;
 	uint64_t addr = 0;
 
 	start = end = 0;
 	nwords = 0;
+	fname[0] = 0;
 	if (sscanf(ringpath, "P%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 4;
 	} else if (sscanf(ringpath, "S%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 3;
 	} else if (sscanf(ringpath, "M%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+		enable_decoder = 2;
+	} else if (sscanf(ringpath, "p%s", fname) == 1) {
+		enable_decoder = 4;
+	} else if (sscanf(ringpath, "s%s", fname) == 1) {
+		enable_decoder = 3;
+	} else if (sscanf(ringpath, "m%s", fname) == 1) {
 		enable_decoder = 2;
 	} else {
 		memset(ringname, 0, sizeof ringname);
@@ -1246,14 +1297,20 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		}
 	}
 
+	if (fname[0]) {
+		vmid = addr = 0;
+		words = read_ib_file(asic, fname, &nwords);
+	}
+
 	/* pm4 streams */
 	if (enable_decoder == 4) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords, UMR_RING_PM4);
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_PM4);
 	} else if (enable_decoder == 3) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords, UMR_RING_SDMA);
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_SDMA);
 	} else if (enable_decoder == 2) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, nwords, UMR_RING_MES);
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_MES);
 	} else {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
 	}
+	free(words);
 }

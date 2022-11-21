@@ -235,6 +235,13 @@ private:
 		ImGui::TableSetupColumn("Disassembly");
 		ImGui::TableHeadersRow();
 
+/* TODO TODO
+ * 
+ * The old ring decoder has been deprecated for a long time now
+ * I'm now removing it.  Please update the GUI code to use the new
+ * API
+ */
+
 		int draw_dispatch_count = 0;
 		while (clipper.Step()) {
 			struct umr_ring_decoder decoder;
@@ -255,7 +262,7 @@ private:
 				uint32_t raw_value = json_array_get_number(raw, i);
 
 				ring_decode_buffer_offset = 0;
-				umr_print_decode(asic, &decoder, raw_value, ring_decode_fn);
+//				umr_print_decode(asic, &decoder, raw_value, ring_decode_fn);
 
 				char *line = ring_decode_buffer;
 
