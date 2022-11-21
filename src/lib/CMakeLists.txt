@@ -30,6 +30,7 @@ add_library(umrcore STATIC
   read_sdma_stream.c
   read_vram.c
   ring_decode.c
+  ring_is_halted.c
   scan_config.c
   scan_waves.c
   sdma_decode_opcodes.c

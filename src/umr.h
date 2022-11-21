@@ -1526,6 +1526,7 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
 							uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow, int cont);
 int umr_packet_disassemble_opcodes_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_vmid, int follow, enum umr_ring_type rt);
 
+int umr_ring_is_halted(struct umr_asic *asic, char *ringname);
 
 // PM4 decoding library
 struct umr_pm4_stream {
@@ -1554,8 +1555,6 @@ struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_pa
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
-struct umr_shaders_pgm *umr_find_shader_in_ring(struct umr_asic *asic, char *ringname, unsigned vmid, uint64_t addr, int no_halt);
-int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname);
 
 struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow);

@@ -133,28 +133,6 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 	}
 }
 
-/**
- * umr_find_shader_in_ring - Look for a shader in a GPU ring
- *
- * @ringname - The short name of the ring, e.g. 'gfx' or 'comp_1.0.0'
- * @vmid - The VMID of the shader to find
- * @addr - The address (inside the shader) to match for
- * @no_halt - Set to not issue a SQ_CMD to halt waves
- *
- * Returns a pointer to a copy of a shader object if found or NULL
- * if not.
- */
-struct umr_shaders_pgm *umr_find_shader_in_ring(struct umr_asic *asic, char *ringname, unsigned vmid, uint64_t addr, int no_halt)
-{
-	struct umr_pm4_stream *stream;
-	void *p;
-
-	stream = umr_pm4_decode_ring(asic, ringname, no_halt, -1, -1);
-	p = umr_find_shader_in_stream(stream, vmid, addr);
-	umr_free_pm4_stream(stream);
-	return p;
-}
-
 
 /**
  * umr_find_shader_in_stream - Find a shader in a PM4 stream
@@ -332,35 +310,6 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 	}
 
 	return ops;
-}
-
-/**
- * umr_pm4_decode_ring_is_halted - Try to determine if a ring is actually halted
- */
-int umr_pm4_decode_ring_is_halted(struct umr_asic *asic, char *ringname)
-{
-	uint32_t *ringdata, ringsize;
-	int n;
-
-	// read ring data and reduce indeices modulo ring size
-	// since the kernel returned values might be unwrapped.
-	for (n = 0; n < 100; n++) {
-		ringdata = umr_read_ring_data(asic, ringname, &ringsize);
-		if (!ringdata) {
-			return 0;
-		}
-		ringsize /= 4;
-		ringdata[0] %= ringsize;
-		ringdata[1] %= ringsize;
-		if (ringdata[0] == ringdata[1]) {
-			free(ringdata);
-			return 0;
-		}
-		usleep(5);
-	}
-
-	free(ringdata);
-	return 1;
 }
 
 /**

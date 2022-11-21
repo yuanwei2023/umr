@@ -1331,7 +1331,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		asic->options.halt_waves = halt_waves;
 		asic->options.verbose = 0;
 
-		int is_halted = umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name);
+		int is_halted = umr_ring_is_halted(asic, asic->options.ring_name);
 
 		answer = json_value_init_object();
 

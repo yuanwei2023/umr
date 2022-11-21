@@ -118,7 +118,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
 
 			// release waves (if any) if the ring isn't halted
-			if (umr_pm4_decode_ring_is_halted(asic, ringname) == 0)
+			if (umr_ring_is_halted(asic, ringname) == 0)
 				continue;
 
 			asic->options.skip_gprs = 1;

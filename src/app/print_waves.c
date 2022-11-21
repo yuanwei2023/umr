@@ -55,7 +55,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 
 	if (asic->options.halt_waves) {
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		if (use_ring && !umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
+		if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
 			fprintf(stderr, "[WARNING]: Rings are not halted!  %s\n", asic->options.disasm_anyways ? "" : "Use '-O disasm_anyways' to enable disassembly without halted rings");
 		else
 			ring_halted = 1;
@@ -379,7 +379,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			fprintf(stderr, "[WARNING]: On gfx10 the default ring name 'gfx' is not valid.  Please specify one on the command line.\n");
 
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		if (use_ring && !umr_pm4_decode_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
+		if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
 			fprintf(stderr, "[WARNING]: Rings are not halted!\n");
 		else
 			ring_halted = 1;
