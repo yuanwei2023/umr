@@ -1140,7 +1140,7 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 
 static void present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t *words, uint32_t nwords, enum umr_ring_type rt)
 {
-	void *str = NULL;
+	struct umr_packet_stream *str = NULL;
 	struct umr_stream_decode_ui ui;
 	int x;
 	char tmpname[64], buf[256];
@@ -1162,6 +1162,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 		case UMR_RING_PM4_LITE:
 		case UMR_RING_SDMA:
 		case UMR_RING_MES:
+		case UMR_RING_GUESS:
 			if (ringname)
 				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, start, end, rt);
 			else if (words)
@@ -1169,14 +1170,13 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			else
 				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt);
 			break;
-		case UMR_RING_GUESS:
 		case UMR_RING_UNK:
 			asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
 			break;
 	}
 
 	if (str) {
-		switch (rt) {
+		switch (str->type) {
 			case UMR_RING_PM4:
 			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
@@ -1199,7 +1199,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			remove(tmpname);
 		}
 
-		switch (rt) {
+		switch (str->type) {
 			case UMR_RING_PM4:
 			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
