@@ -879,7 +879,8 @@ static void init_asics() {
 }
 
 static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shaders, JSON_Object *out) {
-	struct umr_pm4_stream *stream = umr_pm4_decode_ring(asic, asic->options.ring_name, 1, -1, -1);
+	// TODO: This is using the deprecated API ...
+	struct umr_pm4_stream *stream = NULL; // umr_pm4_decode_ring(asic, asic->options.ring_name, 1, -1, -1);
 
 	struct umr_wave_data *wd = umr_scan_wave_data(asic);
 
@@ -1380,7 +1381,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		if (!memcmp(ring_name, "sdma", 4) ||
 			!memcmp(ring_name, "page", 4)) {
 			struct umr_stream_decode_ui fn = { UMR_RING_SDMA, sdma_start_ib, sdma_start_opcode, sdma_add_field, NULL, NULL, sdma_unhandled, sdma_unhandled_size, sdma_unhandled_subop, sdma_done, &data };
-			struct umr_sdma_stream *ps = umr_sdma_decode_ring(asic, &fn, ring_name, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
+			// TODO: deprecated API used here
+			struct umr_sdma_stream *ps = NULL; // umr_sdma_decode_ring(asic, &fn, ring_name, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
 
 			if (ps) {
 				/* Ring content */
@@ -1403,7 +1405,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 			fn.done = ring_done;
 
 			asic->options.halt_waves = halt_waves;
-			struct umr_pm4_stream *str = umr_pm4_decode_ring(asic, ring_name, !halt_waves, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
+			// TODO: deprecated API used here
+			struct umr_pm4_stream *str = NULL; // umr_pm4_decode_ring(asic, ring_name, !halt_waves, limit_ptr ? -1 : 0, limit_ptr ? -1 : (int)(ringsize - 1));
 
 			if (str) {
 				umr_pm4_decode_stream_opcodes(asic, &fn, str, 0, 0, 0, 0, ~0UL, 1);

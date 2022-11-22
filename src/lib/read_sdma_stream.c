@@ -26,59 +26,6 @@
 #include <inttypes.h>
 
 /**
- * umr_sdma_decode_ring - Read a GPU ring and decode into a sdma stream
- *
- * @ringname - Common name of the ring, e.g., 'gfx' or 'comp_1.0.0'
- * @no_halt - Set to 0 to issue an SQ_CMD halt command
- *
- * Return a sdma stream if successful.
- */
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui, char *ringname, int start, int stop)
-{
-	void *ps;
-	uint32_t *ringdata, ringsize;
-	int only_active = 1;
-
-	// read ring data and reduce indeices modulo ring size
-	// since the kernel returned values might be unwrapped.
-	ringdata = umr_read_ring_data(asic, ringname, &ringsize);
-	ringsize /= 4;
-	ringdata[0] %= ringsize;
-	ringdata[1] %= ringsize;
-
-	if (start == -1)
-		start = ringdata[0];
-	else
-		only_active = 0;
-	if (stop == -1)
-		stop = ringdata[1];
-	else
-		only_active = 0;
-
-	// only proceed if there is data to read
-	// and then linearize it so that the stream
-	// decoder can do it's thing
-	if (!only_active || start != stop) { // rptr != wptr
-		uint32_t *lineardata, linearsize;
-
-		// copy ring data into linear array
-		lineardata = calloc(ringsize, sizeof(*lineardata));
-		for (linearsize = 0;
-		     start != stop && linearsize < ringsize;
-		     linearsize++, start = (start + 1) % ringsize)
-			lineardata[linearsize] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
-
-		ps = umr_sdma_decode_stream(asic, ui, -1, 0, 0, lineardata, linearsize);
-		free(lineardata);
-		free(ringdata);
-	} else {
-		ps = NULL;
-	}
-
-	return ps;
-}
-
-/**
  * umr_sdma_decode_stream - Decode an array of sdma packets into a sdma stream
  *
  * @vmid:  The VMID (or zero) that this array comes from (if say an IB)
@@ -329,26 +276,6 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 		}
 	}
 	return ops;
-}
-
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords)
-{
-	uint32_t *words;
-	struct umr_sdma_stream *str;
-
-	words = calloc(sizeof *words, nwords);
-	if (!words) {
-		asic->err_msg("[ERROR]: Out of memory\n");
-		return NULL;
-	}
-	if (umr_read_vram(asic, vm_partition, vmid, addr, nwords * 4, words)) {
-		asic->err_msg("[ERROR]: Could not read vram %" PRIx32 "@0x%"PRIx64"\n", vmid, addr);
-		free(words);
-		return NULL;
-	}
-	str = umr_sdma_decode_stream(asic, ui, vm_partition, addr, vmid, words, nwords);
-	free(words);
-	return str;
 }
 
 /**

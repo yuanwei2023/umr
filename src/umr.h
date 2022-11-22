@@ -1550,16 +1550,13 @@ struct umr_pm4_stream {
 };
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
-struct umr_pm4_stream *umr_pm4_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords);
-struct umr_pm4_stream *umr_pm4_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
-void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords);
+void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
 const char *umr_pm4_opcode_to_str(uint32_t header);
 
 struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
-int umr_pm4_decode_opcodes_ib(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_ib, unsigned long opcodes, int follow);
 
 // PM4-lite
 struct umr_pm4_stream *umr_pm4_lite_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords);
@@ -1588,9 +1585,7 @@ struct umr_sdma_stream {
 	struct umr_sdma_stream *next, *next_ib;
 };
 
-struct umr_sdma_stream *umr_sdma_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui, char *ringname, int start, int stop);
 struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
-struct umr_sdma_stream *umr_sdma_decode_stream_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_sdma_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
@@ -1638,8 +1633,6 @@ struct umr_mes_stream {
 
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
 struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
-struct umr_mes_stream *umr_mes_decode_ring(struct umr_asic *asic, char *ringname, int no_halt, int start, int stop);
-struct umr_mes_stream *umr_mes_decode_stream_vm(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t addr, uint32_t nwords);
 void umr_free_mes_stream(struct umr_mes_stream *stream);
 
 int umr_shader_disasm(struct umr_asic *asic,
