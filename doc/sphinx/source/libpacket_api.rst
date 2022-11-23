@@ -175,3 +175,31 @@ This function will open up the amdgpu_'ringname' ring named.  The shader engines
 flag is set.  The ring will be read from the 'start'th word to the 'stop'th word.  These can be specified as -1 to use the devices
 read and write ring pointers respectively.
 
+---------------------------
+Disassemble a packet stream
+---------------------------
+
+To render through the user interface callback a stream of packets into human readable format the
+following function can be used.
+
+::
+
+	struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream *stream, uint64_t ib_addr, uint32_t ib_vmid,
+								uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow, int cont);
+
+This will disassemble a stream pointed to by 'stream'.  If it was taken from GPU mapped memory it can be indicated in the 'ib_addr' and
+'ib_vmid' parameters, otherwise they can be zero.  If this stream was fetched from a buffer object or indirect buffer the address of this can be
+indicated with the 'from_addr' and 'from_vmid' parameters.  The disassembly can be ordered to stop after 'opcodes' many opcodes (or set to ~0UL 
+to decode the entire stream).  If disassembly is done in stages the 'cont' flag can be set on the 2nd and subsequent calls to resume disassembly
+from where it stopped before.
+
+To disassemble a GPU mapped buffer in one call the following function can be used:
+
+::
+
+	int umr_packet_disassemble_opcodes_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
+										  uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_vmid,
+										  int follow, enum umr_ring_type rt);
+
+This will fetch 'nwords' 32-bit words from the GPU mapped buffer indicated by 'ib_addr' and 'ib_vmid' and proceed to dissassemble the entire
+stream.
