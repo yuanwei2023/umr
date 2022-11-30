@@ -265,12 +265,14 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --instance requires a number\n");
 				return EXIT_FAILURE;
 			}
-		} else if (!strcmp(argv[i], "--vm_partition") || !strcmp(argv[i], "-vmp")) {
+		} else if (!strcmp(argv[i], "--vm-partition") ||
+			   !strcmp(argv[i], "--vm_partition") ||
+			   !strcmp(argv[i], "-vmp")) {
 			if (i + 1 < argc) {
 				options.vm_partition = atoi(argv[i+1]);
 				++i;
 			} else {
-				fprintf(stderr, "[ERROR]: --vm_partition requires a number\n");
+				fprintf(stderr, "[ERROR]: --vm-partition requires a number\n");
 				return EXIT_FAILURE;
 			}
 		} else if (!strcmp(argv[i], "--bank") || !strcmp(argv[i], "-b")) {
@@ -889,7 +891,9 @@ int main(int argc, char **argv)
 				asic = get_asic();
 			ih_self_test(asic);
 #endif
-		} else if (!strcmp(argv[i], "--vbios_info") || !strcmp(argv[i], "-vi")) {
+		} else if (!strcmp(argv[i], "--vbios-info") ||
+			   !strcmp(argv[i], "--vbios_info") ||
+			   !strcmp(argv[i], "-vi")) {
 			if (!asic)
 				asic = get_asic();
 			if (umr_print_vbios_info(asic) != 0)
@@ -955,7 +959,7 @@ int main(int argc, char **argv)
 "\n\t--gfxoff, -go <0 | 1>"
 	"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
 	"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"
-"\n\t--vm_partition, -vmp <-1, 0...n>"
+"\n\t--vm-partition, -vmp <-1, 0...n>"
 	"\n\t\tSelect a VM partition for all GPUVM accesses.  Default is -1 which"
 	"\n\t\trefers to the 0'th instance of the VM hub which is not the same as"
 	"\n\t\tspecifying '0'.  Values above -1 are for ASICs with multiple IP instances.\n"
@@ -1068,7 +1072,7 @@ printf(
 "\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
 	"\n\t\toptions 'use_colour' to colourize output \n"
 "\n*** Video BIOS Information ***\n"
-	"\n\t--vbios_info, -vi \n\t\tPrint Video BIOS information\n"
+	"\n\t--vbios-info, -vi \n\t\tPrint Video BIOS information\n"
 "\n*** Test Vector Generation ***\n"
 	"\n\t--test-log, -tl <filename>\n\t\tLog all MMIO/memory reads to a file\n"
 	"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n");
