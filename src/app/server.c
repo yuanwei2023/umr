@@ -1352,7 +1352,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		char *ring_name = (char*)json_object_get_string(request, "ring");
 		uint32_t wptr, rptr, drv_wptr, ringsize, value, *ring_data;
 		int halt_waves = json_object_get_boolean(request, "halt_waves");
-		int limit_ptr = json_object_get_boolean(request, "rptr_wptr");
+		/* int limit_ptr = json_object_get_boolean(request, "rptr_wptr"); */
 
 		/* Disable gfxoff */
 		value = 0;
