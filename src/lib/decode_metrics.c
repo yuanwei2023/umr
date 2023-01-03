@@ -343,6 +343,77 @@
 	__FIELD(padding[2]), \
 	__FIELD(indep_throttle_status),
 
+
+#define METRICS_INFO_V2_3_LIST(__FIELD) \
+	__FIELD(temperature_gfx),	\
+	__FIELD(temperature_soc),	\
+	__FIELD(temperature_core[0]),	\
+	__FIELD(temperature_core[1]),	\
+	__FIELD(temperature_core[2]),	\
+	__FIELD(temperature_core[3]),	\
+	__FIELD(temperature_core[4]),	\
+	__FIELD(temperature_core[5]),	\
+	__FIELD(temperature_core[6]),	\
+	__FIELD(temperature_core[7]),	\
+	__FIELD(temperature_l3[0]),	\
+	__FIELD(temperature_l3[1]),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_mm_activity),	\
+	__FIELD(system_clock_counter),	\
+	__FIELD(average_socket_power),	\
+	__FIELD(average_cpu_power),	\
+	__FIELD(average_soc_power),	\
+	__FIELD(average_gfx_power),	\
+	__FIELD(average_core_power[0]),	\
+	__FIELD(average_core_power[1]),	\
+	__FIELD(average_core_power[2]),	\
+	__FIELD(average_core_power[3]),	\
+	__FIELD(average_core_power[4]),	\
+	__FIELD(average_core_power[5]),	\
+	__FIELD(average_core_power[6]),	\
+	__FIELD(average_core_power[7]),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_fclk_frequency),	\
+	__FIELD(average_vclk_frequency),	\
+	__FIELD(average_dclk_frequency),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_fclk_frequency),	\
+	__FIELD(average_vclk_frequency),	\
+	__FIELD(average_dclk_frequency),	\
+	__FIELD(current_coreclk[0]), \
+	__FIELD(current_coreclk[1]), \
+	__FIELD(current_coreclk[2]), \
+	__FIELD(current_coreclk[3]), \
+	__FIELD(current_coreclk[4]), \
+	__FIELD(current_coreclk[5]), \
+	__FIELD(current_coreclk[6]), \
+	__FIELD(current_coreclk[7]), \
+	__FIELD(current_l3clk[0]), \
+	__FIELD(current_l3clk[1]), \
+	__FIELD(throttle_status),	\
+	__FIELD(fan_pwm), \
+	__FIELD(padding[0]), \
+	__FIELD(padding[1]), \
+	__FIELD(padding[2]), \
+	__FIELD(indep_throttle_status), \
+	__FIELD(average_temperature_gfx), \
+	__FIELD(average_temperature_soc), \
+	__FIELD(average_temperature_core[0]), \
+	__FIELD(average_temperature_core[1]), \
+	__FIELD(average_temperature_core[2]), \
+	__FIELD(average_temperature_core[3]), \
+	__FIELD(average_temperature_core[4]), \
+	__FIELD(average_temperature_core[5]), \
+	__FIELD(average_temperature_core[6]), \
+	__FIELD(average_temperature_core[7]), \
+	__FIELD(average_temperature_l3[0]), \
+	__FIELD(average_temperature_l3[1])
+
+
 static struct field_info metrics_header[] = {
 #define METRICS_HEADER_INFO(MEMBER)	FIELD_INFO(struct umr_metrics_table_header, MEMBER)
 	METRICS_HEADER_LIST(METRICS_HEADER_INFO)
@@ -381,6 +452,11 @@ static struct field_info metrics_v2_1[] = {
 static struct field_info metrics_v2_2[] = {
 #define METRICS_V2_2_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_2, MEMBER)
 	METRICS_INFO_V2_2_LIST(METRICS_V2_2_INFO)
+};
+
+static struct field_info metrics_v2_3[] = {
+#define METRICS_V2_3_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_3, MEMBER)
+	METRICS_INFO_V2_3_LIST(METRICS_V2_3_INFO)
 };
 
 static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *info,
@@ -446,6 +522,9 @@ int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size)
 		break;
 	case METRICS_VERSION(2, 2):
 		umr_dump_field_info(asic, metrics_v2_2, ARRAY_SIZE(metrics_v2_2), "v2_2.", table);
+		break;
+	case METRICS_VERSION(2, 3):
+		umr_dump_field_info(asic, metrics_v2_3, ARRAY_SIZE(metrics_v2_3), "v2_3.", table);
 		break;
 	default:
 		asic->err_msg("[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);
