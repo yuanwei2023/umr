@@ -343,7 +343,6 @@
 	__FIELD(padding[2]), \
 	__FIELD(indep_throttle_status),
 
-
 #define METRICS_INFO_V2_3_LIST(__FIELD) \
 	__FIELD(temperature_gfx),	\
 	__FIELD(temperature_soc),	\
@@ -378,12 +377,12 @@
 	__FIELD(average_fclk_frequency),	\
 	__FIELD(average_vclk_frequency),	\
 	__FIELD(average_dclk_frequency),	\
-	__FIELD(average_gfxclk_frequency),	\
-	__FIELD(average_socclk_frequency),	\
-	__FIELD(average_uclk_frequency),	\
-	__FIELD(average_fclk_frequency),	\
-	__FIELD(average_vclk_frequency),	\
-	__FIELD(average_dclk_frequency),	\
+	__FIELD(current_gfxclk),	\
+	__FIELD(current_socclk),	\
+	__FIELD(current_uclk),	\
+	__FIELD(current_fclk),	\
+	__FIELD(current_vclk),	\
+	__FIELD(current_dclk),	\
 	__FIELD(current_coreclk[0]), \
 	__FIELD(current_coreclk[1]), \
 	__FIELD(current_coreclk[2]), \
