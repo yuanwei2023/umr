@@ -207,7 +207,7 @@ struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asi
 retry:
 	for (i = 0; i < asic->no_blocks; i++) {
 		// optionally require the ip block name to partially match (allows for ignoring version numbers)
-		if (ip && memcmp(asic->blocks[i]->ipname, ip, strlen(ip)))
+		if (ip && (strlen(asic->blocks[i]->ipname) >= strlen(ip) && memcmp(asic->blocks[i]->ipname, ip, strlen(ip))))
 			continue;
 
 		// if we are looking for an instance require the {inst} as well

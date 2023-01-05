@@ -1226,17 +1226,17 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 	start = end = 0;
 	nwords = 0;
 	fname[0] = 0;
-	if (sscanf(ringpath, "P%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+	if (sscanf(ringpath, "4/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 4;
-	} else if (sscanf(ringpath, "S%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+	} else if (sscanf(ringpath, "3/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 3;
-	} else if (sscanf(ringpath, "M%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+	} else if (sscanf(ringpath, "2/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 2;
-	} else if (sscanf(ringpath, "p%s", fname) == 1) {
+	} else if (sscanf(ringpath, "4/%s", fname) == 1) {
 		enable_decoder = 4;
-	} else if (sscanf(ringpath, "s%s", fname) == 1) {
+	} else if (sscanf(ringpath, "3/%s", fname) == 1) {
 		enable_decoder = 3;
-	} else if (sscanf(ringpath, "m%s", fname) == 1) {
+	} else if (sscanf(ringpath, "2/%s", fname) == 1) {
 		enable_decoder = 2;
 	} else {
 		memset(ringname, 0, sizeof ringname);

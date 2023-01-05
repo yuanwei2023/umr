@@ -492,7 +492,7 @@ int main(int argc, char **argv)
 				uint32_t vmid, len;
 				int pm;
 				char str[128];
-				char prefix[] = { ' ', ' ', 'M', 'S', 'P' };
+				char prefix[] = { ' ', ' ', '2', '3', '4' };
 
 				if (!asic)
 					asic = get_asic();
@@ -512,7 +512,7 @@ int main(int argc, char **argv)
 					pm = 4;
 					i += 2;
 				}
-				sprintf(str, "%c0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, prefix[pm], vmid, address, len);
+				sprintf(str, "%c/0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, prefix[pm], vmid, address, len);
 				umr_read_ring_stream(asic, str);
 			} else {
 				fprintf(stderr, "[ERROR]: --dump-ib requires three parameters\n");
@@ -523,7 +523,7 @@ int main(int argc, char **argv)
 				int pm;
 				char *name = argv[i+1];
 				char str[128];
-				char prefix[] = { ' ', ' ', 'm', 's', 'p' };
+				char prefix[] = { ' ', ' ', '2', '3', '4' };
 
 				if (!asic)
 					asic = get_asic();
@@ -535,7 +535,7 @@ int main(int argc, char **argv)
 					i += 1;
 				}
 				
-				sprintf(str, "%c%s", prefix[pm], name);
+				sprintf(str, "%c/%s", prefix[pm], name);
 				umr_read_ring_stream(asic, str);
 			} else {
 				fprintf(stderr, "[ERROR]: --dump-ib-file requires two parameters\n");
