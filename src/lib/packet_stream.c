@@ -89,7 +89,7 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
  *
  */
 struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						char *ringname, int halt_waves, int start, int stop, enum umr_ring_type rt)
+						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt)
 {
 	void *ps = NULL;
 	uint32_t *ringdata, ringsize;
@@ -122,35 +122,35 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 	// since the kernel returned values might be unwrapped.
 	ringdata = umr_read_ring_data(asic, ringname, &ringsize);
 
-	if ((stop != -1) && (uint32_t)(stop * 4) >= ringsize)
-		stop = (ringsize / 4) - 1;
+	if ((*stop != -1) && (uint32_t)(*stop * 4) >= ringsize)
+		*stop = (ringsize / 4) - 1;
 
 	if (ringdata) {
 		ringsize /= 4;
 		ringdata[0] %= ringsize;
 		ringdata[1] %= ringsize;
 
-		if (start == -1)
-			start = ringdata[0]; // use rptr
+		if (*start == -1)
+			*start = ringdata[0]; // use rptr
 		else
 			only_active = 0;
-		if (stop == -1)
-			stop = ringdata[1]; // use wptr
+		if (*stop == -1)
+			*stop = ringdata[1]; // use wptr
 		else
 			only_active = 0;
 
 		// only proceed if there is data to read
 		// and then linearize it so that the stream
 		// decoder can do it's thing
-		if (!only_active || start != stop) { // rptr != wptr
+		if (!only_active || *start != *stop) { // rptr != wptr
 			uint32_t *lineardata, linearsize;
 
 			// copy ring data into linear array
 			lineardata = calloc(ringsize, sizeof(*lineardata));
 			linearsize = 0;
-			while (start != stop) {
-				lineardata[linearsize++] = ringdata[3 + start];  // first 3 words are rptr/wptr/dwptr
-				start = (start + 1) % ringsize;
+			while (*start != *stop) {
+				lineardata[linearsize++] = ringdata[3 + *start];  // first 3 words are rptr/wptr/dwptr
+				*start = (*start + 1) % ringsize;
 			}
 
 			ps = umr_packet_decode_buffer(asic, ui, 0, 0, lineardata, linearsize, rt);

@@ -1164,7 +1164,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 		case UMR_RING_MES:
 		case UMR_RING_GUESS:
 			if (ringname)
-				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, start, end, rt);
+				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt);
 			else if (words)
 				str = umr_packet_decode_buffer(asic, &ui, vmid, addr, words, nwords, rt);
 			else
@@ -1181,7 +1181,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
 			case UMR_RING_MES:
-				umr_packet_disassemble_stream(str, addr, vmid, 0, 0, ~0UL, 1, 0);
+				umr_packet_disassemble_stream(str, ringname ? (uint64_t)start : addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
 			case UMR_RING_GUESS:
 			case UMR_RING_UNK:

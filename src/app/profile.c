@@ -110,6 +110,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 	gprs = asic->options.skip_gprs;
 
 	while (samples--) {
+		int start = -1, stop = -1;
 		fprintf(stderr, "%5u samples left\r", samples);
 		fflush(stderr);
 		wd = NULL;
@@ -131,7 +132,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 		// processor is also halted so we can grab the
 		// stream.  This isn't 100% though it seems so race
 		// conditions might occur.
-		stream = umr_packet_decode_ring(asic, NULL, ringname, 0, -1, -1, UMR_RING_GUESS);
+		stream = umr_packet_decode_ring(asic, NULL, ringname, 0, &start, &stop, UMR_RING_GUESS);
 
 		// loop through data ...
 		sample_hit = 0;

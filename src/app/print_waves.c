@@ -49,6 +49,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		uint32_t vmid, size;
 		uint64_t addr;
 	} ib_addr;
+	int start = -1, stop = -1;
 
 	if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
 		use_ring = 0;
@@ -72,7 +73,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, -1, -1, UMR_RING_GUESS);
+			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, &start, &stop, UMR_RING_GUESS);
 		} else {
 			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4);
 		}
@@ -369,6 +370,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 		uint32_t vmid, size;
 		uint64_t addr;
 	} ib_addr;
+	int start = -1, stop = -1;
 
 	if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
 		use_ring = 0;
@@ -397,7 +399,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, -1, -1, UMR_RING_GUESS);
+			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, &start, &stop, UMR_RING_GUESS);
 		} else {
 			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4);
 		}
