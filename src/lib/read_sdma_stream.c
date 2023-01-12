@@ -136,7 +136,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 				ps->ib.vmid = (ps->header_dw >> 16) & 0xF;
 				ps->ib.addr = ((uint64_t)stream[1] << 32) | stream[0];
 				ps->ib.size = stream[2];
-				if (asic->family >= FAMILY_AI)
+				if (asic->family == FAMILY_AI)
 					ps->ib.vmid |= UMR_MM_HUB;
 				ps->nwords = 5;
 				if (!asic->options.no_follow_ib) {

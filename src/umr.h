@@ -1576,7 +1576,7 @@ struct umr_packet_stream {
 };
 
 struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						   uint32_t from_vmid, uint32_t from_addr,
+						   uint32_t from_vmid, uint64_t from_addr,
 						   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
 struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
 						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt);
