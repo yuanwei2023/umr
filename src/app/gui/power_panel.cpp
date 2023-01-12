@@ -24,6 +24,16 @@
  */
 #include "panels.h"
 
+/* from print_config.c */
+extern "C" struct {
+	char *name;
+	uint64_t mask;
+} cg_masks[];
+extern "C" struct {
+	char *name;
+	uint64_t mask;
+} pg_masks[];
+
 class PowerPanel : public Panel {
 public:
 	PowerPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL),
@@ -95,6 +105,21 @@ public:
 			ImGui::EndDisabled();
 			ImGui::Unindent();
 		}
+		ImGui::Separator();
+		ImGui::Text("Clock Gating Features:");
+		ImGui::Indent();
+		for (int i = 0; cg_masks[i].name; i++)
+			if (asic->config.gfx.cg_flags & cg_masks[i].mask)
+				ImGui::Text("%s\n", &cg_masks[i].name[strlen("AMD_CG_SUPPORT_")]);
+		ImGui::Unindent();
+
+		ImGui::Text("Power Gating Features:");
+		ImGui::Indent();
+		for (int i = 0; pg_masks[i].name; i++)
+			if (asic->config.gfx.pg_flags & pg_masks[i].mask)
+				ImGui::Text("%s\n", &pg_masks[i].name[strlen("AMD_PG_SUPPORT_")]);
+		ImGui::Unindent();
+
 		ImGui::EndChild();
 		ImGui::SameLine();
 		ImGui::BeginChild("power sensors", ImVec2(avail.x * 1.0 / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
