@@ -367,7 +367,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
 }
 
-static void umr_print_waves_nv(struct umr_asic *asic)
+static void umr_print_waves_gfx_10_11(struct umr_asic *asic)
 {
 	uint32_t x, y, thread;
 	uint64_t pgm_addr, shader_addr;
@@ -387,7 +387,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	if (asic->options.halt_waves) {
 		// warn users if they don't specify a ring on gfx10 hardware
 		if (asic->family >= FAMILY_NV && !asic->options.ring_name[0])
-			fprintf(stderr, "[WARNING]: On gfx10 the default ring name 'gfx' is not valid.  Please specify one on the command line.\n");
+			fprintf(stderr, "[WARNING]: On gfx10+ the default ring name 'gfx' is not valid.  Please specify one on the command line.\n");
 
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
 		if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
@@ -724,7 +724,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 void umr_print_waves(struct umr_asic *asic)
 {
 	if (asic->family >= FAMILY_NV)
-		umr_print_waves_nv(asic);
+		umr_print_waves_gfx_10_11(asic);
 	else if (asic->family <= FAMILY_AI)
 		umr_print_waves_si_ai(asic);
 }

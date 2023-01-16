@@ -1395,7 +1395,7 @@ uint32_t umr_get_ip_revision(struct umr_asic *asic, const char *ipname);
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws);
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic);
 int umr_read_wave_status_via_mmio_gfx8_9(struct umr_asic *asic, uint32_t simd, uint32_t wave, uint32_t *dst, int *no_fields);
-int umr_read_wave_status_via_mmio_gfx10(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields);
+int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields);
 int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf);
 int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);
 int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);

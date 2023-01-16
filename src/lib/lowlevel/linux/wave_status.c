@@ -63,14 +63,14 @@ static int umr_get_wave_status_vi_ai(struct umr_asic *asic, unsigned se, unsigne
 	return umr_parse_wave_data_gfx(asic, ws, buf);
 }
 
-static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
+static int umr_get_wave_status_gfx_10_11(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
 	uint32_t buf[32], reg;
 	uint64_t addr;
 	int r;
 
 	if (simd)
-		asic->err_msg("[BUG]: simd should be zero in umr_get_wave_status_nv()\n");
+		asic->err_msg("[BUG]: simd should be zero in umr_get_wave_status_gfx_10_11()\n");
 
 	// do a trial read of VMID 0's BASE ADDR to see if it's all F's
 	reg = umr_read_reg_by_name_by_ip(asic, "gfx", "mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_LO32");
@@ -104,7 +104,7 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 	} else {
 		int n = 0;
 		umr_grbm_select_index(asic, se, sh, cu);
-		umr_read_wave_status_via_mmio_gfx10(asic, wave, &buf[0], &n);
+		umr_read_wave_status_via_mmio_gfx_10_11(asic, wave, &buf[0], &n);
 		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 	}
 
@@ -121,7 +121,7 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
 	if (asic->family >= FAMILY_NV)
-		return umr_get_wave_status_nv(asic, se, sh, cu, simd, wave, ws);
+		return umr_get_wave_status_gfx_10_11(asic, se, sh, cu, simd, wave, ws);
 	else if (asic->family <= FAMILY_AI)
 		return umr_get_wave_status_vi_ai(asic, se, sh, cu, simd, wave, ws);
 	return -1;

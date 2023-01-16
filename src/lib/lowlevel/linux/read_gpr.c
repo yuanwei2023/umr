@@ -121,7 +121,7 @@ static int umr_read_sgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 	}
 }
 
-static void wave_read_regs_via_mmio_nv(struct umr_asic *asic,
+static void wave_read_regs_via_mmio_gfx_10_11(struct umr_asic *asic,
 			   uint32_t wave, uint32_t thread,
 			   uint32_t regno, uint32_t num, uint32_t *out)
 {
@@ -145,7 +145,7 @@ static void wave_read_regs_via_mmio_nv(struct umr_asic *asic,
 	}
 }
 
-static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
+static int umr_read_sgprs_gfx_10_11(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
 {
 	uint64_t addr;
 	int r;
@@ -202,7 +202,7 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 		return r;
 	} else {
 		umr_grbm_select_index(asic, ws->hw_id1.se_id, ws->hw_id1.sa_id, ((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id));
-		wave_read_regs_via_mmio_nv(asic, ws->hw_id1.wave_id, 0, 0x200, 112, dst);
+		wave_read_regs_via_mmio_gfx_10_11(asic, ws->hw_id1.wave_id, 0, 0x200, 112, dst);
 		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 		return 0;
 	}
@@ -211,7 +211,7 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
 {
 	if (asic->family >= FAMILY_NV)
-		return umr_read_sgprs_nv(asic, ws, dst);
+		return umr_read_sgprs_gfx_10_11(asic, ws, dst);
 	else
 		return umr_read_sgprs_si_ai(asic, ws, dst);
 }
@@ -262,7 +262,7 @@ static int umr_read_vgprs_si_ai(struct umr_asic *asic, struct umr_wave_status *w
 	}
 }
 
-static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
+static int umr_read_vgprs_gfx_10_11(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
 {
 	uint64_t addr;
 	unsigned granularity = asic->parameters.vgpr_granularity;
@@ -300,7 +300,7 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 		return r;
 	} else {
 		umr_grbm_select_index(asic, ws->hw_id1.se_id, ws->hw_id1.sa_id, ((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id));
-		wave_read_regs_via_mmio_nv(asic, ws->hw_id1.wave_id, thread, 0x400,
+		wave_read_regs_via_mmio_gfx_10_11(asic, ws->hw_id1.wave_id, thread, 0x400,
 					(ws->gpr_alloc.vgpr_size + 1) << granularity, dst);
 		umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 		return 0;
@@ -313,7 +313,7 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
 {
 	if (asic->family >= FAMILY_NV)
-		return umr_read_vgprs_nv(asic, ws, thread, dst);
+		return umr_read_vgprs_gfx_10_11(asic, ws, thread, dst);
 	else
 		return umr_read_vgprs_si_ai(asic, ws, thread, dst);
 }
