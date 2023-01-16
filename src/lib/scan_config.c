@@ -264,7 +264,9 @@ gca_config:
 
 	if (asic->family == FAMILY_CONFIGURE) {
 		asic->was_ip_discovered = 1;
-		if (asic->config.gfx.family >= 143) {
+		if (asic->config.gfx.family >= 145) {
+			asic->family = FAMILY_GFX11;
+		} else if (asic->config.gfx.family >= 143) {
 			asic->family = FAMILY_NV;
 		} else if (asic->config.gfx.family >= 141) {
 			asic->family = FAMILY_AI;

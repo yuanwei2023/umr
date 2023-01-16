@@ -682,7 +682,7 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 
 void umr_print_waves(struct umr_asic *asic)
 {
-	if (asic->family == FAMILY_NV)
+	if (asic->family >= FAMILY_NV)
 		umr_print_waves_nv(asic);
 	else if (asic->family <= FAMILY_AI)
 		umr_print_waves_si_ai(asic);

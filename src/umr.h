@@ -101,7 +101,8 @@ enum chipfamily {
 	FAMILY_CIK,
 	FAMILY_VI,
 	FAMILY_AI,
-	FAMILY_NV, // NAVI10 and up
+	FAMILY_NV,    // NAVI1X, NAVI2X
+	FAMILY_GFX11,
 
 	FAMILY_NPI, // reserves for new devices that are not public yet
 	FAMILY_CONFIGURE,

@@ -57,6 +57,7 @@ int umr_ih_decode_vectors(struct umr_asic *asic, struct umr_ih_decode_ui *ui, ui
 
 	case FAMILY_NV: // oss40/50
 	case FAMILY_AI:
+	case FAMILY_GFX11:
 		while (length) {
 			ui->start_vector(ui, off);
 			ui->add_field(ui, off + 0, "ClientID", BITS(ih_data[off + 0], 0, 8), NULL, 10); // TODO: add ID to name translation

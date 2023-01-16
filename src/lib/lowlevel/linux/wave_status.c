@@ -120,7 +120,7 @@ static int umr_get_wave_status_nv(struct umr_asic *asic, unsigned se, unsigned s
  */
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
-	if (asic->family == FAMILY_NV)
+	if (asic->family >= FAMILY_NV)
 		return umr_get_wave_status_nv(asic, se, sh, cu, simd, wave, ws);
 	else if (asic->family <= FAMILY_AI)
 		return umr_get_wave_status_vi_ai(asic, se, sh, cu, simd, wave, ws);
@@ -129,7 +129,5 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 
 int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws)
 {
-	if (asic->family <= FAMILY_NV)
-		return umr_get_wave_sq_info_vi(asic, se, sh, cu, ws);
-	return -1;
+	return umr_get_wave_sq_info_vi(asic, se, sh, cu, ws);
 }

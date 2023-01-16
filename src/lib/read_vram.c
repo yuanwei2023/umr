@@ -770,12 +770,12 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			break;
 		case UMR_MM_HUB:
 			hub = "mmhub";
-			if (asic->family == FAMILY_NV)
+			if (asic->family >= FAMILY_NV)
 				vm0prefix = regprefix = "MM";
 			break;
 		case UMR_GFX_HUB:
 			hub = "gfx";
-			if (asic->family == FAMILY_NV)
+			if (asic->family >= FAMILY_NV)
 				vm0prefix = regprefix = "GC";
 			break;
 		case UMR_USER_HUB:
@@ -1450,6 +1450,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 			return umr_access_vram_vi(asic, vmid, address, size, data, write_en);
 		case FAMILY_AI:
 		case FAMILY_NV:
+		case FAMILY_GFX11:
 			return umr_access_vram_ai(asic, partition, vmid, address, size, data, write_en);
 		default:
 			fprintf(stderr, "[BUG]: Unsupported ASIC family type for umr_read_vram()\n");

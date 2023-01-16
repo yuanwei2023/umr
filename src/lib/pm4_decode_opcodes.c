@@ -907,7 +907,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 				ui->add_field(ui, ib_addr + 36, ib_vmid, "NUM_GWS", BITS(stream->words[8], 0, 6), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 36, ib_vmid, "NUM_OAC", BITS(stream->words[8], 8, 12), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 36, ib_vmid, "GDS_SIZE", BITS(stream->words[8], 16, 22), NULL, 10, 32);
-			} else if (asic->family <= FAMILY_NV) {
+			} else {
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "PASID", BITS(stream->words[0], 0, 16), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "DEBUG_VMID", BITS(stream->words[0], 18, 22), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "DEBUG_FLAG", BITS(stream->words[0], 22, 23), NULL, 10, 32);
@@ -959,7 +959,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 										 UMR_DATABLOCK_MQD_VI, BITS(stream->words[0], 26, 29));
 					}
 				}
-			} else if (asic->family <= FAMILY_NV) {
+			} else {
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(stream->words[0], 4, 6), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(stream->words[0], 8, 12), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE", BITS(stream->words[0], 13, 21), NULL, 10, 32);
@@ -1023,7 +1023,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 						ui->add_field(ui, ib_addr + 12, ib_vmid, "DOORBELL_OFFSET1", BITS(stream->words[2], 2, 28), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 16, ib_vmid, "DOORBELL_OFFSET2", BITS(stream->words[3], 2, 28), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(stream->words[4], 2, 28), NULL, 16, 32);
-				} else if (asic->family <= FAMILY_NV) {
+				} else {
 					queue_sel = BITS(stream->words[0], 4, 6);
 					engine_sel = BITS(stream->words[0], 26, 29);
 					num_queues = BITS(stream->words[0], 29, 32);
@@ -1066,7 +1066,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 				ui->add_field(ui, ib_addr + 16, ib_vmid, "ADDR_HI", stream->words[3], NULL, 16, 32);
 				ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", stream->words[4], NULL, 16, 32);
 				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", stream->words[5], NULL, 16, 32);
-			} else if (asic->family <= FAMILY_NV) {
+			} else {
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTEXT_ID", BITS(stream->words[0], 0, 28), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "INTERRUPT_SEL", BITS(stream->words[0], 28, 30), NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(stream->words[0], 30, 32), NULL, 10, 32);

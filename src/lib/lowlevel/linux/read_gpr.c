@@ -210,7 +210,7 @@ static int umr_read_sgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
 
 int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
 {
-	if (asic->family == FAMILY_NV)
+	if (asic->family >= FAMILY_NV)
 		return umr_read_sgprs_nv(asic, ws, dst);
 	else
 		return umr_read_sgprs_si_ai(asic, ws, dst);
@@ -312,7 +312,7 @@ static int umr_read_vgprs_nv(struct umr_asic *asic, struct umr_wave_status *ws, 
  */
 int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
 {
-	if (asic->family == FAMILY_NV)
+	if (asic->family >= FAMILY_NV)
 		return umr_read_vgprs_nv(asic, ws, thread, dst);
 	else
 		return umr_read_vgprs_si_ai(asic, ws, thread, dst);
