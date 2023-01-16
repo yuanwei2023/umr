@@ -88,6 +88,7 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 		shift = 4;  // on VI allocations are in 16-dword blocks
 
 	owd = wd = umr_scan_wave_data(asic);
+
 	while (wd) {
 		if (!asic->options.bitfields && first) {
 			static const char* titles[] = {
@@ -102,19 +103,23 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 			printf("\n");
 		}
 		if (!asic->options.bitfields) {
-		printf(
-"%2u %2u %2u %4u %5u " // se/sh/cu/simd/wave
-"   %08lx %08lx %08lx " // wave_status pc/hi/lo
-"%08lx %08lx %08lx %08lx " // inst0/1 exec hi/lo
-"%08lx %08lx %08lx %08lx %08lx " // HW_ID GPR/LDSALLOC TRAP/IB STS
-"%08lx %08lx %08lx %08lx %08lx %08lx %08lx " // TBA_HI TBA_LO TMA_HI TMA_LO IB_DBG0 M0 MODE\n");
-"\n",
-(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id.simd_id, (unsigned)wd->ws.hw_id.wave_id,
-(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
-(unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.wave_inst_dw1, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
-(unsigned long)wd->ws.hw_id.value, (unsigned long)wd->ws.gpr_alloc.value, (unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value, (unsigned long)wd->ws.ib_sts.value,
-(unsigned long)wd->ws.tba_hi, (unsigned long)wd->ws.tba_lo, (unsigned long)wd->ws.tma_hi, (unsigned long)wd->ws.tma_lo, (unsigned long)wd->ws.ib_dbg0, (unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value
-);
+			printf(
+				"%2u %2u %2u %4u %5u    "			// se/sh/cu/simd/wave
+				"%08lx %08lx %08lx "				// wave_status pc/hi/lo
+				"%08lx %08lx %08lx %08lx "			// inst0/1 exec hi/lo
+				"%08lx %08lx %08lx %08lx %08lx "		// HW_ID GPR/LDSALLOC TRAP/IB STS
+				"%08lx %08lx %08lx %08lx %08lx %08lx %08lx "	// TBA_HI TBA_LO TMA_HI TMA_LO IB_DBG0 M0 MODE\n");
+				"\n",
+				(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id.simd_id,
+				(unsigned)wd->ws.hw_id.wave_id,
+				(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
+				(unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.wave_inst_dw1,
+				(unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
+				(unsigned long)wd->ws.hw_id.value, (unsigned long)wd->ws.gpr_alloc.value,
+				(unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value, (unsigned long)wd->ws.ib_sts.value,
+				(unsigned long)wd->ws.tba_hi, (unsigned long)wd->ws.tba_lo, (unsigned long)wd->ws.tma_hi, (unsigned long)wd->ws.tma_lo,
+				(unsigned long)wd->ws.ib_dbg0, (unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
+
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
 				for (x = 0; x < ((wd->ws.gpr_alloc.sgpr_size + 1) << shift); x += 4)
 					printf(">SGPRS[%s%u%s..%s%u%s] = { %s%08lx%s, %s%08lx%s, %s%08lx%s, %s%08lx%s }\n",
@@ -143,14 +148,17 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 					}
 				}
 			}
+
 			if (ring_halted && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
 				pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo) - (NUM_OPCODE_WORDS*4)/2;
-				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id.vm_id, pgm_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id.vm_id, pgm_addr,
+						(((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
 			}
 		} else {
 			first = 0;
 			printf("\n------------------------------------------------------\nse%u.sh%u.cu%u.simd%u.wave%u\n",
-			(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id.simd_id, (unsigned)wd->ws.hw_id.wave_id);
+				(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu,
+				(unsigned)wd->ws.hw_id.simd_id, (unsigned)wd->ws.hw_id.wave_id);
 
 			H("Main Registers");
 			X(pc_hi);
@@ -301,7 +309,8 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 					shader_addr = pgm_addr;
 					printf("\n");
 				}
-				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id.vm_id, shader_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id.vm_id, shader_addr,
+						(((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
 			}
 
 			Hv("LDS_ALLOC", wd->ws.lds_alloc.value);
@@ -413,7 +422,8 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 	while (wd) {
 		if (!asic->options.bitfields && first) {
 			static const char* titles[] = {
-				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "EXEC_HI", "EXEC_LO", "HW_ID1", "HW_ID2", "GPRALLOC", "LDSALLOC", "TRAPSTS", "IBSTS1", "IBSTS2", "IB_DBG1", "M0", "MODE", NULL
+				"WAVE_STATUS", "PC_HI", "PC_LO", "INST_DW0", "EXEC_HI", "EXEC_LO", "HW_ID1", "HW_ID2",
+				"GPRALLOC", "LDSALLOC", "TRAPSTS", "IBSTS1", "IBSTS2", "IB_DBG1", "M0", "MODE", NULL
 			};
 			first = 0;
 			printf("SE SA WGP SIMD WAVE# ");
@@ -423,18 +433,22 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			printf("\n");
 		}
 		if (!asic->options.bitfields) {
-		printf(
-"%2u %2u %3u %4u %5u " // se/sa/wgp/simd/wave
-"   %08lx %08lx %08lx " // wave_status pc/hi/lo
-"%08lx %08lx %08lx " // inst0 exec hi/lo
-"%08lx %08lx %08lx %08lx %08lx %08lx %08lx " // HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
-"%08lx %08lx %08lx " // IB_DBG1 M0 MODE\n");
-"\n",
-(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id, (unsigned)wd->ws.hw_id1.wave_id, // TODO: wgp printed out won't match geometry for now w.r.t. to SPI
-(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
-(unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
-(unsigned long)wd->ws.hw_id1.value, (unsigned long)wd->ws.hw_id2.value, (unsigned long)wd->ws.gpr_alloc.value, (unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value,
-(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1, (unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
+			printf(
+				"%2u %2u %3u %4u %5u    "			// se/sa/wgp/simd/wave
+				"%08lx %08lx %08lx "				// wave_status pc/hi/lo
+				"%08lx %08lx %08lx "				// inst0 exec hi/lo
+				"%08lx %08lx %08lx %08lx %08lx %08lx %08lx "	// HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
+				"%08lx %08lx %08lx "				// IB_DBG1 M0 MODE\n");
+				"\n",
+				(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id,
+				(unsigned)wd->ws.hw_id1.wave_id, // TODO: wgp printed out won't match geometry for now w.r.t. to SPI
+				(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
+				(unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
+				(unsigned long)wd->ws.hw_id1.value, (unsigned long)wd->ws.hw_id2.value, (unsigned long)wd->ws.gpr_alloc.value,
+				(unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value,
+				(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1,
+				(unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
+
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
 				for (x = 0; x < 112; x += 4)
 					printf(">SGPRS[%u..%u] = { %08lx, %08lx, %08lx, %08lx }\n",
@@ -463,14 +477,17 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 					}
 				}
 			}
+
 			if (ring_halted && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
 				pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo) - (NUM_OPCODE_WORDS*4)/2;
-				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id2.vm_id, pgm_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id2.vm_id, pgm_addr,
+						(((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), NUM_OPCODE_WORDS*4, 0, NULL);
 			}
 		} else {
 			first = 0;
 			printf("\n------------------------------------------------------\nse%u.sa%u.wgp%u.simd%u.wave%u\n",
-			(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id, (unsigned)wd->ws.hw_id1.wave_id);
+				(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu,
+				(unsigned)wd->ws.hw_id1.simd_id, (unsigned)wd->ws.hw_id1.wave_id);
 
 			H("Main Registers");
 			X(pc_hi);
@@ -611,7 +628,8 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 					shader_addr = pgm_addr;
 					printf("\n");
 				}
-				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id2.vm_id, shader_addr, (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
+				umr_vm_disasm(asic, asic->options.vm_partition, wd->ws.hw_id2.vm_id, shader_addr,
+						(((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo), shader_size, pgm_addr - shader_addr, NULL);
 			}
 
 			Hv("LDS_ALLOC", wd->ws.lds_alloc.value);
