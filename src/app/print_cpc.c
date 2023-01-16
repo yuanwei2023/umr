@@ -17,20 +17,38 @@ static uint32_t read_banked_reg(struct umr_asic *asic, char *name)
 
 void umr_print_cpc(struct umr_asic *asic)
 {
+	/**
+	 * GFX11+:
+	 * 	- ME2 does not exist
+	 * 	- ME3 is MES SCHED/KIQ which only uses one queue per pipe
+	 * 	- Assumes always using RS64
+	 * 	- 4 queues/pipe (pre-GFX10, 8 queues/pipe)
+	 */
+	uint32_t rs64_en, mes_en;
+	uint32_t max_me_num = asic->family >= FAMILY_GFX11 ? 4 : 3;
+	uint32_t queues_per_pipe = asic->family >= FAMILY_NV ? 4 : 8;
+	rs64_en = mes_en = asic->family >= FAMILY_GFX11;
 	asic->options.use_bank = 2;
-	for (uint32_t me = 1; me < 3; ++ me) {
+
+	for (uint32_t me = 1; me < max_me_num; ++ me) {
+		if (mes_en && me == 2)
+			continue;
+
 		asic->options.bank.srbm.me = me;
 
-		char iptr_name[] = "mmCP_MECx_INSTR_PNTR";
-		char istat_name[] = "mmCP_MEx_INT_STAT_DEBUG";
+		char iptr_name_mec_f32[] = "mmCP_MECx_INSTR_PNTR";
+		iptr_name_mec_f32[8] = '0' + me;
 
-		iptr_name[8] = '0' + me;
+		char istat_name[] = "mmCP_MEx_INT_STAT_DEBUG";
 		istat_name[7] = '0' + me;
+
+		char iptr_name_mec_rs64[] = "mmCP_MEC_RS64_INSTR_PNTR";
+		char iptr_name_mes[] = "mmCP_MES_INSTR_PNTR";
 
 		for (uint32_t pipe = 0; pipe < (me == 1 ? 4 : 2); ++ pipe) {
 			asic->options.bank.srbm.pipe = pipe;
 
-			for (uint32_t queue = 0; queue < 8; ++ queue) {
+			for (uint32_t queue = 0; queue < (me == 3 ? 1 : queues_per_pipe); ++ queue) {
 				asic->options.bank.srbm.me = me;
 				asic->options.bank.srbm.pipe = pipe;
 				asic->options.bank.srbm.queue = queue;
@@ -85,10 +103,13 @@ void umr_print_cpc(struct umr_asic *asic)
 				}
 			}
 
-			uint32_t iptr = read_banked_reg(asic, iptr_name);
+			uint32_t iptr = read_banked_reg(asic, (me == 3) ? iptr_name_mes :
+									(rs64_en ? iptr_name_mec_rs64 : iptr_name_mec_f32));
 			if (asic->family < FAMILY_AI) {
 				uint32_t istat = read_banked_reg(asic, istat_name);
 				printf("ME %u Pipe %u: INSTR_PTR 0x%x  INT_STAT_DEBUG 0x%x\n", me, pipe, iptr, istat);
+			} else if (rs64_en) {
+				printf("ME %u Pipe %u: INSTR_PTR 0x%x (ASM 0x%x)\n", me, pipe, iptr, iptr << 2);
 			} else {
 				printf("ME %u Pipe %u: INSTR_PTR 0x%x\n", me, pipe, iptr);
 			}
