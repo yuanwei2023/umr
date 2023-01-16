@@ -428,26 +428,47 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			first = 0;
 			printf("SE SA WGP SIMD WAVE# ");
 			for (int x = 0; titles[x]; x++) {
+				// Explicitly skip INST_DW0 on GFX11+
+				if (asic->family >= FAMILY_GFX11 && !strcmp(titles[x], "INST_DW0"))
+					continue;
 				printf("%8s ", titles[x]);
 			}
 			printf("\n");
 		}
 		if (!asic->options.bitfields) {
-			printf(
-				"%2u %2u %3u %4u %5u    "			// se/sa/wgp/simd/wave
-				"%08lx %08lx %08lx "				// wave_status pc/hi/lo
-				"%08lx %08lx %08lx "				// inst0 exec hi/lo
-				"%08lx %08lx %08lx %08lx %08lx %08lx %08lx "	// HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
-				"%08lx %08lx %08lx "				// IB_DBG1 M0 MODE\n");
-				"\n",
-				(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id,
-				(unsigned)wd->ws.hw_id1.wave_id, // TODO: wgp printed out won't match geometry for now w.r.t. to SPI
-				(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
-				(unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
-				(unsigned long)wd->ws.hw_id1.value, (unsigned long)wd->ws.hw_id2.value, (unsigned long)wd->ws.gpr_alloc.value,
-				(unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value,
-				(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1,
-				(unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
+			if (asic->family >= FAMILY_GFX11) {
+				printf(
+					"%2u %2u %3u %4u %5u    "			// se/sa/wgp/simd/wave
+					"%08lx %08lx %08lx "				// wave_status pc/hi/lo
+					"%08lx %08lx "					// exec hi/lo
+					"%08lx %08lx %08lx %08lx %08lx %08lx %08lx "	// HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
+					"%08lx %08lx %08lx "				// IB_DBG1 M0 MODE\n");
+					"\n",
+					(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id,
+					(unsigned)wd->ws.hw_id1.wave_id, // TODO: wgp printed out won't match geometry for now w.r.t. to SPI
+					(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
+					(unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
+					(unsigned long)wd->ws.hw_id1.value, (unsigned long)wd->ws.hw_id2.value, (unsigned long)wd->ws.gpr_alloc.value,
+					(unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value,
+					(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1,
+					(unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
+			} else {
+				printf(
+					"%2u %2u %3u %4u %5u    "			// se/sa/wgp/simd/wave
+					"%08lx %08lx %08lx "				// wave_status pc/hi/lo
+					"%08lx %08lx %08lx "				// inst0 exec hi/lo
+					"%08lx %08lx %08lx %08lx %08lx %08lx %08lx "	// HW_ID1 HW_ID2 GPR/LDSALLOC TRAP/IB STS
+					"%08lx %08lx %08lx "				// IB_DBG1 M0 MODE\n");
+					"\n",
+					(unsigned)wd->se, (unsigned)wd->sh, (unsigned)wd->cu, (unsigned)wd->ws.hw_id1.simd_id,
+					(unsigned)wd->ws.hw_id1.wave_id, // TODO: wgp printed out won't match geometry for now w.r.t. to SPI
+					(unsigned long)wd->ws.wave_status.value, (unsigned long)wd->ws.pc_hi, (unsigned long)wd->ws.pc_lo,
+					(unsigned long)wd->ws.wave_inst_dw0, (unsigned long)wd->ws.exec_hi, (unsigned long)wd->ws.exec_lo,
+					(unsigned long)wd->ws.hw_id1.value, (unsigned long)wd->ws.hw_id2.value, (unsigned long)wd->ws.gpr_alloc.value,
+					(unsigned long)wd->ws.lds_alloc.value, (unsigned long)wd->ws.trapsts.value,
+					(unsigned long)wd->ws.ib_sts.value, (unsigned long)wd->ws.ib_sts2.value, (unsigned long)wd->ws.ib_dbg1,
+					(unsigned long)wd->ws.m0, (unsigned long)wd->ws.mode.value);
+			}
 
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
 				for (x = 0; x < 112; x += 4)
@@ -492,7 +513,9 @@ static void umr_print_waves_nv(struct umr_asic *asic)
 			H("Main Registers");
 			X(pc_hi);
 			X(pc_lo);
-			X(wave_inst_dw0);
+			if (asic->family < FAMILY_GFX11) {
+				X(wave_inst_dw0);
+			}
 			X(exec_hi);
 			X(exec_lo);
 			X(m0);

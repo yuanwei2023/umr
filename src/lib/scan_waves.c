@@ -156,7 +156,8 @@ int umr_read_wave_status_via_mmio_gfx10(struct umr_asic *asic, uint32_t wave, ui
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_HI")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID1")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID2")->addr);
-	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_INST_DW0")->addr);
+	if (asic->family < FAMILY_GFX11)
+		dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_INST_DW0")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC")->addr);
 	dst[(*no_fields)++] = wave_read_ind_nv(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS")->addr);
@@ -389,8 +390,12 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 	uint32_t value;
 	int x;
 
-	if (buf[0] != 2) {
+	if (asic->family == FAMILY_NV && buf[0] != 2) {
 		asic->err_msg("[ERROR]: Was expecting type 2 wave data on a FAMILY_NV part!\n");
+		return -1;
+	}
+	if (asic->family == FAMILY_GFX11 && buf[0] != 3) {
+		asic->err_msg("[ERROR]: Was expecting type 3 wave data on a FAMILY_GFX11 part!\n");
 		return -1;
 	}
 
@@ -446,7 +451,8 @@ static int umr_parse_wave_data_gfx_10(struct umr_asic *asic, struct umr_wave_sta
 		ws->hw_id2.vm_id        = umr_bitslice_reg(asic, reg, "VM_ID", value);
 		ws->hw_id2.compat_level = umr_bitslice_reg_quiet(asic, reg, "COMPAT_LEVEL", value); // not on 10.3
 
-	ws->wave_inst_dw0 = buf[x++];
+	if (asic->family < FAMILY_GFX11)
+		ws->wave_inst_dw0 = buf[x++];
 
 	ws->gpr_alloc.value = value = buf[x++];
 		reg = umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC");
