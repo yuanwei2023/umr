@@ -87,7 +87,7 @@ static char *mes_v10_add_queue_priority_level[] = {
 
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
 {
-	struct umr_mes_stream *ms, *oms;
+	struct umr_mes_stream *ms, *oms, *prev_ms = NULL;
 	uint32_t n;
 	struct umr_ip_block *ip;
 	int mes_ver_maj = 0;
@@ -117,8 +117,18 @@ struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *st
 		ms->nwords = (*stream >> 12) & 0xFF;
 		ms->opcode = (*stream >> 4) & 0xFF;
 		ms->type   = *stream & 0xF;
-		if (!ms->nwords)
-			break;
+
+		// if not enough stream for packet, stop parsing
+		if (nwords < ms->nwords) {
+			free(ms);
+			if (prev_ms) {
+				prev_ms->next = NULL;
+			} else {
+				oms = NULL;
+			}
+			return oms;
+		}
+
 		ms->header = *stream++;
 		ms->words = calloc(ms->nwords - 1, sizeof *(ms->words)); // don't need copy of header
 		if (!ms->words)
@@ -127,10 +137,13 @@ struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *st
 			ms->words[n] = *stream++;
 		}
 		nwords -= ms->nwords;
-		ms->next = calloc(1, sizeof *(ms->next));
-		if (!ms->next)
-			goto error;
-		ms = ms->next;
+		if (nwords) {
+			ms->next = calloc(1, sizeof *(ms->next));
+			if (!ms->next)
+				goto error;
+			prev_ms = ms;
+			ms = ms->next;
+		}
 	}
 	return oms;
 error:
@@ -157,6 +170,9 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 	} params;
         struct umr_ip_block *ip;
 	int mes_ver_maj;
+	const char* opcode_name;
+
+	const size_t mes_v10_opcodes_size = sizeof(mes_v10_opcodes) / sizeof(mes_v10_opcodes[0]);
 
 	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
 	if (!ip) {
@@ -186,7 +202,12 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 // todo: from_* and size
 	ui->start_ib(ui, ib_addr, ib_vmid, 0, 0, 0, 0);
 	while (stream && opcodes-- && stream->nwords) {
-		ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords, mes_v10_opcodes[stream->opcode], stream->header, stream->words);
+		if (stream->opcode < mes_v10_opcodes_size) {
+			opcode_name = mes_v10_opcodes[stream->opcode];
+		} else {
+			opcode_name = "MES_UNK";
+		}
+		ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords, opcode_name, stream->header, stream->words);
 
 		i = 0;
 		ib_addr += 4; // skip over header
