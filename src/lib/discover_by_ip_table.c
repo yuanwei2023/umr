@@ -65,6 +65,8 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 		strcpy(ipcmn, "vcn");
 	} else if (!strcmp(det->ipname, "dmu")) {
 		strcpy(ipcmn, "dcn");
+	} else if (!strcmp(det->ipname, "nbif")) {
+		strcpy(ipcmn, "nbio");
 	} else {
 		strcpy(ipcmn, det->ipname);
 	}
@@ -265,6 +267,8 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 			strcpy(cmnname, "vcn");
 		} else if (!strcmp(det->ipname, "dmu")) {
 			strcpy(cmnname, "dcn");
+		} else if (!strcmp(det->ipname, "nbif")) {
+			strcpy(cmnname, "nbio");
 		} else {
 			strcpy(cmnname, det->ipname);
 		}
