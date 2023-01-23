@@ -24,6 +24,7 @@
  */
 #include "panels.h"
 #include <map>
+#include <string>
 
 class KmsPanel : public Panel {
 public:
