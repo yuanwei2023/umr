@@ -344,7 +344,7 @@ _umr_completion()
     prev=$3
 
     case $prev in
-	--database-path|--dbp)
+	--database-path|-dbp)
 	    compopt -o default -o dirnames
 	    ;;
 	--option|-O|bits|bitsfull|empty_log|follow|no_follow_ib|use_pci|use_colour|read_smc|quiet|no_kernel|verbose|halt_waves|disasm_early_term|no_disasm|disasm_anyways|wave64|full_shader|no_fold_vm_decode|no_scan_waves|,)
