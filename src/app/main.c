@@ -252,6 +252,7 @@ int main(int argc, char **argv)
 					fprintf(stderr, "[ERROR]: Invalid syntax for option --gpu\n");
 					return EXIT_FAILURE;
 				}
+				umr_apply_callbacks(asic, &asic->mem_funcs, &asic->reg_funcs);
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --gpu requires a parameter\n");
