@@ -44,32 +44,34 @@ static void umr_print_waves_si_ai(struct umr_asic *asic)
 	struct umr_wave_data *wd, *owd;
 	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
-	struct umr_packet_stream *stream;
+	struct umr_packet_stream *stream = NULL;
 	struct {
 		uint32_t vmid, size;
 		uint64_t addr;
 	} ib_addr;
 	int start = -1, stop = -1;
 
-	if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
-		use_ring = 0;
-
-	if (asic->options.halt_waves) {
+	if (asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
-			fprintf(stderr, "[WARNING]: Rings are not halted!  %s\n", asic->options.disasm_anyways ? "" : "Use '-O disasm_anyways' to enable disassembly without halted rings");
-		else
-			ring_halted = 1;
-	}
-
-	// always disasm if disasm_anyways is enabled
-	if (asic->options.disasm_anyways)
-		ring_halted = 1;
 
 	// don't scan for shader info by reading the ring if no_disasm is
 	// requested.  This is useful for when the ring or IBs contain
 	// invalid or racy data that cannot be reliably parsed.
-	if (!asic->options.no_disasm) {
+	if (!asic->options.no_disasm && strcmp(asic->options.ring_name, "none")) {
+		if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
+			use_ring = 0;
+
+		if (asic->options.halt_waves) {
+			if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
+				fprintf(stderr, "[WARNING]: Rings are not halted!  %s\n", asic->options.disasm_anyways ? "" : "Use '-O disasm_anyways' to enable disassembly without halted rings");
+			else
+				ring_halted = 1;
+		}
+
+		// always disasm if disasm_anyways is enabled
+		if (asic->options.disasm_anyways)
+			ring_halted = 1;
+
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
@@ -374,37 +376,38 @@ static void umr_print_waves_gfx_10_11(struct umr_asic *asic)
 	struct umr_wave_data *wd, *owd;
 	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
-	struct umr_packet_stream *stream;
+	struct umr_packet_stream *stream = NULL;
 	struct {
 		uint32_t vmid, size;
 		uint64_t addr;
 	} ib_addr;
 	int start = -1, stop = -1;
 
-	if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
-		use_ring = 0;
-
-	if (asic->options.halt_waves) {
-		// warn users if they don't specify a ring on gfx10 hardware
-		if (asic->family >= FAMILY_NV && !asic->options.ring_name[0])
-			fprintf(stderr, "[WARNING]: On gfx10+ the default ring name 'gfx' is not valid.  Please specify one on the command line.\n");
-
+	if (asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-		if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
-			fprintf(stderr, "[WARNING]: Rings are not halted!\n");
-		else
-			ring_halted = 1;
-	}
-
-
-	// always disasm if disasm_anyways is enabled
-	if (asic->options.disasm_anyways)
-		ring_halted = 1;
 
 	// don't scan for shader info by reading the ring if no_disasm is
 	// requested.  This is useful for when the ring or IBs contain
 	// invalid or racy data that cannot be reliably parsed.
-	if (!asic->options.no_disasm) {
+	if (!asic->options.no_disasm && strcmp(asic->options.ring_name, "none")) {
+		if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
+			use_ring = 0;
+
+		if (asic->options.halt_waves) {
+			// warn users if they don't specify a ring on gfx10 hardware
+			if (asic->family >= FAMILY_NV && !asic->options.ring_name[0])
+				fprintf(stderr, "[WARNING]: On gfx10+ the default ring name 'gfx' is not valid.  Please specify one on the command line.\n");
+
+			if (use_ring && !umr_ring_is_halted(asic, asic->options.ring_name[0] ? asic->options.ring_name : "gfx"))
+				fprintf(stderr, "[WARNING]: Rings are not halted!\n");
+			else
+				ring_halted = 1;
+		}
+
+		// always disasm if disasm_anyways is enabled
+		if (asic->options.disasm_anyways)
+			ring_halted = 1;
+
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
