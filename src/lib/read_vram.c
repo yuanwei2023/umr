@@ -304,13 +304,22 @@ invalid_page:
 }
 
 /** round_up_pot -- Round up value to next power of two */
+static uint64_t round_up_next_gib(uint64_t x)
+{
+	uint64_t y = (1024ULL * 1024 * 1024); // start at 1GiB
+	while (y < x)
+		y += 1024UL * 1024 * 1024;
+	return y;
+}
+
 static uint64_t round_up_pot(uint64_t x)
 {
-	uint64_t y = (64ULL * 1024 * 1024); // start at 64MiB
+	uint64_t y = (1024ULL * 1024 * 1024); // start at 1GiB
 	while (y < x)
 		y <<= 1;
 	return y;
 }
+
 
 static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table_end_addr)
 {
@@ -1432,7 +1441,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 					break;
 				} else {
 					// otherwise subtract this vram size from the address and go to the next device
-					addr -= round_up_pot(asic->config.xgmi.nodes[n].asic->config.vram_size);
+					addr -= round_up_next_gib(asic->config.xgmi.nodes[n].asic->config.vram_size);
 				}
 			}
 			// now {asic, address} are the device and it's relative address
