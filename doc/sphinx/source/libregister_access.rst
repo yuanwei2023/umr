@@ -257,6 +257,7 @@ functions can be used:
 	uint32_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint32_t regvalue);
 	uint32_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *reg, char *bitname, uint32_t regvalue);
 	uint32_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint32_t regvalue);
+	uint64_t umr_bitslice_compose_value_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname, uint64_t regvalue);
 
 These take a value packed in the lower bits of 'regvalue' and shift
 them (with masking) to the correct location for a register
@@ -306,6 +307,7 @@ To decode a registers bitfields the following functions can be used:
 	uint32_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint32_t regvalue);
 	uint32_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint32_t regvalue);
 	uint32_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint32_t regvalue);
+	uint64_t umr_bitslice_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname, uint64_t regvalue);
 
 These take a full register specified by 'regname' and return the masked
 and shifted bitfield.  For instance:

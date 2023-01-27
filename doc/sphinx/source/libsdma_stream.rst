@@ -15,7 +15,7 @@ can be used:
 ::
 
 	struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_sdma_stream_decode_ui *ui, int vm_partition,
-												   uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
+						       uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
 
 Which will decode a buffer and return a pointer to
 the following structure if successful:
