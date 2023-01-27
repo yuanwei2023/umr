@@ -248,6 +248,27 @@ uint64_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *i
 }
 
 /**
+ * umr_bitslice_compose_value_by_name_by_ip_by_instance - Compose a bitfield
+ *
+ * Compose a bitfield with the specified @regvalue value for the
+ * bitfield named @bitname in the register @regname in the IP block
+ * @ip.  The @ip name can be NULL to search for the first matching
+ * register in the ASIC.
+ *
+ * Returns the masked and shifted bitfield value that can be OR'ed
+ * with other composed bitfields to form a register value.
+ */
+uint64_t umr_bitslice_compose_value_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname, uint64_t regvalue)
+{
+	struct umr_reg *reg;
+	reg = umr_find_reg_data_by_ip_by_instance(asic, ip, instance, regname);
+	if (reg)
+		return umr_bitslice_compose_value(asic, reg, bitname, regvalue);
+	else
+		return 0;
+}
+
+/**
  * umr_bitslice_compose_value_by_name - Compose a bitfield
  *
  * Compose a bitfield with the specified @regvalue value for the

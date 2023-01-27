@@ -1456,6 +1456,7 @@ uint64_t umr_bitslice_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char 
 uint64_t umr_bitslice_compose_value(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *reg, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue);
+uint64_t umr_bitslice_compose_value_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname, uint64_t regvalue);
 
 // bank switching
 uint64_t umr_apply_bank_selection_address(struct umr_asic *asic);
