@@ -34,13 +34,16 @@ void umr_apply_callbacks(struct umr_asic *asic,
 			 struct umr_memory_access_funcs *mems,
 			 struct umr_register_access_funcs *regs)
 {
-	int n;
+	int n, mmhub_inst;
+
+	// figure out how to access MMHUB IP block
+	mmhub_inst = umr_find_ip_block(asic, "mmhub", 0) ? 0 : -1;
 
 	n = 0;
 	while (asic->config.xgmi.nodes[n].asic) {
 		asic->config.xgmi.nodes[n].asic->mem_funcs = *mems;
 		asic->config.xgmi.nodes[n].asic->reg_funcs = *regs;
-		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", asic->options.vm_partition, "mmMC_VM_XGMI_LFB_CNTL", "PF_LFB_REGION", umr_read_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", asic->options.vm_partition, "mmMC_VM_XGMI_LFB_CNTL"));
+		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", mmhub_inst, "mmMC_VM_XGMI_LFB_CNTL", "PF_LFB_REGION", umr_read_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", mmhub_inst, "mmMC_VM_XGMI_LFB_CNTL"));
 		++n;
 	}
 	// sort nodes based on hive position
