@@ -206,6 +206,19 @@ uint64_t umr_bitslice_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *r
 }
 
 /**
+ * umr_bitslice_reg_by_name_by_ip_by_instance - Slice out a bitfield by IP and register name.
+ */
+uint64_t umr_bitslice_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname, uint64_t regvalue)
+{
+	struct umr_reg *reg;
+	reg = umr_find_reg_data_by_ip_by_instance(asic, ip, instance, regname);
+	if (reg)
+		return umr_bitslice_reg(asic, reg, bitname, regvalue);
+	else
+		return 0;
+}
+
+/**
  * umr_bitslice_reg_by_name - Slice out a bitfield by register name.
  */
 uint64_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint64_t regvalue)

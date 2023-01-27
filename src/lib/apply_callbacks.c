@@ -40,7 +40,7 @@ void umr_apply_callbacks(struct umr_asic *asic,
 	while (asic->config.xgmi.nodes[n].asic) {
 		asic->config.xgmi.nodes[n].asic->mem_funcs = *mems;
 		asic->config.xgmi.nodes[n].asic->reg_funcs = *regs;
-		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg_by_name(asic->config.xgmi.nodes[n].asic, "mmMC_VM_XGMI_LFB_CNTL", "PF_LFB_REGION", umr_read_reg_by_name(asic->config.xgmi.nodes[n].asic, "mmMC_VM_XGMI_LFB_CNTL"));
+		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", asic->options.vm_partition, "mmMC_VM_XGMI_LFB_CNTL", "PF_LFB_REGION", umr_read_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", asic->options.vm_partition, "mmMC_VM_XGMI_LFB_CNTL"));
 		++n;
 	}
 	// sort nodes based on hive position
