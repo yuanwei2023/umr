@@ -110,6 +110,9 @@ static struct umr_asic *get_asic(void)
 
 	umr_create_mmio_accel(asic);
 
+	if (asic->options.vgpr_granularity >= 0)
+		asic->parameters.vgpr_granularity = asic->options.vgpr_granularity;
+
 	return asic;
 }
 
@@ -225,9 +228,20 @@ int main(int argc, char **argv)
 	options.forcedid = -1;
 	options.scanblock = "";
 	options.vm_partition = -1;
+	options.vgpr_granularity = -1;
 
 	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--database-path") || !strcmp(argv[i], "-dbp")) {
+		if (!strcmp(argv[i], "--vgpr-granularity") || !strcmp(argv[i], "-vgpr")) {
+			if (i + 1 < argc) {
+				options.vgpr_granularity = atoi(argv[i+1]);
+				if (asic)
+					asic->parameters.vgpr_granularity = options.vgpr_granularity;
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --vgpr-granularity requires at least one parameter\n");
+				return EXIT_FAILURE;
+			}
+		} else if (!strcmp(argv[i], "--database-path") || !strcmp(argv[i], "-dbp")) {
 			if (i + 1 < argc) {
 				strcpy(options.database_path, argv[i+1]);
 				++i;
@@ -964,6 +978,8 @@ int main(int argc, char **argv)
 	"\n\t\tSelect a VM partition for all GPUVM accesses.  Default is -1 which"
 	"\n\t\trefers to the 0'th instance of the VM hub which is not the same as"
 	"\n\t\tspecifying '0'.  Values above -1 are for ASICs with multiple IP instances.\n"
+"\n\t--vgpr-granularity, -vgpr <-1, 0...n>"
+	"\n\t\tSpecify the VGPR size granularity as a power of 2, e.g., '2' means 4 DWORDs per increment.\n"
 "\n*** Bank Selection ***\n"
 "\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 "\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"

@@ -306,7 +306,8 @@ struct umr_options {
 	    vm_partition,
 	    is_virtual,
 	    force_asic_file,
-	    export_model;
+	    export_model,
+	    vgpr_granularity;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {

@@ -186,6 +186,7 @@ void umr_print_config(struct umr_asic *asic)
 			printf(", %s", family[x].name);
 	printf("\n");
 	p(is_apu);
+	printf("\tvgpr_granularity == %d\n", asic->parameters.vgpr_granularity);
 	px(gfx.rev_id);
 	px(gfx.external_rev_id);
 	plx(gfx.cg_flags);

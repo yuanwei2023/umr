@@ -34,6 +34,8 @@ a zero value disables it.
 Select a VM partition for all GPUVM accesses.  Default is -1 which
 refers to the 0'th instance of the VM hub which is not the same as
 specifying '0'.  Values above -1 are for ASICs with multiple IP instances.
+.IP "--vgpr-granularity, -vgpr <-1, 0...n>"
+Specify the VGPR size granularity as a power of 2, e.g., '2' means 4 DWORDs per increment.
 .IP "--option, -O <string>[,<string>,...]"
 Specify options to the tool.  Multiple options can be specified as comma
 separated strings.  Options should be specified before --update or --force commands
