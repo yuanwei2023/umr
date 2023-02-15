@@ -171,8 +171,8 @@ struct umr_ip_block {
 	int no_regs;
 	struct umr_reg *regs;
 	struct {
-		int die, maj, min, rev, instance;
-	} discoverable;
+          int die, maj, min, rev, instance, logical_inst;
+        } discoverable;
 };
 
 struct umr_find_reg_iter_result {
@@ -1373,9 +1373,10 @@ int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size);
 
 struct umr_discovery_table_entry {
 	char ipname[128];
-	int die, instance, maj, min, rev;
-	uint64_t segments[16];
-	struct umr_discovery_table_entry *next;
+        int die, instance, maj, min, rev, logical_inst;
+        uint64_t segments[16];
+        uint8_t harvest;
+        struct umr_discovery_table_entry *next;
 };
 struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout);
 struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout, int *tryipdiscovery);

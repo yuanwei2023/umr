@@ -30,8 +30,10 @@ struct umr_ip_block *umr_find_ip_block(const struct umr_asic *asic, const char *
 
 	for (x = 0; x < asic->no_blocks; x++) {
 		if (!memcmp(asic->blocks[x]->ipname, ipname, strlen(ipname))) {
-			if (instance < 0 || (instance >= 0 && asic->blocks[x]->discoverable.instance == instance))
-				return asic->blocks[x];
+                  if (instance < 0 ||
+                      (instance >= 0 &&
+                       asic->blocks[x]->discoverable.logical_inst == instance))
+                    return asic->blocks[x];
 		}
 	}
 	return NULL;

@@ -29,6 +29,31 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+static void set_ip_logical_inst(struct umr_discovery_table_entry *first,
+                                struct umr_discovery_table_entry *end,
+                                uint32_t inst_mask)
+{
+	struct umr_discovery_table_entry *ent = first;
+	uint32_t mask;
+	int logical_inst;
+
+	while (ent && ent != end) {
+		logical_inst = -1;
+		if (!ent->harvest) {
+			/* Count the set bits in inst_mask before ent->instance */
+			mask = ((1U << ent->instance) - 1) & inst_mask;
+			logical_inst = 0;
+			while (mask) {
+				if (mask & 1)
+					++logical_inst;
+				mask >>= 1;
+			}
+		}
+		ent->logical_inst = logical_inst;
+		ent = ent->next;
+	}
+}
+
 /* dir struct for add_ip_intances
         ├── 1 <= hw_id use name aliases instead
         │   └── 0 <= instance of this IP block
@@ -46,14 +71,17 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 	char linebuf[512], fname[1024], databuf[256];
 	struct dirent *de;
 	int x;
-	FILE *f;
+        uint32_t inst_mask = 0;
+        struct umr_discovery_table_entry *ip_start;
+        FILE *f;
 
-	snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", diepath, ipname);
+        snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", diepath, ipname);
 	ipdir = opendir(linebuf);
 	if (!ipdir)
 		return;
-	while ((de = readdir(ipdir))) {
-		if (isdigit(de->d_name[0])) {
+        ip_start = *det;
+        while ((de = readdir(ipdir))) {
+                if (isdigit(de->d_name[0])) {
 			snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s/%s", diepath, ipname, de->d_name); // path to instance of ip block on given die
 			(*det)->die = die_num;
 			// base_addr list
@@ -90,8 +118,24 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 				fgets(databuf, sizeof databuf, f);
 				sscanf(databuf, "%d", &(*det)->instance);
 			fclose(f);
-			// convert name to lowercase
-			strcpy((*det)->ipname, ipname);
+                        // harvest
+                        snprintf(fname, (sizeof fname) - 1, "%s/harvest",
+                                 linebuf);
+                        f = fopen(fname, "r");
+                        if (f) {
+                                        fgets(databuf, sizeof databuf, f);
+                                        sscanf(databuf, "%" SCNx8,
+                                               &(*det)->harvest);
+                                        if ((*det)->harvest == 0)
+                                                inst_mask |=
+                                                    (1 << (*det)->instance);
+
+                                        fclose(f);
+                        } else {
+                                        inst_mask |= (1 << (*det)->instance);
+                        }
+                        // convert name to lowercase
+                        strcpy((*det)->ipname, ipname);
 			for (x = 0; (*det)->ipname[x]; x++)
 				(*det)->ipname[x] = tolower((*det)->ipname[x]);
 			// add next
@@ -103,8 +147,10 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			*det = (*det)->next;
 			++(*nblocks);
 		}
-	}
-	closedir(ipdir);
+        }
+        closedir(ipdir);
+
+        set_ip_logical_inst(ip_start, *det, inst_mask);
 }
 
 /* Dir structure
