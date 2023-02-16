@@ -196,7 +196,7 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 
 struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_options *options, umr_err_output errout)
 {
-	struct umr_discovery_table_entry *det, *pdet;
+	struct umr_discovery_table_entry *det = NULL, *pdet = NULL;
 	struct umr_database_scan_item *it, *nit;
 	int numblocks, used_blocks, x, y;
 	struct umr_asic *asic;

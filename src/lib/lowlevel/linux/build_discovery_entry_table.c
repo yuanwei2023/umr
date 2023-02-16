@@ -172,7 +172,7 @@ struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblo
 {
 	DIR *top = NULL, *die = NULL;
 	char linebuf[512];
-	struct umr_discovery_table_entry *pdet, *det;
+	struct umr_discovery_table_entry *pdet = NULL, *det = NULL;
 	struct dirent *de;
 	int die_num;
 
@@ -183,6 +183,10 @@ struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblo
 	}
 
 	pdet = det = calloc(1, sizeof *det);
+	if (!det) {
+		closedir(top);
+		return NULL;
+	}
 	*nblocks = 0;
 	// iterate over every die
 	while ((de = readdir(top))) {

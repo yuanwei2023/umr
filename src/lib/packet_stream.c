@@ -63,6 +63,7 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 			break;
 		case UMR_RING_UNK:
 		default:
+			free(str);
 			asic->err_msg("[BUG]: Invalid ring type in packet_decode_buffer()\n");
 			return NULL;
 	}
