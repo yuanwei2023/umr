@@ -1045,7 +1045,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 					else
 						ui->add_field(ui, ib_addr + 16, ib_vmid, "DOORBELL_OFFSET2", BITS(stream->words[3], 2, 28), NULL, 16, 32);
 					if (action == 3)
-						ui->add_field(ui, ib_addr + 20, ib_vmid, "TF_DATA", BITS(stream->words[2], 0, 32), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 20, ib_vmid, "TF_DATA", BITS(stream->words[4], 0, 32), NULL, 16, 32);
 					else
 						ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(stream->words[4], 2, 28), NULL, 16, 32);
 				}
