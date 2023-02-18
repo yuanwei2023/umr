@@ -1252,7 +1252,7 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		/* default to reading entire ring */
 		if (!from[0]) {
 			start = 0;
-			end   = 10000;
+			end   = 2000000;
 		} else {
 			if (from[0] == '.') {
 				if (to[0] == 0 || to[0] == '.') {
