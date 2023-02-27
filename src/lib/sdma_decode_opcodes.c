@@ -31,7 +31,6 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {
 	uint32_t n;
-	int i;
 	char str_buf[64];
 	struct umr_sdma_stream *os = stream;
 	static char *poll_regmem_funcs[] = { "always", "<", "<=", "==", "!=", ">=", ">", "N/A" };
@@ -45,13 +44,15 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 	uint32_t z_mask;
 	uint32_t pitch_mask;
 	uint32_t pitch_shift;
+	struct umr_ip_block *ossip;
 
 	// Grab OSS IP version from asic
-	for (i = 0; i < asic->no_blocks; i++) {
-		if (strncmp(asic->blocks[i]->ipname, "oss", 3) == 0) {
-			ver_maj = asic->blocks[i]->discoverable.maj;
-			ver_min = asic->blocks[i]->discoverable.min;
-		}
+	ossip = umr_find_ip_block(asic, "oss", -1);
+	if (!ossip) {
+		asic->err_msg("[BUG]: Could not find oss block to get version info from\n");
+	} else {
+		ver_maj = ossip->discoverable.maj;
+		ver_min = ossip->discoverable.min;
 	}
 
 	// If version not found for OSS block, fallback to setting ip version based on asic family
