@@ -1744,7 +1744,6 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 						ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "COPY (TILED)", stream->header_dw, stream->words);
 						ui->add_field(ui, ib_addr + 0, ib_vmid, "ENCRYPT", (stream->header_dw >> 16) & 0x1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 0, ib_vmid, "TMZ", (stream->header_dw >> 18) & 0x1, NULL, 10, 32);
-						ui->add_field(ui, ib_addr + 0, ib_vmid, "MIP_MAX", (stream->header_dw >> 20) & 0xF, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 0, ib_vmid, "VIDEOCOPY", (stream->header_dw >> 26) & 0x1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 0, ib_vmid, "BROADCAST", (stream->header_dw >> 27) & 0x1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 0, ib_vmid, "DETILE", (stream->header_dw >> 31) & 0x1, NULL, 10, 32);
