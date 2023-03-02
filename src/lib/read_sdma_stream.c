@@ -25,7 +25,7 @@
 #include "umr.h"
 #include <inttypes.h>
 
-void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_stream_decode_ui *ui, uint32_t *stream, uint32_t *ostream, uint32_t nwords, uint64_t from_addr, uint32_t from_vmid, struct umr_sdma_stream *ps)
+static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_stream_decode_ui *ui, uint32_t *stream, uint32_t *ostream, uint32_t nwords, uint64_t from_addr, uint32_t from_vmid, struct umr_sdma_stream *ps)
 {
 	(void)nwords;
 	switch (ps->opcode) {
