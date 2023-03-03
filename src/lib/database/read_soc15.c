@@ -28,7 +28,7 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 {
 	struct umr_soc15_database *s, *os;
 	FILE *f;
-	char linebuf[256];
+	char linebuf[1024];
 	int x;
 
 	f = umr_database_open(path, filename);
