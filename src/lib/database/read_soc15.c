@@ -51,9 +51,19 @@ retry8:
 		strcpy(s->ipname, linebuf);
 		for (x = 0; x < 32; x++) {
 			fgets(linebuf, sizeof(linebuf), f);
-			if (sscanf(linebuf, "\t0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64,
+			if (sscanf(linebuf, "\t"
+				"0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64
+				"0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64
+				"0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64
+				"0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64,
 					&s->off[x][0], &s->off[x][1], &s->off[x][2], &s->off[x][3],
-					&s->off[x][4], &s->off[x][5], &s->off[x][6], &s->off[x][7]) != 8) {
+					&s->off[x][4], &s->off[x][5], &s->off[x][6], &s->off[x][7],
+					&s->off[x][8], &s->off[x][9], &s->off[x][10], &s->off[x][11],
+					&s->off[x][12], &s->off[x][13], &s->off[x][14], &s->off[x][15],
+					&s->off[x][16], &s->off[x][17], &s->off[x][18], &s->off[x][19],
+					&s->off[x][20], &s->off[x][21], &s->off[x][22], &s->off[x][23],
+					&s->off[x][24], &s->off[x][25], &s->off[x][26], &s->off[x][27],
+					&s->off[x][28], &s->off[x][29], &s->off[x][30], &s->off[x][31]) < 8) {
 						if (x == 8) {
 							// originally there were only 8 instances
 							// now we support upto 32, so if we die on the 8'th line
