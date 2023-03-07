@@ -28,9 +28,10 @@
 static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_stream_decode_ui *ui, uint32_t *stream, uint32_t *ostream, uint32_t nwords, uint64_t from_addr, uint32_t from_vmid, struct umr_sdma_stream *ps)
 {
 	(void)nwords;
+	ps->nwords = 0xFFFFFFFFUL;
 	switch (ps->opcode) {
 		case 0: // NOP
-			ps->nwords += (ps->header_dw >> 16) & 0x3FFF;
+			ps->nwords = (ps->header_dw >> 16) & 0x3FFF;
 			break;
 		case 1: // COPY
 			switch (ps->sub_opcode) {
@@ -219,10 +220,10 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 		default:
 			if (!ui || !ui->unhandled_size || ui->unhandled_size(ui, asic, ps, UMR_RING_SDMA)) {
 				asic->err_msg("[ERROR]: Invalid SDMA opcode in umr_sdma_decode_ring(): opcode [%x]\n", (unsigned)ps->opcode);
-				return;
+				break;
 			}
 			// Callback succeeded to populate size in stream->nwrods.
-			break;
+			return;
 	}
 }
 
@@ -259,6 +260,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 		ps->opcode = *stream & 0xFF;
 		ps->sub_opcode = (*stream >> 8) & 0xFF;
 		ps->header_dw = *stream++;
+		ps->nwords = 0xFFFFFFFFUL;
 
 		switch (ossip->discoverable.maj) {
 			case 1:
@@ -269,6 +271,13 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 			case 6:
 				sized_oss1_5(asic, vm_partition, ui, stream, ostream, nwords, from_addr, from_vmid, ps);
 				break;
+		}
+
+		// error decoding the packet because nwords was not changed
+		if (ps->nwords == 0xFFFFFFFFUL) {
+			ps->nwords = 0;
+			umr_free_sdma_stream(ops);
+			return NULL;
 		}
 
 		if (nwords < 1 + ps->nwords) {
