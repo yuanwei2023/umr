@@ -429,6 +429,8 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 
 	switch (stream->opcode) {
 		case 0x10: // NOP
+			if (stream->n_words == 0)
+				break;
 			if (stream->words[0] == 0x1337F77D) { // magic value for comments
 				uint32_t pktlen = stream->words[1] - 1; // number of words in NOP sequence
 				uint32_t pkttype = stream->words[2];
