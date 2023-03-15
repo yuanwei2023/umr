@@ -147,6 +147,8 @@ struct AsicData {
 		options.instance = instance;
 		options.database_path[0] = '\0';
 		options.no_disasm = 0;
+		options.no_follow_ib = 1;
+
 		if (ip_discovery_dump && strlen(ip_discovery_dump)) {
 			struct umr_test_harness *th = umr_create_test_harness(ip_discovery_dump);
 
