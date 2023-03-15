@@ -190,7 +190,7 @@ public:
 		ImGui::TableSetupColumn("Pin", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" R ").x);
 		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x00000000 ").x);
-		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 120);
+		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, _8digitsize);
 		ImGui::TableSetupColumn("Bitfield");
 		ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" R ").x);
 		ImGui::TableSetupColumn("W", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" R ").x);
@@ -208,6 +208,7 @@ public:
 			}
 			ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(pinned.reg->regname);
 			ImGui::TableSetColumnIndex(2); ImGui::Text("0x%08lx", pinned.reg->addr);
+			ImGui::SetNextItemWidth(_8digitsize);
 			ImGui::TableSetColumnIndex(3);
 			{
 				char tmp[512];
@@ -229,7 +230,7 @@ public:
 			ImGui::TableSetColumnIndex(4);
 			ImGui::BeginTable("bitfield", 2);
 			ImGui::TableSetupColumn("Field");
-			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x00000000 ").x);
+			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, _8digitsize);
 			for (int j = 0; j < pinned.reg->no_bits; j++) {
 				ImGui::TableNextRow();
 				struct umr_bitfield *bit = &pinned.reg->bits[j];
@@ -245,10 +246,9 @@ public:
 				ImGui::TableSetColumnIndex(1);
 				char tmp[16];
 				sprintf(tmp, "0x%x", v);
-				if (ImGui::InputText("", tmp, 10, ImGuiInputTextFlags_CharsHexadecimal)) {
-					if (sscanf(tmp, "0x%x", &v) == 1) {
-						v = v & mask;
-						pinned.reg->value = (pinned.reg->value & ~mask) | (v << (unsigned)bit->start);
+				if (ImGui::InputText("", tmp, 16, ImGuiInputTextFlags_CharsHexadecimal)) {
+					if (sscanf(tmp, "%x", &v) == 1) {
+						pinned.reg->value = (pinned.reg->value & ~mask) | ((v << (unsigned)bit->start) & mask);
 						pinned.value_is_dirty = true;
 						force_redraw();
 					}
