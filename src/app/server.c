@@ -27,7 +27,7 @@
 #include <dirent.h>
 #include <stdarg.h>
 #include <errno.h>
-#if UMR_GUI_REMOTE
+#if UMR_GUI_SERVER
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
 #endif
@@ -1752,7 +1752,7 @@ error:
 	return answer;
 }
 
-#if UMR_GUI_REMOTE
+#if UMR_GUI_SERVER
 void run_server_loop(const char *url, struct umr_asic * asic)
 {
 	int sock = nn_socket(AF_SP, NN_REP);

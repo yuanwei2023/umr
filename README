@@ -76,6 +76,10 @@ environment.  e.g.,
 
     $ cmake -DUMR_NO_GUI=ON ../
 
+NOTE:  You can disable the server feature by adding UMR_NO_SERVER to your
+environment.  e.g.,
+
+    $ cmake -DUMR_NO_SERVER=ON ../
 
 Running umr
 ------------

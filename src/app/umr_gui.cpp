@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <vector>
 #include <stdio.h>
-#if UMR_GUI_REMOTE
+#if HAVE_NANOMSG
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
 #endif
@@ -86,7 +86,7 @@ struct Link {
 };
 
 JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsigned *raw_data_size) {
-	#if UMR_GUI_REMOTE
+	#if HAVE_NANOMSG
 	if (lnk.use_sock) {
 		char* s = json_serialize_to_string(request);
 		int len = strlen(s) + 1;
@@ -360,7 +360,7 @@ static int run_gui(const char *url)
 		if (stat(url, &statbuf) == 0 && statbuf.st_mode & S_IFMT) {
 			replay = true;
 		} else {
-			#if UMR_GUI_REMOTE
+			#if HAVE_NANOMSG
 			int rv;
 			if ((lnk.sock = nn_socket(AF_SP, NN_REQ)) < 0) {
 				exit(1);
@@ -719,7 +719,7 @@ static int run_gui(const char *url)
 	pthread_cond_signal(&cond);
 	pthread_mutex_unlock(&mtx);
 
-#if UMR_GUI_REMOTE
+#if HAVE_NANOMSG
 	if (lnk.use_sock) {
 		nn_shutdown(lnk.sock, lnk.endpoint);
 		nn_close(lnk.sock);

@@ -1094,21 +1094,23 @@ printf(
 	"\n\t--test-log, -tl <filename>\n\t\tLog all MMIO/memory reads to a file\n"
 	"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n");
 
+printf(
+"\n*** GUI server ***\n");
+#if UMR_GUI_SERVER
+printf(
+	"\n\t--server [url] \n\t\turl can be tcp://127.0.0.1:1234 or tcp://*:8090. Default value is 'tcp://*:1234' see Nanomsg protocol doc for more example\n");
+#endif
 #if UMR_GUI
 printf(
-"\n*** GUI server ***\n"
-#if UMR_GUI_REMOTE
-"\n\t--server [url] \n\t\turl can be tcp://127.0.0.1:1234 or tcp://*:8090. Default value is 'tcp://*:1234' see Nanomsg protocol doc for more example\n"
-#endif
-"\n\t--gui [url] \n\t\tRun umr in GUI mode. An optional url can be supplied to connect to a remote instance (see --server)\n");
+	"\n\t--gui [url] \n\t\tRun umr in GUI mode. An optional url can be supplied to connect to a remote instance (see --server)\n");
 #endif
 			exit(EXIT_SUCCESS);
-#if UMR_GUI
-#if UMR_GUI_REMOTE
+#if UMR_GUI_SERVER
 		} else if (!strcmp(argv[i], "--server")) {
 			char *url = (i < argc - 1) ? argv[i + 1] : "tcp://*:1234";
 			run_server_loop(url, asic);
 #endif
+#if UMR_GUI
 		} else if (!strcmp(argv[i], "--gui")) {
 			if (i < argc - 1 && argv[i+1][0] != '-') {
 				guiurl = argv[i+1];
