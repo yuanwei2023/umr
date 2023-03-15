@@ -2163,36 +2163,72 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 	decode_upto_ai(asic, ui, stream, ib_addr, ib_vmid, from_addr, from_vmid, follow, sc);
 }
 
+int umr_sdma_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
+{
+	struct umr_ip_block *ip;
+
+	// Grab OSS IP version from asic
+	ip = umr_find_ip_block(asic, "oss", 0); // for multi instance
+	if (!ip)
+		ip = umr_find_ip_block(asic, "oss", -1); // for single instance
+	if (!ip) {
+		// try SDMA blocks
+		ip = umr_find_ip_block(asic, "sdma", 0); // for multi instance
+		if (!ip)
+			ip = umr_find_ip_block(asic, "sdma", -1); // for single instance
+	}
+
+	if (!ip) {
+		// try by GC version
+		ip = umr_find_ip_block(asic, "gfx", 0); // for multi instance
+		if (!ip)
+			ip = umr_find_ip_block(asic, "gfx", -1); // for single instance
+
+
+		if (ip) {
+			switch (ip->discoverable.maj) {
+				case 6:
+					*maj = 1;
+					break;
+				case 7:
+					*maj = 2;
+					break;
+				case 8:
+					*maj = 3;
+					break;
+				case 9:
+					*maj = 4;
+					break;
+				case 10:
+					*maj = 5;
+					break;
+				case 11:
+					*maj = 6;
+					break;
+			}
+			*min = 0;
+			return 0;
+		} else {
+			return -1;
+		}
+
+	} else {
+		*maj = ip->discoverable.maj;
+		*min = ip->discoverable.min;
+		return 0;
+	}
+}
+
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_sdma_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {
 	uint32_t n;
 	struct umr_sdma_stream *os = stream;
-	struct umr_ip_block *ossip;
 	struct sdma_config sc = { 0 };
 
-	// Grab OSS IP version from asic
-	ossip = umr_find_ip_block(asic, "oss", -1);
-	if (!ossip) {
-		asic->err_msg("[BUG]: Could not find oss block to get version info from\n");
-	} else {
-		sc.ver_maj = ossip->discoverable.maj;
-		sc.ver_min = ossip->discoverable.min;
-	}
-
-	// If version not found for OSS block, fallback to setting ip version based on asic family
-	if (!sc.ver_maj) {
-		if (asic->family == FAMILY_SI) {
-			sc.ver_maj = 1;
-		} else if (asic->family == FAMILY_CIK) {
-			sc.ver_maj = 2;
-		} else if (asic->family == FAMILY_VI) {
-			sc.ver_maj = 3;
-		} else if (asic->family == FAMILY_AI) {
-			sc.ver_maj = 4;
-		} else if (asic->family >= FAMILY_NV) {
-			sc.ver_maj = 5;
-		}
+	if (umr_sdma_get_ip_ver(asic, &sc.ver_maj, &sc.ver_min)) {
+		asic->err_msg("[BUG] Cannot determine version of OSS block for this ASIC.\n");
+		return NULL;
 	}
 
 	sc.z_mask = sc.ver_maj >= VER_NV ? 0x1FFF : 0x7FF;

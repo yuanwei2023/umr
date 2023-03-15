@@ -242,12 +242,11 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 {
 	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
 	uint32_t *ostream = stream;
-	struct umr_ip_block *ossip;
+	int ossmaj, ossmin;
 
-	// Grab OSS IP version from asic
-	ossip = umr_find_ip_block(asic, "oss", -1);
-	if (!ossip) {
-		asic->err_msg("[BUG]: Could not find oss block to get version info from\n");
+	if (umr_sdma_get_ip_ver(asic, &ossmaj, &ossmin)) {
+		asic->err_msg("[BUG] Cannot determine version of OSS block for this ASIC.\n");
+		return NULL;
 	}
 
 	ps = ops = calloc(1, sizeof *ops);
@@ -262,7 +261,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 		ps->header_dw = *stream++;
 		ps->nwords = 0xFFFFFFFFUL;
 
-		switch (ossip->discoverable.maj) {
+		switch (ossmaj) {
 			case 1:
 			case 2:
 			case 3:

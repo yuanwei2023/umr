@@ -1655,6 +1655,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 void umr_free_sdma_stream(struct umr_sdma_stream *stream);
 
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_sdma_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+int umr_sdma_get_ip_ver(struct umr_asic *asic, int *maj, int *min);
 
 /* IH decoding */
 struct umr_ih_decode_ui {
