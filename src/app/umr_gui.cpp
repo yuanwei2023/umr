@@ -681,7 +681,15 @@ static int run_gui(const char *url)
 		}
 		ImGui::EndTabBar();
 
-		if (!pending_request.empty()) {
+		if (replay) {
+			char txt[1024];
+			snprintf(txt, sizeof(txt), "(replaying: #b58900%s)", url);
+			float w = ImGui::CalcTextSize(txt).x;
+			avail.x += 2 * ImGui::GetStyle().WindowPadding.x;
+			ImVec2 c(avail.x - w, topleft.y);
+			ImGui::SetCursorScreenPos(c);
+			ImGui::Text(txt);
+		} else if (!pending_request.empty()) {
 			avail.x += 2 * ImGui::GetStyle().WindowPadding.x;
 			ImVec2 c(avail.x - 10, topleft.y);
 			ImGui::SetCursorScreenPos(c);
