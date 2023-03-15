@@ -1145,7 +1145,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			 * so it can recreate it.
 			 */
 			if (asics[i]->was_ip_discovered && ip_discovery_dumps[i]) {
-				json_object_set_string(json_object(as), "ip_discovery_dump", ip_discovery_dumps[i]);
+				*raw_data = strdup(ip_discovery_dumps[i]);
+				*raw_data_size = strlen(ip_discovery_dumps[i]) + 1;
 			}
 
 			json_array_append_value(json_array(answer), as);

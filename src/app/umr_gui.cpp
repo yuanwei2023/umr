@@ -141,15 +141,14 @@ static pthread_cond_t cond;
 static bool done;
 
 struct AsicData {
-	AsicData(JSON_Object *answer, long did, int instance) {
+	AsicData(JSON_Object *answer, char *ip_discovery_dump, long did, int instance) {
 		int tryipdiscovery = 0;
 		memset(&options, 0, sizeof options);
 		options.instance = instance;
 		options.database_path[0] = '\0';
 		options.no_disasm = 0;
-		const char *script = json_object_get_string(answer, "ip_discovery_dump");
-		if (script && strlen(script)) {
-			struct umr_test_harness *th = umr_create_test_harness(script);
+		if (ip_discovery_dump && strlen(ip_discovery_dump)) {
+			struct umr_test_harness *th = umr_create_test_harness(ip_discovery_dump);
 
 			options.test_log = 1;
 			options.th = th;
@@ -261,6 +260,7 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *in, voi
 				for (int i = 0; i < s; i++) {
 					JSON_Object *v = json_object(json_array_get_value(as_array, i));
 					AsicData *d = new AsicData(v,
+						(char*) raw_data,
 						json_object_get_number(v, "did"),
 						json_object_get_number(v, "instance"));
 					asics->push_back(d);
