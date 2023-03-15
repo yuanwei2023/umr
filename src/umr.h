@@ -1771,7 +1771,7 @@ void umr_gfxoff_read(struct umr_asic *asic);
 
 #if UMR_GUI
 #include "parson.h"
-JSON_Value *umr_process_json_request(JSON_Object *request);
+JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size);
 void umr_run_gui(const char *url);
 #endif
 

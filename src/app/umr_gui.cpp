@@ -34,6 +34,7 @@
 #endif
 #include <pthread.h>
 #include <regex.h>
+#include <limits.h>
 
 #include "parson.h"
 #include "gui/panels.h"
@@ -84,7 +85,7 @@ struct Link {
 	bool use_sock;
 };
 
-JSON_Value *query(struct Link& lnk, JSON_Value *request) {
+JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsigned *raw_data_size) {
 	#if UMR_GUI_REMOTE
 	if (lnk.use_sock) {
 		char* s = json_serialize_to_string(request);
@@ -103,16 +104,29 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request) {
 		len = nn_recv(lnk.sock, &buffer, NN_MSG, 0);
 		if (len < 0)
 			exit(0);
+
 		if (len == 0)
 			return NULL;
 
-		buffer[len - 1] = '\0';
-		JSON_Value *out = json_parse_string(buffer);
+
+		int strl = strlen(&buffer[sizeof(uint32_t)]) + 1;
+		memcpy(raw_data_size, buffer, sizeof(uint32_t));
+		assert(len == sizeof(uint32_t) + strl + *raw_data_size);
+		JSON_Value *out = json_parse_string(&buffer[sizeof(uint32_t)]);
+		if (json_object_get_boolean(json_object(out), "has_raw_data")) {
+			assert(*raw_data_size);
+			*raw_data = malloc(*raw_data_size);
+			memcpy(*raw_data,
+				   &buffer[sizeof(uint32_t) + strl],
+				   *raw_data_size);
+		}
+
 		nn_freemsg(buffer);
+
 		return out;
 	} else
 	#endif
-		return umr_process_json_request(json_object(request));
+		return umr_process_json_request(json_object(request), raw_data, raw_data_size);
 }
 
 void force_redraw() {
@@ -233,7 +247,7 @@ AsicData *answer_to_asic_data(std::vector<AsicData*> *asics, JSON_Object *reques
 }
 
 
-static void process_response(std::vector<AsicData*> *asics, JSON_Object *in) {
+static void process_response(std::vector<AsicData*> *asics, JSON_Object *in, void *raw_data, unsigned raw_data_size) {
 	JSON_Object *request = json_object(json_object_get_value(in, "request"));
 	const char *cmd = json_object_get_string(request, "command");
 	JSON_Value *error = json_object_get_value(in, "error");
@@ -259,7 +273,7 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *in) {
 
 		if (data) {
 			for (auto panel: data->panels) {
-				panel->process_server_message(request, json_object_get_value(in, "answer"));
+				panel->process_server_message(request, json_object_get_value(in, "answer"), raw_data, raw_data_size);
 			}
 		}
 	}
@@ -269,13 +283,16 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *in) {
 
 static void *communication_thread(void *_job) {
 	int id = 0;
-	char session_filename[512];
+	char session_filename[PATH_MAX];
+	char session_filename_raw[PATH_MAX];
 	while (id < 1024) {
 		struct stat statbuf;
 		sprintf(session_filename, "/tmp/umr_session.%d.json", id++);
-		if (stat(session_filename, &statbuf) == -1 && errno == ENOENT)
+		if (stat(session_filename, &statbuf) == -1 && errno == ENOENT) {
 			break;
+		}
 	}
+	sprintf(session_filename_raw, "%s.raw", session_filename);
 	JSON_Array *session = json_array(json_value_init_array());
 	std::vector<AsicData*> *asics = (std::vector<AsicData*> *)_job;
 
@@ -284,15 +301,24 @@ static void *communication_thread(void *_job) {
 		if (pending_request.empty())
 			pthread_cond_wait(&cond, &mtx);
 		for (int i = 0; i < pending_request.size(); i++) {
+			void *raw_data = NULL;
+			unsigned raw_data_size = 0;
 			JSON_Value* req = pending_request[i];
 			pthread_mutex_unlock(&mtx);
-			JSON_Value *in = query(lnk, req);
+			JSON_Value *in = query(lnk, req, &raw_data, &raw_data_size);
 			pthread_mutex_lock(&mtx);
 
 			/* Save to disk for replay */
 			json_array_append_value(session, json_value_deep_copy(in));
+			if (raw_data_size) {
+				uint32_t s = htole32(raw_data_size);
+				int fd = open(session_filename_raw, O_WRONLY | O_CREAT | O_APPEND, 0644);
+				write(fd, &s, sizeof(raw_data_size));
+				write(fd, raw_data, raw_data_size);
+				close(fd);
+			}
 
-			process_response(asics, json_object(in));
+			process_response(asics, json_object(in), raw_data, raw_data_size);
 
 			json_value_free(in);
 		}
@@ -365,11 +391,24 @@ static int run_gui(const char *url)
 
 	pthread_t t_id;
 	if (replay) {
+		char raw_filename[PATH_MAX];
+		sprintf(raw_filename, "%s.raw", url);
 		JSON_Array *session = json_array(json_parse_file(url));
 		if (!session)
 			return 1;
+		int fd = open(raw_filename, O_RDONLY);
 		for (int i = 0; i < json_array_get_count(session); i++) {
-			process_response(&asics, json_object(json_array_get_value(session, i)));
+			uint32_t raw_data_size = 0;
+			void *raw_data = NULL;
+			JSON_Object *e = json_object(json_array_get_value(session, i));
+			if (json_object_get_boolean(e, "has_raw_data") && fd != -1) {
+				uint32_t s;
+				read(fd, &s, sizeof(raw_data_size));
+				raw_data_size = le32toh(s);
+				raw_data = malloc(raw_data_size);
+				read(fd, raw_data, raw_data_size);
+			}
+			process_response(&asics, e, raw_data, raw_data_size);
 		}
 	} else {
 		pthread_create(&t_id, NULL, communication_thread, &asics);

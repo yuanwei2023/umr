@@ -28,7 +28,7 @@ class InfoPanel : public Panel {
 public:
 	InfoPanel(struct umr_asic *asic) : Panel(asic) { }
 
-	void process_server_message(JSON_Object *request, JSON_Value *answer) {	}
+	void process_server_message(JSON_Object *request, JSON_Value *answer, void *raw_data, unsigned raw_data_size) {	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		static const char *families[] = {

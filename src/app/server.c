@@ -869,7 +869,7 @@ static void init_asics() {
 
 			if (opt.test_log_fd) {
 				fflush(opt.test_log_fd);
-				ip_discovery_dumps[index] = ip_discovery_dump;
+				ip_discovery_dumps[index] = strdup(ip_discovery_dump);
 			}
 
 			index++;
@@ -1050,7 +1050,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 		umr_free_pm4_stream(stream);
 }
 
-JSON_Value *umr_process_json_request(JSON_Object *request)
+JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size)
 {
 	JSON_Value *answer = NULL;
 	const char *last_error;
@@ -1292,14 +1292,10 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 		asic->options.verbose = 0;
 
 		answer = json_value_init_object();
-
 		if (buf) {
-			JSON_Value *value = json_value_init_array();
-			for (int i = 0; i < (int) size / 8; i++) {
-				json_array_append_number(json_array(value), buf[i]);
-			}
-			json_object_set_value(json_object(answer), "values", value);
-			free(buf);
+			*raw_data = buf;
+			*raw_data_size = size;
+			json_object_set_number(json_object(answer), "values", 0 /* raw_data index */);
 		}
 		JSON_Value *pt = json_value_init_array();
 		for (int i = 0; i < num_page_table_entries; i++) {
@@ -1746,7 +1742,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request)
 	JSON_Value *out = json_value_init_object();
 	json_object_set_value(json_object(out), "answer", answer);
 	json_object_set_value(json_object(out), "request", json_object_get_wrapping_value(request));
-
+	json_object_set_boolean(json_object(out), "has_raw_data", *raw_data != NULL);
 	return out;
 
 error:
@@ -1797,13 +1793,29 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 		if (request == NULL) {
 			printf("ERROR\n");
 		} else {
-			JSON_Value *answer = umr_process_json_request(json_object(request));
+			void *raw_data = NULL;
+			unsigned raw_data_size = 0;
+			JSON_Value *answer = umr_process_json_request(
+				json_object(request), &raw_data, &raw_data_size);
+
 			char* s = json_serialize_to_string(answer);
 			size_t len = strlen(s) + 1;
-			if (nn_send(sock, s, len, 0) < 0)
+
+			/* We can only send a single reply because of the nn protocol used,
+			 * so pack everything.
+			 */
+			uint8_t *msg = nn_allocmsg(sizeof(uint32_t) + len + raw_data_size, 0);
+
+			memcpy(msg, &raw_data_size, sizeof(uint32_t));
+			memcpy(&msg[sizeof(uint32_t)], s, len);
+			memcpy(&msg[sizeof(uint32_t) + len], raw_data, raw_data_size);
+
+			if (nn_send(sock, &msg, NN_MSG, 0) < 0)
 				exit(0);
-			json_value_free(answer);
+
 			json_free_serialized_string(s);
+			json_value_free(answer);
+			free(raw_data);
 		}
 		nn_freemsg(buf);
 	}

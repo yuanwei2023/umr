@@ -55,7 +55,7 @@ public:
 		free(sensor_previous_values);
 	}
 
-	void process_server_message(JSON_Object *request, JSON_Value *answer) {
+	void process_server_message(JSON_Object *request, JSON_Value *answer, void *raw_data, unsigned raw_data_size) {
 		const char *command = json_object_get_string(request, "command");
 
 		if (!strcmp(command, "power")) {
