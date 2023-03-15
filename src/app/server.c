@@ -20,42 +20,550 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+#include "gui/parson/parson.h"
 #include "umrapp.h"
 #include <signal.h>
+#include <string.h>
 #include <time.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <ctype.h>
 #if UMR_GUI_SERVER
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+#define EGL_EGLEXT_PROTOTYPES
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <gbm.h>
+#include <libdrm/drm_fourcc.h>
+#include <libdrm/amdgpu_drm.h>
+#include <assert.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#define QOI_IMPLEMENTATION
+#include "gui/qoi/qoi.h"
 #endif
 #include "parson.h"
+#include <sys/syscall.h>
+#include <xf86drm.h>
+#include <amdgpu.h>
+#include <amdgpu_drm.h>
+#include <xf86drmMode.h>
 
-static char * read_file(const char *path) {
-	static char *buffer = NULL;
-	static unsigned buffer_size = 0;
+static char * _read_file(const char *path, char **buffer, unsigned *buffer_size) {
 	FILE *fd = fopen(path, "r");
 	if (fd) {
 		long total = 0;
 		while (1) {
-			if (total >= buffer_size) {
-				buffer_size = total ? total * 2 : 1024;
-				buffer = realloc(buffer, buffer_size);
+			if (total >= *buffer_size) {
+				*buffer_size = total ? total * 2 : 1024;
+				(*buffer) = realloc((*buffer), *buffer_size);
 			}
 
-			int n = fread(&buffer[total], 1, buffer_size - total, fd);
+			int n = fread(&(*buffer)[total], 1, *buffer_size - total, fd);
 			if (!n) {
-				buffer[total] = '\0';
+				(*buffer)[total] = '\0';
 				break;
 			}
 			total += n;
 		}
 		fclose(fd);
-		return buffer;
+		return (*buffer);
 	}
-	return "";
+	if (*buffer_size < 2) {
+		*buffer = malloc(2);
+		*buffer_size = 2;
+	}
+	**buffer = '\0';
+	return *buffer;
+}
+
+static const char *uint64_to_str(uint64_t m)
+{
+	static char tmp[128];
+	sprintf(tmp, "%0lx", m);
+	return tmp;
+}
+
+static uint64_t str_to_uint64(const char *s)
+{
+	uint64_t u;
+	if (sscanf(s, "%lx", &u) == 1)
+		return u;
+	else
+		return (uint64_t)-1;
+}
+
+static char *read_file(const char *path) {
+	static char *buffer = NULL;
+	static unsigned buffer_size = 0;
+	return _read_file(path, &buffer, &buffer_size);
+}
+
+static char * read_file_a(const char *path) {
+	char *buffer = NULL;
+	unsigned buffer_size = 0;
+	return _read_file(path, &buffer, &buffer_size);
+}
+
+static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int max_fd) {
+	char folder[512];
+	sprintf(folder, "/proc/%d/fdinfo", pid);
+
+	int num_fds = 0;
+
+	DIR *d = opendir(folder);
+	/* I'm not sure it's useful to try all the fd. */
+	if (d) {
+		struct dirent *entry;
+		while ((entry = readdir(d))) {
+			char path[1024];
+			sprintf(path, "%s/%s", folder, entry->d_name);
+
+			char *content = read_file_a(path);
+			if (strstr(content, pci_name) && strstr(content, "amdgpu")) {
+				result[num_fds++] = atoi(entry->d_name);
+				free(content);
+				if (num_fds == max_fd)
+					break;
+			} else {
+				free(content);
+			}
+		}
+		closedir(d);
+		return num_fds;
+	}
+	return 0;
+}
+
+static int find_pid_by_command_name(DIR *d, const char *process_name) {
+	struct dirent *ent;
+	struct stat fstat;
+	unsigned pid = 0;
+	while ((ent = readdir(d))) {
+		if (fstatat(dirfd(d), ent->d_name, &fstat, 0) < 0)
+			continue;
+		if (S_ISDIR(fstat.st_mode)) {
+			char path[512];
+			sprintf(path, "/proc/%s/comm", ent->d_name);
+			char *command = read_file_a(path);
+			if (command && strncmp(command, process_name, strlen(process_name)) == 0) {
+				pid = atoi(ent->d_name);
+				break;
+			}
+			free(command);
+		}
+	}
+	return pid;
+}
+
+static void read_size_from_md(struct umr_asic *asic, unsigned *metadata,
+							  int *width, int *height)
+{
+	if (asic->family >= FAMILY_NV) {
+		*width = (((metadata[2 + 1] >> 30) & 0x3) | ((metadata[2 + 2] & 0xFFF) << 2)) + 1;
+		*height = ((metadata[2 + 2] >> 14) & 0x3FFF) + 1;
+	} else {
+		*width = (metadata[2 + 2] & 0x3FFF) + 1;
+		*height = ((metadata[2 + 2] >> 14) & 0x3FFF) + 1;
+	}
+}
+
+static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
+							       unsigned *bo_handles, unsigned *bo_sizes,
+							       int bo_count, int *res, int *gpu_fds, int *formats)
+{
+	int r;
+	int gpu_fd = -1;
+	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
+	int *remote_gpu_fds = alloca(128 * sizeof(int));
+
+	memset(res, 0, bo_count * 2 * sizeof(int));
+
+	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fds, 128);
+	if (remote_gpu_fds_count == 0)
+		return;
+
+	for (int i = 0; i < remote_gpu_fds_count; i++) {
+		gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, remote_gpu_fds[i], 0);
+		if (gpu_fd < 0)
+			continue;
+
+		for (int j = 0; j < bo_count; j++) {
+			struct drm_amdgpu_gem_op gem_op = { 0 };
+			struct drm_amdgpu_gem_create_in bo_info = { 0 };
+
+			if (res[2 * j])
+				continue;
+
+			/* Validate size. */
+			gem_op.handle = bo_handles[j];
+			gem_op.op = AMDGPU_GEM_OP_GET_GEM_CREATE_INFO;
+			gem_op.value = (uintptr_t)&bo_info;
+
+			r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_OP,
+									&gem_op, sizeof(gem_op));
+
+			if (r || bo_info.bo_size != bo_sizes[j])
+				continue;
+
+			/* Check metadata. */
+			struct drm_amdgpu_gem_metadata metadata;
+			metadata.handle = bo_handles[j];
+			metadata.op = AMDGPU_GEM_METADATA_OP_GET_METADATA;
+
+			r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_METADATA, &metadata, sizeof(metadata));
+			if (r ||
+				metadata.data.data_size_bytes == 0 ||
+				(metadata.data.data[0] & 0xffff) < 2)
+				continue;
+
+			read_size_from_md(asic, metadata.data.data, &res[2 * j], &res[2 * j + 1]);
+			gpu_fds[j] = remote_gpu_fds[i];
+
+			if (asic->family < FAMILY_NV)
+				formats[j] = (metadata.data.data[2 + 1] >> 20) & 0x3f;
+			else
+				formats[j] = (metadata.data.data[2 + 1] >> 20) & 0x1FF;
+		}
+
+		close(gpu_fd);
+	}
+	close(pid_fd);
+}
+
+static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
+				      int width, int height, unsigned fourcc,
+				      uint64_t modifier, int nplanes,
+				      unsigned *offsets, unsigned *pitches,
+				      void **raw_data, unsigned *size)
+{
+	char pci_path[512];
+	sprintf(pci_path, "/dev/dri/by-path/pci-%s-render", asic->options.pci.name);
+	int fd = open(pci_path, O_RDWR | O_CLOEXEC);
+	struct gbm_device *gbm = gbm_create_device(fd);
+	EGLDisplay display = eglGetPlatformDisplay (EGL_PLATFORM_GBM_MESA, gbm, NULL);
+	eglInitialize(display, NULL, NULL);
+	EGLConfig config;
+	EGLint num_config;
+	EGLint const attribute_list_config[] = {
+		EGL_RED_SIZE, 8,
+		EGL_GREEN_SIZE, 8,
+		EGL_BLUE_SIZE, 8,
+		EGL_NONE
+	};
+	eglChooseConfig(display, attribute_list_config, &config, 1, &num_config);
+	eglBindAPI(EGL_OPENGL_ES_API);
+	EGLint const attrib_list[] = {
+		EGL_CONTEXT_MAJOR_VERSION, 3,
+		EGL_NONE
+	};
+	EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, attrib_list);
+	if (context == EGL_NO_CONTEXT) {
+		gbm_device_destroy(gbm);
+		close(fd);
+		return "EGL init failure";
+	}
+
+	eglMakeCurrent (display, EGL_NO_SURFACE, EGL_NO_SURFACE, context);
+
+	const int base_attrib_cnt = 3;
+	const int per_plane_attrib_cnt = 5;
+	int nattrib = 0;
+	EGLAttrib *attrs = alloca(
+		(base_attrib_cnt + per_plane_attrib_cnt * 3) * 2 * sizeof(EGLAttrib));
+
+	attrs[nattrib++] = EGL_WIDTH;
+	attrs[nattrib++] = width;
+	attrs[nattrib++] = EGL_HEIGHT;
+	attrs[nattrib++] = height;
+	attrs[nattrib++] = EGL_LINUX_DRM_FOURCC_EXT;
+	attrs[nattrib++] = fourcc;
+
+	/* The other attribs are per-plane. */
+	if (modifier == DRM_FORMAT_MOD_INVALID) {
+		attrs[nattrib++] = EGL_DMA_BUF_PLANE0_FD_EXT;
+		attrs[nattrib++] = dmabuf_fd;
+		attrs[nattrib++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+		attrs[nattrib++] = 0;
+		attrs[nattrib++] = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+		attrs[nattrib++] = pitches[0];
+	} else {
+		for (int i = 0; i < nplanes; i++) {
+			attrs[nattrib++] = EGL_DMA_BUF_PLANE0_FD_EXT + 3 * i;
+			attrs[nattrib++] = dmabuf_fd;
+			attrs[nattrib++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT + 3 * i;
+			attrs[nattrib++] = offsets[i];
+			attrs[nattrib++] = EGL_DMA_BUF_PLANE0_PITCH_EXT + 3 * i;
+			attrs[nattrib++] = pitches[i];
+
+			attrs[nattrib++] = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT + 2 * i;
+			attrs[nattrib++] = modifier & 0xffffffff;
+			attrs[nattrib++] = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT + 2 * i;
+			attrs[nattrib++] = modifier >> 32;
+		}
+	}
+	attrs[nattrib++] = EGL_NONE;
+
+	EGLImage image = eglCreateImage(display,
+		NULL,
+		EGL_LINUX_DMA_BUF_EXT,
+		(EGLClientBuffer)NULL,
+		attrs);
+	if (image == EGL_NO_IMAGE)
+		return "EGL failure (unhandled format?)";
+
+	GLuint tex[2];
+	glGenTextures(2, tex);
+	glBindTexture(GL_TEXTURE_EXTERNAL_OES, tex[0]);
+	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image);
+	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindTexture(GL_TEXTURE_2D, tex[1]);
+	if (fourcc == DRM_FORMAT_XRGB2101010) {
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB10_A2, width, height);
+	} else if (fourcc == DRM_FORMAT_XRGB8888) {
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, width, height);
+	} else {
+		/* default is DRM_FORMAT_ARGB8888 */
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
+	}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glCopyImageSubData(tex[0], GL_TEXTURE_EXTERNAL_OES, 0,
+					   0, 0, 0,
+					   tex[1], GL_TEXTURE_2D, 0,
+					   0, 0, 0,
+					   width, height, 1);
+
+	void *pixels = malloc(width * height * 4);
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex[1], 0);
+
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDeleteFramebuffers(1, &fbo);
+
+	eglMakeCurrent (display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+	eglDestroyImage(display, image);
+	eglTerminate(display);
+
+	gbm_device_destroy(gbm);
+	close(fd);
+
+	if (glGetError() != GL_NO_ERROR) {
+		free(pixels);
+		return "Error while downloading the pixels";
+	} else {
+		int out_len;
+		qoi_desc desc;
+		desc.width = width;
+		desc.height = height;
+		desc.channels = 4;
+		desc.colorspace = QOI_LINEAR;
+		*raw_data = qoi_encode(pixels, &desc, &out_len);
+		*size = out_len;
+	}
+
+	free(pixels);
+	return NULL;
+}
+
+static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int remote_gpu_fd, unsigned kms_handle,
+				      				 int *width, int *height, void **raw_data, unsigned *size)
+{
+	uint64_t modifier;
+	int dmabuf_fd;
+	int r, stride;
+	int gpu_fd = -1;
+	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
+	if (pid_fd < 0)
+		return "SYS_pidfd_open failed";
+
+	gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, remote_gpu_fd, 0);
+	if (gpu_fd < 0) {
+		close(pid_fd);
+		return "Failed to import GPU fd";
+	}
+
+	/* Try to import the handle as a dmabuf. Since handle are just integers,
+	 * it's possible that this succeeds but that the bo isn't the one we're
+	 * looking for.
+	 */
+	r = drmPrimeHandleToFD(gpu_fd, kms_handle, DRM_CLOEXEC | DRM_RDWR, &dmabuf_fd);
+	if (r) {
+		close(gpu_fd);
+		return "Handle to dmabuf fd failed";
+	}
+
+	/* Query metadata. */
+	struct drm_amdgpu_gem_metadata metadata;
+	metadata.handle = kms_handle;
+	metadata.op = AMDGPU_GEM_METADATA_OP_GET_METADATA;
+
+	r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_METADATA, &metadata, sizeof(metadata));
+	if (r) {
+		close(dmabuf_fd);
+		close(gpu_fd);
+		close(pid_fd);
+		return "Failed to GEM metadata";
+	}
+
+	if (!metadata.data.data_size_bytes || (metadata.data.data[0] & 0xffff) != 2) {
+		close(dmabuf_fd);
+		close(gpu_fd);
+		close(pid_fd);
+		return "Invalid metadata";
+	}
+
+	read_size_from_md(asic, metadata.data.data, width, height);
+	if (metadata.data.data_size_bytes > 11 * 4) {
+		modifier = (uint64_t)metadata.data.data[11] << 32 | metadata.data.data[10];
+	} else {
+		stride = metadata.data.data[10];
+		modifier = DRM_FORMAT_MOD_INVALID;
+	}
+
+	/* Override fourcc for a couple of known formats. */
+	unsigned fourcc = DRM_FORMAT_ARGB8888;
+	if (asic->family < FAMILY_NV) {
+		unsigned format = (metadata.data.data[2 + 1] >> 20) & 0x3f;
+		if (format == 9)
+			fourcc = DRM_FORMAT_XRGB2101010;
+	} else {
+		unsigned format = (metadata.data.data[2 + 1] >> 20) & 0x1FF;
+		if (format >= 50 && format <= 55) /* GFX10_FORMAT_2_10_10_10_* */
+			fourcc = DRM_FORMAT_XRGB2101010;
+	}
+
+	int nplanes = 1;
+
+	unsigned *offsets = alloca(3 * sizeof(unsigned));
+	unsigned *pitches = alloca(3 * sizeof(unsigned));
+	if (modifier == DRM_FORMAT_MOD_INVALID) {
+		offsets[0] = 0;
+		pitches[0] = stride;
+	} else {
+		nplanes = metadata.data.data[12];
+		for (int i = 0; i < nplanes; i++) {
+			offsets[i] = metadata.data.data[13 + 2 * i];
+			pitches[i] = metadata.data.data[13 + 2 * i + 1];
+		}
+	}
+
+	void *result = peak_bo(asic, dmabuf_fd,
+						   *width, *height, fourcc, modifier,
+						   nplanes,
+						   offsets, pitches,
+						   raw_data, size);
+	close(dmabuf_fd);
+	close(gpu_fd);
+	close(pid_fd);
+	return result;
+}
+
+static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
+				      				    int *width, int *height, void **raw_data, unsigned *size)
+{
+	int gpu_fd = -1;
+
+	int pid_fd = syscall(SYS_pidfd_open, (int) json_object_get_number(md, "pid"), 0);
+	if (pid_fd < 0)
+		return "SYS_pidfd_open failed";
+
+	gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, (int) json_object_get_number(md, "gpu_fd"), 0);
+	if (gpu_fd < 0) {
+		close(pid_fd);
+		return "Failed to import GPU fd";
+	}
+
+	unsigned fourcc = (unsigned) json_object_get_number(md, "fourcc");
+	uint64_t modifier = str_to_uint64(json_object_get_string(md, "modifier"));
+	*width = (int) json_object_get_number(md, "width");
+	*height = (int) json_object_get_number(md, "height");
+
+	int nplanes = (int) json_object_get_number(md, "nplanes");
+
+	unsigned *offsets = alloca(nplanes * sizeof(unsigned));
+	unsigned *pitches = alloca(nplanes * sizeof(unsigned));
+	JSON_Array *j_offsets = json_object_get_array(md, "offsets");
+	for (size_t i = 0; i < json_array_get_count(j_offsets); i++)
+		offsets[i] = (int) json_array_get_number(j_offsets, i);
+	JSON_Array *j_pitches = json_object_get_array(md, "pitches");
+	for (size_t i = 0; i < json_array_get_count(j_pitches); i++)
+		pitches[i] = (int) json_array_get_number(j_pitches, i);
+
+	void *result = peak_bo(asic, (int) json_object_get_number(md, "dmabuf_fd"),
+						   *width, *height, fourcc, modifier,
+						   nplanes,
+						   offsets, pitches,
+						   raw_data, size);
+	close(gpu_fd);
+	close(pid_fd);
+	return result;
+}
+
+static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_id,
+									int *remote_gpu_fd, int *dmabuf_fd,
+						  		    unsigned *width, unsigned *height,
+						  		    unsigned *fourcc, uint64_t *modifier,
+						  		    unsigned *nplanes,
+						  		    unsigned *offsets, unsigned *pitches)
+{
+	int gpu_fd = -1;
+	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
+	if (pid_fd < 0)
+		return "SYS_pidfd_open failed";
+
+	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fd, 1);
+	if (remote_gpu_fds_count == 0)
+		return "Couldn't find amdgpu fd";
+
+	gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, *remote_gpu_fd, 0);
+	if (gpu_fd < 0) {
+		close(pid_fd);
+		return "Failed to import GPU fd";
+	}
+
+	drmModeFB2Ptr fb2 = drmModeGetFB2(gpu_fd, fb_id);
+	if (fb2 == NULL) {
+		close(gpu_fd);
+		close(pid_fd);
+		return "drmModeGetFB2 failed";
+	}
+
+	if (drmPrimeHandleToFD(gpu_fd, fb2->handles[0], DRM_CLOEXEC, dmabuf_fd)) {
+		close(gpu_fd);
+		close(pid_fd);
+		return "dmabuf creation failed";
+	}
+	/* Close the handle to not leak it. */
+	drmCloseBufferHandle(gpu_fd, fb2->handles[0]);
+	*width = fb2->width;
+	*height = fb2->height;
+	*fourcc = fb2->pixel_format;
+	*modifier = fb2->modifier;
+	*nplanes = 0;
+	for (int i = 0; i < 4; i++)
+		(*nplanes) += (fb2->handles[i] != 0);
+	memcpy(offsets, fb2->offsets, *nplanes * sizeof(unsigned));
+	memcpy(pitches, fb2->pitches, *nplanes * sizeof(unsigned));
+
+	close(gpu_fd);
+	close(pid_fd);
+
+	drmModeFreeFB2(fb2);
+
+	return NULL;
 }
 
 static uint64_t read_sysfs_uint64(const char *path) {
@@ -132,7 +640,7 @@ static int parse_kms_field(const char **content, const char *field, const char *
 		case KMS_INT_16: {
 			uint64_t v;
 			if (sscanf(ptr, "0x%" PRIx64, &v) == 1)
-				json_object_set_number(out, js_field, v);
+				json_object_set_string(out, js_field, uint64_to_str(v));
 			break;
 		}
 		case KMS_SIZE: {
@@ -163,9 +671,11 @@ static int parse_kms_field(const char **content, const char *field, const char *
 	return 1;
 }
 
-JSON_Array *parse_kms_framebuffer_sysfs_file(const char *content) {
+JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *content) {
 	JSON_Array *out = json_array(json_value_init_array());
 	const char *next_framebuffer = strstr(content, "framebuffer[");
+	DIR *d = asic ? opendir("/proc") : NULL;
+
 	while (next_framebuffer) {
 		if (!next_framebuffer)
 			break;
@@ -177,6 +687,43 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(const char *content) {
 			json_object_set_number(fb, "id", id);
 
 		parse_kms_field(&content, "allocated by", "allocated by", KMS_STRING, fb);
+		/* The kernel only gives us an application name but we really need a pid.
+		 * Try to find the application by parsing /proc/$fd/comm
+		 */
+		if (d) {
+			const char *comm = json_object_get_string(fb, "allocated by");
+			rewinddir(d);
+			int pid = find_pid_by_command_name(d, comm);
+
+			if (pid) {
+				int gpu_fd, dmabuf_fd;
+				unsigned width, height, fourcc, nplanes;
+				unsigned offsets[3], pitches[3];
+				uint64_t modifier;
+				if (get_bo_md_using_fb_id(asic, pid, id, &gpu_fd, &dmabuf_fd, &width, &height,
+										  &fourcc, &modifier, &nplanes, offsets, pitches) == NULL) {
+					JSON_Object *md = json_object(json_value_init_object());
+					json_object_set_number(md, "pid", pid);
+					json_object_set_number(md, "gpu_fd", gpu_fd);
+					json_object_set_number(md, "dmabuf_fd", dmabuf_fd);
+					json_object_set_number(md, "width", width);
+					json_object_set_number(md, "height", height);
+					json_object_set_number(md, "fourcc", fourcc);
+					json_object_set_string(md, "modifier", uint64_to_str(modifier));
+					json_object_set_number(md, "nplanes", nplanes);
+					JSON_Value *off = json_value_init_array();
+					for (unsigned i = 0; i < nplanes; i++)
+						json_array_append_number(json_array(off), offsets[i]);
+					JSON_Value *str = json_value_init_array();
+					for (unsigned i = 0; i < nplanes; i++)
+						json_array_append_number(json_array(str), pitches[i]);
+					json_object_set_value(md, "offsets", off);
+					json_object_set_value(md, "pitches", str);
+					json_object_set_value(fb, "metadata", json_object_get_wrapping_value(md));
+				}
+			}
+		}
+
 		parse_kms_field(&content, "format", "format", KMS_STRING, fb);
 		parse_kms_field(&content, "modifier", "modifier", KMS_INT_16, fb);
 		parse_kms_field(&content, "size", "size", KMS_SIZE, fb);
@@ -209,6 +756,9 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(const char *content) {
 
 		json_array_append_value(out, json_object_get_wrapping_value(fb));
 	}
+
+	if (d)
+		closedir(d);
 
 	return out;
 }
@@ -474,6 +1024,123 @@ JSON_Array *parse_vm_info(const char *content)
 	}
 	return pids;
 }
+
+struct pid_exported {
+	unsigned pid;
+	int num_exported;
+	char *process_name;
+	char **exported;
+};
+
+JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, int num_pids_mapping)
+{
+	JSON_Array *pids = json_array(json_value_init_array());
+
+	const char *ptr = content;
+
+	int nlines = 0;
+	int max_lines = 128;
+	char **lines = realloc(NULL, max_lines * sizeof(char *));
+	while (ptr) {
+		const char *endline = strchr(ptr, '\n');
+
+		while (isspace(*ptr)) ptr++;
+
+		if (endline == NULL) {
+			if (strlen(ptr) > 0)
+				lines[nlines++] = strdup(ptr);
+			break;
+		} else {
+			lines[nlines++] = strndup(ptr, endline - ptr);
+			ptr = endline + 1;
+		}
+
+		if (nlines + 1 >= max_lines) {
+			max_lines *= 2;
+			lines = realloc(lines, max_lines * sizeof(char *));
+		}
+	}
+
+	for (int i = 0; i < nlines;) {
+
+		if (strncmp(lines[i], "pid", 3) != 0) {
+			printf("Incorrect line start %d '%s'. Aborting\n", i, lines[i]);
+			return NULL;
+		}
+		const char *cursor = lines[i] + 3;
+		while (isspace(*cursor)) cursor++;
+
+		unsigned pid;
+		sscanf(cursor, "%u", &pid);
+
+		cursor = strstr(cursor, "command");
+		cursor += strlen("command");
+		while (isspace(*cursor)) cursor++;
+
+		JSON_Object *app = json_object(json_value_init_object());
+		json_object_set_number(app, "pid", pid);
+		json_array_append_value(pids, json_object_get_wrapping_value(app));
+
+		char *end = strchr(cursor, ':');
+		json_object_set_string_with_len(app, "command", cursor, end - cursor);
+		cursor = end + 1;
+
+		JSON_Array *bos = json_array(json_value_init_array());
+		json_object_set_value(app, "bos", json_array_get_wrapping_value(bos));
+
+		free(lines[i]);
+		int pid_overriden = 0;
+		/* Now parse lines belonging to this pid */
+		for (i = i + 1; i < nlines; i++) {
+			/* Break if we're starting a new one. */
+			if (strncmp(lines[i], "pid", 3) == 0)
+				break;
+
+			cursor = lines[i];
+
+			unsigned kms_handle, size, pinned;
+			sscanf(cursor, "0x%x", &kms_handle);
+			cursor += strlen("0x00000000:");
+			while (isspace(*cursor)) cursor++;
+
+			sscanf(cursor, "%u", &size);
+
+			pinned = strstr(cursor, "pin count") != NULL;
+
+			JSON_Object *bo = json_object(json_value_init_object());
+			json_object_set_number(bo, "handle", kms_handle);
+			json_object_set_number(bo, "size", size);
+			json_object_set_boolean(bo, "pinned", pinned);
+			json_array_append_value(bos, json_object_get_wrapping_value(bo));
+
+			if (pid_overriden == 0) {
+				char *exported_as = strstr(cursor, "exported as");
+				if (exported_as) {
+					char *end = exported_as + strlen("exported as ");
+					while (*end && !isspace(*end)) end++;
+					char *txt = strndup(exported_as, end - exported_as);
+
+					/* Now look for a match. */
+					for (int j = 0; j < num_pids_mapping && !pid_overriden; j++) {
+						for (int k = 0; k < pids_exp[j].num_exported; k++) {
+							if (strcmp(txt, pids_exp[j].exported[k]) == 0) {
+								json_object_set_number(app, "pid", pids_exp[j].pid);
+								json_object_set_string(app, "command", pids_exp[j].process_name);
+								pid_overriden = 1;
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			free(lines[i]);
+		}
+	}
+
+	return pids;
+}
+
 
 enum sensor_maps {
 	SENSOR_IDENTITY = 0,
@@ -1041,6 +1708,11 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 	if (stream)
 		umr_free_pm4_stream(stream);
 }
+
+/* We need to remember this one so we can close any dmabuf that
+ * we created.
+ */
+static JSON_Value *previous_framebuffers_answer = NULL;
 
 JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size)
 {
@@ -1724,7 +2396,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		char path[256];
 		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
 		const char *content = read_file(path);
-		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(content);
+		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(NULL, content);
 
 		sprintf(path, "/sys/kernel/debug/dri/%d/state", asic->instance);
 		content = read_file(path);
@@ -1760,7 +2432,185 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 		}
 		json_object_set_number(json_object(answer), "dm_visual_confirm", read_sysfs_uint64(path));
+	} else if (!strcmp(command, "gem-info")) {
+		if (previous_framebuffers_answer) {
+			JSON_Array *fbs = json_array(previous_framebuffers_answer);
+			for (size_t i = 0; i < json_array_get_count(fbs); i++) {
+				JSON_Object *fb = json_object(json_array_get_value(fbs, i));
+				JSON_Object *md = json_object_get_object(fb, "metadata");
+				if (md) {
+					int dmabuf = json_object_get_number(md, "dmabuf_fd");
+					close(dmabuf);
+				}
+			}
+			json_value_free(previous_framebuffers_answer);
+			previous_framebuffers_answer = NULL;
+		}
 
+		char path[512];
+		/* fd ownership can be confusing; for instance XWayland will appear as the owner
+		 * of all bo instead of the real application.
+		 * Try to map bo to the real pid by matching the "exported as XXXX" strings from
+		 * amdgpu_gem_info and amdgpu_vm_info
+		 */
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+		const char *content = read_file(path);
+		int current_pid = 0;
+		struct pid_exported *pids_mapping;
+		int num_pids_mapping = 0;
+
+		while (content) {
+			char *next_pid = strstr(content, "pid:");
+			if (current_pid != 0) {
+				char *next_exported_as;
+				while ((next_exported_as = strstr(content, "exported as"))) {
+					if (next_exported_as && (next_exported_as < next_pid || next_pid == NULL)) {
+						/* 2 formats: "exported as xxxxxxxxxxxxxxxxx"
+						 *            "exported as ino:xxxxxxxx"
+						 */
+						char *end = next_exported_as + strlen("exported as ");
+						while (*end && !isspace(*end)) end++;
+						char *txt = strndup(next_exported_as, end - next_exported_as);
+
+						int pid_n = num_pids_mapping - 1;
+						int n = pids_mapping[pid_n].num_exported++;
+						pids_mapping[pid_n].exported = realloc(pids_mapping[pid_n].exported,
+															   (n + 1) * sizeof(char*));
+						pids_mapping[pid_n].exported[n] = txt;
+
+						content = end;
+					} else {
+						break;
+					}
+				}
+			}
+
+			if (!next_pid)
+				break;
+			char *next_space = strchr(next_pid, '\t');
+			content = next_space + 1;
+			if (sscanf(next_pid, "pid:%d", &current_pid) != 1)
+				break;
+
+			char *process = strstr(content, "Process:");
+			char *process_name = NULL;
+			if (process) {
+				process += strlen("Process:");
+				char *end = process;
+				while (!isspace(*end)) end++;
+
+				if (end != process) {
+					process_name = strndup(process, end - process);
+					/* The kernel pid can be the thread id so translate it into a pid. */
+					DIR *d = opendir("/proc");
+					if (d) {
+						int pid;
+						while ((pid = find_pid_by_command_name(d, process_name))) {
+							/* If this is the right pid, the following folder should
+							 * exist.
+							 */
+							char pid_path[512];
+							struct stat statbuf;
+							sprintf(pid_path, "/proc/%d/task/%d", pid, current_pid);
+							if (stat(pid_path, &statbuf) == 0) {
+								current_pid = pid;
+								break;
+							}
+						}
+						closedir(d);
+					}
+				}
+			}
+			if (current_pid) {
+				pids_mapping = realloc(pids_mapping, (num_pids_mapping + 1) * sizeof(struct pid_exported));
+				pids_mapping[num_pids_mapping].pid = current_pid;
+				pids_mapping[num_pids_mapping].process_name = process_name;
+				pids_mapping[num_pids_mapping].num_exported = 0;
+				pids_mapping[num_pids_mapping].exported = NULL;
+				num_pids_mapping++;
+			}
+		}
+
+		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_gem_info", asic->instance);
+		answer = json_value_init_object();
+		JSON_Array *pids = parse_gem_info(read_file(path), pids_mapping, num_pids_mapping);
+
+		for (int i = 0; i < num_pids_mapping; i++) {
+			for (int j = 0; j < pids_mapping[i].num_exported; j++)
+				free(pids_mapping[i].exported[j]);
+			free(pids_mapping[i].process_name);
+			free(pids_mapping[i].exported);
+		}
+		free(pids_mapping);
+
+		for (unsigned i = 0; i < json_array_get_count(pids); i++) {
+			JSON_Object *app = json_object(json_array_get_value(pids, i));
+			JSON_Array *bos = json_object_get_array(app, "bos");
+			unsigned *bo_handles = alloca(sizeof(unsigned) * json_array_get_count(bos));
+			unsigned *bo_sizes = alloca(sizeof(unsigned) * json_array_get_count(bos));
+			int *bo_res = alloca(sizeof(int) * 2 * json_array_get_count(bos));
+			int *gpu_fds = alloca(sizeof(int) * json_array_get_count(bos));
+			int *formats = alloca(sizeof(int) * json_array_get_count(bos));
+			for (unsigned j = 0; j < json_array_get_count(bos); j++) {
+				JSON_Object *bo = json_object(json_array_get_value(bos, j));
+				bo_handles[j] = json_object_get_number(bo, "handle");
+				bo_sizes[j] = json_object_get_number(bo, "size");
+			}
+
+			check_peak_bo_metadata(asic, json_object_get_number(app, "pid"),
+								   bo_handles, bo_sizes, json_array_get_count(bos),
+								   bo_res, gpu_fds, formats);
+
+			/* Remove invalid bo. */
+			unsigned null_count = 0;
+			for (unsigned j = 0; j < json_array_get_count(bos); j++) {
+				if (bo_res[2 * j]) {
+					JSON_Object *bo = json_object(json_array_get_value(bos, j));
+					json_object_set_number(bo, "width", bo_res[2 * j]);
+					json_object_set_number(bo, "height", bo_res[2 * j + 1]);
+					json_object_set_number(bo, "gpu_fd", gpu_fds[j]);
+					json_object_set_number(bo, "format", formats[j]);
+				} else {
+					json_array_replace_null(bos, j);
+					null_count++;
+				}
+			}
+			if (null_count == json_array_get_count(bos))
+				json_array_replace_null(pids, i);
+		}
+
+		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
+
+		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
+		content = read_file(path);
+		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(asic, content);
+		previous_framebuffers_answer = json_value_deep_copy(json_array_get_wrapping_value(framebuffers));
+		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
+	} else if (!strcmp(command, "peak-bo")) {
+		int width, height;
+		answer = json_value_init_object();
+
+		char *error;
+		if (json_object_has_value(request, "handle"))
+			error = peak_bo_using_metadata(asic, json_object_get_number(request, "pid"),
+										   json_object_get_number(request, "gpu_fd"),
+										   json_object_get_number(request, "handle"),
+										   &width, &height, raw_data, raw_data_size);
+		else if (json_object_has_value(request, "metadata"))
+			error = peak_bo_using_fb_metadata(asic,
+											  json_object(json_object_get_value(request, "metadata")),
+											  &width, &height, raw_data, raw_data_size);
+		else
+			error = "Invalid peak-bo request";
+
+		if (error == NULL) {
+			json_object_set_number(json_object(answer), "width", width);
+			json_object_set_number(json_object(answer), "height", height);
+		} else {
+			printf("%s\n", error);
+			last_error = error;
+			goto error;
+		}
 	} else {
 		last_error = "unknown command";
 		goto error;

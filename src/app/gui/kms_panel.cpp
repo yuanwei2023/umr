@@ -230,7 +230,13 @@ public:
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + frame_padding.x);
 			BeginBorderedGroup(colpadding, colwidth);
 			CenterText(owner, colwidth);
-			ImGui::TextUnformatted(owner);
+			if (strcmp(owner, "[fbcon]") == 0) {
+				ImGui::TextUnformatted(owner);
+			} else {
+				if (ImGui::Button(owner)) {
+					goto_tab(SDLK_o);
+				}
+			}
 			std::vector<JSON_Object *> sorted_fb;
 
 			for (int i = 0; i < json_array_get_count(fbs); i++) {

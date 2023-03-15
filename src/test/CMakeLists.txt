@@ -3,6 +3,7 @@
 project(umrtestapp)
 
 include_directories("../app/gui/parson")
+add_compile_definitions(UMR_GUI_SERVER=1)
 
 add_executable(umrtest
   test_framework.c

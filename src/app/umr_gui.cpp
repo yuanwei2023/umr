@@ -43,11 +43,23 @@
 #include "imgui_impl_sdl.h"
 #include "glad/glad.h"
 
+#define EGL_EGLEXT_PROTOTYPES
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+
+#ifndef UMR_GUI_SERVER
+#define QOI_IMPLEMENTATION
+#endif
+#include "gui/qoi/qoi.h"
+
 /* Random helpers */
 extern void send_request(JSON_Value *req, struct umr_asic *asic);
 extern void force_redraw();
 extern void add_vertical_line(const ImVec2& avail);
 extern bool kb_shortcut(int keycode);
+extern GLuint texture_from_qoi_buffer(int width, int height, void *buffer, int buffer_size);
+extern void goto_tab(int keycode);
+
 
 class SyntaxHighlighter {
 public:
@@ -78,6 +90,7 @@ private:
 #include "gui/memory_debug_panel.cpp"
 #include "gui/waves_panel.cpp"
 #include "gui/kms_panel.cpp"
+#include "gui/buffer_object_panel.cpp"
 
 struct Link {
 	int sock;
@@ -188,6 +201,7 @@ struct AsicData {
 		panels.push_back(new MemoryDebugPanel(asic));
 		panels.push_back(new WavesPanel(asic));
 		panels.push_back(new KmsPanel(asic));
+		panels.push_back(new BufferObjectPanel(asic));
 
 		for (auto panel: panels) {
 			panel->store_info(json_object_get_wrapping_value(answer));
@@ -344,9 +358,10 @@ static void *communication_thread(void *_job) {
 	return 0;
 }
 
-
+static int goto_tab_on_next_redraw = -1;
 bool kb_shortcut(int keycode) {
-	return ImGui::GetIO().KeyCtrl && ImGui::IsKeyReleased(SDL_GetScancodeFromKey(keycode));
+	return (ImGui::GetIO().KeyCtrl && ImGui::IsKeyReleased(SDL_GetScancodeFromKey(keycode))) ||
+			goto_tab_on_next_redraw == keycode;
 }
 
 void add_vertical_line(const ImVec2& avail) {
@@ -355,6 +370,33 @@ void add_vertical_line(const ImVec2& avail) {
 	ImVec2 end = start;
 	end.y += avail.y;
 	ImGui::GetWindowDrawList()->AddLine(start, end, ImGui::GetColorU32(ImGuiCol_TabActive));
+}
+
+GLuint texture_from_qoi_buffer(int width, int height, void *buffer, int buffer_size)
+{
+	GLuint texture_id;
+
+	qoi_desc desc;
+	desc.width = width;
+	desc.height = height;
+	desc.channels = 4;
+	desc.colorspace = QOI_LINEAR;
+	void *data = qoi_decode(buffer, buffer_size, &desc, 4);
+
+	glGenTextures(1, &texture_id);
+	glBindTexture(GL_TEXTURE_2D, texture_id);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+				 GL_RGBA, GL_UNSIGNED_BYTE, data);
+	free(data);
+
+	return texture_id;
+}
+
+void goto_tab(int key_code) {
+	goto_tab_on_next_redraw = key_code;
+	force_redraw();
 }
 
 static int run_gui(const char *url)
@@ -532,6 +574,8 @@ static int run_gui(const char *url)
 	json_object_set_string(json_object(req), "command", "enumerate");
 	send_request(req, NULL);
 
+	bool clear_goto_tab_flag = false;
+
 	while (!done) {
 		struct timespec now;
 		clock_gettime(CLOCK_MONOTONIC, &now);
@@ -689,6 +733,12 @@ static int run_gui(const char *url)
 				ImGui::EndTabItem();
 			}
 
+			if (ImGui::BeginTabItem("Buffer #b58900O#ffffffjects", NULL, kb_shortcut(SDLK_o) ? ImGuiTabItemFlags_SetSelected : 0)) {
+				if (data.panels[9]->display(dt, avail, can_send_request))
+					need_auto_refresh = -1;
+				ImGui::EndTabItem();
+			}
+
 			ImGui::EndTabBar();
 			ImGui::EndTabItem();
 		}
@@ -724,6 +774,11 @@ static int run_gui(const char *url)
 		glClear(GL_COLOR_BUFFER_BIT);
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 		SDL_GL_SwapWindow(window);
+
+		if (clear_goto_tab_flag)
+			goto_tab_on_next_redraw = -1;
+		else if (goto_tab_on_next_redraw != -1)
+			clear_goto_tab_flag = true;
 	}
 
 	pthread_mutex_lock(&mtx);

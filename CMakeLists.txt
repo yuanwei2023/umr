@@ -93,7 +93,7 @@ endif()
 if (NOT UMR_NO_GUI)
   find_package(SDL2 REQUIRED)
   include_directories(${SDL2_INCLUDE_DIRS})
-  set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES})
+  set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES} EGL drm gbm GL)
 endif ()
 
 find_package(NanoMsg)
