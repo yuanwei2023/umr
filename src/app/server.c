@@ -823,7 +823,7 @@ static void init_asics() {
 			opt.test_log = 1;
 
 		/* Is this an AMD gpu? */
-		asics[index] = umr_discover_asic(&opt, NULL);
+		asics[index] = umr_discover_asic(&opt, printf);
 
 		if (asics[index]) {
 			/* Assign linux callbacks */
