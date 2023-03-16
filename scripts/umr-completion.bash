@@ -400,3 +400,4 @@ _umr_completion()
 }
 
 complete -F _umr_completion umr
+complete -F _umr_completion umrgui
