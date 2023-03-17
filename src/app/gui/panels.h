@@ -37,7 +37,7 @@ public:
 		if (info)
 			json_value_free(json_object_get_wrapping_value(info));
 	};
-	virtual void process_server_message(JSON_Object *request, JSON_Value *answer, void *raw_data, unsigned raw_data_size) = 0;
+	virtual void process_server_message(JSON_Object *response, void *raw_data, unsigned raw_data_size) = 0;
 
 	virtual bool display(float dt, const ImVec2& avail, bool can_make_request) = 0;
 

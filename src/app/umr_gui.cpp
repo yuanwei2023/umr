@@ -248,15 +248,14 @@ AsicData *answer_to_asic_data(std::vector<AsicData*> *asics, JSON_Object *reques
 }
 
 
-static void process_response(std::vector<AsicData*> *asics, JSON_Object *in, void *raw_data, unsigned raw_data_size) {
-	JSON_Object *request = json_object(json_object_get_value(in, "request"));
+static void process_response(std::vector<AsicData*> *asics, JSON_Object *response, void *raw_data, unsigned raw_data_size) {
+	JSON_Object *request = json_object(json_object_get_value(response, "request"));
 	const char *cmd = json_object_get_string(request, "command");
-	JSON_Value *error = json_object_get_value(in, "error");
+	JSON_Value *error = json_object_get_value(response, "error");
 
-
-	if (!error && cmd) {
-		if (!strcmp(cmd, "enumerate")) {
-			JSON_Array *as_array = json_array(json_object_get_value(in, "answer"));
+	if (cmd) {
+		if (!error && !strcmp(cmd, "enumerate")) {
+			JSON_Array *as_array = json_array(json_object_get_value(response, "answer"));
 			if (as_array) {
 				int s = json_array_get_count(as_array);
 				for (int i = 0; i < s; i++) {
@@ -274,8 +273,10 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *in, voi
 		AsicData *data = answer_to_asic_data(asics, request);
 
 		if (data) {
+			JSON_Value *v = json_object_get_value(response, "answer");
+
 			for (auto panel: data->panels) {
-				panel->process_server_message(request, json_object_get_value(in, "answer"), raw_data, raw_data_size);
+				panel->process_server_message(response, raw_data, raw_data_size);
 			}
 		}
 	}

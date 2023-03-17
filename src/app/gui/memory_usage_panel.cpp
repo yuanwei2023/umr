@@ -40,7 +40,13 @@ public:
 			json_value_free(json_object_get_wrapping_value(last_answer));
 	}
 
-	void process_server_message(JSON_Object *request, JSON_Value *answer, void *raw_data, unsigned raw_data_size) {
+	void process_server_message(JSON_Object *response, void *raw_data, unsigned raw_data_size) {
+		JSON_Value *error = json_object_get_value(response, "error");
+		if (error)
+			return;
+
+		JSON_Object *request = json_object(json_object_get_value(response, "request"));
+		JSON_Value *answer = json_object_get_value(response, "answer");
 		const char *command = json_object_get_string(request, "command");
 
 		if (!strcmp(command, "memory-usage")) {
