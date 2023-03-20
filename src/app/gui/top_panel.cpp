@@ -27,9 +27,13 @@
 class TopPanel : public Panel {
 public:
 	TopPanel(struct umr_asic *asic) : Panel(asic), last_accumulate_answer(NULL),
-		ipname(NULL), fences_deltas(NULL),
+		fences_deltas(NULL),
 		consumed(false), top_read_interval(0.5),
-		last_sensor_read(0) { }
+		last_sensor_read(0) {
+		ipname = find_ip_name("mmGRBM_STATUS");
+		if (ipname == NULL)
+			ipname = find_ip_name("regGRBM_STATUS");
+	}
 
 	~TopPanel() {
 		if (last_accumulate_answer)
@@ -61,22 +65,14 @@ public:
 			ImColor(80, 210, 156),
 		};
 
-		if (!ipname) {
-			for (int i = 0; i < (int) asic->no_blocks && !ipname; i++) {
-				struct umr_ip_block *b = asic->blocks[i];
-				for (int j = 0; j < b->no_regs; j++) {
-					if (!strcmp(b->regs[j].regname, "mmGRBM_STATUS")) {
-						ipname = b->ipname;
-						break;
-					}
-				}
-			}
-		}
-
 		if (last_sensor_read > top_read_interval) {
 			if (can_send_request) {
 				const char *regs[] = {"mmGRBM_STATUS", "mmGRBM_STATUS2", NULL};
-				send_accumulate_command(ipname, top_read_interval * 1000, regs);
+				if (ipname == NULL) {
+					printf("Couldn't find ip block with reg=%s\n", ipname);
+				} else {
+					send_accumulate_command(ipname, top_read_interval * 1000, regs);
+				}
 				last_sensor_read = 0;
 			}
 		} else {
@@ -232,6 +228,18 @@ private:
 		json_object_set_number(json_object(req), "period", ms);
 		json_object_set_number(json_object(req), "step_ms", 10);
 		send_request(req);
+	}
+
+	const char *find_ip_name(const char *reg) {
+		for (int i = 0; i < (int) asic->no_blocks; i++) {
+			struct umr_ip_block *b = asic->blocks[i];
+			for (int j = 0; j < b->no_regs; j++) {
+				if (!strcmp(b->regs[j].regname, reg)) {
+					return b->ipname;
+				}
+			}
+		}
+		return NULL;
 	}
 
 private:
