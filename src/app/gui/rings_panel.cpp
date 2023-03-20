@@ -24,16 +24,6 @@
  */
 #include "panels.h"
 
-static char ring_decode_buffer[8196];
-static int ring_decode_buffer_offset = 0;
-static int ring_decode_fn(const char *fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	ring_decode_buffer_offset += vsprintf(&ring_decode_buffer[ring_decode_buffer_offset], fmt, ap);
-	va_end(ap);
-	return 0;
-}
-
 static bool get_ring_name(void *data, int idx, const char **out) {
 	JSON_Array *rings = (JSON_Array *)data;
 	if (idx >= 0 && idx < json_array_get_count(rings)) {
@@ -283,6 +273,15 @@ private:
 	uint32_t display_ib(JSON_Object *ib, enum umr_ring_type type, uint64_t base, uint32_t *buffer, int rptr = -1, int wptr = -1, int drv_wptr = -1) {
 		uint32_t addr_lo_ib = 0;
 
+		if (buffer == NULL) {
+			ImVec2 space = ImGui::GetContentRegionAvail();
+			float w = ImGui::CalcTextSize("Empty ring").x;
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + space.x / 2 - w / 2);
+			ImGui::SetCursorPosY(ImGui::GetCursorPosY() + space.y / 2);
+			ImGui::Text("Empty Ring");
+			return 0;
+		}
+
 		ImGui::BeginTable("dis", rptr >= 0 ? 4 : 3, ImGuiTableFlags_BordersV);
 		ImGui::TableSetupColumn(rptr >= 0 ? "Index" : "Address", ImGuiTableColumnFlags_WidthFixed,
 			rptr >= 0 ? ImGui::CalcTextSize(" Index ").x : ImGui::CalcTextSize(" 0x0000000000000000 + 0x0000").x);
@@ -313,7 +312,8 @@ private:
 			&buffer[start], ndwords,
 			type);
 
-		umr_packet_disassemble_stream(str, base, 0, 0, 0, ~0UL, 0, 0);
+		if (str)
+			umr_packet_disassemble_stream(str, base, 0, 0, 0, ~0UL, 0, 0);
 		umr_packet_free(str);
 
 		ImGui::EndTable();
