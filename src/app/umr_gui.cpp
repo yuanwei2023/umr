@@ -260,11 +260,21 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *respons
 				int s = json_array_get_count(as_array);
 				for (int i = 0; i < s; i++) {
 					JSON_Object *v = json_object(json_array_get_value(as_array, i));
+
+					char *ip_discovery_dump = NULL;
+
+					int off = json_object_get_number(v, "ip_discovery_offset");
+					int len = json_object_get_number(v, "ip_discovery_len");
+					if (len > 0)
+						ip_discovery_dump = strndup(&((char*)raw_data)[off], len);
+
 					AsicData *d = new AsicData(v,
-						(char*) raw_data,
+						ip_discovery_dump,
 						json_object_get_number(v, "did"),
 						json_object_get_number(v, "instance"));
 					asics->push_back(d);
+
+					free(ip_discovery_dump);
 				}
 				return;
 			}

@@ -1134,8 +1134,17 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			 * so it can recreate it.
 			 */
 			if (asics[i]->was_ip_discovered && ip_discovery_dumps[i]) {
-				*raw_data = strdup(ip_discovery_dumps[i]);
-				*raw_data_size = strlen(ip_discovery_dumps[i]) + 1;
+				int len = strlen(ip_discovery_dumps[i]);
+				json_object_set_number(json_object(as), "ip_discovery_offset", *raw_data_size);
+				json_object_set_number(json_object(as), "ip_discovery_len", len);
+				if (*raw_data) {
+					*raw_data = realloc(*raw_data, *raw_data_size + len);
+					memcpy(&((uint8_t*)*raw_data)[*raw_data_size], ip_discovery_dumps[i], len);
+					*raw_data_size += len;
+				} else {
+					*raw_data = strdup(ip_discovery_dumps[i]);
+					*raw_data_size = len;
+				}
 			}
 
 			json_array_append_value(json_array(answer), as);
