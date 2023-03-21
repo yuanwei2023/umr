@@ -1437,7 +1437,7 @@ static void decode_upto_ai(struct umr_asic *asic, struct umr_stream_decode_ui *u
 						if (((stream->header_dw >> 26) & 3) == 1) { // if HDP_FLUSH, the write register is provided
 							ui->add_field(ui, ib_addr + 8, ib_vmid, "REGISTER", BITS(stream->words[1], 2, 18), umr_reg_name(asic, BITS(stream->words[1], 2, 18)), 16, 32);
 						} else {
-							ui->add_field(ui, ib_addr + 8, ib_vmid, NULL, stream->words[1], NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "RESERVED", stream->words[1], NULL, 16, 32);
 						}
 					} else {
 						ui->add_field(ui, ib_addr + 4, ib_vmid, "POLL_REGMEM_ADDR_LO", stream->words[0], NULL, 16, 32);
