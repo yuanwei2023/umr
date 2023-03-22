@@ -31,7 +31,7 @@ static int find_first_did(long did, long start_instance)
 
 	int x;
 
-	for (x = start_instance; x < 16; x++) {
+	for (x = start_instance; x < 128; x++) {
 		snprintf(name, sizeof(name)-1, "/sys/kernel/debug/dri/%d/name", x);
 		f = fopen(name, "r");
 		if (f) {
