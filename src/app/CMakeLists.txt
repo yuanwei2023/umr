@@ -6,8 +6,6 @@ project(umr)
 include_directories(inc)
 
 if(NOT UMR_NO_GUI)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_GUI")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI")
   include_directories("gui/glad/include")
   include_directories("gui/imgui")
   include_directories("gui/parson")
@@ -17,10 +15,13 @@ if(NOT UMR_NO_GUI)
                   gui/imgui/imgui_impl_sdl.cpp gui/imgui/imgui_widgets.cpp
                   gui/glad/src/glad.c
                   gui/parson/parson.c)
-  add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GLAD=1)
+  add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD=1 UMR_GUI=1)
+
+  if (NANOMSG_FOUND AND NOT UMR_NO_SERVER)
+    add_compile_definitions(UMR_GUI_SERVER=1)
+  endif ()
 elseif(NOT UMR_NO_SERVER)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_GUI_SERVER")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUMR_GUI_SERVER")
+  add_compile_definitions(UMR_GUI_SERVER=1)
   set (GUI_SOURCE ${GUI_SOURCE} server.c
                                 gui/parson/parson.c)
   include_directories("gui/parson")
