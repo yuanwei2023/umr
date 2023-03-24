@@ -43,6 +43,8 @@ build_docker_alpine:
       make
       ncurses-dev
       rpm-dev
+    FDO_DISTRIBUTION_EXEC: >
+      apk add nanomsg-dev --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
 
 # build template
 .build: &build
@@ -88,6 +90,7 @@ build_docker_debian:
       cmake
       git
       libdrm-dev
+      libnanomsg-dev
       libncurses-dev
       libpciaccess-dev
       llvm-11-dev
@@ -111,6 +114,7 @@ build_docker_fedora:
       libpciaccess-devel
       llvm11-devel
       make
+      nanomsg-devel
       ncurses-libs
       rpm-build
       zlib
@@ -131,6 +135,7 @@ build_docker_arch:
       libdrm
       llvm
       make
+      nanomsg
 
 build_deb:
   <<: *build
