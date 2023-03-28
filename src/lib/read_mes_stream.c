@@ -118,8 +118,8 @@ struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *st
 		ms->opcode = (*stream >> 4) & 0xFF;
 		ms->type   = *stream & 0xF;
 
-		// if not enough stream for packet, stop parsing
-		if (nwords < ms->nwords) {
+		// if not enough stream for packet or reach 0, stop parsing
+		if (nwords < ms->nwords || !ms->nwords) {
 			free(ms);
 			if (prev_ms) {
 				prev_ms->next = NULL;
