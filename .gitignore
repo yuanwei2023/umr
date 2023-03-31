@@ -1,0 +1,13 @@
+# build artifacts
+.cache/
+.gitlab-ci-local/
+build/
+
+# packages
+*.deb
+*.rpm
+*.tar
+*.zst
+
+# GUI artifact
+src/app/umrgui
