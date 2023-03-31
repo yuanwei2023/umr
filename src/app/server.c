@@ -33,13 +33,13 @@
 #if UMR_GUI_SERVER
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
+#include "parson.h"
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <gbm.h>
-#include <libdrm/drm_fourcc.h>
 #include <libdrm/amdgpu_drm.h>
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -47,7 +47,7 @@
 #define QOI_IMPLEMENTATION
 #include "gui/qoi/qoi.h"
 #endif
-#include "parson.h"
+#include <libdrm/drm_fourcc.h>
 #include <sys/syscall.h>
 #include <xf86drm.h>
 #include <amdgpu.h>
@@ -244,6 +244,7 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 {
 	char pci_path[512];
 	sprintf(pci_path, "/dev/dri/by-path/pci-%s-render", asic->options.pci.name);
+#if UMR_GUI_SERVER
 	int fd = open(pci_path, O_RDWR | O_CLOEXEC);
 	struct gbm_device *gbm = gbm_create_device(fd);
 	EGLDisplay display = eglGetPlatformDisplay (EGL_PLATFORM_GBM_MESA, gbm, NULL);
@@ -375,6 +376,7 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 	}
 
 	free(pixels);
+#endif
 	return NULL;
 }
 

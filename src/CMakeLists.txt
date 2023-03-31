@@ -2,9 +2,14 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/)
 
+if(UMR_GUI)
+  # this definition is used by 'app' and 'test' subdirectories
+  add_compile_definitions(UMR_GUI_SERVER=1)
+  add_subdirectory(test)
+endif()
+
 add_subdirectory(lib)
 add_subdirectory(app)
-add_subdirectory(test)
 
 set(headers umr.h umrapp.h)
 

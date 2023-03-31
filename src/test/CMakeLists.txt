@@ -3,14 +3,15 @@
 project(umrtestapp)
 
 include_directories("../app/gui/parson")
-add_compile_definitions(UMR_GUI_SERVER=1)
 
 add_executable(umrtest
   test_framework.c
   main.c
   test_mmio.c
-  test_server.c ../app/gui/parson/parson.c ../app/server.c
+  test_server.c
   test_vm.c
+  ../app/gui/parson/parson.c
+  ../app/server.c
 )
 
 target_link_libraries(umrtest umrcore)

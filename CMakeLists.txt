@@ -2,10 +2,11 @@
 
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
-cmake_minimum_required(VERSION 3.0.1)
+cmake_minimum_required(VERSION 3.15)
 
 # Add local repository for FindXXX.cmake modules.
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" ${CMAKE_MODULE_PATH})
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(GitVersion)
 get_version_from_tag("1.0.0")
@@ -56,6 +57,14 @@ option(UMR_NO_DRM "Disable libdrm functions to read memory stats" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
 option(UMR_NO_GUI "Disable umr --server and --gui options" OFF)
+# TODO: can server exist without GUI? assume not
+
+# NOT UMR_NO_GUI is confusing. create a hidden option instead. ON by default
+# UMR_GUI = (UMR_NO_GUI == FALSE) AND (UMR_NO_SERVER == FALSE)
+# https://cmake.org/cmake/help/latest/module/CMakeDependentOption.html
+include(CMakeDependentOption)
+cmake_dependent_option(UMR_GUI "Enable umr --server and --gui options" ON "NOT UMR_NO_GUI;NOT UMR_NO_SERVER" OFF)
+
 
 if(UMR_NO_DRM)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_DRM")
@@ -65,48 +74,44 @@ include_directories(${LIBDRM_INCLUDE_DIR})
 endif()
 
 if(UMR_NO_LLVM)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_LLVM")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_LLVM")
 else()
-find_package(LLVM REQUIRED COMPONENTS all)
-include_directories(${LLVM_INCLUDE_DIRS})
-
-if(LLVM_CMAKE_DIR)
-  list(APPEND CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
-  include(AddLLVM)
-
-  if (LLVM_LINK_LLVM_DYLIB)
-    set(LLVM_LIBS LLVM)
-  else()
-    LLVM_MAP_COMPONENTS_TO_LIBNAMES(LLVM_LIBS
-      AllTargetsDescs
-      AllTargetsDisassemblers
-      AllTargetsInfos
-      MC
-      Support
-      MCDisassembler
-    )
+  find_package(LLVM REQUIRED COMPONENTS all)
+  include_directories(${LLVM_INCLUDE_DIRS})
+  if(LLVM_CMAKE_DIR)
+    list(APPEND CMAKE_MODULE_PATH ${LLVM_CMAKE_DIR})
+    include(AddLLVM)
+    if(LLVM_LINK_LLVM_DYLIB)
+      set(LLVM_LIBS LLVM)
+    else()
+      LLVM_MAP_COMPONENTS_TO_LIBNAMES(LLVM_LIBS
+        AllTargetsDescs
+        AllTargetsDisassemblers
+        AllTargetsInfos
+        MC
+        Support
+        MCDisassembler
+      )
+    endif()
   endif()
 endif()
-endif()
 
-
-if (NOT UMR_NO_GUI)
+if(UMR_GUI)
   find_package(SDL2 REQUIRED)
   include_directories(${SDL2_INCLUDE_DIRS})
   set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES} EGL drm gbm GL)
-endif ()
+endif()
 
 find_package(NanoMsg)
 
-if (NANOMSG_FOUND)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_NANOMSG")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_NANOMSG")
+if(NANOMSG_FOUND)
+  add_compile_definitions(HAVE_NANOMSG=1)
   set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} ${NANOMSG_LIBRARIES} )
   include_directories(${NANOMSG_INCLUDE_DIR})
 endif()
 
-if (NOT UMR_NO_SERVER AND NOT NANOMSG_FOUND)
-  message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_SERVER=ON.")
+if(UMR_GUI AND NOT NANOMSG_FOUND)
+  message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_GUI=ON.")
 endif()
 
 if(UMR_NEED_RT)

@@ -1,11 +1,9 @@
 # Copyright 2017 Edward O'Callaghan <funfunctor@folklore1984.net>
 
-project(umr)
-
 #where app .h file can be found
 include_directories(inc)
 
-if(NOT UMR_NO_GUI)
+if(UMR_GUI)
   include_directories("gui/glad/include")
   include_directories("gui/imgui")
   include_directories("gui/parson")
@@ -16,16 +14,8 @@ if(NOT UMR_NO_GUI)
                   gui/glad/src/glad.c
                   gui/parson/parson.c)
   add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD=1 UMR_GUI=1)
-
-  if (NANOMSG_FOUND AND NOT UMR_NO_SERVER)
-    add_compile_definitions(UMR_GUI_SERVER=1)
-  endif ()
-elseif(NOT UMR_NO_SERVER)
-  add_compile_definitions(UMR_GUI_SERVER=1)
-  set (GUI_SOURCE ${GUI_SOURCE} server.c
-                                gui/parson/parson.c)
-  include_directories("gui/parson")
 endif()
+
 
 
 #application objects

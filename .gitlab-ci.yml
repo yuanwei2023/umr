@@ -1,6 +1,6 @@
 # CI templates from
 # https://gitlab.freedesktop.org/freedesktop/ci-templates
-.templates_sha: &templates_sha d5aa3941aa03c2f716595116354fb81eb8012acb
+.templates_sha: &templates_sha 3d80a75e1284935e69219bfa80bc6064c6786819
 
 include:
   - project: 'freedesktop/ci-templates'
@@ -20,7 +20,7 @@ stages:
 variables:
   FDO_DISTRIBUTION_VERSION: latest
   FDO_UPSTREAM_REPO: 'tomstdenis/umr'
-  FDO_DISTRIBUTION_TAG: 'built-on-2022-10-11'
+  FDO_DISTRIBUTION_TAG: 'built-on-2023-03-29-nonanomsg'
 
 # this is for general compilation/testing/day-to-day CI
 build_docker_alpine:
@@ -37,9 +37,9 @@ build_docker_alpine:
       libpciaccess-dev
       libxml2-dev
       llvm
-      llvm13
-      llvm13-dev
-      llvm13-static
+      llvm15
+      llvm15-dev
+      llvm15-static
       make
       ncurses-dev
       rpm-dev
