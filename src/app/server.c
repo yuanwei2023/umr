@@ -1836,10 +1836,22 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			last_error = "unknown register";
 			goto error;
 		}
+		unsigned count = 1;
+		if (json_object_has_value(request, "count"))
+			count = json_object_get_number(request, "count");
 
 		answer = json_value_init_object();
-		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
-		json_object_set_number(json_object(answer), "value", value);
+		if (count == 1) {
+			unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
+			json_object_set_number(json_object(answer), "value", value);
+		} else {
+			JSON_Value *values = json_value_init_array();
+			for (unsigned i = 0; i < count; i++) {
+				unsigned v = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
+				json_array_append_number(json_array(values), v);
+			}
+			json_object_set_value(json_object(answer), "value", values);
+		}
 	} else if (strcmp(command, "accumulate") == 0) {
 		JSON_Array *regs = json_object_get_array(request, "registers");
 		const int num_reg = json_array_get_count(regs);

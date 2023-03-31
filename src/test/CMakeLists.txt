@@ -20,3 +20,7 @@ target_link_libraries(umrtest umrcore) #circular dependency umrcode->umrlow->umr
 
 target_link_libraries(umrtest ${LLVM_LIBS})
 target_link_libraries(umrtest ${REQUIRED_EXTERNAL_LIBS})
+
+if(NOT UMR_NO_GUI OR NOT UMR_NO_SERVER)
+  target_link_libraries(umrtest EGL drm gbm GL)
+endif()
