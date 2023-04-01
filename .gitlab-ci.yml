@@ -19,7 +19,7 @@ stages:
 
 variables:
   FDO_DISTRIBUTION_VERSION: latest
-  FDO_UPSTREAM_REPO: 'tomstdenis/umr'
+  FDO_UPSTREAM_REPO: '${CI_PROJECT_PATH}'
   FDO_DISTRIBUTION_TAG: 'built-on-2023-03-29-nonanomsg'
 
 # this is for general compilation/testing/day-to-day CI
@@ -218,11 +218,11 @@ package_please:
     assets:
       links:
         - name: 'UMR DEB release'
-          url: 'https://gitlab.freedesktop.org/tomstdenis/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.deb'
+          url: '${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.deb'
         - name: 'UMR RPM release'
-          url: 'https://gitlab.freedesktop.org/tomstdenis/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.rpm'
+          url: '${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.rpm'
         - name: 'UMR Arch Linux release'
-          url: 'https://gitlab.freedesktop.org/tomstdenis/umr/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst'
+          url: '${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/umr-${CI_COMMIT_TAG}-Linux.pkg.tar.zst'
 
   artifacts:
     paths:
