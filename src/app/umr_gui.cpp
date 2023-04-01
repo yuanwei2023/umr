@@ -22,32 +22,34 @@
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
  */
-#include <SDL.h>
+#include "parson.h"
 #include <fcntl.h>
 #include <mutex>
 #include <unistd.h>
 #include <vector>
 #include <stdio.h>
-#if HAVE_NANOMSG
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
-#endif
 #include <pthread.h>
 #include <regex.h>
 #include <limits.h>
 
-#include "parson.h"
-#include "gui/panels.h"
+#if UMR_SERVER
+#include <nanomsg/nn.h>
+#include <nanomsg/reqrep.h>
+#endif
+#if UMR_GUI
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
 #include "glad/glad.h"
 
+#include <SDL.h>
+#include "gui/panels.h"
 #define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
 #include "gui/qoi/qoi.h"
+#endif
 
 /* Random helpers */
 extern void send_request(JSON_Value *req, struct umr_asic *asic);
@@ -56,6 +58,9 @@ extern void add_vertical_line(const ImVec2& avail);
 extern bool kb_shortcut(int keycode);
 extern GLuint texture_from_qoi_buffer(int width, int height, void *buffer, int buffer_size);
 extern void goto_tab(int keycode);
+extern "C" {
+    JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned int *raw_data_size);
+}
 
 
 class SyntaxHighlighter {
@@ -96,7 +101,7 @@ struct Link {
 };
 
 JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsigned *raw_data_size) {
-	#if HAVE_NANOMSG
+	#if USE_SERVER
 	if (lnk.use_sock) {
 		char* s = json_serialize_to_string(request);
 		int len = strlen(s) + 1;
@@ -410,7 +415,7 @@ static int run_gui(const char *url)
 		if (stat(url, &statbuf) == 0 && statbuf.st_mode & S_IFMT) {
 			replay = true;
 		} else {
-			#if HAVE_NANOMSG
+			#if USE_SERVER
 			int rv;
 			if ((lnk.sock = nn_socket(AF_SP, NN_REQ)) < 0) {
 				exit(1);
@@ -782,7 +787,7 @@ static int run_gui(const char *url)
 	pthread_cond_signal(&cond);
 	pthread_mutex_unlock(&mtx);
 
-#if HAVE_NANOMSG
+#if USE_SERVER
 	if (lnk.use_sock) {
 		nn_shutdown(lnk.sock, lnk.endpoint);
 		nn_close(lnk.sock);

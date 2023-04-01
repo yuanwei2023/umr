@@ -2,10 +2,10 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/)
 
-if(UMR_GUI)
-  # this definition is used by 'app' and 'test' subdirectories
-  add_compile_definitions(UMR_GUI_SERVER=1)
-  add_subdirectory(test)
+add_subdirectory(app/gui/parson)
+
+if(UMR_GUI AND UMR_SERVER)
+    #add_subdirectory(test)
 endif()
 
 add_subdirectory(lib)

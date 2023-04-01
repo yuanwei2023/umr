@@ -1769,7 +1769,7 @@ void umr_set_clock_performance(struct umr_asic *asic, const char* operation);
 int umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);
 void umr_gfxoff_read(struct umr_asic *asic);
 
-#if UMR_GUI
+#if UMR_SERVER
 #include "parson.h"
 JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size);
 void umr_run_gui(const char *url);

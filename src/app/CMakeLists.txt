@@ -12,8 +12,8 @@ if(UMR_GUI)
                   gui/imgui/imgui_tables.cpp
                   gui/imgui/imgui_impl_sdl.cpp gui/imgui/imgui_widgets.cpp
                   gui/glad/src/glad.c
-                  gui/parson/parson.c)
-  add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD=1 UMR_GUI=1)
+                  )
+  add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD=1)
 endif()
 
 
@@ -41,17 +41,20 @@ add_library(umrapp STATIC
   discovery.c
   print_cpc.c
   print_sdma.c
+  server.c
   ${GUI_SOURCE}
 )
+target_link_libraries(umrapp parson drm)
 
 add_executable(umr main.c)
 target_link_libraries(umr umrapp)
 target_link_libraries(umr umrlow)
 target_link_libraries(umr umrcore)
 target_link_libraries(umr umrlow)
-if(NOT UMR_NO_GUI)
-# Used by glad
-target_link_libraries(umr dl)
+target_link_libraries(umr parson)
+if(UMR_GUI)
+    # Used by glad
+    target_link_libraries(umr dl)
 endif()
 
 target_link_libraries(umr ${LLVM_LIBS})

@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.15)
 
 # Add local repository for FindXXX.cmake modules.
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake_modules/" ${CMAKE_MODULE_PATH})
+# Export compile_commands.json for IDEs
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(GitVersion)
@@ -56,14 +57,15 @@ include_directories(${PCIACCESS_INCLUDE_DIR})
 option(UMR_NO_DRM "Disable libdrm functions to read memory stats" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
-option(UMR_NO_GUI "Disable umr --server and --gui options" OFF)
+option(UMR_NO_GUI "Disable umr --gui option" OFF)
+option(UMR_NO_SERVER "Disable umr --server option" OFF)
 # TODO: can server exist without GUI? assume not
 
 # NOT UMR_NO_GUI is confusing. create a hidden option instead. ON by default
-# UMR_GUI = (UMR_NO_GUI == FALSE) AND (UMR_NO_SERVER == FALSE)
 # https://cmake.org/cmake/help/latest/module/CMakeDependentOption.html
 include(CMakeDependentOption)
-cmake_dependent_option(UMR_GUI "Enable umr --server and --gui options" ON "NOT UMR_NO_GUI;NOT UMR_NO_SERVER" OFF)
+cmake_dependent_option(UMR_GUI "Enable umr --gui option" ON "NOT UMR_NO_GUI" OFF)
+cmake_dependent_option(UMR_SERVER "Enable umr --server option" ON "NOT UMR_NO_SERVER" OFF)
 
 
 if(UMR_NO_DRM)
@@ -97,21 +99,22 @@ else()
 endif()
 
 if(UMR_GUI)
+  add_compile_definitions(UMR_GUI=1)
   find_package(SDL2 REQUIRED)
   include_directories(${SDL2_INCLUDE_DIRS})
   set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES} EGL drm gbm GL)
 endif()
 
-find_package(NanoMsg)
-
-if(NANOMSG_FOUND)
-  add_compile_definitions(HAVE_NANOMSG=1)
-  set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} ${NANOMSG_LIBRARIES} )
-  include_directories(${NANOMSG_INCLUDE_DIR})
-endif()
-
-if(UMR_GUI AND NOT NANOMSG_FOUND)
-  message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_GUI=ON.")
+if(UMR_SERVER)
+  add_compile_definitions(UMR_SERVER=1)
+  find_package(NanoMsg)
+  if(NANOMSG_FOUND)
+    add_compile_definitions(HAVE_NANOMSG=1)
+    set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} ${NANOMSG_LIBRARIES} )
+    include_directories(${NANOMSG_INCLUDE_DIR})
+  else()
+    message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_GUI=ON.")
+  endif()
 endif()
 
 if(UMR_NEED_RT)
@@ -126,6 +129,7 @@ set(REQUIRED_EXTERNAL_LIBS
   Threads::Threads
   ${LLVM_LIBS}
   ${RT_LIBS}
+  parson
   ${REQUIRED_EXTERNAL_LIBS_GUI}
 )
 
