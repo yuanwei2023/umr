@@ -7,7 +7,7 @@ if(UMR_GUI)
   include_directories("gui/glad/include")
   include_directories("gui/imgui")
   include_directories("gui/parson")
-  set (GUI_SOURCE server.c umr_gui.cpp
+  set (GUI_SOURCE gui/commands.c umr_gui.cpp
                   gui/imgui/imgui.cpp gui/imgui/imgui_draw.cpp gui/imgui/imgui_impl_opengl3.cpp
                   gui/imgui/imgui_tables.cpp
                   gui/imgui/imgui_impl_sdl.cpp gui/imgui/imgui_widgets.cpp

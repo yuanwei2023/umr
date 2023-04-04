@@ -47,9 +47,6 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
-#ifndef UMR_GUI_SERVER
-#define QOI_IMPLEMENTATION
-#endif
 #include "gui/qoi/qoi.h"
 
 /* Random helpers */

@@ -3,16 +3,26 @@
 project(umrtestapp)
 
 include_directories("../app/gui/parson")
+include_directories("../app")
 
-add_executable(umrtest
-  test_framework.c
+set (TEST_SRC test_framework.c
   main.c
   test_mmio.c
-  test_server.c
   test_vm.c
   ../app/gui/parson/parson.c
   ../app/server.c
 )
+
+if(NOT UMR_NO_GUI OR NOT UMR_NO_SERVER)
+  add_compile_definitions(COMMANDS_TEST=1)
+  set (TEST_SRC ${TEST_SRC} test_server.c ../app/gui/parson/parson.c ../app/gui/commands.c)
+endif()
+
+add_executable(umrtest ${TEST_SRC})
+
+if(NOT UMR_NO_GUI OR NOT UMR_NO_SERVER)
+  target_link_libraries(umrtest EGL drm gbm GL)
+endif()
 
 target_link_libraries(umrtest umrcore)
 target_link_libraries(umrtest umrlow)
@@ -20,7 +30,3 @@ target_link_libraries(umrtest umrcore) #circular dependency umrcode->umrlow->umr
 
 target_link_libraries(umrtest ${LLVM_LIBS})
 target_link_libraries(umrtest ${REQUIRED_EXTERNAL_LIBS})
-
-if(NOT UMR_NO_GUI OR NOT UMR_NO_SERVER)
-  target_link_libraries(umrtest EGL drm gbm GL)
-endif()
