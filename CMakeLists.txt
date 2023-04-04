@@ -38,6 +38,9 @@ set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm11-libs, zlib")
 
 include(CPack)
 
+set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ standard to use")
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(RELEASE_VERSION \"${VERSION_STRING}\")
 add_definitions(-DUMR_BUILD_VER=${RELEASE_VERSION})
 add_definitions(-DUMR_BUILD_REV=\"${VERSION_REV}\")

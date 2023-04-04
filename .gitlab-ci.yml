@@ -3,12 +3,17 @@
 .templates_sha: &templates_sha 3d80a75e1284935e69219bfa80bc6064c6786819
 
 include:
+  #  # use remotes when building locally with gitlab-ci-local
+  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/alpine.yml'
+  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/fedora.yml'
+  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/ubuntu.yml'
+  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/arch.yml'
   - project: 'freedesktop/ci-templates'
     ref: *templates_sha
     file:
       - '/templates/alpine.yml'
       - '/templates/fedora.yml'
-      - '/templates/debian.yml'
+      - '/templates/ubuntu.yml'
       - '/templates/arch.yml'
 
 stages:
@@ -20,7 +25,7 @@ stages:
 variables:
   FDO_DISTRIBUTION_VERSION: latest
   FDO_UPSTREAM_REPO: '${CI_PROJECT_PATH}'
-  FDO_DISTRIBUTION_TAG: 'built-on-2023-03-29-nonanomsg'
+  FDO_DISTRIBUTION_TAG: 'built-on-2023-04-04'
 
 # this is for general compilation/testing/day-to-day CI
 build_docker_alpine:
@@ -61,10 +66,24 @@ build_docker_alpine:
 build:
   <<: *build
 
+build_no_server:
+  variables:
+    CMAKE_EXTRA_ARGS: '-DUMR_NO_SERVER=ON '
+  <<: *build
+
 test_help:
   extends:
     - .fdo.distribution-image@alpine
   needs: [build]
+  stage: test
+  script:
+    - ./build/src/app/umr -h
+
+# sanity check for a serverless build
+test_help_no_server:
+  extends:
+    - .fdo.distribution-image@alpine
+  needs: [build_no_server]
   stage: test
   script:
     - ./build/src/app/umr -h
@@ -79,9 +98,9 @@ test_help:
     - if: $CI_COMMIT_TAG # Run this job when a tag is created manually
 
 # this is for umr.deb release
-build_docker_debian:
+build_docker_ubuntu:
   extends:
-    - .fdo.container-build@debian
+    - .fdo.container-build@ubuntu
     - .release_rules
   stage: build_docker
   variables:
@@ -140,7 +159,7 @@ build_docker_arch:
 build_deb:
   <<: *build
   extends:
-    - .fdo.distribution-image@debian
+    - .fdo.distribution-image@ubuntu
     - .release_rules
   variables:
     CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=DEB'
