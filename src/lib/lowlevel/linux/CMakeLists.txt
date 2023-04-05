@@ -1,4 +1,4 @@
-add_library(umrlow STATIC
+add_library(umrlow
   build_discovery_entry_table.c
   discover.c
   mmio.c

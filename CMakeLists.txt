@@ -57,6 +57,7 @@ include_directories(${CURSES_INCLUDE_DIRS})
 find_package(PCIAccess REQUIRED)
 include_directories(${PCIACCESS_INCLUDE_DIR})
 
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(UMR_NO_DRM "Disable libdrm functions to read memory stats" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
@@ -103,9 +104,14 @@ endif()
 
 if(UMR_GUI)
   add_compile_definitions(UMR_GUI=1)
+  set(OpenGL_GL_PREFERENCE "LEGACY")
   find_package(SDL2 REQUIRED)
+  find_package(OpenGL REQUIRED)
+  find_library(drm NAMES drm REQUIRED)
+  find_library(gbm NAMES gbm REQUIRED)
+
   include_directories(${SDL2_INCLUDE_DIRS})
-  set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES} EGL drm gbm GL)
+  set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES} OpenGL::GL OpenGL::EGL drm gbm)
 endif()
 
 if(UMR_SERVER)

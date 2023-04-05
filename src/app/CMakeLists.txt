@@ -19,7 +19,7 @@ endif()
 
 
 #application objects
-add_library(umrapp STATIC
+add_library(umrapp
   print.c
   print_config.c
   profile.c

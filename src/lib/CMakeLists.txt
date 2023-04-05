@@ -3,7 +3,7 @@
 add_subdirectory(database)
 add_subdirectory(lowlevel)
 
-add_library(umrcore STATIC
+add_library(umrcore
   add_ip_block.c
   apply_bank_address.c
   apply_callbacks.c
