@@ -753,7 +753,7 @@ static int run_gui(const char *url)
 			avail.x += 2 * ImGui::GetStyle().WindowPadding.x;
 			ImVec2 c(avail.x - w, topleft.y);
 			ImGui::SetCursorScreenPos(c);
-			ImGui::Text(txt);
+			ImGui::TextUnformatted(txt);
 		} else if (!pending_request.empty()) {
 			avail.x += 2 * ImGui::GetStyle().WindowPadding.x;
 			ImVec2 c(avail.x - 10, topleft.y);
