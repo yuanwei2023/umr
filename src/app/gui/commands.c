@@ -2465,7 +2465,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 		const char *content = read_file(path);
 		int current_pid = 0;
-		struct pid_exported *pids_mapping;
+		struct pid_exported *pids_mapping = NULL;
 		int num_pids_mapping = 0;
 
 		while (content) {
