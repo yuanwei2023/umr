@@ -102,13 +102,17 @@ else()
   endif()
 endif()
 
+if(UMR_GUI AND NOT UMR_SERVER)
+    message(WARNING "You shouldn't build UMR_GUI without UMR_SERVER!")
+endif()
+
 if(UMR_GUI OR UMR_SERVER)
   set(OpenGL_GL_PREFERENCE "LEGACY")
   find_library(drm NAMES drm REQUIRED)
   find_library(gbm NAMES gbm REQUIRED)
   find_package(OpenGL REQUIRED)
 
-  set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} OpenGL::GL OpenGL::EGL drm gbm)
+  set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} OpenGL::GL OpenGL::EGL drm gbm parson)
 endif()
 
 if(UMR_GUI)
@@ -126,7 +130,7 @@ if(UMR_SERVER)
     set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} ${NANOMSG_LIBRARIES} )
     include_directories(${NANOMSG_INCLUDE_DIR})
   else()
-    message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_GUI=ON.")
+    message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_SERVER=ON.")
   endif()
 endif()
 
@@ -143,7 +147,6 @@ set(REQUIRED_EXTERNAL_LIBS
   Threads::Threads
   ${LLVM_LIBS}
   ${RT_LIBS}
-  parson
   ${REQUIRED_EXTERNAL_LIBS_GUI}
 )
 
