@@ -101,7 +101,7 @@ struct Link {
 };
 
 JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsigned *raw_data_size) {
-	#if USE_SERVER
+	#if UMR_SERVER
 	if (lnk.use_sock) {
 		char* s = json_serialize_to_string(request);
 		int len = strlen(s) + 1;
@@ -415,7 +415,7 @@ static int run_gui(const char *url)
 		if (stat(url, &statbuf) == 0 && statbuf.st_mode & S_IFMT) {
 			replay = true;
 		} else {
-			#if USE_SERVER
+			#if UMR_SERVER
 			int rv;
 			if ((lnk.sock = nn_socket(AF_SP, NN_REQ)) < 0) {
 				exit(1);
@@ -787,7 +787,7 @@ static int run_gui(const char *url)
 	pthread_cond_signal(&cond);
 	pthread_mutex_unlock(&mtx);
 
-#if USE_SERVER
+#if UMR_SERVER
 	if (lnk.use_sock) {
 		nn_shutdown(lnk.sock, lnk.endpoint);
 		nn_close(lnk.sock);

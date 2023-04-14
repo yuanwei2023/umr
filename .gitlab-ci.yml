@@ -1,20 +1,8 @@
-# CI templates from
-# https://gitlab.freedesktop.org/freedesktop/ci-templates
-.templates_sha: &templates_sha 3d80a75e1284935e69219bfa80bc6064c6786819
-
+# using remote to allow for local builds with gitlab-ci-local
 include:
-  #  # use remotes when building locally with gitlab-ci-local
-  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/alpine.yml'
-  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/fedora.yml'
-  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/ubuntu.yml'
-  #  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/arch.yml'
-  - project: 'freedesktop/ci-templates'
-    ref: *templates_sha
-    file:
-      - '/templates/alpine.yml'
-      - '/templates/fedora.yml'
-      - '/templates/ubuntu.yml'
-      - '/templates/arch.yml'
+  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/fedora.yml'
+  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/ubuntu.yml'
+  - remote: 'https://gitlab.freedesktop.org/freedesktop/ci-templates/-/raw/3d80a75e1284935e69219bfa80bc6064c6786819/templates/arch.yml'
 
 stages:
   - build_docker
@@ -25,39 +13,35 @@ stages:
 variables:
   FDO_DISTRIBUTION_VERSION: latest
   FDO_UPSTREAM_REPO: '${CI_PROJECT_PATH}'
-  FDO_DISTRIBUTION_TAG: 'built-on-2023-04-04'
+  FDO_DISTRIBUTION_TAG: 'built-on-2023-04-13-4'
 
 # this is for general compilation/testing/day-to-day CI
-build_docker_alpine:
+# this is also for umr.pkg.tar.zst release
+build_docker_arch:
   extends:
-  - .fdo.container-build@alpine
+    - .fdo.container-build@arch
   stage: build_docker
   variables:
     FDO_DISTRIBUTION_PACKAGES: >
+      binutils
       cmake
-      dpkg
-      g++
+      fakeroot
       gcc
-      libdrm-dev
-      libpciaccess-dev
-      libxml2-dev
+      git
+      glew
+      libdrm
       llvm
-      llvm15
-      llvm15-dev
-      llvm15-static
       make
-      ncurses-dev
-      rpm-dev
-    FDO_DISTRIBUTION_EXEC: >
-      apk add nanomsg-dev --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+      nanomsg
+      sdl2
 
 # build template
 .build: &build
   extends:
-    - .fdo.distribution-image@alpine
+    - .fdo.distribution-image@arch
   stage: build
   script:
-    - cmake -DUMR_NO_GUI=ON -G'Unix Makefiles' -B build $CMAKE_EXTRA_ARGS
+    - cmake -G'Unix Makefiles' -B build $CMAKE_EXTRA_ARGS
     - make -C build -j $FDO_CI_CONCURRENT $MAKE_EXTRA_ARGS
   artifacts:
     paths:
@@ -66,27 +50,52 @@ build_docker_alpine:
 build:
   <<: *build
 
-build_no_server:
+build_no_gui:
   variables:
-    CMAKE_EXTRA_ARGS: '-DUMR_NO_SERVER=ON '
+    CMAKE_EXTRA_ARGS: '-DUMR_GUI=OFF -DUMR_SERVER=ON'
+  <<: *build
+
+build_no_gui_no_server:
+  variables:
+    CMAKE_EXTRA_ARGS: '-DUMR_GUI=OFF -DUMR_SERVER=OFF'
   <<: *build
 
 test_help:
   extends:
-    - .fdo.distribution-image@alpine
+    - .fdo.distribution-image@arch
   needs: [build]
   stage: test
   script:
     - ./build/src/app/umr -h
+    # gui option present
+    - bash -c "./build/src/app/umr -h | grep -F -- '--gui'"
+    # server option present
+    - bash -c "./build/src/app/umr -h | grep -F -- '--server'"
 
-# sanity check for a serverless build
-test_help_no_server:
+# sanity check for a gui-less build
+test_help_no_gui:
   extends:
-    - .fdo.distribution-image@alpine
-  needs: [build_no_server]
+    - .fdo.distribution-image@arch
+  needs: [build_no_gui]
   stage: test
   script:
     - ./build/src/app/umr -h
+    # no gui option, invert result
+    - bash -c "./build/src/app/umr -h | grep -F -- '--gui' && exit 1; exit 0"
+    # server option present
+    - bash -c "./build/src/app/umr -h | grep -F -- '--server'"
+
+# sanity check for a gui-less and server-less build
+test_help_no_gui_no_server:
+  extends:
+    - .fdo.distribution-image@arch
+  needs: [build_no_gui_no_server]
+  stage: test
+  script:
+    # no gui option, invert result
+    - bash -c "./build/src/app/umr -h | grep -F -- '--gui' && exit 1; exit 0"
+    # no server option, invert result
+    - bash -c "./build/src/app/umr -h | grep -F -- '--server' && exit 1; exit 0"
 
 
 ###
@@ -109,9 +118,14 @@ build_docker_ubuntu:
       cmake
       git
       libdrm-dev
+      libgbm-dev
+      libglew-dev
+      libglx-dev
       libnanomsg-dev
       libncurses-dev
+      libopengl-dev
       libpciaccess-dev
+      libsdl2-dev
       llvm-11-dev
       pkgconf
       rpm
@@ -125,36 +139,21 @@ build_docker_fedora:
   stage: build_docker
   variables:
     FDO_DISTRIBUTION_PACKAGES: >
+      SDL2-devel
       cmake
       g++
       gcc
       git
       libdrm-devel
+      libffi-devel
+      libgbm-devel
       libpciaccess-devel
-      llvm11-devel
+      llvm-devel
       make
       nanomsg-devel
       ncurses-libs
       rpm-build
-      zlib
-
-# this is for umr.pkg.tar.zst release
-build_docker_arch:
-  extends:
-    - .fdo.container-build@arch
-    - .release_rules
-  stage: build_docker
-  variables:
-    FDO_DISTRIBUTION_PACKAGES: >
-      binutils
-      cmake
-      fakeroot
-      gcc
-      git
-      libdrm
-      llvm
-      make
-      nanomsg
+      zlib-devel
 
 build_deb:
   <<: *build

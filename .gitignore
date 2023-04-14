@@ -9,5 +9,6 @@ build/
 *.tar
 *.zst
 
-# GUI artifact
+# GUI artifacts
 src/app/umrgui
+imgui.ini

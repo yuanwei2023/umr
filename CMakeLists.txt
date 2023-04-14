@@ -30,11 +30,11 @@ set(CPACK_GENERATOR "RPM;DEB" CACHE STRING "Package binary using these generator
 set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" CACHE STRING "Default packaging prefix." )
 mark_as_advanced(CPACK_GENERATOR)
 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm11, zlib1g-dev")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm11, zlib1g-dev, libsdl2-dev, libgbm-dev, libglx-dev, libglew-dev")
 
 set(CPACK_RPM_PACKAGE_AUTOREQ 0)
 set(CPACK_RPM_PACKAGE_AUTOPROV 0)
-set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm11-libs, zlib")
+set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm11-libs, zlib, SDL2-devel, libgbm-devel, nanomsg-devel")
 
 include(CPack)
 
@@ -102,16 +102,20 @@ else()
   endif()
 endif()
 
-if(UMR_GUI)
-  add_compile_definitions(UMR_GUI=1)
+if(UMR_GUI OR UMR_SERVER)
   set(OpenGL_GL_PREFERENCE "LEGACY")
-  find_package(SDL2 REQUIRED)
-  find_package(OpenGL REQUIRED)
   find_library(drm NAMES drm REQUIRED)
   find_library(gbm NAMES gbm REQUIRED)
+  find_package(OpenGL REQUIRED)
 
+  set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} OpenGL::GL OpenGL::EGL drm gbm)
+endif()
+
+if(UMR_GUI)
+  add_compile_definitions(UMR_GUI=1)
+  find_package(SDL2 REQUIRED)
   include_directories(${SDL2_INCLUDE_DIRS})
-  set(REQUIRED_EXTERNAL_LIBS_GUI ${SDL2_LIBRARIES} OpenGL::GL OpenGL::EGL drm gbm)
+  set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} ${SDL2_LIBRARIES})
 endif()
 
 if(UMR_SERVER)
@@ -125,6 +129,7 @@ if(UMR_SERVER)
     message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_GUI=ON.")
   endif()
 endif()
+
 
 if(UMR_NEED_RT)
 set(RT_LIBS "-lrt")

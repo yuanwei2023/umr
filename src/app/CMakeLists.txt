@@ -14,6 +14,8 @@ if(UMR_GUI)
                   gui/glad/src/glad.c
                   )
   add_compile_definitions(IMGUI_IMPL_OPENGL_LOADER_GLAD=1)
+elseif(UMR_SERVER)
+  set (GUI_SOURCE gui/commands.c)
 endif()
 
 
@@ -57,7 +59,6 @@ if(UMR_GUI)
     target_link_libraries(umr dl)
 endif()
 
-target_link_libraries(umr ${LLVM_LIBS})
 target_link_libraries(umr ${NCURSES_LDFLAGS})
 target_link_libraries(umr ${REQUIRED_EXTERNAL_LIBS})
 
