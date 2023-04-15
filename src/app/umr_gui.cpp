@@ -36,7 +36,6 @@
 #include <nanomsg/nn.h>
 #include <nanomsg/reqrep.h>
 #endif
-#if UMR_GUI
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
@@ -49,7 +48,6 @@
 #include <EGL/eglext.h>
 
 #include "gui/qoi/qoi.h"
-#endif
 
 /* Random helpers */
 extern void send_request(JSON_Value *req, struct umr_asic *asic);
@@ -59,7 +57,7 @@ extern bool kb_shortcut(int keycode);
 extern GLuint texture_from_qoi_buffer(int width, int height, void *buffer, int buffer_size);
 extern void goto_tab(int keycode);
 extern "C" {
-    JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned int *raw_data_size);
+	JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned int *raw_data_size);
 }
 
 

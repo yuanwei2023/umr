@@ -103,11 +103,11 @@ else()
 endif()
 
 if(UMR_GUI AND NOT UMR_SERVER)
-    message(WARNING "You shouldn't build UMR_GUI without UMR_SERVER!")
+  message(WARNING "You shouldn't build UMR_GUI without UMR_SERVER!")
 endif()
 
 if(UMR_GUI OR UMR_SERVER)
-  set(OpenGL_GL_PREFERENCE "LEGACY")
+  set(OpenGL_GL_PREFERENCE "LEGACY" CACHE STRING "Select OpenGL version [LEGACY, GLVND]")
   find_library(drm NAMES drm REQUIRED)
   find_library(gbm NAMES gbm REQUIRED)
   find_package(OpenGL REQUIRED)

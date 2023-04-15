@@ -549,7 +549,7 @@ int main(int argc, char **argv)
 					pm = 4;
 					i += 1;
 				}
-				
+
 				sprintf(str, "%c/%s", prefix[pm], name);
 				umr_read_ring_stream(asic, str);
 			} else {
@@ -1094,13 +1094,14 @@ printf(
 	"\n\t--test-log, -tl <filename>\n\t\tLog all MMIO/memory reads to a file\n"
 	"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n");
 
-#if UMR_SERVER && UMR_GUI
-printf(
-"\n*** GUI server ***\n");
-#endif
 #if UMR_SERVER
 printf(
+"\n*** GUI server ***\n");
+printf(
 	"\n\t--server [url] \n\t\turl can be tcp://127.0.0.1:1234 or tcp://*:8090. Default value is 'tcp://*:1234' see Nanomsg protocol doc for more example\n");
+#elif UMR_GUI
+printf(
+"\n*** GUI ***\n");
 #endif
 #if UMR_GUI
 printf(
