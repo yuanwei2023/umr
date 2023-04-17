@@ -4,9 +4,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/)
 
 add_subdirectory(app/gui/parson)
 
-if(UMR_GUI AND UMR_SERVER)
+#if(UMR_GUI AND UMR_SERVER)
     add_subdirectory(test)
-endif()
+#endif()
 
 add_subdirectory(lib)
 add_subdirectory(app)

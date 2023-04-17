@@ -1,10 +1,10 @@
 #!/bin/bash
 
 git clean . -dxf
-cmake .
+cmake ${1} .
 make -j
 
-echo 
+echo
 echo
 echo Running KAT tests...
 
@@ -15,8 +15,15 @@ for f in test/kat/*.cmd; do
 	cmd=`cat $f`
 	echo "Running: umr ${cmd}"
 	src/app/umr ${cmd} > /tmp/umr.test
-	diff /tmp/umr.test $kat >/dev/null
-	if [ $? -eq 1 ]; then
+	pass=0
+	for kf in ${kat}*; do
+		diff /tmp/umr.test ${kf} >/dev/null
+		if [ $? -eq 0 ]; then
+			pass=1;
+			break;
+		fi;
+	done
+	if [ ${pass} -eq 0 ]; then
 		echo "FAILED.  Test ${txt} failed..."
 		diff -ur $kat /tmp/umr.test
 		exit 1;
@@ -25,7 +32,7 @@ done
 echo PASSED.
 
 # run simple KATs
-echo 
+echo
 echo
 echo Running simple KAT/VM tests...
 
