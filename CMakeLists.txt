@@ -62,7 +62,7 @@ option(UMR_NO_DRM "Disable libdrm functions to read memory stats" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
 option(UMR_NO_GUI "Disable umr --gui option" OFF)
-option(UMR_NO_SERVER "Disable umr --server option" OFF)
+option(UMR_NO_SERVER "Disable umr --server option" ${UMR_NO_GUI})
 # TODO: can server exist without GUI? assume not
 
 # NOT UMR_NO_GUI is confusing. create a hidden option instead. ON by default
