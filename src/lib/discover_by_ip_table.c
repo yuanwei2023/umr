@@ -136,12 +136,15 @@ static void dump_discovery_to_log(struct umr_discovery_table_entry *det, struct 
 	while (det) {
 		int x;
 		for (x = 0; x < 128; x++) fprintf(options->test_log_fd, "%02" PRIx8, (unsigned)(det->ipname[x] & 0xFF));
-		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->die >> 8), (unsigned)(det->die));
-		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->instance >> 8), (unsigned)(det->instance));
-		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->maj >> 8), (unsigned)(det->maj));
-		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->min >> 8), (unsigned)(det->min));
-		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->rev >> 8), (unsigned)(det->rev));
-		for (x = 0; x < 16; x++) fprintf(options->test_log_fd, "%016" PRIx64, det->segments[x]);
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->die >> 8), (unsigned)(det->die & 0xFF));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->instance >> 8), (unsigned)(det->instance & 0xFF));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->maj >> 8), (unsigned)(det->maj & 0xFF));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->min >> 8), (unsigned)(det->min & 0xFF));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->rev >> 8), (unsigned)(det->rev & 0xFF));
+		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->logical_inst >> 8) & 0xFF, (unsigned)(det->logical_inst & 0xFF));
+		for (x = 0; x < 32; x++) {
+			fprintf(options->test_log_fd, "%016" PRIx64, det->segments[x]);
+		}
 		det = det->next;
 	}
 	fprintf(options->test_log_fd, "}\n");
@@ -167,7 +170,11 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 		det->maj = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
 		det->min = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
 		det->rev = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
-		for (y = 0; y < 16; y++) {
+		det->logical_inst = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
+		if (det->logical_inst & 0x8000) {
+			det->logical_inst -= 65536;
+		}
+		for (y = 0; y < 32; y++) {
 			for (z = 0; z < 8; z++)
 				det->segments[y] = (det->segments[y] << 8) | ((uint64_t)*data++);
 		}
@@ -338,7 +345,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 					if (!ppexp->soc15 && !strcmp(pexp_data->det->ipname, ppexp->det->ipname)) {
 						ppexp->soc15 = 1;
 						fprintf(fexp, "\t");
-						for (x = 0; x < 8; x++) {
+						for (x = 0; x < 32; x++) {
 							fprintf(fexp, "0x%08" PRIx64 " ", ppexp->det->segments[x]);
 						}
 						fprintf(fexp, "\n");

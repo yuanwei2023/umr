@@ -1369,12 +1369,12 @@ int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size);
 
 /* discover */
 // size of serialized umr_discovery_table_entry
-#define DET_REC_SIZE (128 + 5 * 2 + 8 * 16)
+#define DET_REC_SIZE (128 + 6 * 2 + 8 * 32)
 
 struct umr_discovery_table_entry {
 	char ipname[128];
         int die, instance, maj, min, rev, logical_inst;
-        uint64_t segments[16];
+        uint64_t segments[32];
         uint8_t harvest;
         struct umr_discovery_table_entry *next;
 };
