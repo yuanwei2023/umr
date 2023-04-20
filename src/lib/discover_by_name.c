@@ -65,7 +65,7 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 		if (options->instance == -1) {
 			// try and discover an instance that works
 			struct umr_options tmp_opt;
-			for (x = 0; x < 16; x++) {
+			for (x = 0; x < 128; x++) {
 				memset(&tmp_opt, 0, sizeof(tmp_opt));
 				tmp_opt.quiet = 1;
 				tmp_opt.forcedid = -1;
