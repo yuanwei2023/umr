@@ -6,14 +6,12 @@ set(TEST_SRC test_framework.c
   test_framework.c
   main.c
   test_mmio.c
-#  test_server.c
   test_vm.c
-#  ../app/server.c
 )
 
 if(UMR_GUI OR UMR_SERVER)
   add_compile_definitions(COMMANDS_TEST=1)
-  set(TEST_SRC ${TEST_SRC} test_server.c ../app/gui/commands.c ../app/server.c)
+  set(TEST_SRC ${TEST_SRC} test_server.c ../app/gui/commands.c)
 endif()
 
 add_executable(umrtest ${TEST_SRC})
