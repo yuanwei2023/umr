@@ -310,16 +310,16 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *respons
 
 static void *communication_thread(void *_job) {
 	int id = 0;
-	char session_filename[PATH_MAX];
+	char session_filename[PATH_MAX - 4];
 	char session_filename_raw[PATH_MAX];
 	while (id < 1024) {
 		struct stat statbuf;
-		sprintf(session_filename, "/tmp/umr_session.%d.json", id++);
+		snprintf(session_filename, sizeof(session_filename), "/tmp/umr_session.%d.json", id++);
 		if (stat(session_filename, &statbuf) == -1 && errno == ENOENT) {
 			break;
 		}
 	}
-	sprintf(session_filename_raw, "%s.raw", session_filename);
+	snprintf(session_filename_raw, sizeof(session_filename_raw), "%s.raw", session_filename);
 	JSON_Array *session = json_array(json_value_init_array());
 	std::vector<AsicData*> *asics = (std::vector<AsicData*> *)_job;
 
