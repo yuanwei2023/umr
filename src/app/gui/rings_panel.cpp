@@ -73,7 +73,7 @@ static void _add_field(struct umr_stream_decode_ui *ui, uint64_t ib_addr,
 	ImGui::Indent();
 
 	if (!strcmp(field_name, "REG") && ideal_radix == 16) {
-		ImGui::Text("#d33682%s = #dbde790x%x", str, value);
+		ImGui::Text("#d33682%s = #dbde790x%x", str, (unsigned int)value);
 	} else {
 		ImGui::Text("%s =", field_name);
 		if (str) {

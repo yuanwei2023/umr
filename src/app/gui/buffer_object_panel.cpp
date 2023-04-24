@@ -176,9 +176,9 @@ public:
 						(int) json_object_get_number(bo, "width"),
 						(int) json_object_get_number(bo, "height"));
 					int l = strlen(img_label);
-					ImGui::Text("%*s", sizeof("resolution"), img_label);
+					ImGui::Text("%*s", (int)sizeof("resolution"), img_label);
 					ImGui::SameLine();
-					ImGui::Text("%*d", sizeof("format"), (int) json_object_get_number(bo, "format"));
+					ImGui::Text("%*d", (int)sizeof("format"), (int) json_object_get_number(bo, "format"));
 					ImGui::SameLine();
 
 					/* Hack the cursor position to get the button text aligned with the label. */
@@ -261,7 +261,7 @@ public:
 				"%dx%d",
 				(int) json_object_get_number(md, "width"),
 				(int) json_object_get_number(md, "height"));
-			ImGui::Text("%*s", sizeof("resolution") + 15 - l - 1, img_label);
+			ImGui::Text("%*s", (int)sizeof("resolution") + 15 - l - 1, img_label);
 			ImGui::SameLine();
 
 			/* Hack the cursor position to get the button text aligned with the label. */
