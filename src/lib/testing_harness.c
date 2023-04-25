@@ -730,15 +730,15 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
-	for (x = 0; x < nr; x++) {
+	for (x = 0; x < nr; ) {
 		// read from SGPR list
 		mm = &th->sgpr;
 		while (mm) {
 			/* because of how reading GPRs is done there could be more than
 			 * one vector entry for this given GPR address so we stop reading
 			 * from a given link when it's been exhausted */
-			if (mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
-				dst[x] = mm->values[mm->cur_slot];
+			while (x < nr && mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
+				dst[x++] = mm->values[mm->cur_slot];
 				++(mm->cur_slot);
 			}
 			mm = mm->next;
@@ -747,13 +747,14 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_
 
 	// read trap if any
 	if (ws->wave_status.trap_en || ws->wave_status.priv) {
+		nr = 16;
 		addr += 4 * 0x6C;  // byte offset, kernel adds 0x200 to address
-		for (x = 0; x < nr; x++) {
-			// read from VGPR list
+		for (x = 0; x < nr;) {
+			// read from TRAP list
 			mm = &th->sgpr;
 			while (mm) {
-				if (mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
-					dst[0x6C + x] = mm->values[mm->cur_slot];
+				while (x < nr && mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
+					dst[0x6C + x++] = mm->values[mm->cur_slot];
 					++(mm->cur_slot);
 				}
 				mm = mm->next;
@@ -800,18 +801,23 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
-	for (x = 0; x < nr; x++) {
+	for (x = 0; x < nr;) {
 		// read from VGPR list
 		mm = &th->vgpr;
 		while (mm) {
 			/* because of how reading GPRs is done there could be more than
 			 * one vector entry for this given GPR address so we stop reading
 			 * from a given link when it's been exhausted */
-			if (mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
-				dst[x] = mm->values[mm->cur_slot];
+			while (x < nr && mm->mmio_address == addr && mm->cur_slot < mm->no_values) {
+				dst[x++] = mm->values[mm->cur_slot];
 				++(mm->cur_slot);
 			}
 			mm = mm->next;
+		}
+		// because reads are all or nothing if x < nr then we failed
+		if (x < nr) {
+			asic->err_msg("[BUG]: Still have %d words left to read for VGPR buffer\n", nr - x);
+			return -1;
 		}
 	}
 	return 0;
@@ -834,7 +840,7 @@ static int wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned
 		((uint64_t)simd << 37);
 
 	// find the first unused slot and then read all of the contents
-	mm = &th->vgpr;
+	mm = &th->wave;
 	x = 0;
 	while (mm) {
 		if (mm->mmio_address == addr && mm->cur_slot == 0) {

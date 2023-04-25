@@ -1,0 +1,1 @@
+-f .green_sardine --test-harness test/kat/wa_kat_cezanne_test1.txt -wa gfx
