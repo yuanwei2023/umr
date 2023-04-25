@@ -28,6 +28,9 @@ endif()
 
 
 #application objects
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(DRM REQUIRED IMPORTED_TARGET libdrm)
+
 add_library(umrapp
   print.c
   print_config.c
@@ -52,7 +55,7 @@ add_library(umrapp
   print_sdma.c
   ${GUI_SOURCE}
 )
-target_link_libraries(umrapp parson drm)
+target_link_libraries(umrapp parson PkgConfig::DRM)
 
 add_executable(umr main.c)
 target_link_libraries(umr umrapp umrlow umrcore umrlow)
