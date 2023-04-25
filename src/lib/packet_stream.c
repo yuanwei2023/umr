@@ -131,14 +131,32 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 		ringdata[0] %= ringsize;
 		ringdata[1] %= ringsize;
 
-		if (*start == -1)
+		if (*start != -1 || *stop != -1) {
+			only_active = 0;
+		}
+
+		if (*start == -1 && *stop != -1) {
 			*start = ringdata[0]; // use rptr
-		else
-			only_active = 0;
-		if (*stop == -1)
+			*stop   = *start + *stop; // read k words from RPTR
+		} else if (*start != -1 && *stop == -1) {
 			*stop = ringdata[1]; // use wptr
-		else
-			only_active = 0;
+			*start = *stop - *start; // read k words before WPTR
+		} else if (*start == -1 && *stop == -1) {
+			*start = ringdata[0]; // use rptr
+			*stop = ringdata[1]; // use wptr
+		} else if (*start == -1) {
+			*start = ringdata[0]; // use rptr
+		} else if (*stop == -1) {
+			*stop = ringdata[1]; // use wptr
+		}
+
+		if (*start < 0) {
+			*start = ringsize + *start;
+		}
+
+		if ((uint32_t)*stop > ringsize) {
+			*stop = *stop - ringsize;
+		}
 
 		// only proceed if there is data to read
 		// and then linearize it so that the stream
