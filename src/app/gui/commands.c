@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <ctype.h>
 #define GL_GLEXT_PROTOTYPES
@@ -35,9 +36,14 @@
 #define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#if CAN_IMPORT_BO
 #include <gbm.h>
 #include <libdrm/drm_fourcc.h>
 #include <libdrm/amdgpu_drm.h>
+#include <xf86drm.h>
+#include <amdgpu.h>
+#include <xf86drmMode.h>
+#endif
 #include <assert.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -46,10 +52,7 @@
 #include "qoi/qoi.h"
 #include "parson.h"
 #include <sys/syscall.h>
-#include <xf86drm.h>
-#include <amdgpu.h>
 #include <amdgpu_drm.h>
-#include <xf86drmMode.h>
 
 static char * _read_file(const char *path, char **buffer, unsigned *buffer_size) {
 	FILE *fd = fopen(path, "r");
@@ -107,6 +110,28 @@ static char * read_file_a(const char *path) {
 	return _read_file(path, &buffer, &buffer_size);
 }
 
+static int find_pid_by_command_name(DIR *d, const char *process_name) {
+	struct dirent *ent;
+	struct stat fstat;
+	unsigned pid = 0;
+	while ((ent = readdir(d))) {
+		if (fstatat(dirfd(d), ent->d_name, &fstat, 0) < 0)
+			continue;
+		if (S_ISDIR(fstat.st_mode)) {
+			char path[512];
+			sprintf(path, "/proc/%s/comm", ent->d_name);
+			char *command = read_file_a(path);
+			if (command && strncmp(command, process_name, strlen(process_name)) == 0) {
+				pid = atoi(ent->d_name);
+				break;
+			}
+			free(command);
+		}
+	}
+	return pid;
+}
+
+#if CAN_IMPORT_BO
 static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int max_fd) {
 	char folder[512];
 	sprintf(folder, "/proc/%d/fdinfo", pid);
@@ -135,27 +160,6 @@ static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int m
 		return num_fds;
 	}
 	return 0;
-}
-
-static int find_pid_by_command_name(DIR *d, const char *process_name) {
-	struct dirent *ent;
-	struct stat fstat;
-	unsigned pid = 0;
-	while ((ent = readdir(d))) {
-		if (fstatat(dirfd(d), ent->d_name, &fstat, 0) < 0)
-			continue;
-		if (S_ISDIR(fstat.st_mode)) {
-			char path[512];
-			sprintf(path, "/proc/%s/comm", ent->d_name);
-			char *command = read_file_a(path);
-			if (command && strncmp(command, process_name, strlen(process_name)) == 0) {
-				pid = atoi(ent->d_name);
-				break;
-			}
-			free(command);
-		}
-	}
-	return pid;
 }
 
 static void read_size_from_md(struct umr_asic *asic, unsigned *metadata,
@@ -562,6 +566,7 @@ static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_
 
 	return NULL;
 }
+#endif
 
 static uint64_t read_sysfs_uint64(const char *path) {
 	char *content = read_file(path);
@@ -684,6 +689,7 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 			json_object_set_number(fb, "id", id);
 
 		parse_kms_field(&content, "allocated by", "allocated by", KMS_STRING, fb);
+		#if CAN_IMPORT_BO
 		/* The kernel only gives us an application name but we really need a pid.
 		 * Try to find the application by parsing /proc/$fd/comm
 		 */
@@ -720,6 +726,7 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 				}
 			}
 		}
+		#endif
 
 		parse_kms_field(&content, "format", "format", KMS_STRING, fb);
 		parse_kms_field(&content, "modifier", "modifier", KMS_INT_16, fb);
@@ -2552,6 +2559,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 		free(pids_mapping);
 
+		#if CAN_IMPORT_BO
 		for (unsigned i = 0; i < json_array_get_count(pids); i++) {
 			JSON_Object *app = json_object(json_array_get_value(pids, i));
 			JSON_Array *bos = json_object_get_array(app, "bos");
@@ -2587,6 +2595,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			if (null_count == json_array_get_count(bos))
 				json_array_replace_null(pids, i);
 		}
+		#endif
 
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
 
@@ -2595,6 +2604,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(asic, content);
 		previous_framebuffers_answer = json_value_deep_copy(json_array_get_wrapping_value(framebuffers));
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
+	#if CAN_IMPORT_BO
 	} else if (!strcmp(command, "peak-bo")) {
 		int width, height;
 		answer = json_value_init_object();
@@ -2620,6 +2630,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			last_error = error;
 			goto error;
 		}
+	#endif
 	} else {
 		last_error = "unknown command";
 		goto error;

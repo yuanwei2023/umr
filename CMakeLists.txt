@@ -17,6 +17,7 @@ project(umr
     HOMEPAGE_URL "https://gitlab.freedesktop.org/tomstdenis/umr")
 
 include(GNUInstallDirs)
+include(CheckSymbolExists)
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "User mode register debugger for AMDGPU devices using IP cleared registers/definitions.")
 set(CPACK_PACKAGE_VENDOR "AMD")
@@ -108,14 +109,26 @@ endif()
 
 if(UMR_GUI OR UMR_SERVER)
  set(OpenGL_GL_PREFERENCE "LEGACY" CACHE STRING "Select OpenGL version [LEGACY, GLVND]")
- find_package(OpenGL COMPONENTS EGL OpenGL)
+ check_symbol_exists(SYS_pidfd_getfd sys/syscall.h HAVE_SYS_PIDFD_GETFD)
+ check_symbol_exists(SYS_pidfd_open sys/syscall.h HAVE_SYS_PIDFD_OPEN)
 
- find_package(PkgConfig REQUIRED)
- pkg_check_modules(DRM IMPORTED_TARGET libdrm)
- pkg_check_modules(GBM IMPORTED_TARGET gbm)
+  if (HAVE_SYS_PIDFD_GETFD AND HAVE_SYS_PIDFD_OPEN)
+    find_package(OpenGL COMPONENTS EGL OpenGL)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(DRM IMPORTED_TARGET libdrm)
+    pkg_check_modules(GBM IMPORTED_TARGET gbm)
+    add_definitions(-DCAN_IMPORT_BO=1)
 
- if (OpenGL_OpenGL_FOUND AND OpenGL_EGL_FOUND AND DRM_FOUND AND GBM_FOUND)
-   set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} OpenGL::GL OpenGL::EGL PkgConfig::DRM PkgConfig::GBM parson)
+    set(BO_IMPORT_LIBS OpenGL::EGL PkgConfig::DRM PkgConfig::GBM)
+  else()
+    # if(UMR_GUI) OpenGL isn't needed for server-only builds
+      find_package(OpenGL COMPONENTS OpenGL)
+    # endif()
+    set(BO_IMPORT_LIBS "")
+  endif()
+
+ if (OpenGL_OpenGL_FOUND AND (NOT BO_IMPORT_LIBS OR (OpenGL_EGL_FOUND AND DRM_FOUND AND GBM_FOUND)))
+   set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} OpenGL::GL ${BO_IMPORT_LIBS} parson)
  else()
   message(WARNING "Required library (drm: ${DRM_FOUND}, gbm: ${GBM_FOUND}, OpenGL: ${OpenGL_OpenGL_FOUND}, EGL: ${OpenGL_EGL_FOUND}) not found. Disabling --gui and --server")
   set (UMR_GUI OFF)
