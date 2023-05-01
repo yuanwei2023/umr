@@ -1,12 +1,14 @@
 #!/bin/bash
 
-git clean . -dxf
-cmake ${1} .
-make -j
+if [ "${1}" != "norebuild" ]; then
+	git clean . -dxf
+	cmake ${1} .
+	make -j
 
-if [ $? -ne 0 ]; then
-	echo FAILED to build umr.  Try adding -DUMR_NO_GUI=ON to the command line.
-	exit 1
+	if [ $? -ne 0 ]; then
+		echo FAILED to build umr.  Try adding -DUMR_NO_GUI=ON to the command line.
+		exit 1
+	fi
 fi
 
 echo
