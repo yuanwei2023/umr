@@ -34,6 +34,10 @@ for f in ${UMRVECTORSPATH}/kat/*.cmd; do
 	cmd=`echo ${cmd} | sed -e "sTtest/T${UMRVECTORSPATH}T"`
 	echo "Running: umr ${cmd}"
 	${UMRAPPPATH} ${cmd} > /tmp/umr.test
+	if [ $? -ne 0 ]; then
+		echo "FAILED.   Running umr failed..."
+		exit 1
+	fi
 	pass=0
 	for kf in ${kat}*; do
 		diff /tmp/umr.test ${kf} >/dev/null
@@ -56,7 +60,7 @@ echo
 echo Running simple KAT/VM tests...
 
 ${UMRTESTPATH} ${UMRVECTORSPATH}/vm/
-if [ $? -eq 1 ]; then
+if [ $? -ne 0 ]; then
 	echo "FAILED."
 	exit 1
 fi
