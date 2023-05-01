@@ -1,4 +1,15 @@
 #!/bin/bash
+if [ "${UMRTESTPATH}" == "" ]; then
+	UMRTESTPATH="src/test/umrtest"
+fi
+
+if [ "${UMRAPPPATH}" == "" ]; then
+	UMRAPPPATH="src/app/umr"
+fi
+
+if [ "${UMRVECTORSPATH}" == "" ]; then
+	UMRVECTORSPATH="test/"
+fi
 
 if [ "${1}" != "norebuild" ]; then
 	git clean . -dxf
@@ -16,12 +27,13 @@ echo
 echo Running KAT tests...
 
 # run more complicated KATs
-for f in test/kat/*.cmd; do
+for f in ${UMRVECTORSPATH}/kat/*.cmd; do
 	txt=`echo $f | sed -e 's/.cmd/.txt/'`
 	kat=`echo $f | sed -e 's/.cmd/.answer/'`
 	cmd=`cat $f`
+	cmd=`echo ${cmd} | sed -e "sTtest/T${UMRVECTORSPATH}T"`
 	echo "Running: umr ${cmd}"
-	src/app/umr ${cmd} > /tmp/umr.test
+	${UMRAPPPATH} ${cmd} > /tmp/umr.test
 	pass=0
 	for kf in ${kat}*; do
 		diff /tmp/umr.test ${kf} >/dev/null
@@ -43,7 +55,7 @@ echo
 echo
 echo Running simple KAT/VM tests...
 
-src/test/umrtest test/vm/
+${UMRTESTPATH} ${UMRVECTORSPATH}/vm/
 if [ $? -eq 1 ]; then
 	echo "FAILED."
 	exit 1
