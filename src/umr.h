@@ -273,7 +273,8 @@ struct umr_test_harness {
 };
 
 struct umr_options {
-	int instance,
+	int forced_instance,
+		instance,
 	    need_scan,
 	    print,
 	    bitfields,

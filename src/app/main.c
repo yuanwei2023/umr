@@ -65,7 +65,14 @@ static int err_printf(const char *fmt, ...)
 static struct umr_asic *get_asic(void)
 {
 	struct umr_asic *asic;
+
+retry:
 	asic = umr_discover_asic(&options, std_printf);
+	if (!asic && !asic->options.forced_instance && asic->instance < 128) {
+		asic->instance++;
+		goto retry;
+	}
+
 	if (!asic) {
 		printf("ASIC not found (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
 		exit(EXIT_FAILURE);
@@ -229,6 +236,7 @@ int main(int argc, char **argv)
 	options.scanblock = "";
 	options.vm_partition = -1;
 	options.vgpr_granularity = -1;
+	options.forced_instance = 0;
 
 	for (i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--vgpr-granularity") || !strcmp(argv[i], "-vgpr")) {
@@ -256,6 +264,7 @@ int main(int argc, char **argv)
 				if (s) {
 					strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
 					options.instance = atoi(s + 1);
+					options.forced_instance = 1;
 					asic = get_asic();
 				} else if ((s = strstr(argv[i+1], "="))) {
 					strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
@@ -275,6 +284,7 @@ int main(int argc, char **argv)
 		} else if (!strcmp(argv[i], "--instance") || !strcmp(argv[i], "-i")) {
 			if (i + 1 < argc) {
 				options.instance = atoi(argv[i+1]);
+				options.forced_instance = 1;
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --instance requires a number\n");
