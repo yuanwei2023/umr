@@ -68,8 +68,8 @@ static struct umr_asic *get_asic(void)
 
 retry:
 	asic = umr_discover_asic(&options, std_printf);
-	if (!asic && !asic->options.forced_instance && asic->instance < 128) {
-		asic->instance++;
+	if (!asic && !options.forced_instance && options.instance < 128) {
+		options.instance++;
 		goto retry;
 	}
 
