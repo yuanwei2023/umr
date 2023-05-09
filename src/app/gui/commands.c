@@ -1464,10 +1464,11 @@ void init_asics() {
 	char devname[512];
 	int index = 0;
 
-	for (int instance = 0; instance < 16; instance++) {
+	for (int instance = 0; instance < 128; instance++) {
 		/* Iterate dri cards */
 		sprintf(devname, "/dev/dri/card%d", instance);
-		if (access(devname, F_OK) != 0)
+		/* Stop looking further only if we found at least one GPU (on Fedora 38 the first GPU is card1) */
+		if (access(devname, F_OK) != 0 && index)
 			break;
 
 		memset(&opt, 0, sizeof(opt));
