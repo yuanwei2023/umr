@@ -857,13 +857,6 @@ static void decode_upto_vi(struct umr_asic *asic, struct umr_stream_decode_ui *u
 					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", stream->words[0] & 0xFFFF, umr_reg_name(asic, stream->words[0] & 0xFFFF), 16, 32);
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "SRBM_WRITE_DATA", stream->words[1], NULL, 16, 32);
 					return;
-				case 1: // RMW_REGISTER
-					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "RMW_REGISTER", stream->header_dw, stream->words);
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "ADDR", stream->words[0] & 0xFFFFF, umr_reg_name(asic, stream->words[0] & 0xFFFFF), 16, 32);
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "APERTURE_ID", (stream->words[0] >> 20) & 0xFFF, NULL, 10, 32);
-					ui->add_field(ui, ib_addr + 8, ib_vmid, "MASK", stream->words[1], NULL, 10, 32);
-					ui->add_field(ui, ib_addr + 12, ib_vmid, "VALUE", stream->words[2], NULL, 10, 32);
-					return;
 				default:
 					if (ui->unhandled_subop)
 						ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream, UMR_RING_SDMA);
@@ -1659,8 +1652,6 @@ static void decode_upto_ai(struct umr_asic *asic, struct umr_stream_decode_ui *u
 					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", stream->words[0] & 0x3FFFF, umr_reg_name(asic, stream->words[0] & 0x3FFFF), 16, 32);
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "SRBM_WRITE_DATA", stream->words[1], NULL, 16, 32);
 					return;
-				case 1: // RMW_REGISTER
-					break; // fall through
 				default:
 					if (ui->unhandled_subop)
 						ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream, UMR_RING_SDMA);
@@ -2073,9 +2064,36 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 		case 8: // POLL_REGMEM
 			switch (stream->sub_opcode) {
 				case 0: // POLL_REGMEM
-					break; // fall through
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "POLL_REGMEM", stream->header_dw, stream->words);
+					if (sc->has_cp_fields) ui->add_field(ui, ib_addr + 0, ib_vmid, "CACHE_POLICY", BITS(stream->header_dw, 20, 23), NULL, 10, 32);
+					if (sc->has_cpv_flag) ui->add_field(ui, ib_addr + 0, ib_vmid, "CPV", BITS(stream->header_dw, 24, 25), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "HDP_FLUSH", BITS(stream->header_dw, 26, 27), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "FUNCTION", 0, poll_regmem_funcs[BITS(stream->header_dw, 28, 31)], 0, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "MEM_POLL", BITS(stream->header_dw, 31, 32), NULL, 16, 32);
+					if (!(stream->header_dw & (1UL << 31))) {
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "REGISTER", BITS(stream->words[0], 2, 32) << 2, umr_reg_name(asic, BITS(stream->words[0], 2, 32)), 16, 32);
+						if (((stream->header_dw >> 26) & 3) == 1) { // if HDP_FLUSH, the write register is provided
+							ui->add_field(ui, ib_addr + 8, ib_vmid, "REGISTER", BITS(stream->words[1], 2, 32) << 2, umr_reg_name(asic, BITS(stream->words[1], 2, 32)), 16, 32);
+						} else {
+							ui->add_field(ui, ib_addr + 8, ib_vmid, NULL, stream->words[1], NULL, 16, 32);
+						}
+					} else {
+						ui->add_field(ui, ib_addr + 4, ib_vmid, "POLL_REGMEM_ADDR_LO", stream->words[0], NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_REGMEM_ADDR_HI", stream->words[1], NULL, 16, 32);
+					}
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "VALUE", stream->words[2], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "MASK", stream->words[3], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "INTERVAL", BITS(stream->words[4], 0, 16), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "RETRY_COUNT", BITS(stream->words[4], 16, 28), NULL, 10, 32);
+					return;
 				case 1: // POLL_REG_WRITE_MEM
-					break; // fall through
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "POLL_REG_WRITE_MEM", stream->header_dw, stream->words);
+					if (sc->has_cp_fields) ui->add_field(ui, ib_addr + 0, ib_vmid, "CACHE_POLICY", BITS(stream->header_dw, 24, 27), NULL, 10, 32);
+					if (sc->has_cpv_flag) ui->add_field(ui, ib_addr + 0, ib_vmid, "CPV", BITS(stream->header_dw, 28, 29), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_ADDR", BITS(stream->words[0], 2, 32) << 2, umr_reg_name(asic, BITS(stream->words[0], 2, 32)), 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_LO", stream->words[1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_HI", stream->words[2], NULL, 16, 32);
+					return;
 				case 2: // POLL_DBIT_WRITE_MEM
 					break; // fall through
 				case 3: // MEM_VERIFY
@@ -2145,12 +2163,19 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 				case 0: // SRBM_WRITE
 					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "SRBM_WRITE", stream->header_dw, stream->words);
 					ui->add_field(ui, ib_addr + 0, ib_vmid, "BYTE_ENABLE", (stream->header_dw >> 28), NULL, 10, 32);
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", stream->words[0] & 0x3FFFF, umr_reg_name(asic, stream->words[0] & 0x3FFFF), 16, 32);
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "APERTUREID", (stream->words[0] >> 20) & 0xFFF, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SRBM_WRITE_ADDR", BITS(stream->words[0], 0, 18),
+						umr_reg_name(asic, (BITS(stream->words[0], 20, 32) << 18) | BITS(stream->words[0], 0, 18)), 16, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "APERTURE_ID", BITS(stream->words[0], 20, 32), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "SRBM_WRITE_DATA", stream->words[1], NULL, 16, 32);
 					return;
 				case 1: // RMW_REGISTER
-					break; // fall through
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "RMW_REGISTER", stream->header_dw, stream->words);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ADDR", BITS(stream->words[0], 0, 18),
+						umr_reg_name(asic, (BITS(stream->words[0], 20, 32) << 18) | BITS(stream->words[0], 0, 18)), 16, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "APERTURE_ID", BITS(stream->words[0], 20, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "MASK", stream->words[1], NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "DATA", stream->words[2], NULL, 10, 32);
+					return;
 				default:
 					if (ui->unhandled_subop)
 						ui->unhandled_subop(ui, asic, ib_addr, ib_vmid, stream, UMR_RING_SDMA);
