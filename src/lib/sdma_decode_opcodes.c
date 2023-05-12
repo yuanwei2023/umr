@@ -2102,9 +2102,9 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "INVALIDATION", stream->header_dw, stream->words);
 					ui->add_field(ui, ib_addr + 0, ib_vmid, "GFX_ENG_ID", (stream->header_dw >> 16) & 0x1F, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 0, ib_vmid, "MM_ENG_ID", (stream->header_dw >> 24) & 0x1F, NULL, 10, 32);
-					ui->add_field(ui, ib_addr + 4, ib_vmid, "INVALIDATEREQ", stream->words[0], NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "INVALIDATEREQ", stream->words[0], NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESSRANGE_LO", stream->words[1], NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 12, ib_vmid, "INVALIDATEACK", stream->words[2] & 0xFFFF, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "INVALIDATEACK", stream->words[2] & 0xFFFF, NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESSRANGE_HI", (stream->words[2] >> 16) & 0x1F, NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 12, ib_vmid, "RESERVED", (stream->words[2] >> 23) & 0x1FF, NULL, 10, 32);
 					return;
