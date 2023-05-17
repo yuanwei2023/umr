@@ -38,9 +38,10 @@ void umr_close_asic(struct umr_asic *asic)
 		cond_close(asic->fd.pcie);
 		cond_close(asic->fd.smc);
 		cond_close(asic->fd.sensors);
-		cond_close(asic->fd.wave);
 		cond_close(asic->fd.vram);
+		cond_close(asic->fd.gprwave);
 		cond_close(asic->fd.gpr);
+		cond_close(asic->fd.wave);
 		cond_close(asic->fd.drm);
 		cond_close(asic->fd.iova);
 		cond_close(asic->fd.iomem);

@@ -38,12 +38,24 @@ struct amdgpu_debugfs_regs2_iocdata {
 	} srbm;
 };
 
+struct amdgpu_debugfs_regs2_iocdata_v2 {
+	__u32 use_srbm, use_grbm, pg_lock;
+	struct {
+		__u32 se, sh, instance;
+	} grbm;
+	struct {
+		__u32 me, pipe, queue, vmid;
+	} srbm;
+	__u32 xcc_id;
+};
+
 enum AMDGPU_DEBUGFS_REGS2_CMDS {
 	AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE=0,
+	AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE_V2,
 };
 
 #define AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE _IOWR(0x20, AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE, struct amdgpu_debugfs_regs2_iocdata)
-
+#define AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE_V2 _IOWR(0x20, AMDGPU_DEBUGFS_REGS2_CMD_SET_STATE_V2, struct amdgpu_debugfs_regs2_iocdata_v2)
 
 /**
  * umr_pcie_read - Read a PCIE register
@@ -188,9 +200,41 @@ static uint32_t umr_smc_write(struct umr_asic *asic, uint64_t addr, uint32_t val
 static int mmio2_apply_bank(struct umr_asic *asic)
 {
 	struct amdgpu_debugfs_regs2_iocdata id;
+	struct amdgpu_debugfs_regs2_iocdata_v2 id_v2;
+	int r;
 
 	memset(&id, 0, sizeof id);
+	memset(&id_v2, 0, sizeof id_v2);
 
+	if (!asic->options.use_v1_regs_debugfs) {
+		if (asic->options.pg_lock) {
+			id_v2.pg_lock = 1;
+		}
+
+		if (asic->options.use_bank == 1) {
+			id_v2.grbm.se = asic->options.bank.grbm.se;
+			id_v2.grbm.sh = asic->options.bank.grbm.sh;
+			id_v2.grbm.instance = asic->options.bank.grbm.instance;
+			id_v2.use_grbm = 1;
+		}
+
+		if (asic->options.use_bank == 2) {
+			id_v2.srbm.me    = asic->options.bank.srbm.me;
+			id_v2.srbm.pipe  = asic->options.bank.srbm.pipe;
+			id_v2.srbm.queue = asic->options.bank.srbm.queue;
+			id_v2.srbm.vmid  = asic->options.bank.srbm.vmid;
+			id_v2.use_srbm = 1;
+		}
+		id_v2.xcc_id = asic->options.vm_partition;
+		r = ioctl(asic->fd.mmio2, AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE_V2, &id_v2);
+		if (!r)
+			return r;
+
+		// stop trying this and fall back by default now
+		asic->options.use_v1_regs_debugfs = 1;
+	}
+
+	// fall back to old IOCTL that isn't XCC aware
 	if (asic->options.pg_lock) {
 		id.pg_lock = 1;
 	}

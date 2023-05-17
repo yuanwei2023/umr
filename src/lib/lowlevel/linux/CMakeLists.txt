@@ -3,10 +3,9 @@ add_library(umrlow
   discover.c
   mmio.c
   query_drm.c
-  read_gpr.c
+  read_gprwave.c
   read_sensor.c
   mem.c
-  wave_status.c
   umr_free_asic.c
   umr_read_ring_data.c
   umr_shader_disasm.c

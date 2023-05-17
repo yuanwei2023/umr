@@ -308,7 +308,8 @@ struct umr_options {
 	    is_virtual,
 	    force_asic_file,
 	    export_model,
-	    vgpr_granularity;
+	    vgpr_granularity,
+	    use_v1_regs_debugfs;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
@@ -554,9 +555,10 @@ struct umr_asic {
 		    smc,
 		    sensors,
 		    drm,
-		    wave,
 		    vram,
+		    gprwave,
 		    gpr,
+		    wave,
 		    iova,
 		    iomem,
 		    gfxoff;
@@ -1428,6 +1430,7 @@ char *umr_reg_name(struct umr_asic *asic, uint64_t addr);
 struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp);
 struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname);
 struct umr_reg *umr_find_reg_data_by_ip(struct umr_asic *asic, const char *ip, const char *regname);
+struct umr_reg *umr_find_reg_data_by_ip_quiet(struct umr_asic *asic, const char *ip, const char *regname);
 struct umr_reg *umr_find_reg_data(struct umr_asic *asic, const char *regname);
 struct umr_reg *umr_find_reg_by_name(struct umr_asic *asic, const char *regname, struct umr_ip_block **ip);
 struct umr_reg *umr_find_reg_by_addr(struct umr_asic *asic, uint64_t addr, struct umr_ip_block **ip);
