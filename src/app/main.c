@@ -294,7 +294,11 @@ int main(int argc, char **argv)
 			   !strcmp(argv[i], "--vm_partition") ||
 			   !strcmp(argv[i], "-vmp")) {
 			if (i + 1 < argc) {
+				if (asic)
+					options = asic->options;
 				options.vm_partition = atoi(argv[i+1]);
+				if (asic)
+					asic->options = options;
 				++i;
 			} else {
 				fprintf(stderr, "[ERROR]: --vm-partition requires a number\n");
