@@ -124,20 +124,65 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 	if (r < 0)
 		return r;
 
-	if (v_or_s == 0) {
-		// if we are reading SGPRS then optionally dump them
-		// and then read TRAP registers if necessary
-		if (asic->options.test_log && asic->options.test_log_fd) {
-			int x;
-			fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr); // TODO: update addr
-			for (x = 0; x < r; x += 4) {
-				fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
-				if (x < (r - 4))
-					fprintf(asic->options.test_log_fd, ", ");
-			}
-			fprintf(asic->options.test_log_fd, "}\n");
-		}
+	// if we are reading SGPRS then optionally dump them
+	// and then read TRAP registers if necessary
+	if (asic->options.test_log && asic->options.test_log_fd) {
+		int x;
 
+		// we use addr for test logging
+		if (v_or_s == 0) {
+			if (asic->family < FAMILY_NV) {
+				addr =
+					(1ULL << 60)                             | // reading SGPRs
+					((uint64_t)0)                            | // starting address to read from
+					((uint64_t)ws->hw_id.se_id << 12)        |
+					((uint64_t)ws->hw_id.sh_id << 20)        |
+					((uint64_t)ws->hw_id.cu_id << 28)        |
+					((uint64_t)ws->hw_id.wave_id << 36)      |
+					((uint64_t)ws->hw_id.simd_id << 44)      |
+					(0ULL << 52); // thread_id
+			} else {
+				addr =
+					(1ULL << 60)                             | // reading SGPRs
+					((uint64_t)0)                            | // starting address to read from
+					((uint64_t)ws->hw_id1.se_id << 12)       |
+					((uint64_t)ws->hw_id1.sa_id << 20)       |
+					((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
+					((uint64_t)ws->hw_id1.wave_id << 36)     |
+					(0ULL << 52); // thread_id
+			}
+		} else {
+			if (asic->family < FAMILY_NV) {
+				addr =
+					(0ULL << 60)                             | // reading VGPRs
+					((uint64_t)0)                            | // starting address to read from
+					((uint64_t)ws->hw_id.se_id << 12)        |
+					((uint64_t)ws->hw_id.sh_id << 20)        |
+					((uint64_t)ws->hw_id.cu_id << 28)        |
+					((uint64_t)ws->hw_id.wave_id << 36)      |
+					((uint64_t)ws->hw_id.simd_id << 44)      |
+					((uint64_t)thread << 52);
+			} else {
+				addr =
+					(0ULL << 60)                             | // reading VGPRs
+					((uint64_t)0)                            | // starting address to read from
+					((uint64_t)ws->hw_id1.se_id << 12)        |
+					((uint64_t)ws->hw_id1.sa_id << 20)        |
+					((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
+					((uint64_t)ws->hw_id1.wave_id << 36)      |
+					((uint64_t)thread << 52);
+			}
+		}
+		fprintf(asic->options.test_log_fd, "%cGPR@0x%"PRIx64" = { ", "SV"[v_or_s], addr);
+		for (x = 0; x < r; x += 4) {
+			fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
+			if (x < (r - 4))
+				fprintf(asic->options.test_log_fd, ", ");
+		}
+		fprintf(asic->options.test_log_fd, "}\n");
+	}
+
+	if (v_or_s == 0) {
 		// read trap if any
 		if (ws->wave_status.trap_en || ws->wave_status.priv) {
 			lseek(asic->fd.gprwave, 4 * 0x6C, SEEK_SET);
@@ -145,7 +190,7 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 			if (r > 0) {
 				if (asic->options.test_log && asic->options.test_log_fd) {
 					int x;
-					fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr); // TODO: update addr
+					fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr + 0x6C * 4);
 					for (x = 0; x < r; x += 4) {
 						fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[0x6C + x/4]);
 						if (x < (r - 4))
@@ -156,6 +201,7 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 			}
 		}
 	}
+
 	return r;
 }
 
