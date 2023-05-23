@@ -24,7 +24,7 @@
  */
 #include "umrapp.h"
 
-#define MAX_DEV 16
+#define MAX_DEV 128
 
 struct gpus {
 	struct umr_asic *asic;
