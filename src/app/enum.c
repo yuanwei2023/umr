@@ -92,14 +92,14 @@ void umr_enumerate_devices(umr_err_output errout)
 
 			if (ok) {
 				for (x = 0; x < devices; x++) {
-					if (
+					if (asics[x].instance == -1 &&
 					    asics[x].pcopy.domain == domain &&
 					    asics[x].pcopy.bus == bus &&
 					    asics[x].pcopy.dev == dev &&
 					    asics[x].pcopy.func == func) {
 						asics[x].instance = y;
 						asics[x].asic->instance = y;
-						umr_scan_config(asics[x].asic, 0);
+						umr_scan_config(asics[x].asic, 1);
 					}
 
 				}
