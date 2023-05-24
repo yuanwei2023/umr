@@ -97,6 +97,7 @@ void umr_enumerate_devices(umr_err_output errout)
 					    asics[x].pcopy.bus == bus &&
 					    asics[x].pcopy.dev == dev &&
 					    asics[x].pcopy.func == func) {
+						snprintf(asics[x].asic->options.pci.name, sizeof(asics[x].asic->options.pci.name), "%04x:%02x:%02x.%01x", domain, bus, dev, func);
 						asics[x].instance = y;
 						asics[x].asic->instance = y;
 						umr_scan_config(asics[x].asic, 1);
