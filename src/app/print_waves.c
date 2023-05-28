@@ -383,8 +383,11 @@ static void umr_print_waves_gfx_10_11(struct umr_asic *asic)
 	} ib_addr;
 	int start = -1, stop = -1;
 
-	if (asic->options.halt_waves)
+	if (asic->options.halt_waves) {
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
+	} else {
+		fprintf(stderr, "[WARNING]: Wave listing is unreliable if waves aren't halted; use -O halt_waves\n");
+	}
 
 	// don't scan for shader info by reading the ring if no_disasm is
 	// requested.  This is useful for when the ring or IBs contain
