@@ -106,7 +106,7 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 		id.wave = ws->hw_id1.wave_id;
 		if (v_or_s == 0) {
 			id.gpr.thread = 0;
-			size = 4 * 112;
+			size = 4 * 124; // regular SGPRs, VCC, and TTMPs
 		} else {
 			id.gpr.thread = thread;
 			size = 4 * ((ws->gpr_alloc.vgpr_size + 1) << asic->parameters.vgpr_granularity);

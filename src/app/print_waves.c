@@ -474,7 +474,7 @@ static void umr_print_waves_gfx_10_11(struct umr_asic *asic)
 			}
 
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
-				for (x = 0; x < 112; x += 4)
+				for (x = 0; x < 108; x += 4)
 					printf(">SGPRS[%u..%u] = { %08lx, %08lx, %08lx, %08lx }\n",
 						(unsigned)(x),
 						(unsigned)(x + 3),
@@ -574,7 +574,7 @@ static void umr_print_waves_gfx_10_11(struct umr_asic *asic)
 
 			if (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt) {
 				printf("\n\nSGPRS:\n");
-				for (x = 0; x < 112; x += 4)
+				for (x = 0; x < 108; x += 4)
 					printf("\t[%4u..%4u] = { %08lx, %08lx, %08lx, %08lx }\n",
 						(unsigned)(x),
 						(unsigned)(x + 3),
