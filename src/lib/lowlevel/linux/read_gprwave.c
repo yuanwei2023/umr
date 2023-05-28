@@ -366,7 +366,7 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 {
 	uint32_t buf[32];
 	int r;
-	uint64_t addr;
+	uint64_t addr = 0;
 	struct amdgpu_debugfs_gprwave_iocdata id;
 
 	memset(buf, 0, sizeof buf);
