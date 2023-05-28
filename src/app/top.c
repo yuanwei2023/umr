@@ -910,7 +910,8 @@ void load_options(void)
 }
 
 static struct {
-		char *name, *tag;
+		char name[32];
+		char *tag;
 		uint64_t counts[32];
 		int *opt, is_sensor;
 		uint32_t addr, mask[32], cmp[32];
@@ -918,8 +919,8 @@ static struct {
 		struct umr_bitfield *bits;
 } stat_counters[64];
 
-#define ENTRY(_j, _name, _bits, _opt, _tag) do { int _i = (_j); stat_counters[_i].name = _name; stat_counters[_i].bits = _bits; stat_counters[_i].opt = _opt; stat_counters[_i].tag = _tag; } while (0)
-#define ENTRY_SENSOR(_j, _name, _bits, _opt, _tag) do { int _i = (_j); stat_counters[_i].name = _name; stat_counters[_i].bits = _bits; stat_counters[_i].opt = _opt; stat_counters[_i].tag = _tag; stat_counters[_i].is_sensor = 1; } while (0)
+#define ENTRY(_j, _prefix, _name, _bits, _opt, _tag) do { int _i = (_j); snprintf(stat_counters[_i].name, sizeof(stat_counters[_i].name), "%s%s", _prefix, _name); stat_counters[_i].bits = _bits; stat_counters[_i].opt = _opt; stat_counters[_i].tag = _tag; } while (0)
+#define ENTRY_SENSOR(_j, _name, _bits, _opt, _tag) do { int _i = (_j); strcpy(stat_counters[_i].name, _name); stat_counters[_i].bits = _bits; stat_counters[_i].opt = _opt; stat_counters[_i].tag = _tag; stat_counters[_i].is_sensor = 1; } while (0)
 
 static void vi_handle_keys(int i)
 {
@@ -970,30 +971,44 @@ static int sriov_supported_vf(struct umr_asic *asic)
 
 static void top_build_vi_program(struct umr_asic *asic)
 {
+	const char *gfx_prefix;
+	const char *vcn_prefix;
 	int i, j, k;
-	char *regname;
+
+	gfx_prefix = "mm";
+	struct umr_ip_block* gfx = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+	if (gfx && gfx->discoverable.maj >= 11)
+		gfx_prefix = "reg";
+
+	vcn_prefix = "mm";
+	struct umr_ip_block* vcn = umr_find_ip_block(asic, "vcn", asic->options.vm_partition);
+	if (vcn && ((vcn->discoverable.maj == 2 && vcn->discoverable.min >= 6) || vcn->discoverable.maj >= 4))
+		vcn_prefix = "reg";
 
 	stat_counters[0].bits = &stat_grbm_bits[0];
 	stat_counters[0].opt = &top_options.vi.grbm;
 	stat_counters[0].tag = "GRBM";
 
-	stat_counters[1].opt = &top_options.vi.grbm;
-	stat_counters[1].tag = stat_counters[0].tag;
-	stat_counters[1].name = "mmGRBM_STATUS2";
-	stat_counters[1].bits = &stat_grbm2_bits[0];
+	// which SE to read ...
+	if (options.use_bank == 1)
+		snprintf(stat_counters[0].name, sizeof(stat_counters[0].name), "%sGRBM_STATUS_SE%d", gfx_prefix, options.bank.grbm.se);
+	else
+		snprintf(stat_counters[0].name, sizeof(stat_counters[0].name), "%sGRBM_STATUS", gfx_prefix);
 
-	i = 2;
+	i = 1;
+
+	ENTRY(i++, gfx_prefix, "GRBM_STATUS2", &stat_grbm2_bits[0], &top_options.vi.grbm, "GRBM");
 
 	top_options.sriov.active_vf = -1;
 	top_options.sriov.num_vf = sriov_supported_vf(asic);
 	if (top_options.sriov.num_vf != 0) {
 		stat_counters[i].is_sensor = 3;
-		ENTRY(i++, "mmRLC_GPU_IOV_ACTIVE_FCN_ID", &stat_rlc_iov_bits[0],
+		ENTRY(i++, gfx_prefix, "RLC_GPU_IOV_ACTIVE_FCN_ID", &stat_rlc_iov_bits[0],
 			&top_options.vi.grbm, "GPU_IOV");
 	}
 
 	if (asic->config.gfx.family > 110)
-		ENTRY(i++, "mmRLC_GPM_STAT", &stat_rlc_gpm_bits[0], &top_options.vi.gfxpwr, "GFX PWR");
+		ENTRY(i++, gfx_prefix, "RLC_GPM_STAT", &stat_rlc_gpm_bits[0], &top_options.vi.gfxpwr, "GFX PWR");
 
 	// sensors
 	if (asic->family >= FAMILY_NV) {
@@ -1020,30 +1035,30 @@ static void top_build_vi_program(struct umr_asic *asic)
 	sensor_bits = stat_counters[i-1].bits;
 
 	// More GFX bits
-	ENTRY(i++, "mmTA_STATUS", &stat_ta_bits[0], &top_options.vi.ta, "TA");
+	ENTRY(i++, gfx_prefix, "TA_STATUS", &stat_ta_bits[0], &top_options.vi.ta, "TA");
 
 	// VGT bits only valid for gfx7..9
 	if (asic->family < FAMILY_NV)
-		ENTRY(i++, "mmVGT_CNTL_STATUS", &stat_vgt_bits[0], &top_options.vi.vgt, "VGT");
+		ENTRY(i++, gfx_prefix, "VGT_CNTL_STATUS", &stat_vgt_bits[0], &top_options.vi.vgt, "VGT");
 
 	// UVD registers
 		if (asic->family < FAMILY_AI)
-			ENTRY(i++, "mmSRBM_STATUS", &stat_srbm_status_uvd_bits[0], &top_options.vi.uvd, "UVD");
+			ENTRY(i++, gfx_prefix, "SRBM_STATUS", &stat_srbm_status_uvd_bits[0], &top_options.vi.uvd, "UVD");
 		k = i;
-		ENTRY(i++, "mmUVD_CGC_STATUS", &stat_uvdclk_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_CGC_STATUS", &stat_uvdclk_bits[0], &top_options.vi.uvd, "UVD");
 		// set PG flag for all UVD registers
 		for (; k < i; k++) {
 			stat_counters[k].addr_mask = REG_USE_PG_LOCK;  // UVD requires PG lock
 		}
 
 		k = j = i;
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE1", &stat_uvd_pgfsm1_bits[0], &top_options.vi.uvd, "UVD");
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE2", &stat_uvd_pgfsm2_bits[0], &top_options.vi.uvd, "UVD");
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE3", &stat_uvd_pgfsm3_bits[0], &top_options.vi.uvd, "UVD");
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE4", &stat_uvd_pgfsm4_bits[0], &top_options.vi.uvd, "UVD");
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE5", &stat_uvd_pgfsm5_bits[0], &top_options.vi.uvd, "UVD");
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE6", &stat_uvd_pgfsm6_bits[0], &top_options.vi.uvd, "UVD");
-		ENTRY(i++, "mmUVD_PGFSM_READ_TILE7", &stat_uvd_pgfsm7_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE1", &stat_uvd_pgfsm1_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE2", &stat_uvd_pgfsm2_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE3", &stat_uvd_pgfsm3_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE4", &stat_uvd_pgfsm4_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE5", &stat_uvd_pgfsm5_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE6", &stat_uvd_pgfsm6_bits[0], &top_options.vi.uvd, "UVD");
+		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE7", &stat_uvd_pgfsm7_bits[0], &top_options.vi.uvd, "UVD");
 
 		// set compare/mask for UVD TILE registers
 		for (; j < i; j++) {
@@ -1054,7 +1069,7 @@ static void top_build_vi_program(struct umr_asic *asic)
 
 	// VCE registers
 		if (asic->family < FAMILY_AI)
-			ENTRY(i++, "mmSRBM_STATUS2", &stat_srbm_status2_vce_bits[0], &top_options.vi.vce, "VCE");
+			ENTRY(i++, gfx_prefix, "SRBM_STATUS2", &stat_srbm_status2_vce_bits[0], &top_options.vi.vce, "VCE");
 		k = i;
 
 		// set PG flag for all VCE registers
@@ -1065,21 +1080,12 @@ static void top_build_vi_program(struct umr_asic *asic)
 	// memory hub
 		k = i;
 		if (asic->family < FAMILY_AI)
-			ENTRY(i++, "mmMC_HUB_MISC_STATUS", &stat_mc_hub_bits[0], &top_options.vi.memory_hub, "MC HUB");
+			ENTRY(i++, gfx_prefix, "MC_HUB_MISC_STATUS", &stat_mc_hub_bits[0], &top_options.vi.memory_hub, "MC HUB");
 
 	// SDMA
 		k = i;
 		if (asic->family < FAMILY_AI)
-			ENTRY(i++, "mmSRBM_STATUS2", &stat_sdma_bits[0], &top_options.vi.sdma, "SDMA");
-
-	// which SE to read ...
-	regname = calloc(1, 64);
-	if (options.use_bank == 1)
-		snprintf(regname, 63, "mmGRBM_STATUS_SE%d", options.bank.grbm.se);
-	else
-		snprintf(regname, 63, "mmGRBM_STATUS");
-
-	stat_counters[0].name = regname;
+			ENTRY(i++, gfx_prefix, "SRBM_STATUS2", &stat_sdma_bits[0], &top_options.vi.sdma, "SDMA");
 
 	top_options.handle_key = vi_handle_keys;
 	top_options.helptext =
@@ -1101,7 +1107,7 @@ static void toggle_logger(void)
 		logfile = fopen(name, "a");
 
 		fprintf(logfile, "Time (seconds),");
-		for (i = 0; stat_counters[i].name; i++)
+		for (i = 0; stat_counters[i].name[0]; i++)
 			if (top_options.all || *stat_counters[i].opt)
 				for (j = 0; stat_counters[i].bits[j].regname != 0; j++)
 					fprintf(logfile, "%s.%s,", stat_counters[i].tag, stat_counters[i].bits[j].regname);
@@ -1170,11 +1176,11 @@ void umr_top(struct umr_asic *asic)
 	top_build_vi_program(asic);
 
 	// add DRM info
-	for (i = 0; stat_counters[i].name; i++);
-	ENTRY(i, "DRM", &stat_drm_bits[0], &top_options.drm, "DRM");
+	for (i = 0; stat_counters[i].name[0]; i++);
+	ENTRY(i, "", "DRM", &stat_drm_bits[0], &top_options.drm, "DRM");
 	stat_counters[i].is_sensor = 2;
 
-	for (i = 0; stat_counters[i].name; i++) {
+	for (i = 0; stat_counters[i].name[0]; i++) {
 		if (stat_counters[i].is_sensor == 0)
 			grab_bits(stat_counters[i].name, asic, stat_counters[i].bits, &stat_counters[i].addr);
 		else if (stat_counters[i].is_sensor == 3)
@@ -1212,13 +1218,13 @@ void umr_top(struct umr_asic *asic)
 
 	ts = 0;
 	while (!top_options.quit) {
-		for (i = 0; stat_counters[i].name; i++)
+		for (i = 0; stat_counters[i].name[0]; i++)
 			memset(stat_counters[i].counts, 0, sizeof(stat_counters[i].counts[0])*32);
 
 		for (i = 0; i < (int)rep / (top_options.high_frequency ? 10 : 1); i++) {
 			if (!top_options.sriov.num_vf || top_options.sriov.active_vf < 0 ||
 				top_options.sriov.active_vf == get_active_vf(asic, stat_counters[2].addr)) {
-				for (j = 0; stat_counters[j].name; j++) {
+				for (j = 0; stat_counters[j].name[0]; j++) {
 					if (top_options.all || *stat_counters[j].opt) {
 						if (stat_counters[j].is_sensor == 0)
 							parse_bits(asic, stat_counters[j].addr, stat_counters[j].bits, stat_counters[j].counts, stat_counters[j].mask, stat_counters[j].cmp, stat_counters[j].addr_mask);
@@ -1293,7 +1299,7 @@ void umr_top(struct umr_asic *asic)
 			ctime(&tt));
 
 		// figure out padding
-		for (i = maxstrlen = 0; stat_counters[i].name; i++)
+		for (i = maxstrlen = 0; stat_counters[i].name[0]; i++)
 			if (top_options.all || *stat_counters[i].opt)
 				for (j = 0; stat_counters[i].bits[j].regname; j++)
 					if (stat_counters[i].bits[j].start != 255 && (k = strlen(stat_counters[i].bits[j].regname)) > maxstrlen)
@@ -1306,7 +1312,7 @@ void umr_top(struct umr_asic *asic)
 			clock_gettime(CLOCK_MONOTONIC, &tp);
 			fprintf(logfile, "%f,", ((double)tp.tv_sec * 1000000000.0 + tp.tv_nsec) / 1000000000.0);
 		}
-		for (i = 0; stat_counters[i].name; i++) {
+		for (i = 0; stat_counters[i].name[0]; i++) {
 			if (top_options.all || *stat_counters[i].opt) {
 				if (logfile != NULL) {
 					for (j = 0; stat_counters[i].bits[j].regname != 0; j++) {
