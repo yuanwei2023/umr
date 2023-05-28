@@ -597,10 +597,16 @@ static int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu, uint32_t simd,
 			       struct umr_wave_data ***pppwd)
 {
+	struct umr_ip_block *gfxip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
 	uint32_t wave, wave_limit;
 	int r;
 
-	wave_limit = asic->family <= FAMILY_AI ? 10 : 20;
+	if (gfxip->discoverable.maj <= 9)
+		wave_limit = 10;
+	else if (gfxip->discoverable.maj == 10 && gfxip->discoverable.min != 3)
+		wave_limit = 20; // Navi1x
+	else
+		wave_limit = 16; // Navi2+
 
 	for (wave = 0; wave < wave_limit; wave++) {
 		struct umr_wave_data *pwd = **pppwd;
