@@ -24,6 +24,7 @@
  */
 #include "umr.h"
 
+#include <assert.h>
 #include <stdbool.h>
 
 #define MANY_TO_INSTANCE(wgp, simd) (((simd) & 3) | ((wgp) << 2))
@@ -386,16 +387,19 @@ static int umr_parse_wave_data_gfx_9(struct umr_asic *asic, struct umr_wave_stat
 
 static int umr_parse_wave_data_gfx_10_11(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf)
 {
+	struct umr_ip_block *gfxip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
 	struct umr_reg *reg;
 	uint32_t value;
 	int x;
 
-	if (asic->family == FAMILY_NV && buf[0] != 2) {
-		asic->err_msg("[ERROR]: Was expecting type 2 wave data on a FAMILY_NV part!\n");
+	assert(gfxip->discoverable.maj >= 10 && gfxip->discoverable.maj <= 11);
+
+	if (gfxip->discoverable.maj == 10 && buf[0] != 2) {
+		asic->err_msg("[ERROR]: Was expecting type 2 wave data on a gfx10 part!\n");
 		return -1;
 	}
-	if (asic->family == FAMILY_GFX11 && buf[0] != 3) {
-		asic->err_msg("[ERROR]: Was expecting type 3 wave data on a FAMILY_GFX11 part!\n");
+	if (gfxip->discoverable.maj == 11 && buf[0] != 3) {
+		asic->err_msg("[ERROR]: Was expecting type 3 wave data on a gfx11 part!\n");
 		return -1;
 	}
 
@@ -451,15 +455,13 @@ static int umr_parse_wave_data_gfx_10_11(struct umr_asic *asic, struct umr_wave_
 		ws->hw_id2.vm_id        = umr_bitslice_reg(asic, reg, "VM_ID", value);
 		ws->hw_id2.compat_level = umr_bitslice_reg_quiet(asic, reg, "COMPAT_LEVEL", value); // not on 10.3
 
-	if (asic->family < FAMILY_GFX11)
+	if (gfxip->discoverable.maj == 10)
 		ws->wave_inst_dw0 = buf[x++];
 
 	ws->gpr_alloc.value = value = buf[x++];
 		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_GPR_ALLOC");
 		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
 		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
-		ws->gpr_alloc.sgpr_base = umr_bitslice_reg(asic, reg, "SGPR_BASE", value);
-		ws->gpr_alloc.sgpr_size = umr_bitslice_reg(asic, reg, "SGPR_SIZE", value);
 
 	ws->lds_alloc.value = value = buf[x++];
 		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_LDS_ALLOC");
@@ -475,29 +477,31 @@ static int umr_parse_wave_data_gfx_10_11(struct umr_asic *asic, struct umr_wave_
 		ws->trapsts.illegal_inst  = umr_bitslice_reg(asic, reg, "ILLEGAL_INST", value);
 		ws->trapsts.excp_hi       = umr_bitslice_reg(asic, reg, "EXCP_HI", value);
 		ws->trapsts.buffer_oob    = umr_bitslice_reg(asic, reg, "BUFFER_OOB", value);
-		ws->trapsts.excp_cycle    = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
+		ws->trapsts.excp_cycle    = umr_bitslice_reg_quiet(asic, reg, "EXCP_CYCLE", value);
 		ws->trapsts.excp_group_mask = umr_bitslice_reg_quiet(asic, reg, "EXCP_GROUP_MASK", value);
-		ws->trapsts.excp_wave64hi = umr_bitslice_reg(asic, reg, "EXCP_WAVE64HI", value);
+		ws->trapsts.excp_wave64hi = umr_bitslice_reg_quiet(asic, reg, "EXCP_WAVE64HI", value);
 		ws->trapsts.xnack_error   = umr_bitslice_reg_quiet(asic, reg, "XNACK_ERROR", value);
 		ws->trapsts.utc_error     = umr_bitslice_reg_quiet(asic, reg, "UTC_ERROR", value);
-		ws->trapsts.dp_rate       = umr_bitslice_reg(asic, reg, "DP_RATE", value);
+		ws->trapsts.dp_rate       = umr_bitslice_reg_quiet(asic, reg, "DP_RATE", value);
 
 	ws->ib_sts.value = value = buf[x++];
 		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_IB_STS");
-		ws->ib_sts.vm_cnt   = umr_bitslice_reg(asic, reg, "VM_CNT", value) |
-							  (umr_bitslice_reg(asic, reg, "VM_CNT_HI", value) << 4);
+		ws->ib_sts.vm_cnt   = umr_bitslice_reg(asic, reg, "VM_CNT", value);
+		if (gfxip->discoverable.maj == 10)
+			ws->ib_sts.vm_cnt |= (umr_bitslice_reg(asic, reg, "VM_CNT_HI", value) << 4);
 		ws->ib_sts.exp_cnt  = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
-		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value) |
-							  (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT4", value) << 4) |
-							  (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT5", value) << 5);
-		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
+		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value);
+		if (gfxip->discoverable.maj == 10)
+			ws->ib_sts.lgkm_cnt |= (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT4", value) << 4) |
+								   (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT5", value) << 5);
+		ws->ib_sts.valu_cnt = umr_bitslice_reg_quiet(asic, reg, "VALU_CNT", value);
 		ws->ib_sts.replay_w64h = umr_bitslice_reg_quiet(asic, reg, "REPLAY_W64H", value);
 		ws->ib_sts.vs_cnt   = umr_bitslice_reg(asic, reg, "VS_CNT", value);
 
 	ws->ib_sts2.value = value = buf[x++];
 		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_IB_STS2");
 		ws->ib_sts2.inst_prefetch     = umr_bitslice_reg(asic, reg, "INST_PREFETCH", value);
-		ws->ib_sts2.resource_override = umr_bitslice_reg(asic, reg, "RESOURCE_OVERRIDE", value);
+		ws->ib_sts2.resource_override = umr_bitslice_reg_quiet(asic, reg, "RESOURCE_OVERRIDE", value);
 		ws->ib_sts2.mem_order         = umr_bitslice_reg(asic, reg, "MEM_ORDER", value);
 		ws->ib_sts2.fwd_progress      = umr_bitslice_reg(asic, reg, "FWD_PROGRESS", value);
 		ws->ib_sts2.wave64            = umr_bitslice_reg(asic, reg, "WAVE64", value);
@@ -514,7 +518,7 @@ static int umr_parse_wave_data_gfx_10_11(struct umr_asic *asic, struct umr_wave_
 		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
 		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
 		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
-		ws->mode.debug_en = umr_bitslice_reg(asic, reg, "DEBUG_EN", value);
+		ws->mode.debug_en = umr_bitslice_reg_quiet(asic, reg, "DEBUG_EN", value);
 		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
 		ws->mode.fp16_ovfl = umr_bitslice_reg(asic, reg, "FP16_OVFL", value);
 		ws->mode.disable_perf = umr_bitslice_reg(asic, reg, "DISABLE_PERF", value);
