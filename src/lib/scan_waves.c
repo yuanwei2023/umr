@@ -625,7 +625,7 @@ static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, u
  */
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 {
-	uint32_t se, sh, cu, simd;
+	uint32_t se, sh, simd;
 	struct umr_wave_data *ohead, *head, **ptail;
 	int r;
 
@@ -637,22 +637,24 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 	ptail = &head;
 
 	for (se = 0; se < asic->config.gfx.max_shader_engines; se++)
-	for (sh = 0; sh < asic->config.gfx.max_sh_per_se; sh++)
-	for (cu = 0; cu < asic->config.gfx.max_cu_per_sh; cu++) {
+	for (sh = 0; sh < asic->config.gfx.max_sh_per_se; sh++) {
 		if (asic->family <= FAMILY_AI) {
-			asic->wave_funcs.get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
-			if ((*ptail)->ws.sq_info.busy) {
-				for (simd = 0; simd < 4; simd++) {
-					r = umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
-					if (r < 0)
-						goto error;
+			for (uint32_t cu = 0; cu < asic->config.gfx.max_cu_per_sh; cu++) {
+				asic->wave_funcs.get_wave_sq_info(asic, se, sh, cu, &(*ptail)->ws);
+				if ((*ptail)->ws.sq_info.busy) {
+					for (simd = 0; simd < 4; simd++) {
+						r = umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+						if (r < 0)
+							goto error;
+					}
 				}
 			}
 		} else {
+			for (uint32_t wgp = 0; wgp < asic->config.gfx.max_cu_per_sh / 2; wgp++)
 			for (simd = 0; simd < 4; simd++) {
-				asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(cu, simd), &(*ptail)->ws);
+				asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(wgp, simd), &(*ptail)->ws);
 				if ((*ptail)->ws.sq_info.busy) {
-					r = umr_scan_wave_simd(asic, se, sh, cu, simd, &ptail);
+					r = umr_scan_wave_simd(asic, se, sh, wgp, simd, &ptail);
 					if (r < 0)
 						goto error;
 				}
