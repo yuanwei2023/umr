@@ -81,7 +81,7 @@ static char *mes_v10_add_queue_priority_level[] = {
 	"LOW",
 	"NORMAL",
 	"MEDIUM",
-	"HIGH"
+	"HIGH",
 	"REALTIME",
 };
 
