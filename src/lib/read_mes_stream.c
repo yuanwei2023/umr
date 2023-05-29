@@ -85,6 +85,9 @@ static char *mes_v10_add_queue_priority_level[] = {
 	"REALTIME",
 };
 
+#define STR_LOOKUP(str_lut, idx, default) \
+	((idx) < sizeof(str_lut) / sizeof(str_lut[0]) ? str_lut[(idx)] : (default))
+
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_mes_stream *ms, *oms, *prev_ms = NULL;
@@ -172,8 +175,6 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 	int mes_ver_maj;
 	const char* opcode_name;
 
-	const size_t mes_v10_opcodes_size = sizeof(mes_v10_opcodes) / sizeof(mes_v10_opcodes[0]);
-
 	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
 	if (!ip) {
 		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
@@ -202,11 +203,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 // todo: from_* and size
 	ui->start_ib(ui, ib_addr, ib_vmid, 0, 0, 0, 0);
 	while (stream && opcodes-- && stream->nwords) {
-		if (stream->opcode < mes_v10_opcodes_size) {
-			opcode_name = mes_v10_opcodes[stream->opcode];
-		} else {
-			opcode_name = "MES_UNK";
-		}
+		opcode_name = STR_LOOKUP(mes_v10_opcodes, stream->opcode, "MES_UNK");
 		ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords, opcode_name, stream->header, stream->words);
 
 		i = 0;
@@ -299,7 +296,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inprocess_gang_priority", stream->words[i], NULL, 16, 32); ++i;
 
 // todo: guessing what size an enum is...
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_global_priority_level", stream->words[i], mes_v10_add_queue_priority_level[stream->words[i]], 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_global_priority_level", stream->words[i], STR_LOOKUP(mes_v10_add_queue_priority_level, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", stream->words[i], NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mqd_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
@@ -308,7 +305,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "h_queue", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 
 // todo: guessing what size an enum is...
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], mes_v10_add_queue_type[stream->words[i]], 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], STR_LOOKUP(mes_v10_add_queue_type, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gds_base", stream->words[i], NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gds_size", stream->words[i], NULL, 16, 32); ++i;
@@ -358,7 +355,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 
 // todo: guessing what size an enum is...
 				if (mes_ver_maj == 11) {
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], mes_v10_add_queue_type[stream->words[i]], 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], STR_LOOKUP(mes_v10_add_queue_type, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 				}
 				break;
 
@@ -397,7 +394,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", stream->words[i], NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 // todo: guessing what size an enum is
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], mes_v10_add_queue_type[stream->words[i]], 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], STR_LOOKUP(mes_v10_add_queue_type, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "pipe_id_lp", stream->words[i], NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_id_lp", stream->words[i], NULL, 16, 32); ++i;
@@ -418,7 +415,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 
 			case 9: //MESAPI__SET_LOGGING_BUFFER
 // todo: guessing what size an enum is
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], mes_v10_add_queue_type[stream->words[i]], 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", stream->words[i], STR_LOOKUP(mes_v10_add_queue_type, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "logging_buffer_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "number_of_entries", stream->words[i], NULL, 16, 32); ++i;
@@ -431,7 +428,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 			case 10: //MESAPI__CHANGE_GANG_PRIORITY_LEVEL
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inprocess_gang_priority", stream->words[i], NULL, 16, 32); ++i;
 // todo: guessing what size an enum is...
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_global_priority_level", stream->words[i], mes_v10_add_queue_priority_level[stream->words[i]], 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_global_priority_level", stream->words[i], STR_LOOKUP(mes_v10_add_queue_priority_level, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_quantum", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
@@ -462,7 +459,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_gds", (stream->words[i] >> 0) & 1, NULL, 10, 32);
 				if (mes_ver_maj == 11) {
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "operation", (stream->words[i] >> 1) & 3, mes_v11_set_debug_opcodes[(stream->words[i] >> 1) & 3], 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "operation", (stream->words[i] >> 1) & 3, STR_LOOKUP(mes_v11_set_debug_opcodes, (stream->words[i] >> 1) & 3, "UNKNOWN"), 10, 32);
 				}
 				++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reserved", stream->words[i], NULL, 16, 32); ++i;
@@ -486,7 +483,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					uint32_t misc_opcode;
 // todo: enum size...
 					misc_opcode = stream->words[i];
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", stream->words[i], mes_v10_misc_api_opcodes[misc_opcode], 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", stream->words[i], STR_LOOKUP(mes_v10_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 					switch (misc_opcode) {
@@ -509,7 +506,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					uint32_t misc_opcode;
 // todo: enum size...
 					misc_opcode = stream->words[i];
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", stream->words[i], mes_v11_misc_api_opcodes[misc_opcode], 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", stream->words[i], STR_LOOKUP(mes_v11_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 					switch (misc_opcode) {
@@ -530,7 +527,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							break;
 						case 4: // WAIT_REG_MEM
 // todo: enum size...
-							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "op", stream->words[i], mes_v11_wrm_operation[stream->words[i]], 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "op", stream->words[i], STR_LOOKUP(mes_v11_wrm_operation, stream->words[i], "UNKNOWN"), 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reference", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mask", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset1", stream->words[i], umr_reg_name(asic, stream->words[i]), 16, 32); ++i;
