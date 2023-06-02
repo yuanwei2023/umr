@@ -56,6 +56,7 @@ static char *mes_v11_misc_api_opcodes[] = {
 	"QUERY_STATUS",
 	"READ_REG",
 	"WAIT_REG_MEM",
+	"SET_SHADER_DEBUGGER",
 };
 
 static char *mes_v11_wrm_operation[] = {
@@ -325,6 +326,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_kfd_process", (stream->words[i] >> 9) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", (stream->words[i] >> 10) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_aql_queue", (stream->words[i] >> 11) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "skip_process_ctx_clear", (stream->words[i] >> 12) & 1, NULL, 10, 32);
 				}
 				++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
@@ -532,6 +534,16 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mask", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset1", stream->words[i], umr_reg_name(asic, stream->words[i]), 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset2", stream->words[i], umr_reg_name(asic, stream->words[i]), 16, 32); ++i;
+							break;
+						case 5: // SET_SHADER_DEBUGGER
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_memop", stream->words[i] & 1, NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_alu_op", (stream->words[i] & 2) >> 1, NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "spi_gdbg_per_vmid_cntl", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[0]", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[1]", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[2]", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[3]", stream->words[i], NULL, 16, 32); ++i;
 							break;
 					}
 				}
