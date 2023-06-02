@@ -6,6 +6,7 @@ include_directories(inc)
 if(UMR_GUI OR UMR_SERVER)
   include_directories("gui/parson")
   set (GUI_SOURCE gui/commands.c)
+  set (UMRAPP_DRM_LIBS "PkgConfig::DRM")
 endif()
 
 if(UMR_GUI)
@@ -28,9 +29,6 @@ endif()
 
 
 #application objects
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(DRM REQUIRED IMPORTED_TARGET libdrm)
-
 add_library(umrapp
   print.c
   print_config.c
@@ -55,7 +53,7 @@ add_library(umrapp
   print_sdma.c
   ${GUI_SOURCE}
 )
-target_link_libraries(umrapp parson PkgConfig::DRM)
+target_link_libraries(umrapp parson ${UMRAPP_DRM_LIBS})
 
 add_executable(umr main.c)
 target_link_libraries(umr umrapp umrlow umrcore umrlow)

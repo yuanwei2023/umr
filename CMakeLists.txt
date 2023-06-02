@@ -59,7 +59,7 @@ find_package(PCIAccess REQUIRED)
 include_directories(${PCIACCESS_INCLUDE_DIR})
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
-option(UMR_NO_DRM "Disable libdrm functions to read memory stats" OFF)
+option(UMR_NO_DRM "Disable libdrm functions to read memory stats (disables server and GUI)" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_STATIC_LLVM "Force using static LLVM libraries instead of preferring dynamic" OFF)
 option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
@@ -75,10 +75,13 @@ cmake_dependent_option(UMR_SERVER "Enable umr --server option" ON "NOT UMR_NO_SE
 
 
 if(UMR_NO_DRM)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_DRM")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUMR_NO_DRM")
+  set(UMR_GUI OFF)
+  set(UMR_SERVER OFF)
 else()
-find_package(LibDRM REQUIRED)
-include_directories(${LIBDRM_INCLUDE_DIR})
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(DRM IMPORTED_TARGET libdrm)
+  include_directories(${DRM_INCLUDE_DIRS})
 endif()
 
 if(UMR_NO_LLVM)
@@ -115,8 +118,6 @@ if(UMR_GUI OR UMR_SERVER)
 
   if (HAVE_SYS_PIDFD_GETFD AND HAVE_SYS_PIDFD_OPEN)
     find_package(OpenGL COMPONENTS EGL OpenGL)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(DRM IMPORTED_TARGET libdrm)
     pkg_check_modules(GBM IMPORTED_TARGET gbm)
     add_definitions(-DCAN_IMPORT_BO=1)
 
