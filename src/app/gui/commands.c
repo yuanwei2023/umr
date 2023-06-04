@@ -1625,6 +1625,14 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 		}
 		json_object_set_value(json_object(wave), "hw_id", hw_id);
 
+		JSON_Value *threads = json_value_init_array();
+		int num_threads = wd->num_threads;
+		for (int thread = 0; thread < num_threads; thread++) {
+			unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))	: (wd->ws.exec_hi & (1u << (thread - 32)));
+			json_array_append_boolean(json_array(threads), live ? 1 : 0);
+		}
+		json_object_set_value(json_object(wave), "threads", threads);
+
 		JSON_Value *gpr_alloc = json_value_init_object();
 		json_object_set_number(json_object(gpr_alloc), "vgpr_base", wd->ws.gpr_alloc.vgpr_base);
 		json_object_set_number(json_object(gpr_alloc), "vgpr_size", wd->ws.gpr_alloc.vgpr_size);
@@ -1645,15 +1653,6 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 				json_array_append_number(json_array(sgpr), wd->sgprs[x]);
 			}
 			json_object_set_value(json_object(wave), "sgpr", sgpr);
-
-			JSON_Value *threads = json_value_init_array();
-			int num_threads = wd->num_threads;
-			for (int thread = 0; thread < num_threads; thread++) {
-				unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))	: (wd->ws.exec_hi & (1u << (thread - 32)));
-				json_array_append_boolean(json_array(threads), live ? 1 : 0);
-			}
-			json_object_set_value(json_object(wave), "threads", threads);
-
 
 			if (wd->have_vgprs) {
 				unsigned granularity = asic->parameters.vgpr_granularity;
