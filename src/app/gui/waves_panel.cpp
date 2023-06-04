@@ -161,12 +161,16 @@ public:
 				JSON_Object *status = json_object(json_object_get_value(wave, "status"));
 
 				int active_threads = -1;
+				uint64_t exec = 0;
 				JSON_Array *threads = json_object_get_array(wave, "threads");
 				if (threads) {
 					active_threads = 0;
 					int s = json_array_get_count(threads);
 					for (int i = 0; i < s; i++) {
-						active_threads += json_array_get_boolean(threads, i);
+						bool active = json_array_get_boolean(threads, i) == 1;
+						active_threads += active ? 1 : 0;
+						if (active)
+							exec |= (uint64_t)1 << i;
 					}
 				}
 				const char *shader_address_str = json_object_get_string(wave, "shader");
@@ -296,7 +300,8 @@ public:
 					}
 
 					{
-						static const char *formats[] = { "#6c71c4%d", "#6c71c4%u", "#6c71c4%08x" };
+						static const char *formats_active[] = { "#6c71c4%d", "#6c71c4%u", "#6c71c4%08x", "#6c71c4%f" };
+						static const char *formats_inactive[] = { "#818181%d", "#818181%u", "#818181%08x", "#818181%f" };
 						JSON_Array *vgpr = json_object_get_array(wave, "vgpr");
 						if (vgpr && ImGui::TreeNodeEx("#6c71c4VGPRs")) {
 							int s = json_array_get_count(vgpr);
@@ -338,12 +343,14 @@ public:
 										}
 										ImGui::TableSetColumnIndex(1 + t % 4);
 
+										const char **formats = (exec >> t) & 1 ? formats_active : formats_inactive;
+
 										JSON_Value *v = json_array_get_value(vgp, t);
 										ImGui::PushID(v);
 										int aaa = (int)json_number(v);
 										if (*mode == 3) {
 											float f = reinterpret_cast<float&>(aaa);
-											ImGui::Text("#6c71c4%f", f);
+											ImGui::Text(formats[3], f);
 										} else {
 											ImGui::Text(formats[*mode], aaa);
 										}
