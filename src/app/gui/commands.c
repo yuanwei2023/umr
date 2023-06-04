@@ -1544,7 +1544,7 @@ void init_asics() {
 	}
 }
 
-static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shaders, JSON_Object *out) {
+static void wave_to_json(struct umr_asic *asic, int ring_is_halted, int include_shaders, JSON_Object *out) {
 	// TODO: This is using the deprecated API ...
 	struct umr_pm4_stream *stream = NULL; // umr_pm4_decode_ring(asic, asic->options.ring_name, 1, -1, -1);
 
@@ -1640,7 +1640,7 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 		json_object_set_number(json_object(gpr_alloc), "sgpr_size", wd->ws.gpr_alloc.sgpr_size);
 		json_object_set_value(json_object(wave), "gpr_alloc", gpr_alloc);
 
-		if (is_halted && wd->ws.gpr_alloc.value != 0xbebebeef) {
+		if (wd->ws.gpr_alloc.value != 0xbebebeef) {
 			int sgpr_count;
 			if (asic->family <= FAMILY_AI) {
 				int shift = asic->family <= FAMILY_CIK ? 3 : 4;
@@ -1670,9 +1670,13 @@ static void wave_to_json(struct umr_asic *asic, int is_halted, int include_shade
 
 			/* */
 			if (include_shaders && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
-				struct umr_shaders_pgm *shader = umr_find_shader_in_stream(stream, vmid, pgm_addr);
+				struct umr_shaders_pgm *shader = NULL;
 				uint32_t shader_size;
 				uint64_t shader_addr;
+
+				if (ring_is_halted)
+					shader = umr_find_shader_in_stream(stream, vmid, pgm_addr);
+
 				if (shader) {
 					shader_size = shader->size;
 					shader_addr = shader->addr;
@@ -2020,11 +2024,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		asic->options.halt_waves = halt_waves;
 		asic->options.verbose = 0;
 
-		int is_halted = umr_ring_is_halted(asic, asic->options.ring_name);
+		int ring_is_halted = umr_ring_is_halted(asic, asic->options.ring_name);
 
 		answer = json_value_init_object();
 
-		wave_to_json(asic, is_halted, 1, json_object(answer));
+		wave_to_json(asic, ring_is_halted, 1, json_object(answer));
 
 		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
