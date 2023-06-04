@@ -1473,6 +1473,7 @@ int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uin
 
 // halt/resume SQ waves
 int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mode);
+int umr_sq_cmd_singlestep(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t wgp, uint32_t simd, uint32_t wave);
 
 /* IB/ring decoding/dumping/etc */
 enum umr_ring_type {

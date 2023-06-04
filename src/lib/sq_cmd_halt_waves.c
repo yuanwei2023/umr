@@ -24,6 +24,19 @@
  */
 #include "umr.h"
 
+static struct umr_reg *find_sq_cmd(struct umr_asic *asic)
+{
+	// SQ_CMD is not present on SI
+	if (asic->family == FAMILY_SI)
+		return 0;
+
+	struct umr_reg *reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition,
+						  asic->family >= FAMILY_GFX11 ? "regSQ_CMD" : "mmSQ_CMD");
+	if (!reg)
+		asic->err_msg("[BUG]: Cannot find SQ_CMD register in umr_sq_cmd_halt_waves()\n");
+	return reg;
+}
+
 /**
  * umr_sq_cmd_halt_waves - Attempt to halt or resume waves
  *
@@ -39,16 +52,9 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 		uint32_t se, sh, instance, use_grbm;
 	} grbm;
 
-	// SQ_CMD is not present on SI
-	if (asic->family == FAMILY_SI)
-		return 0;
-
-	reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition,
-						  asic->family >= FAMILY_GFX11 ? "regSQ_CMD" : "mmSQ_CMD");
-	if (!reg) {
-		asic->err_msg("[BUG]: Cannot find SQ_CMD register in umr_sq_cmd_halt_waves()\n");
+	reg = find_sq_cmd(asic);
+	if (!reg)
 		return -1;
-	}
 
 	// compose value
 	if (asic->family == FAMILY_CIK) {
@@ -70,6 +76,57 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 	asic->options.bank.grbm.se       = 0xFFFFFFFF;
 	asic->options.bank.grbm.sh       = 0xFFFFFFFF;
 	asic->options.bank.grbm.instance = 0xFFFFFFFF;
+
+	// compose address
+	addr = reg->addr * 4;
+	asic->reg_funcs.write_reg(asic, addr, value, reg->type);
+
+	/* restore whatever the user had picked */
+	asic->options.use_bank           = grbm.use_grbm;
+	asic->options.bank.grbm.se       = grbm.se;
+	asic->options.bank.grbm.sh       = grbm.sh;
+	asic->options.bank.grbm.instance = grbm.instance;
+
+	return 0;
+}
+
+/**
+ * umr_sq_cmd_singlestep - Attempt to single-step a single wave
+ *
+ * The wave is assumed to be halted.
+ */
+int umr_sq_cmd_singlestep(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t wgp, uint32_t simd, uint32_t wave)
+{
+	struct umr_reg *reg;
+	uint32_t value;
+	uint64_t addr;
+	struct {
+		uint32_t se, sh, instance, use_grbm;
+	} grbm;
+
+	if (asic->family < FAMILY_NV)
+		return -1; // Only supported on gfx10+
+
+	reg = find_sq_cmd(asic);
+	if (!reg)
+		return -1;
+
+	// compose value
+	value = umr_bitslice_compose_value(asic, reg, "CMD", 8); // SINGLE_STEP
+	value |= umr_bitslice_compose_value(asic, reg, "MODE", 0); // single wave
+	value |= umr_bitslice_compose_value(asic, reg, "WAVE_ID", wave);
+
+	/* copy grbm options to restore later */
+	grbm.use_grbm = asic->options.use_bank;
+	grbm.se       = asic->options.bank.grbm.se;
+	grbm.sh       = asic->options.bank.grbm.sh;
+	grbm.instance = asic->options.bank.grbm.instance;
+
+	/* set GRBM banking options */
+	asic->options.use_bank           = 1;
+	asic->options.bank.grbm.se       = se;
+	asic->options.bank.grbm.sh       = sh;
+	asic->options.bank.grbm.instance = (wgp << 2) | simd;
 
 	// compose address
 	addr = reg->addr * 4;
