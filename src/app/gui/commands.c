@@ -2043,6 +2043,56 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 		if (resume_waves)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
+	} else if (strcmp(command, "singlestep") == 0) {
+		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
+
+		unsigned se = (unsigned)json_object_get_number(request, "se");
+		unsigned sh = (unsigned)json_object_get_number(request, "sh");
+		unsigned wgp = (unsigned)json_object_get_number(request, "wgp");
+		unsigned simd_id = (unsigned)json_object_get_number(request, "simd_id");
+		unsigned wave_id = (unsigned)json_object_get_number(request, "wave_id");
+
+		asic->options.skip_gprs = 0;
+		asic->options.verbose = 0;
+
+		struct umr_wave_data wd;
+		memset(&wd, 0, sizeof(wd));
+
+		int r = umr_scan_wave_slot(asic, se, sh, wgp, simd_id, wave_id, &wd);
+		if (r < 0) {
+			last_error = "failed to scan wave slot";
+			goto error;
+		}
+
+		// Send the single-step command in a limited retry loop because a small number of
+		// single-step commands are required before an instruction is actually issued after
+		// a branch.
+		for (int retry = 0; r == 1 && retry < 5; ++retry) {
+			umr_sq_cmd_singlestep(asic, se, sh, wgp, simd_id, wave_id);
+
+			struct umr_wave_data new_wd;
+			memset(&new_wd, 0, sizeof(new_wd));
+
+			r = umr_scan_wave_slot(asic, se, sh, wgp, simd_id, wave_id, &new_wd);
+			if (r < 0) {
+				last_error = "failed to scan wave slot";
+				goto error;
+			}
+
+			bool moved = new_wd.ws.pc_lo != wd.ws.pc_lo || new_wd.ws.pc_hi != wd.ws.pc_hi;
+			memcpy(&wd, &new_wd, sizeof(wd));
+			if (moved)
+				break;
+		}
+
+		answer = json_value_init_object();
+
+		if (r == 1) {
+			JSON_Value *shaders = json_value_init_object();
+			JSON_Value *wave = wave_to_json(asic, &wd, 1, /* todo: stream */NULL, shaders);
+			json_object_set_value(json_object(answer), "wave", wave);
+			json_object_set_value(json_object(answer), "shaders", shaders);
+		}
 	} else if (strcmp(command, "resume-waves") == 0) {
 		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);

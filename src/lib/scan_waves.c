@@ -541,7 +541,7 @@ int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, c
  *
  * \param cu the CU on <=gfx9, the WGP on >=gfx10
  */
-static int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
+int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
 			       uint32_t simd, uint32_t wave, struct umr_wave_data *pwd)
 {
 	unsigned thread, num_threads;

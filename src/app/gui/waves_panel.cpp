@@ -114,6 +114,24 @@ public:
 
 			JSON_Object *shaders_dict = json_object_get_object(json_object(answer), "shaders");
 			update_shaders(shaders_dict);
+		} else if (strcmp(command, "singlestep") == 0) {
+			JSON_Object *wave = json_object(json_value_deep_copy(json_object_get_value(json_object(answer), "wave")));
+			std::string id = get_wave_id(wave ? wave : request);
+			size_t i = find_wave_by_id(id);
+			if (i < waves.size()) {
+				json_value_free(json_object_get_wrapping_value(waves[i].wave));
+				if (wave) {
+					waves[i].wave = wave;
+				} else {
+					waves.erase(waves.begin() + i);
+				}
+			} else {
+				if (wave)
+					waves.emplace_back(id, wave);
+			}
+
+			JSON_Object *shaders_dict = json_object_get_object(json_object(answer), "shaders");
+			update_shaders(shaders_dict);
 		} else {
 			return; // should be handled by a different panel
 		}
@@ -191,6 +209,15 @@ public:
 						if (ImGui::Button("View Shader")) {
 							active_shader_wave = waves[i].id;
 							force_scroll = true;
+						}
+						if (asic->family >= FAMILY_NV) {
+							ImGui::SameLine();
+							ImGui::BeginDisabled(!can_send_request);
+							if (ImGui::Button("Single step")) {
+								active_shader_wave = waves[i].id;
+								send_singlestep_command(waves[i].wave);
+							}
+							ImGui::EndDisabled();
 						}
 					} else {
 					}
@@ -443,6 +470,20 @@ private:
 		json_object_set_string(json_object(req), "ring", asic->family >= FAMILY_NV ? "gfx_0.0.0" : "gfx");
 		send_request(req);
 	}
+
+	void send_singlestep_command(JSON_Object *wave) {
+		assert(asic->family >= FAMILY_NV);
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "singlestep");
+		json_object_set_string(json_object(req), "ring", asic->family >= FAMILY_NV ? "gfx_0.0.0" : "gfx");
+		json_object_set_number(json_object(req), "se", json_object_get_number(wave, "se"));
+		json_object_set_number(json_object(req), "sh", json_object_get_number(wave, "sh"));
+		json_object_set_number(json_object(req), "wgp", json_object_get_number(wave, "wgp"));
+		json_object_set_number(json_object(req), "simd_id", json_object_get_number(wave, "simd_id"));
+		json_object_set_number(json_object(req), "wave_id", json_object_get_number(wave, "wave_id"));
+		send_request(req);
+	}
+
 private:
 	struct Wave {
 		std::string id; // "seN.saN.etc"
