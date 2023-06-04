@@ -1544,7 +1544,158 @@ void init_asics() {
 	}
 }
 
-static void wave_to_json(struct umr_asic *asic, int ring_is_halted, int include_shaders, JSON_Object *out) {
+static JSON_Value *wave_to_json(struct umr_asic *asic, struct umr_wave_data *wd, int include_shaders,
+				struct umr_pm4_stream *stream, JSON_Value *shaders) {
+	uint64_t pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo);
+	unsigned vmid;
+
+	JSON_Value *wave = json_value_init_object();
+	json_object_set_number(json_object(wave), "se", wd->se);
+	json_object_set_number(json_object(wave), "sh", wd->sh);
+	json_object_set_number(json_object(wave), asic->family < FAMILY_NV ? "cu" : "wgp", wd->cu);
+	json_object_set_number(json_object(wave), "simd_id", wd->ws.hw_id1.simd_id);
+	json_object_set_number(json_object(wave), "wave_id", wd->ws.hw_id1.wave_id);
+	json_object_set_number(json_object(wave), "PC", pgm_addr);
+	json_object_set_number(json_object(wave), "wave_inst_dw0", wd->ws.wave_inst_dw0);
+	if (asic->family < FAMILY_NV)
+		json_object_set_number(json_object(wave), "wave_inst_dw1", wd->ws.wave_inst_dw1);
+
+	JSON_Value *status = json_value_init_object();
+	json_object_set_number(json_object(status), "value", wd->ws.wave_status.value);
+	json_object_set_number(json_object(status), "scc", wd->ws.wave_status.scc);
+	json_object_set_number(json_object(status), "execz", wd->ws.wave_status.execz);
+	json_object_set_number(json_object(status), "vccz", wd->ws.wave_status.vccz);
+	json_object_set_number(json_object(status), "in_tg", wd->ws.wave_status.in_tg);
+	json_object_set_number(json_object(status), "halt", wd->ws.wave_status.halt);
+	json_object_set_number(json_object(status), "valid", wd->ws.wave_status.valid);
+	json_object_set_number(json_object(status), "spi_prio", wd->ws.wave_status.spi_prio);
+	json_object_set_number(json_object(status), "wave_prio", wd->ws.wave_status.wave_prio);
+	json_object_set_number(json_object(status), "priv", wd->ws.wave_status.priv);
+	json_object_set_number(json_object(status), "trap_en", wd->ws.wave_status.trap_en);
+	json_object_set_number(json_object(status), "trap", wd->ws.wave_status.trap);
+	json_object_set_number(json_object(status), "ttrace_en", wd->ws.wave_status.ttrace_en);
+	json_object_set_number(json_object(status), "export_rdy", wd->ws.wave_status.export_rdy);
+	json_object_set_number(json_object(status), "in_barrier", wd->ws.wave_status.in_barrier);
+	json_object_set_number(json_object(status), "ecc_err", wd->ws.wave_status.ecc_err);
+	json_object_set_number(json_object(status), "skip_export", wd->ws.wave_status.skip_export);
+	json_object_set_number(json_object(status), "perf_en", wd->ws.wave_status.perf_en);
+	json_object_set_number(json_object(status), "cond_dbg_user", wd->ws.wave_status.cond_dbg_user);
+	json_object_set_number(json_object(status), "cond_dbg_sys", wd->ws.wave_status.cond_dbg_sys);
+	json_object_set_number(json_object(status), "allow_replay", wd->ws.wave_status.allow_replay);
+	json_object_set_number(json_object(status), "fatal_halt", asic->family >= FAMILY_AI && wd->ws.wave_status.fatal_halt);
+	json_object_set_number(json_object(status), "must_export", wd->ws.wave_status.must_export);
+
+	json_object_set_value(json_object(wave), "status", status);
+
+	JSON_Value *hw_id = json_value_init_object();
+	if (asic->family < FAMILY_NV) {
+		json_object_set_number(json_object(hw_id), "value", wd->ws.hw_id.value);
+		json_object_set_number(json_object(hw_id), "wave_id", wd->ws.hw_id.wave_id);
+		json_object_set_number(json_object(hw_id), "simd_id", wd->ws.hw_id.simd_id);
+		json_object_set_number(json_object(hw_id), "pipe_id", wd->ws.hw_id.pipe_id);
+		json_object_set_number(json_object(hw_id), "cu_id", wd->ws.hw_id.cu_id);
+		json_object_set_number(json_object(hw_id), "sh_id", wd->ws.hw_id.sh_id);
+		json_object_set_number(json_object(hw_id), "tg_id", wd->ws.hw_id.tg_id);
+		json_object_set_number(json_object(hw_id), "state_id", wd->ws.hw_id.state_id);
+		json_object_set_number(json_object(hw_id), "vm_id", wd->ws.hw_id.vm_id);
+		vmid = wd->ws.hw_id.vm_id;
+	} else {
+		json_object_set_number(json_object(hw_id), "value", wd->ws.hw_id1.value);
+		json_object_set_number(json_object(hw_id), "wave_id", wd->ws.hw_id1.wave_id);
+		json_object_set_number(json_object(hw_id), "simd_id", wd->ws.hw_id1.simd_id);
+		json_object_set_number(json_object(hw_id), "wgp_id", wd->ws.hw_id1.wgp_id);
+		json_object_set_number(json_object(hw_id), "se_id", wd->ws.hw_id1.se_id);
+		json_object_set_number(json_object(hw_id), "sa_id", wd->ws.hw_id1.sa_id);
+		json_object_set_number(json_object(hw_id), "queue_id", wd->ws.hw_id2.queue_id);
+		json_object_set_number(json_object(hw_id), "pipe_id", wd->ws.hw_id2.pipe_id);
+		json_object_set_number(json_object(hw_id), "me_id", wd->ws.hw_id2.me_id);
+		json_object_set_number(json_object(hw_id), "state_id", wd->ws.hw_id2.state_id);
+		json_object_set_number(json_object(hw_id), "wg_id", wd->ws.hw_id2.wg_id);
+		json_object_set_number(json_object(hw_id), "compat_level", wd->ws.hw_id2.compat_level);
+		json_object_set_number(json_object(hw_id), "vm_id", wd->ws.hw_id2.vm_id);
+		vmid = wd->ws.hw_id2.vm_id;
+	}
+	json_object_set_value(json_object(wave), "hw_id", hw_id);
+
+	JSON_Value *threads = json_value_init_array();
+	int num_threads = wd->num_threads;
+	for (int thread = 0; thread < num_threads; thread++) {
+		unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))	: (wd->ws.exec_hi & (1u << (thread - 32)));
+		json_array_append_boolean(json_array(threads), live ? 1 : 0);
+	}
+	json_object_set_value(json_object(wave), "threads", threads);
+
+	JSON_Value *gpr_alloc = json_value_init_object();
+	json_object_set_number(json_object(gpr_alloc), "vgpr_base", wd->ws.gpr_alloc.vgpr_base);
+	json_object_set_number(json_object(gpr_alloc), "vgpr_size", wd->ws.gpr_alloc.vgpr_size);
+	json_object_set_number(json_object(gpr_alloc), "sgpr_base", wd->ws.gpr_alloc.sgpr_base);
+	json_object_set_number(json_object(gpr_alloc), "sgpr_size", wd->ws.gpr_alloc.sgpr_size);
+	json_object_set_value(json_object(wave), "gpr_alloc", gpr_alloc);
+
+	if (wd->ws.gpr_alloc.value != 0xbebebeef) {
+		int sgpr_count;
+		if (asic->family <= FAMILY_AI) {
+			int shift = asic->family <= FAMILY_CIK ? 3 : 4;
+			sgpr_count = (wd->ws.gpr_alloc.sgpr_size + 1) << shift;
+		} else {
+			sgpr_count = 108; // regular SGPRs and VCC
+		}
+		JSON_Value *sgpr = json_value_init_array();
+		for (int x = 0; x < sgpr_count; x++) {
+			json_array_append_number(json_array(sgpr), wd->sgprs[x]);
+		}
+		json_object_set_value(json_object(wave), "sgpr", sgpr);
+
+		if (wd->have_vgprs) {
+			unsigned granularity = asic->parameters.vgpr_granularity;
+			unsigned vpgr_count = (wd->ws.gpr_alloc.vgpr_size + 1) << granularity;
+			JSON_Value *vgpr = json_value_init_array();
+			for (int x = 0; x < (int) vpgr_count; x++) {
+				JSON_Value *v = json_value_init_array();
+				for (int thread = 0; thread < num_threads; thread++) {
+					json_array_append_number(json_array(v), wd->vgprs[thread * 256 + x]);
+				}
+				json_array_append_value(json_array(vgpr), v);
+			}
+			json_object_set_value(json_object(wave), "vgpr", vgpr);
+		}
+
+		/* */
+		if (include_shaders && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
+			struct umr_shaders_pgm *shader = NULL;
+			uint32_t shader_size;
+			uint64_t shader_addr;
+
+			if (stream)
+				shader = umr_find_shader_in_stream(stream, vmid, pgm_addr);
+
+			if (shader) {
+				shader_size = shader->size;
+				shader_addr = shader->addr;
+			} else {
+				#define NUM_OPCODE_WORDS 16
+				pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
+				shader_addr = pgm_addr;
+				shader_size = NUM_OPCODE_WORDS * 4;
+				#undef NUM_OPCODE_WORDS
+			}
+
+			char tmp[128];
+			sprintf(tmp, "%lx", shader_addr);
+			/* This given shader isn't there, so read it. */
+			if (json_object_get_value(json_object(shaders), tmp) == NULL) {
+				JSON_Value *shader = shader_pgm_to_json(asic, vmid, shader_addr, shader_size);
+				if (shader)
+					json_object_set_value(json_object(shaders), tmp, shader);
+			}
+			json_object_set_string(json_object(wave), "shader", tmp);
+		}
+	}
+
+	return wave;
+}
+
+static void waves_to_json(struct umr_asic *asic, int ring_is_halted, int include_shaders, JSON_Object *out) {
 	// TODO: This is using the deprecated API ...
 	struct umr_pm4_stream *stream = NULL; // umr_pm4_decode_ring(asic, asic->options.ring_name, 1, -1, -1);
 
@@ -1554,151 +1705,7 @@ static void wave_to_json(struct umr_asic *asic, int ring_is_halted, int include_
 
 	JSON_Value *waves = json_value_init_array();
 	while (wd) {
-		uint64_t pgm_addr = (((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo);
-		unsigned vmid;
-
-		JSON_Value *wave = json_value_init_object();
-		json_object_set_number(json_object(wave), "se", wd->se);
-		json_object_set_number(json_object(wave), "sh", wd->sh);
-		json_object_set_number(json_object(wave), asic->family < FAMILY_NV ? "cu" : "wgp", wd->cu);
-		json_object_set_number(json_object(wave), "simd_id", wd->ws.hw_id1.simd_id);
-		json_object_set_number(json_object(wave), "wave_id", wd->ws.hw_id1.wave_id);
-		json_object_set_number(json_object(wave), "PC", pgm_addr);
-		json_object_set_number(json_object(wave), "wave_inst_dw0", wd->ws.wave_inst_dw0);
-		if (asic->family < FAMILY_NV)
-			json_object_set_number(json_object(wave), "wave_inst_dw1", wd->ws.wave_inst_dw1);
-
-		JSON_Value *status = json_value_init_object();
-		json_object_set_number(json_object(status), "value", wd->ws.wave_status.value);
-		json_object_set_number(json_object(status), "scc", wd->ws.wave_status.scc);
-		json_object_set_number(json_object(status), "execz", wd->ws.wave_status.execz);
-		json_object_set_number(json_object(status), "vccz", wd->ws.wave_status.vccz);
-		json_object_set_number(json_object(status), "in_tg", wd->ws.wave_status.in_tg);
-		json_object_set_number(json_object(status), "halt", wd->ws.wave_status.halt);
-		json_object_set_number(json_object(status), "valid", wd->ws.wave_status.valid);
-		json_object_set_number(json_object(status), "spi_prio", wd->ws.wave_status.spi_prio);
-		json_object_set_number(json_object(status), "wave_prio", wd->ws.wave_status.wave_prio);
-		json_object_set_number(json_object(status), "priv", wd->ws.wave_status.priv);
-		json_object_set_number(json_object(status), "trap_en", wd->ws.wave_status.trap_en);
-		json_object_set_number(json_object(status), "trap", wd->ws.wave_status.trap);
-		json_object_set_number(json_object(status), "ttrace_en", wd->ws.wave_status.ttrace_en);
-		json_object_set_number(json_object(status), "export_rdy", wd->ws.wave_status.export_rdy);
-		json_object_set_number(json_object(status), "in_barrier", wd->ws.wave_status.in_barrier);
-		json_object_set_number(json_object(status), "ecc_err", wd->ws.wave_status.ecc_err);
-		json_object_set_number(json_object(status), "skip_export", wd->ws.wave_status.skip_export);
-		json_object_set_number(json_object(status), "perf_en", wd->ws.wave_status.perf_en);
-		json_object_set_number(json_object(status), "cond_dbg_user", wd->ws.wave_status.cond_dbg_user);
-		json_object_set_number(json_object(status), "cond_dbg_sys", wd->ws.wave_status.cond_dbg_sys);
-		json_object_set_number(json_object(status), "allow_replay", wd->ws.wave_status.allow_replay);
-		json_object_set_number(json_object(status), "fatal_halt", asic->family >= FAMILY_AI && wd->ws.wave_status.fatal_halt);
-		json_object_set_number(json_object(status), "must_export", wd->ws.wave_status.must_export);
-
-		json_object_set_value(json_object(wave), "status", status);
-
-		JSON_Value *hw_id = json_value_init_object();
-		if (asic->family < FAMILY_NV) {
-			json_object_set_number(json_object(hw_id), "value", wd->ws.hw_id.value);
-			json_object_set_number(json_object(hw_id), "wave_id", wd->ws.hw_id.wave_id);
-			json_object_set_number(json_object(hw_id), "simd_id", wd->ws.hw_id.simd_id);
-			json_object_set_number(json_object(hw_id), "pipe_id", wd->ws.hw_id.pipe_id);
-			json_object_set_number(json_object(hw_id), "cu_id", wd->ws.hw_id.cu_id);
-			json_object_set_number(json_object(hw_id), "sh_id", wd->ws.hw_id.sh_id);
-			json_object_set_number(json_object(hw_id), "tg_id", wd->ws.hw_id.tg_id);
-			json_object_set_number(json_object(hw_id), "state_id", wd->ws.hw_id.state_id);
-			json_object_set_number(json_object(hw_id), "vm_id", wd->ws.hw_id.vm_id);
-			vmid = wd->ws.hw_id.vm_id;
-		} else {
-			json_object_set_number(json_object(hw_id), "value", wd->ws.hw_id1.value);
-			json_object_set_number(json_object(hw_id), "wave_id", wd->ws.hw_id1.wave_id);
-			json_object_set_number(json_object(hw_id), "simd_id", wd->ws.hw_id1.simd_id);
-			json_object_set_number(json_object(hw_id), "wgp_id", wd->ws.hw_id1.wgp_id);
-			json_object_set_number(json_object(hw_id), "se_id", wd->ws.hw_id1.se_id);
-			json_object_set_number(json_object(hw_id), "sa_id", wd->ws.hw_id1.sa_id);
-			json_object_set_number(json_object(hw_id), "queue_id", wd->ws.hw_id2.queue_id);
-			json_object_set_number(json_object(hw_id), "pipe_id", wd->ws.hw_id2.pipe_id);
-			json_object_set_number(json_object(hw_id), "me_id", wd->ws.hw_id2.me_id);
-			json_object_set_number(json_object(hw_id), "state_id", wd->ws.hw_id2.state_id);
-			json_object_set_number(json_object(hw_id), "wg_id", wd->ws.hw_id2.wg_id);
-			json_object_set_number(json_object(hw_id), "compat_level", wd->ws.hw_id2.compat_level);
-			json_object_set_number(json_object(hw_id), "vm_id", wd->ws.hw_id2.vm_id);
-			vmid = wd->ws.hw_id2.vm_id;
-		}
-		json_object_set_value(json_object(wave), "hw_id", hw_id);
-
-		JSON_Value *threads = json_value_init_array();
-		int num_threads = wd->num_threads;
-		for (int thread = 0; thread < num_threads; thread++) {
-			unsigned live = thread < 32 ? (wd->ws.exec_lo & (1u << thread))	: (wd->ws.exec_hi & (1u << (thread - 32)));
-			json_array_append_boolean(json_array(threads), live ? 1 : 0);
-		}
-		json_object_set_value(json_object(wave), "threads", threads);
-
-		JSON_Value *gpr_alloc = json_value_init_object();
-		json_object_set_number(json_object(gpr_alloc), "vgpr_base", wd->ws.gpr_alloc.vgpr_base);
-		json_object_set_number(json_object(gpr_alloc), "vgpr_size", wd->ws.gpr_alloc.vgpr_size);
-		json_object_set_number(json_object(gpr_alloc), "sgpr_base", wd->ws.gpr_alloc.sgpr_base);
-		json_object_set_number(json_object(gpr_alloc), "sgpr_size", wd->ws.gpr_alloc.sgpr_size);
-		json_object_set_value(json_object(wave), "gpr_alloc", gpr_alloc);
-
-		if (wd->ws.gpr_alloc.value != 0xbebebeef) {
-			int sgpr_count;
-			if (asic->family <= FAMILY_AI) {
-				int shift = asic->family <= FAMILY_CIK ? 3 : 4;
-				sgpr_count = (wd->ws.gpr_alloc.sgpr_size + 1) << shift;
-			} else {
-				sgpr_count = 108; // regular SGPRs and VCC
-			}
-			JSON_Value *sgpr = json_value_init_array();
-			for (int x = 0; x < sgpr_count; x++) {
-				json_array_append_number(json_array(sgpr), wd->sgprs[x]);
-			}
-			json_object_set_value(json_object(wave), "sgpr", sgpr);
-
-			if (wd->have_vgprs) {
-				unsigned granularity = asic->parameters.vgpr_granularity;
-				unsigned vpgr_count = (wd->ws.gpr_alloc.vgpr_size + 1) << granularity;
-				JSON_Value *vgpr = json_value_init_array();
-				for (int x = 0; x < (int) vpgr_count; x++) {
-					JSON_Value *v = json_value_init_array();
-					for (int thread = 0; thread < num_threads; thread++) {
-						json_array_append_number(json_array(v), wd->vgprs[thread * 256 + x]);
-					}
-					json_array_append_value(json_array(vgpr), v);
-				}
-				json_object_set_value(json_object(wave), "vgpr", vgpr);
-			}
-
-			/* */
-			if (include_shaders && (wd->ws.wave_status.halt || wd->ws.wave_status.fatal_halt)) {
-				struct umr_shaders_pgm *shader = NULL;
-				uint32_t shader_size;
-				uint64_t shader_addr;
-
-				if (ring_is_halted)
-					shader = umr_find_shader_in_stream(stream, vmid, pgm_addr);
-
-				if (shader) {
-					shader_size = shader->size;
-					shader_addr = shader->addr;
-				} else {
-					#define NUM_OPCODE_WORDS 16
-					pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
-					shader_addr = pgm_addr;
-					shader_size = NUM_OPCODE_WORDS * 4;
-					#undef NUM_OPCODE_WORDS
-				}
-
-				char tmp[128];
-				sprintf(tmp, "%lx", shader_addr);
-				/* This given shader isn't there, so read it. */
-				if (json_object_get_value(json_object(shaders), tmp) == NULL) {
-					JSON_Value *shader = shader_pgm_to_json(asic, vmid, shader_addr, shader_size);
-					if (shader)
-						json_object_set_value(json_object(shaders), tmp, shader);
-				}
-				json_object_set_string(json_object(wave), "shader", tmp);
-			}
-		}
+		JSON_Value *wave = wave_to_json(asic, wd, include_shaders, ring_is_halted ? stream : NULL, shaders);
 
 		json_array_append_value(json_array(waves), wave);
 
@@ -2028,7 +2035,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		answer = json_value_init_object();
 
-		wave_to_json(asic, ring_is_halted, 1, json_object(answer));
+		waves_to_json(asic, ring_is_halted, 1, json_object(answer));
 
 		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
