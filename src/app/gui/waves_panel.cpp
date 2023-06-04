@@ -25,6 +25,8 @@
 #include "panels.h"
 
 #include <regex.h>
+#include <string>
+#include <unordered_map>
 
 class WavesPanel : public Panel {
 public:
@@ -41,6 +43,55 @@ public:
 		shader_syntax.add_definition("(attr[[:digit:]]+|exec|m0|[[:alpha:]]+cnt\\([[:digit:]]\\))", { "#3097a1" });
 	}
 
+	~WavesPanel() {
+		clear_waves_and_shaders();
+	}
+
+	void clear_waves_and_shaders() {
+		for (const auto &wave : waves)
+			json_value_free(json_object_get_wrapping_value(wave.wave));
+		waves.clear();
+
+		for (const auto &entry : shaders)
+			json_value_free(json_object_get_wrapping_value(entry.second));
+		shaders.clear();
+	}
+
+	std::string get_wave_id(JSON_Object *wave) {
+		unsigned se = (unsigned int)json_object_get_number(wave, "se");
+		unsigned sh = (unsigned int)json_object_get_number(wave, "sh");
+		unsigned cu = (unsigned int)json_object_get_number(wave, "cu");
+		unsigned wgp = (unsigned int)json_object_get_number(wave, "wgp");
+		unsigned simd_id = (unsigned int)json_object_get_number(wave, "simd_id");
+		unsigned wave_id = (unsigned int)json_object_get_number(wave, "wave_id");
+
+		char id[128];
+		if (asic->family < FAMILY_NV) {
+			snprintf(id, sizeof(id), "se%u.sa%u.cu%u.simd%u.wave%u", se, sh, cu, simd_id, wave_id);
+		} else {
+			snprintf(id, sizeof(id), "se%u.sa%u.wgp%u.simd%u.wave%u", se, sh, wgp, simd_id, wave_id);
+		}
+
+		return id;
+	}
+
+	size_t find_wave_by_id(const std::string &id) {
+		size_t i;
+		for (i = 0; i < waves.size(); ++i) {
+			if (waves[i].id == id)
+				break;
+		}
+		return i;
+	}
+
+	void update_shaders(JSON_Object *shaders_dict) {
+		int shaders_count = json_object_get_count(shaders_dict);
+		for (int i = 0; i < shaders_count; ++i) {
+			shaders.emplace(json_object_get_name(shaders_dict, i),
+					json_object(json_value_deep_copy(json_object_get_value_at(shaders_dict, i))));
+		}
+	}
+
 	void process_server_message(JSON_Object *response, void *raw_data, unsigned raw_data_size) {
 		JSON_Value *error = json_object_get_value(response, "error");
 		if (error)
@@ -50,33 +101,21 @@ public:
 		JSON_Value *answer = json_object_get_value(response, "answer");
 		const char *command = json_object_get_string(request, "command");
 
-		if (strcmp(command, "waves"))
-			return;
+		if (strcmp(command, "waves") == 0) {
+			active_shader_wave.clear();
+			clear_waves_and_shaders();
 
-		active_shader = NULL;
-		if (last_answer) {
-			json_value_free(json_object_get_wrapping_value(last_answer));
-		}
-		last_answer = json_object(json_value_deep_copy(answer));
-
-		details.max_vgpr = 0;
-
-		JSON_Array *waves = json_array(json_object_get_value(last_answer, "waves"));
-		int wave_count = json_array_get_count(waves);
-		for (int i = 0; i < wave_count ; i++) {
-			JSON_Object *wave = json_object(json_array_get_value(waves, i));
-			JSON_Value *vgpr = json_object_get_value(wave, "vgpr");
-			if (vgpr) {
-				int s = json_array_get_count(json_array(vgpr));
-				details.max_vgpr = std::max(s, details.max_vgpr);
+			JSON_Array *waves_array = json_object_get_array(json_object(answer), "waves");
+			int wave_count = json_array_get_count(waves_array);
+			for (int i = 0; i < wave_count; ++i) {
+				JSON_Object *wave = json_object(json_value_deep_copy(json_array_get_value(waves_array, i)));
+				waves.emplace_back(get_wave_id(wave), wave);
 			}
-		}
 
-		if (details.max_vgpr) {
-			details.vgpr = (bool*)realloc(details.vgpr, wave_count * details.max_vgpr);
-			details.view = (int*)realloc(details.view, wave_count * details.max_vgpr * sizeof(int));
-			memset(details.vgpr, 0, wave_count * details.max_vgpr);
-			memset(details.view, 0, wave_count * details.max_vgpr * sizeof(int));
+			JSON_Object *shaders_dict = json_object_get_object(json_object(answer), "shaders");
+			update_shaders(shaders_dict);
+		} else {
+			return; // should be handled by a different panel
 		}
 	}
 
@@ -96,17 +135,12 @@ public:
 		ImGui::EndDisabled();
 
 		ImGui::Separator();
-		if (last_answer) {
+		if (!waves.empty()) {
 			ImGui::BeginChild("Waves", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
-			JSON_Array *waves = json_object_get_array(last_answer, "waves");
-			JSON_Object *shaders = json_object(json_object_get_value(last_answer, "shaders"));
 			bool force_scroll = false;
-			int w = json_array_get_count(waves);
-			for (int i = 0; i < w; i++) {
-				JSON_Object *wave = json_object(json_array_get_value(waves, i));
+			for (size_t i = 0; i < waves.size(); ++i) {
+				JSON_Object *wave = waves[i].wave;
 				JSON_Object *status = json_object(json_object_get_value(wave, "status"));
-
-				ImGui::PushID(i);
 
 				int active_threads = -1;
 				JSON_Array *threads = json_object_get_array(wave, "threads");
@@ -121,20 +155,25 @@ public:
 
 				char label[256];
 				if (active_threads < 0)
-					sprintf(label, "Wave %d", i);
+					sprintf(label, "Wave %s", waves[i].id.c_str());
 				else if (shader_address_str)
-					sprintf(label, "Wave %d (#dbde79%d threads, valid PC)", i, active_threads);
+					sprintf(label, "Wave %s (#dbde79%d threads, valid PC)", waves[i].id.c_str(), active_threads);
 				else
-					sprintf(label, "Wave %d (#dbde79%d threads)", i, active_threads);
+					sprintf(label, "Wave %s (#dbde79%d threads)", waves[i].id.c_str(), active_threads);
 
-				if (ImGui::TreeNode(label)) {
+				if (ImGui::TreeNode(waves[i].id.c_str(), "%s", label)) {
 					ImGui::Columns(3);
 					ImGui::Text("se:            #586e750x%x", (unsigned int)json_object_get_number(wave, "se"));
 					ImGui::NextColumn();
 					ImGui::Text("sh:            #586e750x%x", (unsigned int)json_object_get_number(wave, "sh"));
 					ImGui::NextColumn();
-					ImGui::Text("cu: #586e750x%x", (unsigned int)json_object_get_number(wave, "cu"));
-					ImGui::NextColumn();
+					if (asic->family < FAMILY_NV) {
+						ImGui::Text("cu: #586e750x%x", (unsigned int)json_object_get_number(wave, "cu"));
+						ImGui::NextColumn();
+					} else {
+						ImGui::Text("wgp: #586e750x%x", (unsigned int)json_object_get_number(wave, "wgp"));
+						ImGui::NextColumn();
+					}
 					ImGui::Text("simd_id:       #586e750x%x", (unsigned int)json_object_get_number(wave, "simd_id"));
 					ImGui::NextColumn();
 					ImGui::Text("wave_id:       #586e750x%x", (unsigned int)json_object_get_number(wave, "wave_id"));
@@ -150,10 +189,7 @@ public:
 					if (shader_address_str) {
 						ImGui::SameLine();
 						if (ImGui::Button("View Shader")) {
-							active_shader = json_object(json_object_get_value(shaders, shader_address_str));
-							sscanf(shader_address_str, "%" PRIx64, &base_address);
-							pc = json_object_get_number(wave, "PC");
-
+							active_shader_wave = waves[i].id;
 							force_scroll = true;
 						}
 					} else {
@@ -252,9 +288,9 @@ public:
 								ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableRowBgAlt));
 								ImGui::TableSetColumnIndex(0);
 								sprintf(label, "show v%2d", vg);
-								ImGui::Checkbox(label, &details.vgpr[i * details.max_vgpr + vg]);
-								if (details.vgpr[i * details.max_vgpr + vg]) {
-									int *mode = &details.view[i * details.max_vgpr + vg];
+								ImGui::Checkbox(label, &waves[i].vgpr_show[vg]);
+								if (waves[i].vgpr_show[vg]) {
+									int *mode = &waves[i].vgpr_view[vg];
 									ImGui::TableSetColumnIndex(1);
 									ImGui::RadioButton("as int", mode, 0);
 									ImGui::TableSetColumnIndex(2);
@@ -309,71 +345,92 @@ public:
 
 					ImGui::TreePop();
 				}
-				ImGui::PopID();
 			}
 			ImGui::EndChild();
 			ImGui::SameLine();
 			ImGui::BeginChild("Shaders", ImVec2(avail.x / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
-			if (active_shader) {
-				int scroll = 0;
-				JSON_Array *op = json_object_get_array(active_shader, "opcodes");
-				uint32_t *copy = new uint32_t[json_array_get_count(op)];
-				for (size_t j = 0; j < json_array_get_count(op); j++)
-					copy[j] = (uint32_t)json_array_get_number(op, j);
-
-				uint64_t base_address = json_object_get_number(active_shader, "address");
-				char **opcode_strs = NULL;
-				umr_shader_disasm(asic, (uint8_t *)copy, json_array_get_count(op) * 4, base_address, &opcode_strs);
-
-				char tmp[128];
-				sprintf(tmp, "0x%" PRIx64, base_address);
-
-				ImGui::BeginTable("shader", 3, ImGuiTableFlags_Borders);
-				ImGui::TableSetupColumn(tmp, ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x0000000000 ").x);
-				ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(  "0x00000000  ").x);
-				ImGui::TableSetupColumn("Disassembly");
-				ImGui::TableHeadersRow();
-				for (size_t j = 0; j < json_array_get_count(op); j++) {
-					uint64_t addr = base_address + j * 4;
-					bool is_pc = pc == addr;
-					if (is_pc) {
-						/* PC points to this instruction */
-						scroll = ImGui::GetCursorPos().y;
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.5, 0.5, 1));
-				   }
-
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-					ImGui::Text("+ 0x%lx", j * 4);
-					if (ImGui::IsItemHovered()) {
-						ImGui::BeginTooltip();
-						ImGui::Text("0x%" PRIx64, base_address + j * 4);
-						ImGui::EndTooltip();
-					}
-					ImGui::TableSetColumnIndex(1);
-					ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
-					ImGui::TableSetColumnIndex(2);
-					ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
-					free(opcode_strs[j]);
-					if (is_pc)
-						ImGui::PopStyleColor(1);
-				}
-				ImGui::EndTable();
-				free(opcode_strs);
-				delete[] copy;
-
-				if (force_scroll) {
-					ImGui::SetScrollY(scroll - avail.y / 2);
-					force_redraw();
-				}
-			} else {
-				ImGui::Text("Click on a wave's PC to show its shader disassembly");
-			}
+			display_active_shader(dt, avail, force_scroll);
 			ImGui::EndChild();
 		} else {
 			ImGui::Text("No waves.");
 		}
 		return false;
+	}
+
+	void display_active_shader(float dt, const ImVec2& avail, bool force_scroll) {
+		if (active_shader_wave.empty()) {
+			ImGui::Text("Click on a wave's PC to show its shader disassembly");
+			return;
+		}
+
+		size_t i = find_wave_by_id(active_shader_wave);
+		if (i >= waves.size()) {
+			ImGui::Text("Selected wave has disappeared");
+			return;
+		}
+
+		JSON_Object *wave = waves[i].wave;
+		const char *shader_address_str = json_object_get_string(wave, "shader");
+		auto shader_it = shaders.find(shader_address_str);
+		if (shader_it == shaders.end()) {
+			ImGui::Text("Error: Shader for selected wave is unavailable");
+			return;
+		}
+
+		JSON_Object *shader = shader_it->second;
+		uint64_t pc = json_object_get_number(wave, "PC");
+
+		int scroll = 0;
+		JSON_Array *op = json_object_get_array(shader, "opcodes");
+		uint32_t *copy = new uint32_t[json_array_get_count(op)];
+		for (size_t j = 0; j < json_array_get_count(op); j++)
+			copy[j] = (uint32_t)json_array_get_number(op, j);
+
+		uint64_t base_address = json_object_get_number(shader, "address");
+		char **opcode_strs = NULL;
+		umr_shader_disasm(asic, (uint8_t *)copy, json_array_get_count(op) * 4, base_address, &opcode_strs);
+
+		char tmp[128];
+		sprintf(tmp, "0x%" PRIx64, base_address);
+
+		ImGui::BeginTable("shader", 3, ImGuiTableFlags_Borders);
+		ImGui::TableSetupColumn(tmp, ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x0000000000 ").x);
+		ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(  "0x00000000  ").x);
+		ImGui::TableSetupColumn("Disassembly");
+		ImGui::TableHeadersRow();
+		for (size_t j = 0; j < json_array_get_count(op); j++) {
+			uint64_t addr = base_address + j * 4;
+			bool is_pc = pc == addr;
+			if (is_pc) {
+				/* PC points to this instruction */
+				scroll = ImGui::GetCursorPos().y;
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0.5, 0.5, 1));
+			}
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("+ 0x%lx", j * 4);
+			if (ImGui::IsItemHovered()) {
+				ImGui::BeginTooltip();
+				ImGui::Text("0x%" PRIx64, base_address + j * 4);
+				ImGui::EndTooltip();
+			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
+			free(opcode_strs[j]);
+			if (is_pc)
+				ImGui::PopStyleColor(1);
+		}
+		ImGui::EndTable();
+		free(opcode_strs);
+		delete[] copy;
+
+		if (force_scroll) {
+			ImGui::SetScrollY(scroll - avail.y / 2);
+			force_redraw();
+		}
 	}
 
 private:
@@ -387,16 +444,19 @@ private:
 		send_request(req);
 	}
 private:
+	struct Wave {
+		std::string id; // "seN.saN.etc"
+		JSON_Object *wave;
+		bool vgpr_show[512] = {};
+		int vgpr_view[512] = {};
+
+		Wave(std::string id, JSON_Object *wave) : id(id), wave(wave) {}
+	};
+
 	SyntaxHighlighter shader_syntax;
-	JSON_Object *last_answer = NULL;
-	JSON_Object *active_shader = NULL;
-	uint64_t base_address;
-	uint64_t pc;
-	struct {
-		bool *vgpr = NULL;
-		int *view = NULL;
-		int max_vgpr;
-	} details;
+	std::vector<Wave> waves;
+	std::unordered_map<std::string, JSON_Object *> shaders;
+	std::string active_shader_wave;
 	bool halt = true;
 	bool resume = true;
 	bool turn_off_gfxoff = true;
