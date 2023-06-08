@@ -74,7 +74,7 @@ enum AMDGPU_DEBUGFS_GPRWAVE_CMDS {
 static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, struct umr_wave_status *ws, uint32_t *dst)
 {
 	struct amdgpu_debugfs_gprwave_iocdata id;
-	int r;
+	int r = 0;
 	uint32_t size;
 	uint64_t addr = 0;
 
@@ -365,7 +365,7 @@ int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t t
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
 	uint32_t buf[32];
-	int r;
+	int r = 0;
 	uint64_t addr = 0;
 	struct amdgpu_debugfs_gprwave_iocdata id;
 
@@ -402,16 +402,16 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 			if (r <= 0)
 				return -1;
 		} else {
-			int n = 0;
 			if (asic->family < FAMILY_NV) {
 				umr_grbm_select_index(asic, se, sh, cu);
-				umr_read_wave_status_via_mmio_gfx8_9(asic, simd, wave, &buf[0], &n);
+				umr_read_wave_status_via_mmio_gfx8_9(asic, simd, wave, &buf[0], &r);
 				umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 			} else {
 				umr_grbm_select_index(asic, se, sh, cu);
-				umr_read_wave_status_via_mmio_gfx_10_11(asic, wave, &buf[0], &n);
+				umr_read_wave_status_via_mmio_gfx_10_11(asic, wave, &buf[0], &r);
 				umr_grbm_select_index(asic, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
 			}
+			r *= 4; // libumr stores # of dwords not bytes in &r
 		}
 	}
 
