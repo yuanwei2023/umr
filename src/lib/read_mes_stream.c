@@ -544,6 +544,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[1]", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[2]", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[3]", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", stream->words[i], NULL, 16, 32); ++i;
 							break;
 					}
 				}
