@@ -1553,8 +1553,8 @@ static JSON_Value *wave_to_json(struct umr_asic *asic, struct umr_wave_data *wd,
 	json_object_set_number(json_object(wave), "se", wd->se);
 	json_object_set_number(json_object(wave), "sh", wd->sh);
 	json_object_set_number(json_object(wave), asic->family < FAMILY_NV ? "cu" : "wgp", wd->cu);
-	json_object_set_number(json_object(wave), "simd_id", wd->ws.hw_id1.simd_id);
-	json_object_set_number(json_object(wave), "wave_id", wd->ws.hw_id1.wave_id);
+	json_object_set_number(json_object(wave), "simd_id", wd->simd);
+	json_object_set_number(json_object(wave), "wave_id", wd->wave);
 	json_object_set_number(json_object(wave), "PC", pgm_addr);
 	json_object_set_number(json_object(wave), "wave_inst_dw0", wd->ws.wave_inst_dw0);
 	if (asic->family < FAMILY_NV)
