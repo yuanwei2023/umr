@@ -978,6 +978,8 @@ JSON_Array *parse_vm_info(const char *content)
 							json_object_set_number(json_object(bo), "cpu", 1);
 						if (memmem(ptr, end_of_line - ptr, " pin count", strlen(" pin count")) == NULL)
 							json_object_set_boolean(json_object(bo), "pinned", false);
+						if (memmem(ptr, end_of_line - ptr, " VISIBLE", strlen(" VISIBLE")))
+							json_object_set_number(json_object(bo), "visible", 1);
 
 						char *exported_as = memmem(ptr, end_of_line - ptr, "exported as", strlen("exported as"));
 						if (exported_as) {
@@ -1209,9 +1211,11 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 			json_array_append_value(bos, json_object_get_wrapping_value(bo));
 
 			if (strstr(cursor, " GTT"))
-				json_object_set_number(bo, "gtt", size);
+				json_object_set_number(bo, "gtt", 1);
 			if (strstr(cursor, " CPU_ACCESS_REQUIRED"))
-				json_object_set_number(bo, "cpu", size);
+				json_object_set_number(bo, "cpu", 1);
+			if (strstr(cursor, " VISIBLE"))
+				json_object_set_number(bo, "visible", 1);
 
 			char *exported_as = strstr(cursor, "exported as");
 			if (exported_as) {
