@@ -1007,6 +1007,125 @@ struct pid_exported {
 	char **exported;
 };
 
+static void cleanup_pids_mapping(struct pid_exported *pids_mapping,
+								 uint32_t num_pids_mapping)
+{
+	for (uint32_t i = 0; i < num_pids_mapping; i++) {
+		for (int j = 0; j < pids_mapping[i].num_exported; j++)
+			free(pids_mapping[i].exported[j]);
+		free(pids_mapping[i].process_name);
+		free(pids_mapping[i].exported);
+	}
+	free(pids_mapping);
+}
+
+static uint32_t get_ino_to_pid_mapping(struct umr_asic *asic,
+									   struct pid_exported **out_pids_mapping)
+{
+	char path[512];
+	/* fd ownership can be confusing; for instance XWayland will appear as the owner
+	 * of all bo instead of the real application.
+	 * Try to map bo to the real pid by matching the "exported as XXXX" strings from
+	 * amdgpu_gem_info and amdgpu_vm_info
+	 */
+	sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+	const char *content = read_file(path);
+	int current_pid = 0;
+	struct pid_exported *pids_mapping = NULL;
+	int num_pids_mapping = 0;
+
+	while (content) {
+		char *next_pid = strstr(content, "pid:");
+
+		/* The file first prints the pid + command name, then the BOs.
+		 * So we enter the BOs parsing loop only if we already got the
+		 * application information.
+		 */
+		if (current_pid != 0) {
+			char *next_exported_as;
+			while ((next_exported_as = strstr(content, "exported as"))) {
+				if (next_exported_as && (next_exported_as < next_pid || next_pid == NULL)) {
+					/* 2 formats: "exported as xxxxxxxxxxxxxxxxx"
+					 *            "exported as ino:xxxxxxxx"
+					 */
+					char *end = next_exported_as + strlen("exported as ");
+
+					int pid_n = num_pids_mapping - 1;
+
+					/* Don't associate BOs to Xwayland. It should only own the ones
+					 * it created.
+					 */
+					if (strcmp(pids_mapping[pid_n].process_name, "Xwayland") != 0) {
+						while (*end && !isspace(*end)) end++;
+						char *txt = strndup(next_exported_as, end - next_exported_as);
+
+						int n = pids_mapping[pid_n].num_exported++;
+						pids_mapping[pid_n].exported = realloc(pids_mapping[pid_n].exported,
+															   (n + 1) * sizeof(char*));
+						pids_mapping[pid_n].exported[n] = txt;
+					}
+
+					content = end;
+				} else {
+					break;
+				}
+			}
+		}
+
+		/* Find and parse the next application header, the format is:
+		 * pid:1018540     Process:glxgears ----------
+		 * pid:0   Process: ----------
+		 */
+		if (!next_pid)
+			break;
+		char *next_space = strchr(next_pid, '\t');
+		content = next_space + 1;
+		if (sscanf(next_pid, "pid:%d", &current_pid) != 1)
+			break;
+
+		char *process = strstr(content, "Process:");
+		char *process_name = NULL;
+		process += strlen("Process:");
+		char *end = process;
+		while (!isspace(*end)) end++;
+
+		if (end != process) {
+			process_name = strndup(process, end - process);
+			/* The kernel pid can be the thread id so translate it into a pid. */
+			DIR *d = opendir("/proc");
+			if (d) {
+				int pid;
+				while ((pid = find_pid_by_command_name(d, process_name))) {
+					/* If this is the right pid, the following folder should
+					 * exist.
+					 */
+					char pid_path[512];
+					struct stat statbuf;
+					sprintf(pid_path, "/proc/%d/task/%d", pid, current_pid);
+					if (stat(pid_path, &statbuf) == 0) {
+						current_pid = pid;
+						break;
+					}
+				}
+				closedir(d);
+			}
+		}
+
+		/* Store the information so we can associate the next BOs correctly. */
+		if (current_pid) {
+			pids_mapping = realloc(pids_mapping, (num_pids_mapping + 1) * sizeof(struct pid_exported));
+			pids_mapping[num_pids_mapping].pid = current_pid;
+			pids_mapping[num_pids_mapping].process_name = process_name;
+			pids_mapping[num_pids_mapping].num_exported = 0;
+			pids_mapping[num_pids_mapping].exported = NULL;
+			num_pids_mapping++;
+		}
+	}
+
+	*out_pids_mapping = pids_mapping;
+	return num_pids_mapping;
+}
+
 JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, int num_pids_mapping)
 {
 	JSON_Array *pids = json_array(json_value_init_array());
@@ -2441,7 +2560,6 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_object_set_value(json_object(answer), names[i], m);
 		}
 
-		/* per pid reporting */
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 		JSON_Array *pids = parse_vm_info(read_file(path));
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
@@ -2516,100 +2634,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		char path[512];
-		/* fd ownership can be confusing; for instance XWayland will appear as the owner
-		 * of all bo instead of the real application.
-		 * Try to map bo to the real pid by matching the "exported as XXXX" strings from
-		 * amdgpu_gem_info and amdgpu_vm_info
-		 */
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
-		const char *content = read_file(path);
-		int current_pid = 0;
 		struct pid_exported *pids_mapping = NULL;
-		int num_pids_mapping = 0;
-
-		while (content) {
-			char *next_pid = strstr(content, "pid:");
-			if (current_pid != 0) {
-				char *next_exported_as;
-				while ((next_exported_as = strstr(content, "exported as"))) {
-					if (next_exported_as && (next_exported_as < next_pid || next_pid == NULL)) {
-						/* 2 formats: "exported as xxxxxxxxxxxxxxxxx"
-						 *            "exported as ino:xxxxxxxx"
-						 */
-						char *end = next_exported_as + strlen("exported as ");
-						while (*end && !isspace(*end)) end++;
-						char *txt = strndup(next_exported_as, end - next_exported_as);
-
-						int pid_n = num_pids_mapping - 1;
-						int n = pids_mapping[pid_n].num_exported++;
-						pids_mapping[pid_n].exported = realloc(pids_mapping[pid_n].exported,
-															   (n + 1) * sizeof(char*));
-						pids_mapping[pid_n].exported[n] = txt;
-
-						content = end;
-					} else {
-						break;
-					}
-				}
-			}
-
-			if (!next_pid)
-				break;
-			char *next_space = strchr(next_pid, '\t');
-			content = next_space + 1;
-			if (sscanf(next_pid, "pid:%d", &current_pid) != 1)
-				break;
-
-			char *process = strstr(content, "Process:");
-			char *process_name = NULL;
-			if (process) {
-				process += strlen("Process:");
-				char *end = process;
-				while (!isspace(*end)) end++;
-
-				if (end != process) {
-					process_name = strndup(process, end - process);
-					/* The kernel pid can be the thread id so translate it into a pid. */
-					DIR *d = opendir("/proc");
-					if (d) {
-						int pid;
-						while ((pid = find_pid_by_command_name(d, process_name))) {
-							/* If this is the right pid, the following folder should
-							 * exist.
-							 */
-							char pid_path[512];
-							struct stat statbuf;
-							sprintf(pid_path, "/proc/%d/task/%d", pid, current_pid);
-							if (stat(pid_path, &statbuf) == 0) {
-								current_pid = pid;
-								break;
-							}
-						}
-						closedir(d);
-					}
-				}
-			}
-			if (current_pid) {
-				pids_mapping = realloc(pids_mapping, (num_pids_mapping + 1) * sizeof(struct pid_exported));
-				pids_mapping[num_pids_mapping].pid = current_pid;
-				pids_mapping[num_pids_mapping].process_name = process_name;
-				pids_mapping[num_pids_mapping].num_exported = 0;
-				pids_mapping[num_pids_mapping].exported = NULL;
-				num_pids_mapping++;
-			}
-		}
+		uint32_t num_pids_mapping = get_ino_to_pid_mapping(asic, &pids_mapping);
 
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_gem_info", asic->instance);
 		answer = json_value_init_object();
 		JSON_Array *pids = parse_gem_info(read_file(path), pids_mapping, num_pids_mapping);
 
-		for (int i = 0; i < num_pids_mapping; i++) {
-			for (int j = 0; j < pids_mapping[i].num_exported; j++)
-				free(pids_mapping[i].exported[j]);
-			free(pids_mapping[i].process_name);
-			free(pids_mapping[i].exported);
-		}
-		free(pids_mapping);
+		cleanup_pids_mapping(pids_mapping, num_pids_mapping);
 
 		#if CAN_IMPORT_BO
 		for (unsigned i = 0; i < json_array_get_count(pids); i++) {
@@ -2652,7 +2684,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
 
 		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
-		content = read_file(path);
+		char *content = read_file(path);
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(asic, content);
 		previous_framebuffers_answer = json_value_deep_copy(json_array_get_wrapping_value(framebuffers));
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
