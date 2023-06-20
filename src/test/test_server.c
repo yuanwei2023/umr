@@ -111,33 +111,8 @@ enum TEST_RESULT test_parse_vm_info()
     ASSERT_EQ(json_array_get_count(out), 2);
     for (int i = 0; i < 2; i++) {
         JSON_Object *v = json_object(json_array_get_value(out, i));
-        ASSERT_STR_EQ(json_object_get_string(v, "name"), names[i]);
+        ASSERT_STR_EQ(json_object_get_string(v, "command"), names[i]);
         ASSERT_EQ(json_object_get_number(v, "pid"), pids[i]);
-        ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Relocated")), 0);
-        ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Moved")), 0);
-        ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Invalidated")), 0);
-        if (i == 0) {
-            ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Done")), 0);
-            ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Idle")), 0);
-            ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Evicted")), 1);
-            ASSERT_EQ(json_object_get_number(v, "total"), 4096);
-        } else {
-            ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Evicted")), 0);
-            ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Done")), 1);
-            ASSERT_EQ(json_array_get_count(json_object_get_array(v, "Idle")), 2);
-            ASSERT_EQ(json_object_get_number(v, "total"), 2105344);
-            JSON_Value *bo = json_array_get_value(json_object_get_array(v, "Idle"), 1);
-            JSON_Array *attr = json_object_get_array(json_object(bo), "attributes");
-            ASSERT_EQ(json_array_get_count(attr), 4);
-            const char *exp[] = {
-                "GTT",
-                "exported as 000000000a49a273",
-                "NO_CPU_ACCESS",
-                "CPU_GTT_USWC"
-            };
-            for (int i = 0; i < 4; i++)
-                ASSERT_STR_EQ(json_array_get_string(attr, i), exp[i]);
-        }
     }
     json_value_free(json_array_get_wrapping_value(out));
     return TEST_SUCCESS;

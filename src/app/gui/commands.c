@@ -20,10 +20,11 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  *
  */
+#define _GNU_SOURCE
+#include <string.h>
 #include "parson.h"
 #include "umrapp.h"
 #include <signal.h>
-#include <string.h>
 #include <time.h>
 #include <sys/types.h>
 #include <dirent.h>
@@ -939,13 +940,14 @@ JSON_Array *parse_vm_info(const char *content)
 			next_space = strchr(ptr, ' ');
 			int len = next_space - ptr;
 
-			json_object_set_string_with_len(json_object(p), "name", ptr, len);
+			json_object_set_string_with_len(json_object(p), "command", ptr, len);
+			JSON_Array *bos = json_array(json_value_init_array());
+			json_object_set_value(json_object(p), "bos", json_array_get_wrapping_value(bos));
+
 			ptr = next_space + 1;
 			const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
 			uint64_t pid_total = 0;
 			for (int i = 0; ptr && i < 6; i++) {
-				JSON_Array *cat = json_array(json_value_init_array());
-				uint64_t cat_total = 0;
 				ptr = strstr(ptr, categories[i]);
 				/* Consume all chars until next line */
 				while (*ptr != '\n')
@@ -967,60 +969,29 @@ JSON_Array *parse_vm_info(const char *content)
 						ptr = b + 5;
 
 						JSON_Value *bo = json_value_init_object();
-						json_array_append_value(cat, bo);
 						json_object_set_number(json_object(bo), "size", sz);
-						cat_total += sz;
 						pid_total += sz;
 
-						/* Parse attributes */
-						char attr_in_progress[256];
-						int concat_the_next_n = 0;
-						JSON_Array *attr = json_array(json_value_init_array());
-						while (ptr < end_of_line) {
-							next_space = strchr(ptr, ' ');
-							if (!next_space || next_space > end_of_line)
-								next_space = end_of_line;
-							if (next_space) {
-								int len = next_space - ptr;
-								if (ptr != next_space) {
-									if ((len == strlen("exported") && !strncmp(ptr, "exported", len)) ||
-										(len == strlen("imported") && !strncmp(ptr, "imported", len)) ||
-										(len == strlen("pin") && !strncmp(ptr, "pin", len))) {
-										strncpy(attr_in_progress, ptr, len);
-										attr_in_progress[len] = '\0';
-										concat_the_next_n = 2;
-									} else if (concat_the_next_n > 0) {
-										sprintf(&attr_in_progress[strlen(attr_in_progress)], " %.*s", len, ptr);
-										concat_the_next_n--;
-									} else {
-										strncpy(attr_in_progress, ptr, len);
-										attr_in_progress[len] = '\0';
-									}
+						if (memmem(ptr, end_of_line - ptr, " GTT", strlen(" GTT")))
+							json_object_set_number(json_object(bo), "gtt", 1);
+						if (memmem(ptr, end_of_line - ptr, " CPU_ACCESS_REQUIRED", strlen(" CPU_ACCESS_REQUIRED")))
+							json_object_set_number(json_object(bo), "cpu", 1);
+						if (memmem(ptr, end_of_line - ptr, " pin count", strlen(" pin count")) == NULL)
+							json_object_set_boolean(json_object(bo), "pinned", false);
 
-									if (concat_the_next_n == 0) {
-										json_array_append_string(attr, attr_in_progress);
-										attr_in_progress[0] = '\0';
-									}
-								}
-								ptr = next_space + 1;
-							} else {
-								break;
-							}
+						char *exported_as = memmem(ptr, end_of_line - ptr, "exported as", strlen("exported as"));
+						if (exported_as) {
+							char *end = exported_as + strlen("exported as ");
+							uint32_t ino;
+							if (sscanf(end, "ino:%u", &ino) == 1)
+								json_object_set_number(json_object(bo), "ino", ino);
 						}
+
+						json_array_append_value(bos, bo);
 						ptr = end_of_line + 1;
-						if (json_array_get_count(attr))
-							json_object_set_value(json_object(bo), "attributes",
-								json_array_get_wrapping_value(attr));
-						else
-							json_value_free(json_array_get_wrapping_value(attr));
 					} else {
 						break;
 					}
-				}
-
-				if (cat_total > 0) {
-					json_object_set_value(json_object(p), categories[i],
-						json_array_get_wrapping_value(cat));
 				}
 			}
 			json_object_set_number(json_object(p), "total", pid_total);
@@ -1114,24 +1085,44 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 			JSON_Object *bo = json_object(json_value_init_object());
 			json_object_set_number(bo, "handle", kms_handle);
 			json_object_set_number(bo, "size", size);
-			json_object_set_boolean(bo, "pinned", pinned);
+			if (!pinned)
+				json_object_set_boolean(bo, "pinned", false);
 			json_array_append_value(bos, json_object_get_wrapping_value(bo));
 
-			if (pid_overriden == 0) {
-				char *exported_as = strstr(cursor, "exported as");
-				if (exported_as) {
-					char *end = exported_as + strlen("exported as ");
+			if (strstr(cursor, " GTT"))
+				json_object_set_number(bo, "gtt", size);
+			if (strstr(cursor, " CPU_ACCESS_REQUIRED"))
+				json_object_set_number(bo, "cpu", size);
+
+			char *exported_as = strstr(cursor, "exported as");
+			if (exported_as) {
+				char *end = exported_as + strlen("exported as ");
+				uint32_t ino;
+				if (sscanf(end, "ino:%u", &ino) == 1)
+					json_object_set_number(bo, "ino", ino);
+
+				if (pid_overriden == 0) {
 					while (*end && !isspace(*end)) end++;
 					char *txt = strndup(exported_as, end - exported_as);
 
 					/* Now look for a match. */
+					int matches_found = 0;
 					for (int j = 0; j < num_pids_mapping && !pid_overriden; j++) {
 						for (int k = 0; k < pids_exp[j].num_exported; k++) {
 							if (strcmp(txt, pids_exp[j].exported[k]) == 0) {
-								json_object_set_number(app, "pid", pids_exp[j].pid);
-								json_object_set_string(app, "command", pids_exp[j].process_name);
-								pid_overriden = 1;
-								break;
+								matches_found++;
+							}
+						}
+					}
+					if (matches_found == 1) {
+						for (int j = 0; j < num_pids_mapping && !pid_overriden; j++) {
+							for (int k = 0; k < pids_exp[j].num_exported; k++) {
+								if (strcmp(txt, pids_exp[j].exported[k]) == 0) {
+									json_object_set_number(app, "pid", pids_exp[j].pid);
+									json_object_set_string(app, "command", pids_exp[j].process_name);
+									pid_overriden = 1;
+									break;
+								}
 							}
 						}
 					}
