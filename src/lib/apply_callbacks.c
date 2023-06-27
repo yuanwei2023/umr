@@ -35,14 +35,22 @@ void umr_apply_callbacks(struct umr_asic *asic,
 			 struct umr_register_access_funcs *regs)
 {
 	int n;
+	struct umr_reg *reg;
 
 	n = 0;
 	while (asic->config.xgmi.nodes[n].asic) {
+		reg = umr_find_reg_by_name(asic->config.xgmi.nodes[n].asic, "mmMC_VM_XGMI_LFB_CNTL", NULL);
+		if (!reg) {
+			asic->err_msg("[BUG]: Cannot find register mmMC_VM_XGMI_LFB_CNTL on ASIC\n");
+			return;
+		}
+
 		asic->config.xgmi.nodes[n].asic->mem_funcs = *mems;
 		asic->config.xgmi.nodes[n].asic->reg_funcs = *regs;
-		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", -2, "mmMC_VM_XGMI_LFB_CNTL", "PF_LFB_REGION", umr_read_reg_by_name_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "mmhub", -2, "mmMC_VM_XGMI_LFB_CNTL"));
+		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg(asic->config.xgmi.nodes[n].asic, reg, "PF_LFB_REGION", umr_read_reg(asic->config.xgmi.nodes[n].asic, reg->addr * 4, REG_MMIO));
 		++n;
 	}
+
 	// sort nodes based on hive position
 	qsort(&asic->config.xgmi.nodes[0], n, sizeof(asic->config.xgmi.nodes[0]), hive_cmp);
 	asic->config.xgmi.callbacks_applied = 1;

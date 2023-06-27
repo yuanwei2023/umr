@@ -175,7 +175,7 @@ struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, c
  */
 struct umr_reg* umr_find_reg_by_name(struct umr_asic* asic, const char* regname, struct umr_ip_block** ip)
 {
-	return umr_find_reg_data_by_ip_by_instance_with_ip(asic, NULL, -1, regname, ip);
+	return umr_find_reg_data_by_ip_by_instance_with_ip(asic, NULL, -2, regname, ip);
 }
 
 struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const char* ip, int inst, const char* regname)
