@@ -2734,5 +2734,6 @@ error:
 	answer = json_value_init_object();
 	json_object_set_string(json_object(answer), "error", last_error);
 	json_object_set_value(json_object(answer), "request", json_object_get_wrapping_value(request));
+	json_object_set_boolean(json_object(answer), "has_raw_data", false);
 	return answer;
 }
