@@ -106,7 +106,7 @@ public:
 			return 0;
 
 		ImGui::BeginChild("list",
-			ImVec2(ImGui::CalcTextSize("    (handle, resolution, format) View >  ").x, 0),
+			ImVec2(ImGui::CalcTextSize("    (handle, resolution, format, sw) View >  ").x, 0),
 			false, ImGuiWindowFlags_NoTitleBar);
 		ImGui::PushStyleColor(ImGuiCol_Text, (ImU32)ImColor(229, 169, 41));
 		ImGui::TextUnformatted("Buffer Object from pid");
@@ -136,7 +136,7 @@ public:
 
 			if (display_help) {
 				ImGui::Indent();
-				ImGui::Text("(handle, resolution, format)");
+				ImGui::Text("(handle, resolution, format, sw)");
 				ImGui::Unindent();
 			}
 			display_help = false;
@@ -179,6 +179,8 @@ public:
 					ImGui::Text("%*s", (int)sizeof("resolution"), img_label);
 					ImGui::SameLine();
 					ImGui::Text("%*d", (int)sizeof("format"), (int) json_object_get_number(bo, "format"));
+					ImGui::SameLine();
+					ImGui::Text("%*d", (int)sizeof("sw"), (int) json_object_get_number(bo, "swizzle"));
 					ImGui::SameLine();
 
 					/* Hack the cursor position to get the button text aligned with the label. */

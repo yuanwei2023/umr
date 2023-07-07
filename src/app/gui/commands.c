@@ -184,7 +184,8 @@ static void read_size_from_md(struct umr_asic *asic, unsigned *metadata,
 
 static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
 							       unsigned *bo_handles, unsigned *bo_sizes,
-							       int bo_count, int *res, int *gpu_fds, int *formats)
+							       int bo_count, int *res, int *gpu_fds,
+							       int *formats, int *swizzles)
 {
 	int r;
 	int gpu_fd = -1;
@@ -233,6 +234,7 @@ static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
 
 			read_size_from_md(asic, metadata.data.data, &res[2 * j], &res[2 * j + 1]);
 			gpu_fds[j] = remote_gpu_fds[i];
+			swizzles[j] = metadata.data.tiling_info & 0x1f;
 
 			if (asic->family < FAMILY_NV)
 				formats[j] = (metadata.data.data[2 + 1] >> 20) & 0x3f;
@@ -2820,6 +2822,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			int *bo_res = alloca(sizeof(int) * 2 * json_array_get_count(bos));
 			int *gpu_fds = alloca(sizeof(int) * json_array_get_count(bos));
 			int *formats = alloca(sizeof(int) * json_array_get_count(bos));
+			int *swizzles = alloca(sizeof(int) * json_array_get_count(bos));
 			for (unsigned j = 0; j < json_array_get_count(bos); j++) {
 				JSON_Object *bo = json_object(json_array_get_value(bos, j));
 				bo_handles[j] = json_object_get_number(bo, "handle");
@@ -2828,7 +2831,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 			check_peak_bo_metadata(asic, json_object_get_number(app, "pid"),
 								   bo_handles, bo_sizes, json_array_get_count(bos),
-								   bo_res, gpu_fds, formats);
+								   bo_res, gpu_fds, formats, swizzles);
 
 			/* Remove invalid bo. */
 			unsigned null_count = 0;
@@ -2839,6 +2842,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 					json_object_set_number(bo, "height", bo_res[2 * j + 1]);
 					json_object_set_number(bo, "gpu_fd", gpu_fds[j]);
 					json_object_set_number(bo, "format", formats[j]);
+					json_object_set_number(bo, "swizzle", swizzles[j]);
 				} else {
 					json_array_replace_null(bos, j);
 					null_count++;
