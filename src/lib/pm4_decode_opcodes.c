@@ -399,6 +399,7 @@ static void load_X_reg(struct umr_asic *asic, struct umr_stream_decode_ui *ui, s
 			asic->err_msg("[ERROR]: Out of memory");
 			return;
 		}
+		strcat(str, "\n");
 
 		// fetch data
 		data = calloc(sizeof data[0], m);
