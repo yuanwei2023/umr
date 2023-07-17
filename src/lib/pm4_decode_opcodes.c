@@ -1196,7 +1196,8 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 			}
 		}
 
-		ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, 0, stream->n_words, opcode_name, stream->header, stream->words);
+		if (strcmp(opcode_name, "UNK"))
+			ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, 0, stream->n_words, opcode_name, stream->header, stream->words);
 
 		if (stream->pkttype == 3)
 			decode_pkt3(asic, ui, stream, ib_addr, ib_vmid);
