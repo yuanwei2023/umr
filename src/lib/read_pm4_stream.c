@@ -229,12 +229,17 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 		// fetch basics out of header
 		ps->header = *stream;
 		ps->pkttype = *stream >> 30;
-		ps->n_words = ((*stream >> 16) + 1) & 0x3FFF;
+		if (ps->pkttype == 3 || (asic->family <= FAMILY_AI && ps->pkttype == 0)) {
+			ps->n_words = ((*stream >> 16) + 1) & 0x3FFF;
+		} else {
+			ps->n_words = 0;
+			ps->pkttype = 0xff;
+		}
 
 		// grab type specific header data
 		if (ps->pkttype == 0)
 			ps->pkt0off = *stream & 0xFFFF;
-		else
+		else if (ps->pkttype == 3)
 			ps->opcode = (*stream >> 8) & 0xFF;
 
 		if (nwords < 1 + ps->n_words) {
@@ -249,13 +254,15 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 		} 
 
 		// grab rest of words
-		ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
-		memcpy(ps->words, &stream[1], ps->n_words * sizeof(stream[0]));
+		if (ps->n_words) {
+			ps->words = calloc(ps->n_words, sizeof(ps->words[0]));
+			memcpy(ps->words, &stream[1], ps->n_words * sizeof(stream[0]));
+		}
 
 		// decode specific packets
 		if (ps->pkttype == 3) {
 			parse_pm4(asic, vm_partition, vmid, ps);
-		} else {
+		} else if (ps->pkttype == 0) {
 			char *name;
 			name = umr_reg_name(asic, ps->pkt0off);
 

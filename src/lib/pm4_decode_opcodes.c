@@ -1181,9 +1181,9 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, nwords, 4);
 	ncodes = opcodes;
 	while (stream && ncodes--) {
-		if (stream->pkttype != 3) {
+		if (stream->pkttype == 0) {
 			opcode_name = "PKT0";
-		} else {
+		} else if (stream->pkttype == 3) {
 			switch (stream->opcode) {
 				case 0x33: // INDIRECT_BUFFER_CONST and COND_INDIRECT_BUFFER_CONST
 					opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER_CONST" : "PKT3_COND_INDIRECT_BUFFER_CONST";
@@ -1194,14 +1194,18 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 				default:
 					opcode_name = pm4_pkt3_opcode_names[stream->opcode];
 			}
+		} else if (stream->pkttype == 0xff) {
+			// invalid header dword
+			if (ui->unhandled_dword)
+				ui->unhandled_dword(ui, ib_addr, ib_vmid, stream->header);
 		}
 
-		if (strcmp(opcode_name, "UNK"))
+		if (stream->pkttype == 3 && strcmp(opcode_name, "UNK"))
 			ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, 0, stream->n_words, opcode_name, stream->header, stream->words);
 
 		if (stream->pkttype == 3)
 			decode_pkt3(asic, ui, stream, ib_addr, ib_vmid);
-		else
+		else if (stream->pkttype == 0)
 			decode_pkt0(asic, ui, stream, ib_addr, ib_vmid);
 
 		if (stream->shader)

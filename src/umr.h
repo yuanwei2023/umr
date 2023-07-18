@@ -1499,6 +1499,12 @@ struct umr_stream_decode_ui {
 	 */
 	void (*start_ib)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
 
+	/** unhandled_dword -- Print out a dword that doesn't match a valid packet header
+	 * ib_addr/ib_vmid: address of dword
+	 * dword: the value that doesn't decode to a valid header
+	 */
+	void (*unhandled_dword)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t dword);
+
 	/** start_opcode -- Start a new opcode
 	 * ib_addr/ib_vmid: Address of where packet is found
 	 * opcode: The numeric value of the ocpode

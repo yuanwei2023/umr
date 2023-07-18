@@ -2267,6 +2267,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		ui.data = &data;
 		ui.rt = rt;
 		ui.start_ib = ring_start_ib;
+		ui.unhandled_dword = NULL;
 		ui.start_opcode = ring_start_opcode;
 		ui.add_field = ring_add_field;
 		ui.add_shader = ring_add_shader;

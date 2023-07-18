@@ -1094,7 +1094,7 @@ static void done(struct umr_stream_decode_ui *ui)
 	--(data->sp);
 }
 
-static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, start_opcode, add_field, add_shader, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
+static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, NULL, start_opcode, add_field, add_shader, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
 
 static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *nwords)
 {
