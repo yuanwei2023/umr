@@ -1200,7 +1200,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->unhandled_dword(ui, ib_addr, ib_vmid, stream->header);
 		}
 
-		if (stream->pkttype == 3 && strcmp(opcode_name, "UNK"))
+		if ((stream->pkttype == 0 || stream->pkttype == 3) && strcmp(opcode_name, "UNK"))
 			ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, 0, stream->n_words, opcode_name, stream->header, stream->words);
 
 		if (stream->pkttype == 3)
