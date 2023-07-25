@@ -116,7 +116,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 				if (size > (1024UL * 1024UL * 8UL))
 					break;
 
-				tvmid = ps->words[2] >> 24;
+				tvmid = (ps->words[2] >> 24) & 0xF;
 				if (!tvmid)
 					tvmid = vmid;
 				buf = calloc(1, size);
