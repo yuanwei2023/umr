@@ -13,7 +13,7 @@ stages:
 variables:
   FDO_DISTRIBUTION_VERSION: latest
   FDO_UPSTREAM_REPO: '${CI_PROJECT_PATH}'
-  FDO_DISTRIBUTION_TAG: 'built-on-2023-06-08'
+  FDO_DISTRIBUTION_TAG: 'built-on-2023-06-26'
 
 # this is for general compilation/testing/day-to-day CI
 # this is also for umr.pkg.tar.zst release
@@ -23,17 +23,13 @@ build_docker_arch:
   stage: build_docker
   variables:
     FDO_DISTRIBUTION_PACKAGES: >
-      binutils
+      base-devel
       cmake
-      fakeroot
-      gcc
       git
       glew
       libdrm
       llvm
-      make
       nanomsg
-      pkgconf
       sdl2
 
 # build template
