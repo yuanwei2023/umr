@@ -183,10 +183,10 @@ build_zst:
     - .release_rules
   script:
     - mkdir -p build
+    - sed -e "s/^pkgver.*/pkgver=${CI_COMMIT_TAG}/" PKGBUILD > build/PKGBUILD
     # must exclude directory where the archive is being created
     # otherwise it will fail with 'file changed as we read it'
-    - tar cvfz build/umr.tar --exclude='build' ./
-    - cp PKGBUILD build/
+    - tar cvfj build/umr-${CI_COMMIT_TAG}.tar.bz2 --exclude='build' --exclude='.git' ./
     # MUST run makepkg as user...
     - useradd fake_user_makepkg
     - 'chown fake_user_makepkg build -R'
