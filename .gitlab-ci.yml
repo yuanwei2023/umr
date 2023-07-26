@@ -182,17 +182,15 @@ build_zst:
     - .fdo.distribution-image@arch
     - .release_rules
   script:
-    - mkdir -p build_arch
+    - mkdir -p build
     # must exclude directory where the archive is being created
     # otherwise it will fail with 'file changed as we read it'
-    - tar cvfz build_arch/umr.tar --exclude='build_arch' ./
-    - cp PKGBUILD build_arch/
+    - tar cvfz build/umr.tar --exclude='build' ./
+    - cp PKGBUILD build/
     # MUST run makepkg as user...
     - useradd fake_user_makepkg
-    - 'chown fake_user_makepkg build_arch -R'
-    - su fake_user_makepkg -c 'cd build_arch; makepkg'
-    - mkdir -p build
-    - cp build_arch/umr*.pkg.tar.zst build/
+    - 'chown fake_user_makepkg build -R'
+    - su fake_user_makepkg -c 'cd build; makepkg'
   artifacts:
     paths:
     - build/umr*.pkg.tar.zst
