@@ -10,7 +10,3 @@ add_subdirectory(app/gui/parson)
 
 add_subdirectory(lib)
 add_subdirectory(app)
-
-set(headers umr.h umrapp.h)
-
-install(FILES ${headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
