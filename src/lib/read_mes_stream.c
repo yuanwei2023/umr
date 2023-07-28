@@ -327,6 +327,8 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", (stream->words[i] >> 10) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_aql_queue", (stream->words[i] >> 11) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "skip_process_ctx_clear", (stream->words[i] >> 12) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "map_legacy_kq", (stream->words[i] >> 13) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "exclusively_scheduled", (stream->words[i] >> 14) & 1, NULL, 10, 32);
 				}
 				++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
