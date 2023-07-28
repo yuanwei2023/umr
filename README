@@ -35,12 +35,12 @@ you'll also need nanomsg, json-c and sdl2.
 
 To build umr:
 
-    $ mkdir build && cd build/ && cmake ../
-    $ make
+    $ cmake -B build-dir -S .
+    $ cmake --build build-dir
 
 and then to install:
 
-    $ make install
+    $ cmake --install build-dir
 
 To build rpm and deb packages, you will need rpmbuild, dpkg and cpack.
 To build:
@@ -64,22 +64,22 @@ tool on multi-user systems.
 NOTE:  You may disable LLVM dependencies by adding UMR_NO_LLVM to your
 environment.  e.g.,
 
-    $ cmake -DUMR_NO_LLVM=ON ../
+    $ cmake -DUMR_NO_LLVM=ON ...
 
 NOTE:  You may disable libDRM dependencies by adding UMR_NO_DRM to your
 environment.  e.g.,
 
-    $ cmake -DUMR_NO_DRM=ON ../
+    $ cmake -DUMR_NO_DRM=ON ...
 
 NOTE:  You may disable the graphical frontend by adding UMR_NO_GUI to your
 environment.  e.g.,
 
-    $ cmake -DUMR_NO_GUI=ON ../
+    $ cmake -DUMR_NO_GUI=ON ...
 
 NOTE:  You can disable the server feature by adding UMR_NO_SERVER to your
 environment.  e.g.,
 
-    $ cmake -DUMR_NO_SERVER=ON ../
+    $ cmake -DUMR_NO_SERVER=ON ...
 
 Running umr
 ------------
