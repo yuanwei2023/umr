@@ -243,7 +243,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			asic = umr_discover_asic_by_did(options, trydid, errout, &tryipdiscovery);
 			if (!asic && tryipdiscovery) {
 				char buf[32];
-				sprintf(buf, "0x%04" PRIx64, (uint64_t)trydid);
+				sprintf(buf, "amd%04" PRIx64, (uint64_t)trydid);
 				asic = umr_discover_asic_by_name(options, buf, errout);
 				if (asic)
 					errout("[WARNING]: Unknown ASIC [%s] should be added to pci.did to get proper name\n", buf);
