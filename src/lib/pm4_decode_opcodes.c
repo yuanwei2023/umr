@@ -43,12 +43,12 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 0e
 	"UNK", // 0f
 	"PKT3_NOP", // 10
-	"PKT3_SET_BASE", // 11
+	"UNK", // 11
 	"PKT3_CLEAR_STATE", // 12
-	"PKT3_INDEX_BUFFER_SIZE", // 13
+	"UNK", // 13
 	"UNK", // 14
 	"PKT3_DISPATCH_DIRECT", // 15
-	"PKT3_DISPATCH_INDIRECT", // 16
+	"UNK", // 16
 	"UNK", // 17
 	"UNK", // 18
 	"UNK", // 19
@@ -57,48 +57,48 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 1c
 	"PKT3_ATOMIC_GDS", // 1d
 	"PKT3_ATOMIC_MEM", // 1e
-	"PKT3_OCCLUSION_QUERY", // 1f
-	"PKT3_SET_PREDICATION", // 20
-	"PKT3_REG_RMW", // 21
+	"UNK", // 1f
+	"UNK", // 20
+	"UNK", // 21
 	"PKT3_COND_EXEC", // 22
-	"PKT3_PRED_EXEC", // 23
-	"PKT3_DRAW_INDIRECT", // 24
-	"PKT3_DRAW_INDEX_INDIRECT", // 25
-	"PKT3_INDEX_BASE", // 26
+	"UNK", // 23
+	"UNK", // 24
+	"UNK", // 25
+	"UNK", // 26
 	"PKT3_DRAW_INDEX_2", // 27
 	"PKT3_CONTEXT_CONTROL", // 28
 	"UNK", // 29
-	"PKT3_INDEX_TYPE", // 2a
+	"UNK", // 2a
 	"UNK", // 2b
-	"PKT3_DRAW_INDIRECT_MULTI", // 2c
+	"UNK", // 2c
 	"PKT3_DRAW_INDEX_AUTO", // 2d
-	"PKT3_DRAW_INDEX_IMMD", // 2e
+	"UNK", // 2e
 	"PKT3_NUM_INSTANCES", // 2f
-	"PKT3_DRAW_INDEX_MULTI_AUTO", // 30
+	"UNK", // 30
 	"UNK", // 31
-	"PKT3_INDIRECT_BUFFER_SI", // 32
+	"UNK", // 32
 	"PKT3_INDIRECT_BUFFER_CONST", // 33
-	"PKT3_STRMOUT_BUFFER_UPDATE", // 34
-	"PKT3_DRAW_INDEX_OFFSET_2", // 35
-	"PKT3_DRAW_PREAMBLE", // 36
+	"UNK", // 34
+	"UNK", // 35
+	"UNK", // 36
 	"PKT3_WRITE_DATA", // 37
-	"PKT3_DRAW_INDEX_INDIRECT_MULTI", // 38
-	"PKT3_MEM_SEMAPHORE", // 39
-	"PKT3_MPEG_INDEX", // 3a
+	"UNK", // 38
+	"UNK", // 39
+	"UNK", // 3a
 	"UNK", // 3b
 	"PKT3_WAIT_REG_MEM", // 3c
-	"PKT3_MEM_WRITE", // 3d
+	"UNK", // 3d
 	"UNK", // 3e
 	"PKT3_INDIRECT_BUFFER_CIK", // 3f
 	"PKT3_COPY_DATA", // 40
-	"PKT3_CP_DMA", // 41
+	"UNK", // 41
 	"PKT3_PFP_SYNC_ME", // 42
 	"PKT3_SURFACE_SYNC", // 43
-	"PKT3_ME_INITIALIZE", // 44
-	"PKT3_COND_WRITE", // 45
+	"UNK", // 44
+	"UNK", // 45
 	"PKT3_EVENT_WRITE", // 46
 	"PKT3_EVENT_WRITE_EOP", // 47
-	"PKT3_EVENT_WRITE_EOS", // 48
+	"UNK", // 48
 	"PKT3_RELEASE_MEM", // 49
 	"PKT3_PREAMBLE_CNTL", // 4a
 	"UNK", // 4b
@@ -113,9 +113,9 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 54
 	"UNK", // 55
 	"UNK", // 56
-	"PKT3_ONE_REG_WRITE", // 57
+	"UNK", // 57
 	"PKT3_ACQUIRE_MEM", // 58
-	"PKT3_REWIND", // 59
+	"UNK", // 59
 	"UNK", // 5a
 	"UNK", // 5b
 	"UNK", // 5c
@@ -141,12 +141,12 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 70
 	"UNK", // 71
 	"UNK", // 72
-	"PKT3_SET_CONTEXT_REG_INDIRECT", // 73
+	"UNK", // 73
 	"UNK", // 74
 	"UNK", // 75
 	"PKT3_SET_SH_REG", // 76
-	"PKT3_SET_SH_REG_OFFSET", // 77
-	"PKT3_SET_QUEUE_REG", // 78
+	"UNK", // 77
+	"UNK", // 78
 	"PKT3_SET_UCONFIG_REG", // 79
 	"PKT3_SET_UCONFIG_REG_INDEX", // 7a
 	"UNK", // 7b
@@ -159,10 +159,10 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 82
 	"PKT3_DUMP_CONST_RAM", // 83
 	"PKT3_INCREMENT_CE_COUNTER", // 84
-	"PKT3_INCREMENT_DE_COUNTER", // 85
+	"UNK", // 85
 	"PKT3_WAIT_ON_CE_COUNTER", // 86
 	"UNK", // 87
-	"PKT3_WAIT_ON_DE_COUNTER_DIFF", // 88
+	"UNK", // 88
 	"UNK", // 89
 	"UNK", // 8a
 	"PKT3_SWITCH_BUFFER", // 8b
