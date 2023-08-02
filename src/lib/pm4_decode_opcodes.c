@@ -393,42 +393,46 @@ static void load_X_reg(struct umr_asic *asic, struct umr_stream_decode_ui *ui, s
 		k = BITS(stream->words[n], 0, 16); // REG_OFFSET
 		m = BITS(stream->words[n + 1], 0, 14); // NUM_DWORDS
 
-		str_size = 4096;
-		str = calloc(1, str_size);
-		if (!str) {
-			asic->err_msg("[ERROR]: Out of memory");
-			return;
-		}
-		strcat(str, "\n");
-
-		// fetch data
-		data = calloc(sizeof data[0], m);
-		if (!data) {
-			asic->err_msg("[ERROR]: Out of memory");
-			free(str);
-			return;
-		}
-
-		if (!umr_read_vram(asic, asic->options.vm_partition, ib_vmid, base_addr + 4 * k, 4 * m, data)) {
-			// turn into data string
-			for (j = 0; j < m; j++) {
-				snprintf(tmpstr, sizeof tmpstr, "#%4"PRIx32":%s <= 0x%"PRIx32"\n", k + j, umr_reg_name(asic, reg_base + k + j), data[j]);
-				while (strlen(tmpstr) + strlen(str) >= str_size) {
-					char *tmp;
-					str_size += 4096;
-					tmp = realloc(str, str_size);
-					if (!tmp) {
-						asic->err_msg("[ERROR]: Out of memory\n");
-						free(data);
-						free(str);
-						return;
-					}
-					str = tmp;
-				}
-				strcat(str, tmpstr);
+		if (!asic->options.no_follow_ib) {
+			str_size = 4096;
+			str = calloc(1, str_size);
+			if (!str) {
+				asic->err_msg("[ERROR]: Out of memory");
+				return;
 			}
+			strcat(str, "\n");
+
+			// fetch data
+			data = calloc(sizeof data[0], m);
+			if (!data) {
+				asic->err_msg("[ERROR]: Out of memory");
+				free(str);
+				return;
+			}
+
+			if (!umr_read_vram(asic, asic->options.vm_partition, ib_vmid, base_addr + 4 * k, 4 * m, data)) {
+				// turn into data string
+				for (j = 0; j < m; j++) {
+					snprintf(tmpstr, sizeof tmpstr, "#%4"PRIx32":%s <= 0x%"PRIx32"\n", k + j, umr_reg_name(asic, reg_base + k + j), data[j]);
+					while (strlen(tmpstr) + strlen(str) >= str_size) {
+						char *tmp;
+						str_size += 4096;
+						tmp = realloc(str, str_size);
+						if (!tmp) {
+							asic->err_msg("[ERROR]: Out of memory\n");
+							free(data);
+							free(str);
+							return;
+						}
+						str = tmp;
+					}
+					strcat(str, tmpstr);
+				}
+			}
+			free(data);
+		} else {
+			str = NULL;
 		}
-		free(data);
 
 		ui->add_field(ui, ib_addr + 12 + ((n - 2) * 4), ib_vmid, "REG_OFFSET", k, umr_reg_name(asic, reg_base + k), 16, 32);
 		ui->add_field(ui, ib_addr + 16 + ((n - 2) * 4), ib_vmid, "NUM_DWORD", m, str, 10, 32);
