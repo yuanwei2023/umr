@@ -180,6 +180,7 @@ static void parse_options(char *str)
 		} else if (!strcmp(option, "no_follow_ib")) {
 			options.no_follow_ib = 1;
 			options.no_follow_shader = 1;
+			options.no_follow_loadx = 1;
 		} else if (!strcmp(option, "verbose")) {
 			options.verbose = 1;
 		} else if (!strcmp(option, "halt_waves")) {

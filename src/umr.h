@@ -289,6 +289,7 @@ struct umr_options {
 	    quiet,
 	    no_follow_ib,
 	    no_follow_shader,
+	    no_follow_loadx,
 	    verbose,
 	    halt_waves,
 	    no_kernel,

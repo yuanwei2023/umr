@@ -393,7 +393,7 @@ static void load_X_reg(struct umr_asic *asic, struct umr_stream_decode_ui *ui, s
 		k = BITS(stream->words[n], 0, 16); // REG_OFFSET
 		m = BITS(stream->words[n + 1], 0, 14); // NUM_DWORDS
 
-		if (!asic->options.no_follow_ib) {
+		if (!asic->options.no_follow_loadx) {
 			str_size = 4096;
 			str = calloc(1, str_size);
 			if (!str) {
