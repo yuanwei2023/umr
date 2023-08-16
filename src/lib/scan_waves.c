@@ -171,368 +171,22 @@ int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave
 	return 0;
 }
 
-static int umr_parse_wave_data_gfx_8(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf)
+int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf, uint32_t nwords)
 {
-	struct umr_reg *reg;
-	uint32_t value;
-	int x;
+	int maj, min;
+	uint32_t x;
 
-	if (buf[0] != 0) {
-		asic->err_msg("[ERROR]: Was expecting type 0 wave data on a CZ/VI part!\n");
-		return -1;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 8: if (buf[0] != 0) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX8\n"); return -1; }; break;
+		case 9: if (buf[0] != 1) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX9\n"); return -1; }; break;
+		case 10: if (buf[0] != 2) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX10\n"); return -1; }; break;
+		case 11: if (buf[0] != 3) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX11\n"); return -1; }; break;
+	};
+	for (x = 1; x < nwords; x++) {
+		ws->reg_values[x - 1] = buf[x];
 	}
-
-	x = 1;
-	ws->wave_status.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_STATUS");
-		ws->wave_status.scc = umr_bitslice_reg(asic, reg, "SCC", value);
-		ws->wave_status.priv = umr_bitslice_reg(asic, reg, "PRIV", value);
-		ws->wave_status.execz = umr_bitslice_reg(asic, reg, "EXECZ", value);
-		ws->wave_status.vccz  = umr_bitslice_reg(asic, reg, "VCCZ", value);
-		ws->wave_status.in_tg = umr_bitslice_reg(asic, reg, "IN_TG", value);
-		ws->wave_status.halt = umr_bitslice_reg(asic, reg, "HALT", value);
-		ws->wave_status.valid = umr_bitslice_reg(asic, reg, "VALID", value);
-		ws->wave_status.spi_prio = umr_bitslice_reg(asic, reg, "SPI_PRIO", value);
-		ws->wave_status.wave_prio = umr_bitslice_reg(asic, reg, "USER_PRIO", value);
-		ws->wave_status.trap_en = umr_bitslice_reg(asic, reg, "TRAP_EN", value);
-		ws->wave_status.ttrace_en = umr_bitslice_reg(asic, reg, "TTRACE_EN", value);
-		ws->wave_status.export_rdy = umr_bitslice_reg(asic, reg, "EXPORT_RDY", value);
-		ws->wave_status.in_barrier = umr_bitslice_reg(asic, reg, "IN_BARRIER", value);
-		ws->wave_status.trap = umr_bitslice_reg(asic, reg, "TRAP", value);
-		ws->wave_status.ecc_err = umr_bitslice_reg(asic, reg, "ECC_ERR", value);
-		ws->wave_status.skip_export = umr_bitslice_reg(asic, reg, "SKIP_EXPORT", value);
-		ws->wave_status.perf_en = umr_bitslice_reg(asic, reg, "PERF_EN", value);
-		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
-		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
-		ws->wave_status.data_atc = (value >> 0x16) & 1;
-		ws->wave_status.inst_atc = (value >> 0x17) & 1;
-		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
-		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
-
-	ws->pc_lo = buf[x++];
-	ws->pc_hi = buf[x++];
-	ws->exec_lo = buf[x++];
-	ws->exec_hi = buf[x++];
-
-	ws->hw_id.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID");
-		ws->hw_id.wave_id = umr_bitslice_reg(asic, reg, "WAVE_ID", value);
-		ws->hw_id.simd_id = umr_bitslice_reg(asic, reg, "SIMD_ID", value);
-		ws->hw_id.pipe_id = umr_bitslice_reg(asic, reg, "PIPE_ID", value);
-		ws->hw_id.cu_id   = umr_bitslice_reg(asic, reg, "CU_ID", value);
-		ws->hw_id.sh_id   = umr_bitslice_reg(asic, reg, "SH_ID", value);
-		ws->hw_id.se_id   = umr_bitslice_reg(asic, reg, "SE_ID", value);
-		ws->hw_id.tg_id   = umr_bitslice_reg(asic, reg, "TG_ID", value);
-		ws->hw_id.vm_id   = umr_bitslice_reg(asic, reg, "VM_ID", value);
-		ws->hw_id.queue_id = umr_bitslice_reg(asic, reg, "QUEUE_ID", value);
-		ws->hw_id.state_id = umr_bitslice_reg(asic, reg, "STATE_ID", value);
-		ws->hw_id.me_id    = umr_bitslice_reg(asic, reg, "ME_ID", value);
-
-	ws->wave_inst_dw0 = buf[x++];
-	ws->wave_inst_dw1 = buf[x++];
-
-	ws->gpr_alloc.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC");
-		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
-		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
-		ws->gpr_alloc.sgpr_base = umr_bitslice_reg(asic, reg, "SGPR_BASE", value);
-		ws->gpr_alloc.sgpr_size = umr_bitslice_reg(asic, reg, "SGPR_SIZE", value);
-
-	ws->lds_alloc.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC");
-		ws->lds_alloc.lds_base = umr_bitslice_reg(asic, reg, "LDS_BASE", value);
-		ws->lds_alloc.lds_size = umr_bitslice_reg(asic, reg, "LDS_SIZE", value);
-
-	ws->trapsts.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS");
-		ws->trapsts.excp = umr_bitslice_reg(asic, reg, "EXCP", value);
-		ws->trapsts.excp_cycle = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
-		ws->trapsts.dp_rate = umr_bitslice_reg(asic, reg, "DP_RATE", value);
-
-	ws->ib_sts.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS");
-		ws->ib_sts.vm_cnt = umr_bitslice_reg(asic, reg, "VM_CNT", value);
-		ws->ib_sts.exp_cnt = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
-		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value);
-		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
-
-	ws->tba_lo = buf[x++];
-	ws->tba_hi = buf[x++];
-	ws->tma_lo = buf[x++];
-	ws->tma_hi = buf[x++];
-	ws->ib_dbg0 = buf[x++];
-	ws->m0 = buf[x++];
-
-	ws->mode.value = value = buf[x++];
-		reg = umr_find_reg_data(asic, "ixSQ_WAVE_MODE");
-		ws->mode.fp_round = umr_bitslice_reg(asic, reg, "FP_ROUND", value);
-		ws->mode.fp_denorm = umr_bitslice_reg(asic, reg, "FP_DENORM", value);
-		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
-		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
-		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
-		ws->mode.debug_en = umr_bitslice_reg(asic, reg, "DEBUG_EN", value);
-		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
-		ws->mode.gpr_idx_en = umr_bitslice_reg(asic, reg, "GPR_IDX_EN", value);
-		ws->mode.vskip = umr_bitslice_reg(asic, reg, "VSKIP", value);
-		ws->mode.csp = umr_bitslice_reg(asic, reg, "CSP", value);
 	return 0;
-}
-
-static int umr_parse_wave_data_gfx_9(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf)
-{
-	struct umr_reg *reg;
-	uint32_t value;
-	int x;
-
-	if (buf[0] != 1) {
-		asic->err_msg("[ERROR]: Was expecting type 1 wave data on a FAMILY_AI part (not %"PRIx32")!\n", buf[0]);
-		return -1;
-	}
-
-	x = 1;
-	ws->wave_status.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_STATUS");
-		ws->wave_status.scc = umr_bitslice_reg(asic, reg, "SCC", value);
-		ws->wave_status.priv = umr_bitslice_reg(asic, reg, "PRIV", value);
-		ws->wave_status.execz = umr_bitslice_reg(asic, reg, "EXECZ", value);
-		ws->wave_status.vccz  = umr_bitslice_reg(asic, reg, "VCCZ", value);
-		ws->wave_status.in_tg = umr_bitslice_reg(asic, reg, "IN_TG", value);
-		ws->wave_status.halt = umr_bitslice_reg(asic, reg, "HALT", value);
-		ws->wave_status.valid = umr_bitslice_reg(asic, reg, "VALID", value);
-		ws->wave_status.spi_prio = umr_bitslice_reg(asic, reg, "SPI_PRIO", value);
-		ws->wave_status.wave_prio = umr_bitslice_reg(asic, reg, "USER_PRIO", value);
-		ws->wave_status.trap_en = umr_bitslice_reg(asic, reg, "TRAP_EN", value);
-		ws->wave_status.ttrace_en = umr_bitslice_reg(asic, reg, "TTRACE_EN", value);
-		ws->wave_status.export_rdy = umr_bitslice_reg(asic, reg, "EXPORT_RDY", value);
-		ws->wave_status.in_barrier = umr_bitslice_reg(asic, reg, "IN_BARRIER", value);
-		ws->wave_status.trap = umr_bitslice_reg(asic, reg, "TRAP", value);
-		ws->wave_status.ecc_err = umr_bitslice_reg(asic, reg, "ECC_ERR", value);
-		ws->wave_status.skip_export = umr_bitslice_reg(asic, reg, "SKIP_EXPORT", value);
-		ws->wave_status.perf_en = umr_bitslice_reg(asic, reg, "PERF_EN", value);
-		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
-		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
-		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
-		ws->wave_status.allow_replay = umr_bitslice_reg(asic, reg, "ALLOW_REPLAY", value);
-		ws->wave_status.fatal_halt = umr_bitslice_reg(asic, reg, "FATAL_HALT", value);
-		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
-
-	ws->pc_lo = buf[x++];
-	ws->pc_hi = buf[x++];
-	ws->exec_lo = buf[x++];
-	ws->exec_hi = buf[x++];
-
-	ws->hw_id.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_HW_ID");
-		ws->hw_id.wave_id = umr_bitslice_reg(asic, reg, "WAVE_ID", value);
-		ws->hw_id.simd_id = umr_bitslice_reg(asic, reg, "SIMD_ID", value);
-		ws->hw_id.pipe_id = umr_bitslice_reg(asic, reg, "PIPE_ID", value);
-		ws->hw_id.cu_id   = umr_bitslice_reg(asic, reg, "CU_ID", value);
-		ws->hw_id.sh_id   = umr_bitslice_reg(asic, reg, "SH_ID", value);
-		ws->hw_id.se_id   = umr_bitslice_reg(asic, reg, "SE_ID", value);
-		ws->hw_id.tg_id   = umr_bitslice_reg(asic, reg, "TG_ID", value);
-		ws->hw_id.vm_id   = umr_bitslice_reg(asic, reg, "VM_ID", value);
-		ws->hw_id.queue_id = umr_bitslice_reg(asic, reg, "QUEUE_ID", value);
-		ws->hw_id.state_id = umr_bitslice_reg(asic, reg, "STATE_ID", value);
-		ws->hw_id.me_id    = umr_bitslice_reg(asic, reg, "ME_ID", value);
-
-	ws->wave_inst_dw0 = buf[x++];
-	ws->wave_inst_dw1 = buf[x++];
-
-	ws->gpr_alloc.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_GPR_ALLOC");
-		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
-		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
-		ws->gpr_alloc.sgpr_base = umr_bitslice_reg(asic, reg, "SGPR_BASE", value);
-		ws->gpr_alloc.sgpr_size = umr_bitslice_reg(asic, reg, "SGPR_SIZE", value);
-
-	ws->lds_alloc.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_LDS_ALLOC");
-		ws->lds_alloc.lds_base = umr_bitslice_reg(asic, reg, "LDS_BASE", value);
-		ws->lds_alloc.lds_size = umr_bitslice_reg(asic, reg, "LDS_SIZE", value);
-
-	ws->trapsts.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_TRAPSTS");
-		ws->trapsts.excp = umr_bitslice_reg(asic, reg, "EXCP", value);
-		ws->trapsts.excp_cycle = umr_bitslice_reg(asic, reg, "EXCP_CYCLE", value);
-		ws->trapsts.dp_rate = umr_bitslice_reg(asic, reg, "DP_RATE", value);
-
-	ws->ib_sts.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_IB_STS");
-		ws->ib_sts.vm_cnt = umr_bitslice_reg(asic, reg, "VM_CNT", value);
-		ws->ib_sts.exp_cnt = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
-		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value);
-		ws->ib_sts.valu_cnt = umr_bitslice_reg(asic, reg, "VALU_CNT", value);
-
-	ws->ib_dbg0 = buf[x++];
-	ws->m0 = buf[x++];
-
-	ws->mode.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_MODE");
-		ws->mode.fp_round = umr_bitslice_reg(asic, reg, "FP_ROUND", value);
-		ws->mode.fp_denorm = umr_bitslice_reg(asic, reg, "FP_DENORM", value);
-		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
-		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
-		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
-		ws->mode.debug_en = umr_bitslice_reg(asic, reg, "DEBUG_EN", value);
-		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
-		ws->mode.fp16_ovfl = umr_bitslice_reg(asic, reg, "FP16_OVFL", value);
-		ws->mode.pops_packer0 = umr_bitslice_reg(asic, reg, "POPS_PACKER0", value);
-		ws->mode.pops_packer1 = umr_bitslice_reg(asic, reg, "POPS_PACKER1", value);
-		ws->mode.disable_perf = umr_bitslice_reg(asic, reg, "DISABLE_PERF", value);
-		ws->mode.gpr_idx_en = umr_bitslice_reg(asic, reg, "GPR_IDX_EN", value);
-		ws->mode.vskip = umr_bitslice_reg(asic, reg, "VSKIP", value);
-		ws->mode.csp = umr_bitslice_reg(asic, reg, "CSP", value);
-	return 0;
-}
-
-static int umr_parse_wave_data_gfx_10_11(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf)
-{
-	struct umr_ip_block *gfxip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
-	struct umr_reg *reg;
-	uint32_t value;
-	int x;
-
-	assert(gfxip->discoverable.maj >= 10 && gfxip->discoverable.maj <= 11);
-
-	if (gfxip->discoverable.maj == 10 && buf[0] != 2) {
-		asic->err_msg("[ERROR]: Was expecting type 2 wave data on a gfx10 part!\n");
-		return -1;
-	}
-	if (gfxip->discoverable.maj == 11 && buf[0] != 3) {
-		asic->err_msg("[ERROR]: Was expecting type 3 wave data on a gfx11 part!\n");
-		return -1;
-	}
-
-	memset(ws, 0, sizeof *ws);
-
-	x = 1;
-	ws->wave_status.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_STATUS");
-		ws->wave_status.scc = umr_bitslice_reg(asic, reg, "SCC", value);
-		ws->wave_status.priv = umr_bitslice_reg(asic, reg, "PRIV", value);
-		ws->wave_status.execz = umr_bitslice_reg(asic, reg, "EXECZ", value);
-		ws->wave_status.vccz  = umr_bitslice_reg(asic, reg, "VCCZ", value);
-		ws->wave_status.in_tg = umr_bitslice_reg(asic, reg, "IN_TG", value);
-		ws->wave_status.halt = umr_bitslice_reg(asic, reg, "HALT", value);
-		ws->wave_status.valid = umr_bitslice_reg(asic, reg, "VALID", value);
-		ws->wave_status.spi_prio = umr_bitslice_reg(asic, reg, "SPI_PRIO", value);
-		ws->wave_status.wave_prio = umr_bitslice_reg(asic, reg, "USER_PRIO", value);
-		ws->wave_status.trap_en = umr_bitslice_reg(asic, reg, "TRAP_EN", value);
-		ws->wave_status.ttrace_en = umr_bitslice_reg(asic, reg, "TTRACE_EN", value);
-		ws->wave_status.export_rdy = umr_bitslice_reg(asic, reg, "EXPORT_RDY", value);
-		ws->wave_status.in_barrier = umr_bitslice_reg(asic, reg, "IN_BARRIER", value);
-		ws->wave_status.trap = umr_bitslice_reg(asic, reg, "TRAP", value);
-		ws->wave_status.ecc_err = umr_bitslice_reg(asic, reg, "ECC_ERR", value);
-		ws->wave_status.skip_export = umr_bitslice_reg(asic, reg, "SKIP_EXPORT", value);
-		ws->wave_status.perf_en = umr_bitslice_reg(asic, reg, "PERF_EN", value);
-		ws->wave_status.cond_dbg_user = (value >> 0x14) & 1;
-		ws->wave_status.cond_dbg_sys = (value >> 0x15) & 1;
-		ws->wave_status.dispatch_cache_ctrl = (value >> 0x18) & 3;
-		ws->wave_status.fatal_halt = umr_bitslice_reg(asic, reg, "FATAL_HALT", value);
-		ws->wave_status.must_export = umr_bitslice_reg(asic, reg, "MUST_EXPORT", value);
-		ws->wave_status.ttrace_simd_en = umr_bitslice_reg(asic, reg, "TTRACE_SIMD_EN", value);
-
-	ws->pc_lo = buf[x++];
-	ws->pc_hi = buf[x++];
-	ws->exec_lo = buf[x++];
-	ws->exec_hi = buf[x++];
-
-	ws->hw_id1.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_HW_ID1");
-		ws->hw_id1.wave_id = umr_bitslice_reg(asic, reg, "WAVE_ID", value);
-		ws->hw_id1.simd_id = umr_bitslice_reg(asic, reg, "SIMD_ID", value);
-		ws->hw_id1.wgp_id  = umr_bitslice_reg(asic, reg, "WGP_ID", value);
-		ws->hw_id1.sa_id   = umr_bitslice_reg(asic, reg, "SA_ID", value);
-		ws->hw_id1.se_id   = umr_bitslice_reg(asic, reg, "SE_ID", value);
-
-	ws->hw_id2.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_HW_ID2");
-		ws->hw_id2.queue_id     = umr_bitslice_reg(asic, reg, "QUEUE_ID", value);
-		ws->hw_id2.pipe_id      = umr_bitslice_reg(asic, reg, "PIPE_ID", value);
-		ws->hw_id2.me_id        = umr_bitslice_reg(asic, reg, "ME_ID", value);
-		ws->hw_id2.state_id     = umr_bitslice_reg(asic, reg, "STATE_ID", value);
-		ws->hw_id2.wg_id        = umr_bitslice_reg(asic, reg, "WG_ID", value);
-		ws->hw_id2.vm_id        = umr_bitslice_reg(asic, reg, "VM_ID", value);
-		ws->hw_id2.compat_level = umr_bitslice_reg_quiet(asic, reg, "COMPAT_LEVEL", value); // not on 10.3
-
-	if (gfxip->discoverable.maj == 10)
-		ws->wave_inst_dw0 = buf[x++];
-
-	ws->gpr_alloc.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_GPR_ALLOC");
-		ws->gpr_alloc.vgpr_base = umr_bitslice_reg(asic, reg, "VGPR_BASE", value);
-		ws->gpr_alloc.vgpr_size = umr_bitslice_reg(asic, reg, "VGPR_SIZE", value);
-
-	ws->lds_alloc.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_LDS_ALLOC");
-		ws->lds_alloc.lds_base = umr_bitslice_reg(asic, reg, "LDS_BASE", value);
-		ws->lds_alloc.lds_size = umr_bitslice_reg(asic, reg, "LDS_SIZE", value);
-		ws->lds_alloc.vgpr_shared_size = umr_bitslice_reg(asic, reg, "VGPR_SHARED_SIZE", value);
-
-	ws->trapsts.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_TRAPSTS");
-		ws->trapsts.excp          = umr_bitslice_reg(asic, reg, "EXCP", value) |
-								    (umr_bitslice_reg(asic, reg, "EXCP_HI", value) << 9);
-		ws->trapsts.savectx       = umr_bitslice_reg(asic, reg, "SAVECTX", value);
-		ws->trapsts.illegal_inst  = umr_bitslice_reg(asic, reg, "ILLEGAL_INST", value);
-		ws->trapsts.excp_hi       = umr_bitslice_reg(asic, reg, "EXCP_HI", value);
-		ws->trapsts.buffer_oob    = umr_bitslice_reg(asic, reg, "BUFFER_OOB", value);
-		ws->trapsts.excp_cycle    = umr_bitslice_reg_quiet(asic, reg, "EXCP_CYCLE", value);
-		ws->trapsts.excp_group_mask = umr_bitslice_reg_quiet(asic, reg, "EXCP_GROUP_MASK", value);
-		ws->trapsts.excp_wave64hi = umr_bitslice_reg_quiet(asic, reg, "EXCP_WAVE64HI", value);
-		ws->trapsts.xnack_error   = umr_bitslice_reg_quiet(asic, reg, "XNACK_ERROR", value);
-		ws->trapsts.utc_error     = umr_bitslice_reg_quiet(asic, reg, "UTC_ERROR", value);
-		ws->trapsts.dp_rate       = umr_bitslice_reg_quiet(asic, reg, "DP_RATE", value);
-
-	ws->ib_sts.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_IB_STS");
-		ws->ib_sts.vm_cnt   = umr_bitslice_reg(asic, reg, "VM_CNT", value);
-		if (gfxip->discoverable.maj == 10)
-			ws->ib_sts.vm_cnt |= (umr_bitslice_reg(asic, reg, "VM_CNT_HI", value) << 4);
-		ws->ib_sts.exp_cnt  = umr_bitslice_reg(asic, reg, "EXP_CNT", value);
-		ws->ib_sts.lgkm_cnt = umr_bitslice_reg(asic, reg, "LGKM_CNT", value);
-		if (gfxip->discoverable.maj == 10)
-			ws->ib_sts.lgkm_cnt |= (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT4", value) << 4) |
-								   (umr_bitslice_reg(asic, reg, "LGKM_CNT_BIT5", value) << 5);
-		ws->ib_sts.valu_cnt = umr_bitslice_reg_quiet(asic, reg, "VALU_CNT", value);
-		ws->ib_sts.replay_w64h = umr_bitslice_reg_quiet(asic, reg, "REPLAY_W64H", value);
-		ws->ib_sts.vs_cnt   = umr_bitslice_reg(asic, reg, "VS_CNT", value);
-
-	ws->ib_sts2.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_IB_STS2");
-		ws->ib_sts2.inst_prefetch     = umr_bitslice_reg(asic, reg, "INST_PREFETCH", value);
-		ws->ib_sts2.resource_override = umr_bitslice_reg_quiet(asic, reg, "RESOURCE_OVERRIDE", value);
-		ws->ib_sts2.mem_order         = umr_bitslice_reg(asic, reg, "MEM_ORDER", value);
-		ws->ib_sts2.fwd_progress      = umr_bitslice_reg(asic, reg, "FWD_PROGRESS", value);
-		ws->ib_sts2.wave64            = umr_bitslice_reg(asic, reg, "WAVE64", value);
-		ws->ib_sts2.wave64hi          = umr_bitslice_reg_quiet(asic, reg, "WAVE64HI", value);
-		ws->ib_sts2.subv_loop         = umr_bitslice_reg_quiet(asic, reg, "SUBV_LOOP", value);
-
-	ws->ib_dbg1 = buf[x++];
-	ws->m0 = buf[x++];
-
-	ws->mode.value = value = buf[x++];
-		reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "ixSQ_WAVE_MODE");
-		ws->mode.fp_round = umr_bitslice_reg(asic, reg, "FP_ROUND", value);
-		ws->mode.fp_denorm = umr_bitslice_reg(asic, reg, "FP_DENORM", value);
-		ws->mode.dx10_clamp = umr_bitslice_reg(asic, reg, "DX10_CLAMP", value);
-		ws->mode.ieee = umr_bitslice_reg(asic, reg, "IEEE", value);
-		ws->mode.lod_clamped = umr_bitslice_reg(asic, reg, "LOD_CLAMPED", value);
-		ws->mode.debug_en = umr_bitslice_reg_quiet(asic, reg, "DEBUG_EN", value);
-		ws->mode.excp_en = umr_bitslice_reg(asic, reg, "EXCP_EN", value);
-		ws->mode.fp16_ovfl = umr_bitslice_reg(asic, reg, "FP16_OVFL", value);
-		ws->mode.disable_perf = umr_bitslice_reg(asic, reg, "DISABLE_PERF", value);
-	return 0;
-}
-
-int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf)
-{
-	if (asic->family < FAMILY_AI)
-		return umr_parse_wave_data_gfx_8(asic, ws, buf);
-	else if (asic->family < FAMILY_NV)
-		return umr_parse_wave_data_gfx_9(asic, ws, buf);
-	else
-		return umr_parse_wave_data_gfx_10_11(asic, ws, buf);
 }
 
 /**
@@ -555,8 +209,8 @@ int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t
 	if (r)
 		return -1;
 
-	if (!pwd->ws.wave_status.valid &&
-	    (!pwd->ws.wave_status.halt || pwd->ws.wave_status.value == 0xbebebeef))
+	if (!umr_wave_data_get_flag_valid(asic, pwd) &&
+	    (!umr_wave_data_get_flag_halt(asic, pwd) || umr_wave_data_get_value(asic, pwd, "ixSQ_WAVE_STATUS") == 0xbebebeef))
 		return 0;
 
 	pwd->se = se;
@@ -566,17 +220,17 @@ int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t
 	pwd->wave = wave;
 
 	if (!asic->options.skip_gprs) {
-		asic->gpr_read_funcs.read_sgprs(asic, &pwd->ws, &pwd->sgprs[0]);
+		asic->gpr_read_funcs.read_sgprs(asic, pwd, &pwd->sgprs[0]);
 
 		if (asic->family <= FAMILY_AI)
 			num_threads = 64;
 		else
-			num_threads = pwd->ws.ib_sts2.wave64 ? 64 : 32;
+			num_threads = umr_wave_data_get_flag_wave64(asic, pwd) ? 64 : 32;
 
 		pwd->have_vgprs = 1;
 		pwd->num_threads = num_threads;
 		for (thread = 0; thread < num_threads; ++thread) {
-			if (asic->gpr_read_funcs.read_vgprs(asic, &pwd->ws, thread,
+			if (asic->gpr_read_funcs.read_vgprs(asic, pwd, thread,
 					   &pwd->vgprs[256 * thread]) < 0) {
 				pwd->have_vgprs = 0;
 				break;
@@ -620,6 +274,7 @@ static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 				asic->err_msg("[ERROR]: Out of memory\n");
 				return -1;
 			}
+			pwd->next->reg_names = pwd->reg_names;
 			*pppwd = &pwd->next;
 		}
 		if (r == -1)
@@ -627,6 +282,87 @@ static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 	}
 	return 0;
 }
+
+static const char *gfx8_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID",
+	"ixSQ_WAVE_INST_DW0",
+	"ixSQ_WAVE_INST_DW1",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_TBA_LO",
+	"ixSQ_WAVE_TBA_HI",
+	"ixSQ_WAVE_TMA_LO",
+	"ixSQ_WAVE_TMA_HI",
+	"ixSQ_WAVE_IB_DBG0",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx9_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID",
+	"ixSQ_WAVE_INST_DW0",
+	"ixSQ_WAVE_INST_DW1",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_DBG0",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx10_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID1",
+	"ixSQ_WAVE_HW_ID2",
+	"ixSQ_WAVE_INST_DW0",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_STS2",
+	"ixSQ_WAVE_IB_DBG1",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx11_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID1",
+	"ixSQ_WAVE_HW_ID2",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_STS2",
+	"ixSQ_WAVE_IB_DBG1",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
 
 /**
  * umr_scan_wave_data - Scan for any halted valid waves
@@ -637,7 +373,7 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 {
 	uint32_t se, sh, simd;
 	struct umr_wave_data *ohead, *head, **ptail;
-	int r;
+	int r, maj, min;
 
 	ohead = head = calloc(1, sizeof *head);
 	if (!head) {
@@ -645,6 +381,18 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 		return NULL;
 	}
 	ptail = &head;
+
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 8: ohead->reg_names = gfx8_regs; break;
+		case 9: ohead->reg_names = gfx9_regs; break;
+		case 10: ohead->reg_names = gfx10_regs; break;
+		case 11: ohead->reg_names = gfx11_regs; break;
+		default:
+			asic->err_msg("[BUG]: Unsupported ASIC IP version in umr_scan_wave_data()\n");
+			free(ohead);
+			return NULL;
+	}
 
 	for (se = 0; se < asic->config.gfx.max_shader_engines; se++)
 	for (sh = 0; sh < asic->config.gfx.max_sh_per_se; sh++) {
@@ -683,4 +431,217 @@ error:
 		ohead = head;
 	}
 	return NULL;
+}
+
+uint32_t umr_wave_data_get_value(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname)
+{
+	int x;
+	for (x = 0; wd->reg_names[x]; x++) {
+		if (!strcmp(wd->reg_names[x], regname)) {
+			return wd->ws.reg_values[x];
+		}
+	}
+	asic->err_msg("[BUG]: Register (%s) not found in umr_wave_data list for this ASIC\n", regname);
+	return 0xDEADBEEF;
+}
+
+uint32_t umr_wave_data_get_bits(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname, const char *bitname)
+{
+	uint32_t value;
+
+	value = umr_wave_data_get_value(asic, wd, regname);
+	if (value == 0xDEADBEEF) {
+		return 0xDEADBEEF;
+	}
+	return umr_bitslice_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, (char*)regname, (char*)bitname, value);
+}
+
+int umr_wave_data_get_bit_info(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname, int *no_bits, struct umr_bitfield **bits)
+{
+	struct umr_reg *reg;
+	int x;
+
+	for (x = 0; wd->reg_names[x]; x++) {
+		if (!strcmp(wd->reg_names[x], regname)) {
+			break;
+		}
+	}
+
+	if (wd->reg_names[x] == NULL) {
+		asic->err_msg("[BUG]: Register [%s] not found in gfx IP\n", regname);
+		*no_bits = 0;
+		*bits = NULL;
+		return -2;
+	}
+	reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, wd->reg_names[x]);
+	if (reg) {
+		*no_bits = reg->no_bits;
+		*bits = reg->bits;
+		return 0;
+	} else {
+		asic->err_msg("[BUG]: Register [%s] not found in gfx IP\n", regname);
+		*no_bits = 0;
+		*bits = NULL;
+		return -1;
+	}
+}
+
+int umr_wave_data_get_flag_valid(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "VALID");
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_trap_en(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "TRAP_EN");
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_halt(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "HALT");
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_fatal_halt(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "FATAL_HALT");
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_priv(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "PRIV");
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_IB_STS2", "WAVE64");
+	}
+	return -1;
+}
+
+
+int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *vmid, uint64_t *addr)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+			*addr = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_LO") | ((uint64_t)umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_HI") << 32ULL);
+			*vmid = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "VM_ID");
+			return 0;
+		case 10:
+		case 11:
+			*addr = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_LO") | ((uint64_t)umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_HI") << 32ULL);
+			*vmid = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID2", "VM_ID");
+			return 0;
+	}
+	return -1;
+}
+
+uint32_t umr_wave_data_num_of_sgprs(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7: return (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE")) << 3;
+		case 8:
+		case 9: return (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE")) << 4;
+		case 10:
+		case 11: return 124;
+	}
+	return 0;
+}
+
+char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	char str[256];
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	memset(str, 0, sizeof str);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+			snprintf(str, sizeof(str)-1, "se%" PRIu32 ".sh%" PRIu32 ".cu%" PRIu32 ".simd%" PRIu32 ".wave%" PRIu32,
+				wd->se, wd->sh, wd->cu,
+				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID"),
+				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID"));
+			break;
+		case 10:
+		case 11:
+			snprintf(str, sizeof(str)-1, "se%" PRIu32 ".sa%" PRIu32 ".wgp%" PRIu32 ".simd%" PRIu32 ".wave%" PRIu32,
+				wd->se, wd->sh, wd->cu,
+				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"),
+				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID"));
+			break;
+	}
+	return strdup(str);
 }

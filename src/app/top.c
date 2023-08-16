@@ -317,7 +317,6 @@ static struct umr_bitfield stat_nv_sensor_bits[] = {
 #define AMDGPU_INFO_FENCES_SIGNALED 0x80
 #define AMDGPU_INFO_FENCES_EMITTED  0x81
 #define AMDGPU_INFO_FENCES_DELTA    0x82
-#define AMDGPU_INFO_WAVES           0x83
 
 static struct umr_bitfield stat_drm_bits[] = {
 	{ "BYTES_MOVED", AMDGPU_INFO_NUM_BYTES_MOVED, DRM_INFO_BYTES, &umr_bitfield_default },
@@ -328,7 +327,6 @@ static struct umr_bitfield stat_drm_bits[] = {
 	{ "FENCES_SIGNALED", AMDGPU_INFO_FENCES_SIGNALED, DRM_INFO_COUNT, &umr_bitfield_default },
 	{ "FENCES_EMITTED", AMDGPU_INFO_FENCES_EMITTED, DRM_INFO_COUNT, &umr_bitfield_default },
 	{ "FENCES_DELTA", AMDGPU_INFO_FENCES_DELTA, DRM_INFO_COUNT, &umr_bitfield_default },
-	{ "WAVES", AMDGPU_INFO_WAVES, DRM_INFO_COUNT, &umr_bitfield_default },
 	{ NULL, 0, 0, NULL },
 };
 
@@ -400,30 +398,6 @@ static void analyze_fence_info(struct umr_asic *asic)
 		last_fence_emitted = fence_emitted;
 		fclose(f);
 	}
-}
-
-static unsigned vi_count_waves(struct umr_asic *asic)
-{
-	uint32_t se, sh, cu, simd, wave, count;
-	struct umr_wave_status ws;
-
-	// don't count waves if PG is enabled because it causes GPU hangs
-	if ((asic->config.gfx.pg_flags & ~0xffffeffc) ||
-	    (asic->config.gfx.cg_flags & 0xFF))
-		return 0;
-
-	count = 0;
-	for (se = 0; se < asic->config.gfx.max_shader_engines; se++)
-	for (sh = 0; sh < asic->config.gfx.max_sh_per_se; sh++)
-	for (cu = 0; cu < asic->config.gfx.max_cu_per_sh; cu++) {
-		for (simd = 0; simd < 1; simd++)
-		for (wave = 0; wave < 10; wave++) { //both simd/wave are hard coded at the moment...
-			umr_get_wave_status(asic, se, sh, cu, simd, wave, &ws);
-			if (ws.wave_status.halt || ws.wave_status.valid)
-				++count;
-		}
-	}
-	return count;
 }
 
 static void slice(char *r, char *s)
@@ -727,8 +701,6 @@ static void parse_drm(struct umr_asic *asic, uint32_t addr, struct umr_bitfield 
 			counts[j] = fence_signal_count;
 		else if (bits[j].start == AMDGPU_INFO_FENCES_DELTA)
 			counts[j] = last_fence_emitted - last_fence_signaled;
-		else if (bits[j].start == AMDGPU_INFO_WAVES)
-			counts[j] = vi_count_waves(asic);
 		else
 			umr_query_drm(asic, bits[j].start, &counts[j], sizeof(counts[j]));
 	}

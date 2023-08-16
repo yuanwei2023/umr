@@ -497,12 +497,31 @@ struct umr_shader_disasm_funcs {
 	void *data;
 };
 
+struct umr_wave_status {
+	struct {
+		uint32_t
+			busy,
+			wave_level;
+	} sq_info;
+
+	uint32_t reg_values[64];
+};
+
+struct umr_wave_data {
+	uint32_t vgprs[64 * 256], sgprs[1024], num_threads;
+	int se, sh, cu, simd, wave, have_vgprs;
+	const char **reg_names;
+	struct umr_wave_status ws;
+	struct umr_wave_thread *threads;
+	struct umr_wave_data *next;
+};
+
 struct umr_read_gpr_funcs {
 	/** read_vgprs -- Read VGPR data for a given wave and thread */
-	int (*read_vgprs)(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst);
+	int (*read_vgprs)(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst);
 
 	/** read_sgprs -- Read VGPR data for a given wave */
-	int (*read_sgprs)(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst);
+	int (*read_sgprs)(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst);
 };
 
 struct umr_hive_info {
@@ -586,182 +605,6 @@ struct umr_asic {
 };
 
 typedef	int (*umr_err_output)(const char *, ...);
-
-
-struct umr_wave_status {
-	struct {
-		uint32_t
-			busy,
-			wave_level;
-	} sq_info;
-
-	struct {
-		uint32_t
-			value,
-			priv,
-			scc,
-			execz,
-			vccz,
-			in_tg,
-			halt,
-			valid,
-			spi_prio,
-			wave_prio,
-			trap_en,
-			ttrace_en,
-			export_rdy,
-			in_barrier,
-			trap,
-			ecc_err,
-			skip_export,
-			perf_en,
-			cond_dbg_user,
-			cond_dbg_sys,
-			allow_replay,
-			fatal_halt,
-			data_atc,
-			inst_atc,
-			dispatch_cache_ctrl,
-			must_export,
-			ttrace_simd_en;
-	} wave_status;
-
-	uint32_t
-		pc_lo,
-		pc_hi,
-		exec_lo,
-		exec_hi,
-		wave_inst_dw0,
-		wave_inst_dw1,
-		tba_lo,
-		tba_hi,
-		tma_lo,
-		tma_hi,
-		ib_dbg0,
-		ib_dbg1,
-		m0;
-
-	struct {
-		uint32_t
-			value,
-			wave_id,
-			simd_id,
-			pipe_id,
-			cu_id,
-			sh_id,
-			se_id,
-			tg_id,
-			vm_id,
-			queue_id,
-			state_id,
-			me_id;
-	} hw_id;
-
-	struct {
-			uint32_t
-					value,
-					wave_id,
-					simd_id,
-					wgp_id,
-					sa_id,
-					se_id;
-	} hw_id1;
-
-	struct {
-			uint32_t
-					value,
-					queue_id,
-					pipe_id,
-					me_id,
-					state_id,
-					wg_id,
-					vm_id,
-					compat_level;
-	} hw_id2;
-
-	struct {
-		uint32_t
-			value,
-			vgpr_base,
-			vgpr_size,
-			sgpr_base,
-			sgpr_size;
-	} gpr_alloc;
-
-	struct {
-		uint32_t
-			value,
-			lds_base,
-			lds_size,
-			vgpr_shared_size;
-	} lds_alloc;
-
-	struct {
-		uint32_t
-			value,
-			vm_cnt,
-			exp_cnt,
-			lgkm_cnt,
-			valu_cnt,
-			vs_cnt,
-			replay_w64h;
-	} ib_sts;
-
-	struct {
-			uint32_t
-					value,
-					inst_prefetch,
-					resource_override,
-					mem_order,
-					fwd_progress,
-					wave64,
-					wave64hi,
-					subv_loop;
-	} ib_sts2;
-
-	struct {
-		uint32_t
-			value,
-			excp,
-			excp_cycle,
-			dp_rate,
-			savectx,
-			illegal_inst,
-			excp_hi,
-			excp_wave64hi,
-			xnack_error,
-			buffer_oob,
-			excp_group_mask,
-			utc_error;
-	} trapsts;
-
-	struct {
-		uint32_t
-			value,
-			fp_round,
-			fp_denorm,
-			dx10_clamp,
-			ieee,
-			lod_clamped,
-			debug_en,
-			excp_en,
-			fp16_ovfl,
-			pops_packer0,
-			pops_packer1,
-			disable_perf,
-			gpr_idx_en,
-			vskip,
-			csp;
-	} mode;
-};
-
-struct umr_wave_data {
-	uint32_t vgprs[64 * 256], sgprs[1024], num_threads;
-	int se, sh, cu, simd, wave, have_vgprs;
-	struct umr_wave_status ws;
-	struct umr_wave_thread *threads;
-	struct umr_wave_data *next;
-};
 
 struct umr_shaders_pgm {
 	// VMID and length in bytes
@@ -1470,15 +1313,29 @@ int umr_update_string(struct umr_asic *asic, char *sdata);
 uint32_t umr_get_ip_revision(struct umr_asic *asic, const char *ipname);
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws);
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic);
+
+uint32_t umr_wave_data_get_value(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname);
+uint32_t umr_wave_data_get_bits(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname, const char *bitname);
+int umr_wave_data_get_bit_info(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname, int *no_bits, struct umr_bitfield **bits);
+int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *vmid, uint64_t *addr);
+uint32_t umr_wave_data_num_of_sgprs(struct umr_asic *asic, struct umr_wave_data *wd);
+char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_valid(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_trap_en(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_halt(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_fatal_halt(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_priv(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *wd);
+
 int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
 		       uint32_t simd, uint32_t wave, struct umr_wave_data *pwd);
 int umr_read_wave_status_via_mmio_gfx8_9(struct umr_asic *asic, uint32_t simd, uint32_t wave, uint32_t *dst, int *no_fields);
 int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields);
-int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf);
+int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf, uint32_t nwords);
 int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);
 int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);
-int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst);
-int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst);
+int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst);
+int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst);
 int umr_read_sensor(struct umr_asic *asic, int sensor, void *dst, int *size);
 
 /* mmio helpers */
@@ -1494,7 +1351,6 @@ uint32_t umr_find_reg(struct umr_asic *asic, const char *regname);
 // wildcard searches
 struct umr_find_reg_iter *umr_find_reg_wild_first(struct umr_asic *asic, const char *ip, const char *reg);
 struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter *iter);
-
 
 // find a register and return a printable name (used for human readable output)
 char *umr_reg_name(struct umr_asic *asic, uint64_t addr);
@@ -1792,7 +1648,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 		    uint64_t PC,
 		    char ***disasm_text);
 int umr_vm_disasm_to_str(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, char ***out);
-int umr_vm_disasm(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd);
+int umr_vm_disasm(struct umr_asic *asic, FILE *output, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd);
 uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition, struct umr_shaders_pgm *shader);
 
 

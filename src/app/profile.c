@@ -137,10 +137,12 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 		// loop through data ...
 		sample_hit = 0;
 		while (wd) {
-			phit[nitems].vmid = (asic->family < FAMILY_NV) ? wd->ws.hw_id.vm_id : wd->ws.hw_id2.vm_id;
-			phit[nitems].pc = ((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo;
-			phit[nitems].inst_dw0 = wd->ws.wave_inst_dw0;
-			phit[nitems].inst_dw1 = wd->ws.wave_inst_dw1;
+			uint32_t w_vmid;
+			uint64_t w_pc;
+
+			umr_wave_data_get_shader_pc_vmid(asic, wd, &w_vmid, &w_pc);
+			phit[nitems].vmid = w_vmid;
+			phit[nitems].pc = w_pc;
 
 			// try to find shader in PM4 stream
 			shader = NULL;

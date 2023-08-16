@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Advanced Micro Devices, Inc.
+ * Copyright 2023 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -35,15 +35,14 @@
 static struct umr_wave_data *find_wave(struct umr_asic *asic, struct umr_wave_data *wd, unsigned vmid, uint64_t addr)
 {
 	while (wd) {
-		uint64_t PC;
-		PC = ((uint64_t)wd->ws.pc_hi << 32) | wd->ws.pc_lo;
-		if (asic->family < FAMILY_NV) {
-			if (wd->ws.hw_id.vm_id == vmid && addr == PC)
-				break;
-		} else {
-			if (wd->ws.hw_id2.vm_id == vmid && addr == PC)
-				break;
-		}
+		uint64_t w_addr;
+		uint32_t w_vmid;
+
+		umr_wave_data_get_shader_pc_vmid(asic, wd, &w_vmid, &w_addr);
+
+		if (w_addr == addr && w_vmid == vmid)
+			break;
+
 		wd = wd->next;
 	}
 	return wd;
@@ -116,7 +115,7 @@ error:
  * @start_offset:  Offset of disassembly starting address from @addr
  * @wd: Wave scan data (or NULL) used to track activity in this shader
  */
-int umr_vm_disasm(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd)
+int umr_vm_disasm(struct umr_asic *asic, FILE *output, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd)
 {
 	uint32_t x, y, nwave, wavehits;
 	struct umr_wave_data *pwd;
@@ -136,7 +135,7 @@ int umr_vm_disasm(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64
 	if (r)
 		return r;
 	for (y = 0, x = start_offset / 4; x < (start_offset + size)/4; x++, y++) {
-		printf("%s", outstrs[y]);
+		fprintf(output, "%s", outstrs[y]);
 		free(outstrs[y]);
 
 		// if we have wave data see if we can find a wave at this
@@ -151,20 +150,22 @@ int umr_vm_disasm(struct umr_asic *asic, int vm_partition, unsigned vmid, uint64
 			while (pwd) {
 				++n;
 				++wavehits;
-				if (asic->options.bitfields)
-					printf("[se%u.sh%u.cu%u.simd%u.wave%u] ",
-						(unsigned)pwd->se, (unsigned)pwd->sh, (unsigned)pwd->cu, (unsigned)pwd->ws.hw_id.simd_id, (unsigned)pwd->ws.hw_id.wave_id);
+				if (asic->options.bitfields) {
+					char *str = umr_wave_data_describe_wavefront(asic, pwd);
+					fputs(str, output);
+					free(str);
+				}
 				pwd = find_wave(asic, pwd->next, vmid, addr + x * 4);
 			}
 			if (n)
-				printf("[%3u waves (%3u %%)]", n, (n * 100) / nwave);
+				fprintf(output, "[%3u waves (%3u %%)]", n, (n * 100) / nwave);
 		}
-		printf("\n");
+		fprintf(output, "\n");
 	}
-	printf("End of disassembly.\n");
+	fprintf(output, "End of disassembly.\n");
 
 	if (wd && wavehits)
-		printf("\t%u waves in this shader (out of %u active waves)\n", wavehits, nwave);
+		fprintf(output, "\t%u waves in this shader (out of %u active waves)\n", wavehits, nwave);
 
 	free(outstrs);
 	return r;

@@ -693,40 +693,29 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 	}
 }
 
-static int read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t *dst)
+static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst)
 {
-	uint64_t addr, shift, nr, x;
+	uint64_t addr, nr, x;
 	struct umr_test_harness *th = asic->reg_funcs.data;
 	struct umr_mmio_blocks *mm;
 
 	if (asic->family >= FAMILY_NV) {
-		addr =
-			(1ULL << 60)                             | // reading SGPRs
-			((uint64_t)0)                            | // starting address to read from
-			((uint64_t)ws->hw_id1.se_id << 12)       |
-			((uint64_t)ws->hw_id1.sa_id << 20)       |
-			((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
-			((uint64_t)ws->hw_id1.wave_id << 36)     |
-			(0ULL << 52); // thread_id
+		addr =  (1ULL << 60) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID") << 12) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID") << 20) |
+				((((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) |
+				  (uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID")) << 28) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID") << 36);
 
-		nr = 112;
-	} else {
-		if (asic->family <= FAMILY_CIK)
-			shift = 3;  // on SI..CIK allocations were done in 8-dword blocks
-		else
-			shift = 4;  // on VI allocations are in 16-dword blocks
-
-		addr =
-			(1ULL << 60)                             | // reading SGPRs
-			((uint64_t)0)                            | // starting address to read from
-			((uint64_t)ws->hw_id.se_id << 12)        |
-			((uint64_t)ws->hw_id.sh_id << 20)        |
-			((uint64_t)ws->hw_id.cu_id << 28)        |
-			((uint64_t)ws->hw_id.wave_id << 36)      |
-			((uint64_t)ws->hw_id.simd_id << 44)      |
-			(0ULL << 52); // thread_id
-
-		nr = (ws->gpr_alloc.sgpr_size + 1) << shift;
+		nr = umr_wave_data_num_of_sgprs(asic, wd);
+	} else if (asic->family < FAMILY_NV) {
+		addr =  (1ULL << 60) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SE_ID") << 12) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SH_ID") << 20) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "CU_ID") << 28) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID") << 36) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID") << 44);
+		nr = umr_wave_data_num_of_sgprs(asic, wd);
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
@@ -746,7 +735,7 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_
 	}
 
 	// read trap if any
-	if (ws->wave_status.trap_en || ws->wave_status.priv) {
+	if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
 		nr = 16;
 		addr += 4 * 0x6C;  // byte offset, kernel adds 0x200 to address
 		for (x = 0; x < nr;) {
@@ -764,7 +753,7 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_
 	return 0;
 }
 
-static int read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_t thread, uint32_t *dst)
+static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst)
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
 	struct umr_mmio_blocks *mm;
@@ -775,29 +764,26 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_status *ws, uint32_
 	if (asic->family < FAMILY_AI)
 		return -1;
 
+
 	if (asic->family >= FAMILY_NV) {
-		addr =
-			(0ULL << 60)                             | // reading VGPRs
-			((uint64_t)0)                            | // starting address to read from
-			((uint64_t)ws->hw_id1.se_id << 12)        |
-			((uint64_t)ws->hw_id1.sa_id << 20)        |
-			((uint64_t)((ws->hw_id1.wgp_id << 2) | ws->hw_id1.simd_id) << 28)  |
-			((uint64_t)ws->hw_id1.wave_id << 36)      |
-			((uint64_t)thread << 52);
+		addr =  (0ULL << 60) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID") << 12) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID") << 20) |
+				((((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) |
+				  (uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID")) << 28) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID") << 36) |
+				((uint64_t)thread << 52);
 
-		nr = (ws->gpr_alloc.vgpr_size + 1) << granularity;
-	} else {
-		addr =
-			(0ULL << 60)                             | // reading VGPRs
-			((uint64_t)0)                            | // starting address to read from
-			((uint64_t)ws->hw_id.se_id << 12)        |
-			((uint64_t)ws->hw_id.sh_id << 20)        |
-			((uint64_t)ws->hw_id.cu_id << 28)        |
-			((uint64_t)ws->hw_id.wave_id << 36)      |
-			((uint64_t)ws->hw_id.simd_id << 44)      |
-			((uint64_t)thread << 52);
-
-		nr = (ws->gpr_alloc.vgpr_size + 1) << granularity;
+		nr = (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
+	} else if (asic->family < FAMILY_NV) {
+		addr =  (0ULL << 60) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SE_ID") << 12) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SH_ID") << 20) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "CU_ID") << 28) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID") << 36) |
+				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID") << 44) |
+				((uint64_t)thread << 52);
+		nr = (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
@@ -854,7 +840,7 @@ static int wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned
 	}
 
 	if (x)
-		return umr_parse_wave_data_gfx(asic, ws, buf);
+		return umr_parse_wave_data_gfx(asic, ws, buf, x);
 	else
 		return -1;
 }

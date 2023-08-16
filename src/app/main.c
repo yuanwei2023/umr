@@ -780,7 +780,7 @@ int main(int argc, char **argv)
 					shader.addr = address;
 					size = umr_compute_shader_size(asic, asic->options.vm_partition, &shader);
 				}
-				umr_vm_disasm(asic, asic->options.vm_partition, vmid, address, 0, size, 0, NULL);
+				umr_vm_disasm(asic, stdout, asic->options.vm_partition, vmid, address, 0, size, 0, NULL);
 
 				i += 2;
 			} else {
