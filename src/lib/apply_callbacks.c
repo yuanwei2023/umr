@@ -47,7 +47,7 @@ void umr_apply_callbacks(struct umr_asic *asic,
 
 		asic->config.xgmi.nodes[n].asic->mem_funcs = *mems;
 		asic->config.xgmi.nodes[n].asic->reg_funcs = *regs;
-		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg(asic->config.xgmi.nodes[n].asic, reg, "PF_LFB_REGION", umr_read_reg(asic->config.xgmi.nodes[n].asic, reg->addr * 4, REG_MMIO));
+		asic->config.xgmi.nodes[n].hive_position = umr_bitslice_reg(asic->config.xgmi.nodes[n].asic, reg, "PF_LFB_REGION", asic->reg_funcs.read_reg(asic->config.xgmi.nodes[n].asic, reg->addr * 4, REG_MMIO));
 		++n;
 	}
 
