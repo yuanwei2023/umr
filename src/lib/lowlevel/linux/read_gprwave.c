@@ -135,8 +135,8 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 
 		// we use addr for test logging
 		addr =
-			(1ULL << 60)                             | // reading SGPRs
-			((uint64_t)0)                            | // starting address to read from
+			((v_or_s ? 0ULL : 1ULL) << 60) | // reading SGPRs
+			((uint64_t)0)                  | // starting address to read from
 			((uint64_t)id.se << 12)        |
 			((uint64_t)id.sh << 20)        |
 			((uint64_t)id.cu << 28)        |
@@ -237,6 +237,11 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 
 	if (asic->options.test_log && asic->options.test_log_fd) {
 		int x;
+		addr = ((uint64_t)id.se << 7) |
+			   ((uint64_t)id.sh << 15) |
+			   ((uint64_t)id.cu << 23) |
+			   ((uint64_t)id.wave << 31) |
+			   ((uint64_t)id.simd << 37);
 		fprintf(asic->options.test_log_fd, "WAVESTATUS@0x%"PRIx64" = { ", addr);
 		for (x = 0; x < r; x += 4) {
 			fprintf(asic->options.test_log_fd, "0x%"PRIx32, buf[x/4]);
