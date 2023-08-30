@@ -2,8 +2,7 @@ Decoding IB at 0@0x445000 from 0@0x0 of 50 words (type 4)
 [0@0x00445000 + 0x0000]	[        0xc0032200]	Opcode 0x22 [PKT3_COND_EXEC] (4 words, type: 3, hdr: 0xc0032200)
 [0@0x00445000 + 0x0004]	[        0x00401080]	|---> GPU_ADDR_LO32=0x401080
 [0@0x00445000 + 0x0008]	[        0x00000000]	|---> GPU_ADDR_HI32=0x0
-[0@0x00445000 + 0x000c]	[        0x00000000]	|---> TEST_VALUE=0x0
-[0@0x00445000 + 0x0010]	[        0x00000007]	|---> PATCH_VALUE=0x7
+[0@0x00445000 + 0x0010]	[        0x00000007]	|---> EXEC_COUNT=0x7
 [0@0x00445000 + 0x0014]	[        0xc0053c00]	Opcode 0x3c [PKT3_WAIT_REG_MEM] (6 words, type: 3, hdr: 0xc0053c00)
 [0@0x00445000 + 0x0018]	[        0x00000113]	|---> ENGINE=[PFP]/1, MEMSPACE=[MEM]/1, OPERATION=0, FUNCTION=[==]/3
 [0@0x00445000 + 0x001c]	[        0x00401040]	|---> POLL_ADDRESS_LO=0x401040, SWAP=0x0
@@ -16,8 +15,7 @@ Decoding IB at 0@0x445000 from 0@0x0 of 50 words (type 4)
 [0@0x00445000 + 0x0040]	[        0xc0032200]	Opcode 0x22 [PKT3_COND_EXEC] (4 words, type: 3, hdr: 0xc0032200)
 [0@0x00445000 + 0x0044]	[        0x00401080]	|---> GPU_ADDR_LO32=0x401080
 [0@0x00445000 + 0x0048]	[        0x00000000]	|---> GPU_ADDR_HI32=0x0
-[0@0x00445000 + 0x004c]	[        0x00000000]	|---> TEST_VALUE=0x0
-[0@0x00445000 + 0x0050]	[        0x0000001b]	|---> PATCH_VALUE=0x1b
+[0@0x00445000 + 0x0050]	[        0x0000001b]	|---> EXEC_COUNT=0x1b
 [0@0x00445000 + 0x0054]	[        0xc0012800]	Opcode 0x28 [PKT3_CONTEXT_CONTROL] (2 words, type: 3, hdr: 0xc0012800)
 [0@0x00445000 + 0x0058]	[        0x81018003]	|---> LOAD_EN=1, LOAD_CS=1, LOAD_GFX=1, LOAD_MULTI=1, LOAD_SINGLE=1
 [0@0x00445000 + 0x005c]	[        0x00000000]	|---> SHADOW_EN=0, SHADOW_CS=0, SHADOW_GFX=0, SHADOW_MULTI=0, SHADOW_SINGLE=0

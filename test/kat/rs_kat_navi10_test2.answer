@@ -2,8 +2,7 @@ Decoding IB at 0@0x400 from 0@0x0 of 256 words (type 4)
 [0@0x00000400 + 0x0000]	[        0xc0032200]	Opcode 0x22 [PKT3_COND_EXEC] (4 words, type: 3, hdr: 0xc0032200)
 [0@0x00000400 + 0x0004]	[        0x004010c0]	|---> GPU_ADDR_LO32=0x4010c0
 [0@0x00000400 + 0x0008]	[        0x00000000]	|---> GPU_ADDR_HI32=0x0
-[0@0x00000400 + 0x000c]	[        0x00000000]	|---> TEST_VALUE=0x0
-[0@0x00000400 + 0x0010]	[        0x00000027]	|---> PATCH_VALUE=0x27
+[0@0x00000400 + 0x0010]	[        0x00000027]	|---> EXEC_COUNT=0x27
 [0@0x00000400 + 0x0014]	[        0xc0053c00]	Opcode 0x3c [PKT3_WAIT_REG_MEM] (6 words, type: 3, hdr: 0xc0053c00)
 [0@0x00000400 + 0x0018]	[        0x00000143]	|---> ENGINE=[PFP]/1, MEMSPACE=[REG]/0, OPERATION=1, FUNCTION=[==]/3
 [0@0x00000400 + 0x001c]	[        0x00000e26]	|---> POLL_ADDRESS_LO=0xe24, SWAP=0x2
@@ -455,6 +454,7 @@ Decoding IB at 2@0x800000096000 from 0@0x444 of 8448 words (type 4)
 [2@0x800000096000 + 0x03c8]	[        0x00004000]	|---> gfx10110.mmCOMPUTE_USER_DATA_10=0x4000
 [2@0x800000096000 + 0x03cc]	[        0x31016fac]	|---> gfx10110.mmCOMPUTE_USER_DATA_11=0x31016fac
 [2@0x800000096000 + 0x03d0]	[        0xc0004200]	Opcode 0x42 [PKT3_PFP_SYNC_ME] (1 words, type: 3, hdr: 0xc0004200)
+[2@0x800000096000 + 0x03d4]	[        0x00000000]	|---> DUMMY_DATA=0x0
 [2@0x800000096000 + 0x03d8]	[        0xc0047600]	Opcode 0x76 [PKT3_SET_SH_REG] (5 words, type: 3, hdr: 0xc0047600)
 [2@0x800000096000 + 0x03e0]	[        0x00000000]	|---> gfx10110.mmCOMPUTE_USER_DATA_4=0x0
 [2@0x800000096000 + 0x03e4]	[        0x00000000]	|---> gfx10110.mmCOMPUTE_USER_DATA_5=0x0
@@ -479,6 +479,7 @@ Decoding IB at 2@0x800000096000 from 0@0x444 of 8448 words (type 4)
 [2@0x800000096000 + 0x0440]	[        0x00004000]	|---> gfx10110.mmCOMPUTE_USER_DATA_10=0x4000
 [2@0x800000096000 + 0x0444]	[        0x31016fac]	|---> gfx10110.mmCOMPUTE_USER_DATA_11=0x31016fac
 [2@0x800000096000 + 0x0448]	[        0xc0004200]	Opcode 0x42 [PKT3_PFP_SYNC_ME] (1 words, type: 3, hdr: 0xc0004200)
+[2@0x800000096000 + 0x044c]	[        0x00000000]	|---> DUMMY_DATA=0x0
 [2@0x800000096000 + 0x0450]	[        0xc0047600]	Opcode 0x76 [PKT3_SET_SH_REG] (5 words, type: 3, hdr: 0xc0047600)
 [2@0x800000096000 + 0x0458]	[        0x00000000]	|---> gfx10110.mmCOMPUTE_USER_DATA_4=0x0
 [2@0x800000096000 + 0x045c]	[        0x00000000]	|---> gfx10110.mmCOMPUTE_USER_DATA_5=0x0
@@ -510,6 +511,7 @@ Decoding IB at 2@0x800000096000 from 0@0x444 of 8448 words (type 4)
 [2@0x800000096000 + 0x04e0]	[        0x00010000]	|---> gfx10110.mmCOMPUTE_USER_DATA_10=0x10000
 [2@0x800000096000 + 0x04e4]	[        0x31016fac]	|---> gfx10110.mmCOMPUTE_USER_DATA_11=0x31016fac
 [2@0x800000096000 + 0x04e8]	[        0xc0004200]	Opcode 0x42 [PKT3_PFP_SYNC_ME] (1 words, type: 3, hdr: 0xc0004200)
+[2@0x800000096000 + 0x04ec]	[        0x00000000]	|---> DUMMY_DATA=0x0
 [2@0x800000096000 + 0x04f0]	[        0xc0055000]	Opcode 0x50 [PKT3_DMA_DATA] (6 words, type: 3, hdr: 0xc0055000)
 [2@0x800000096000 + 0x04f4]	[        0x60200000]	|---> ENGINE_SEL=0, SRC_CACHE_POLICY=0, DST_SEL=2, DST_CACHE_POLICY=0, SRC_SEL=3, CP_SYNC=0
 [2@0x800000096000 + 0x04f8]	[        0x00202800]	|---> SRC_ADDR_LO_OR_DATA=0x202800
@@ -4647,6 +4649,7 @@ Decoding IB at 2@0x800000096000 from 0@0x444 of 8448 words (type 4)
 [2@0x800000096000 + 0x4e68]	[        0xffffffff]	|---> MASK=0xffffffff
 [2@0x800000096000 + 0x4e6c]	[        0x00000004]	|---> POLL INTERVAL=0x4
 [2@0x800000096000 + 0x4e70]	[        0xc0004200]	Opcode 0x42 [PKT3_PFP_SYNC_ME] (1 words, type: 3, hdr: 0xc0004200)
+[2@0x800000096000 + 0x4e74]	[        0x00000000]	|---> DUMMY_DATA=0x0
 [2@0x800000096000 + 0x4e78]	[        0xc0004600]	Opcode 0x46 [PKT3_EVENT_WRITE] (1 words, type: 3, hdr: 0xc0004600)
 [2@0x800000096000 + 0x4e7c]	[        0x0000001a]	|---> EVENT_TYPE=26, EVENT_INDEX=0
 [2@0x800000096000 + 0x4e80]	[        0xc0055000]	Opcode 0x50 [PKT3_DMA_DATA] (6 words, type: 3, hdr: 0xc0055000)
@@ -19476,6 +19479,7 @@ Decoding IB at 2@0x8000000a0000 from 2@0x80000009e3f0 of 10240 words (type 4)
 [2@0x8000000a0000 + 0x9664]	[        0xffffffff]	|---> MASK=0xffffffff
 [2@0x8000000a0000 + 0x9668]	[        0x00000004]	|---> POLL INTERVAL=0x4
 [2@0x8000000a0000 + 0x966c]	[        0xc0004200]	Opcode 0x42 [PKT3_PFP_SYNC_ME] (1 words, type: 3, hdr: 0xc0004200)
+[2@0x8000000a0000 + 0x9670]	[        0x00000000]	|---> DUMMY_DATA=0x0
 [2@0x8000000a0000 + 0x9674]	[        0xc0004600]	Opcode 0x46 [PKT3_EVENT_WRITE] (1 words, type: 3, hdr: 0xc0004600)
 [2@0x8000000a0000 + 0x9678]	[        0x0000001a]	|---> EVENT_TYPE=26, EVENT_INDEX=0
 [2@0x8000000a0000 + 0x967c]	[        0xc0047600]	Opcode 0x76 [PKT3_SET_SH_REG] (5 words, type: 3, hdr: 0xc0047600)

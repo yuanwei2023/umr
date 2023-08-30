@@ -500,8 +500,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 		case 0x22: // COND_EXEC
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "GPU_ADDR_LO32", BITS(stream->words[0], 2, 32) << 2, NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "GPU_ADDR_HI32", stream->words[1], NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "TEST_VALUE", stream->words[2], NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 16, ib_vmid, "PATCH_VALUE", stream->words[3], NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "EXEC_COUNT", BITS(stream->words[3], 0, 14), NULL, 16, 32);
 			break;
 		case 0x27: // DRAW_INDEX_2
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "MAX_SIZE", stream->words[0], NULL, 10, 32);
@@ -619,6 +618,9 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 			}
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", stream->words[4], NULL, 16, 32);
 			break;
+		case 0x42: // PFP_SYNC_ME
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DUMMY_DATA", stream->words[0], NULL, 16, 32);
+			break;
 		case 0x43: // SURFACE_SYNC
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(stream->words[0], 31, 32), BITS(stream->words[0], 31, 32) ? "ME" : "PFP", 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(stream->words[0], 0, 29), NULL, 10, 32);
@@ -684,6 +686,9 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 
 			if (asic->family >= FAMILY_AI)
 				ui->add_field(ui, ib_addr + 28, ib_vmid, "INT_CTXID", stream->words[6], NULL, 16, 32);
+			break;
+		case 0x4A: // PREABMLE_CNTL
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(stream->words[0], 28, 32), NULL, 16, 32);
 			break;
 		case 0x4C: // DISPATCH_MESH_INDIRECT_MULTI
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", stream->words[0], NULL, 16, 32);
