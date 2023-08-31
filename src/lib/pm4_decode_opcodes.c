@@ -855,6 +855,9 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "FORCE_SYNC", BITS(stream->words[0], 1, 2), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "MEM_VOLATILE", BITS(stream->words[0], 27, 28), NULL, 10, 32);
 			break;
+		case 0x8B: // SWITCH_BUFFER
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DUMMY", stream->words[0], NULL, 16, 32);
+			break;
 		case 0x90: // FRAME_CONTROL
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TMZ", BITS(stream->words[0], 0, 1), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(stream->words[0], 28, 32), NULL, 10, 32);
