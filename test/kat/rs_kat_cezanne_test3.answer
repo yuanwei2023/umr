@@ -11,7 +11,9 @@ Decoding IB at 0@0x445000 from 0@0x0 of 50 words (type 4)
 [0@0x00445000 + 0x0028]	[        0xffffffff]	|---> MASK=0xffffffff
 [0@0x00445000 + 0x002c]	[        0x00000004]	|---> POLL INTERVAL=0x4
 [0@0x00445000 + 0x0030]	[        0xc0008b00]	Opcode 0x8b [PKT3_SWITCH_BUFFER] (1 words, type: 3, hdr: 0xc0008b00)
+[0@0x00445000 + 0x0034]	[        0x00000000]	|---> DUMMY=0x0
 [0@0x00445000 + 0x0038]	[        0xc0008b00]	Opcode 0x8b [PKT3_SWITCH_BUFFER] (1 words, type: 3, hdr: 0xc0008b00)
+[0@0x00445000 + 0x003c]	[        0x00000000]	|---> DUMMY=0x0
 [0@0x00445000 + 0x0040]	[        0xc0032200]	Opcode 0x22 [PKT3_COND_EXEC] (4 words, type: 3, hdr: 0xc0032200)
 [0@0x00445000 + 0x0044]	[        0x00401080]	|---> GPU_ADDR_LO32=0x401080
 [0@0x00445000 + 0x0048]	[        0x00000000]	|---> GPU_ADDR_HI32=0x0
@@ -44,6 +46,7 @@ Decoding IB at 0@0x445000 from 0@0x0 of 50 words (type 4)
 [0@0x00445000 + 0x00b8]	[        0x00000000]	|---> DATA_HI=0x0
 [0@0x00445000 + 0x00bc]	[        0x00000000]	|---> INT_CTXID=0x0
 [0@0x00445000 + 0x00c0]	[        0xc0008b00]	Opcode 0x8b [PKT3_SWITCH_BUFFER] (1 words, type: 3, hdr: 0xc0008b00)
+[0@0x00445000 + 0x00c4]	[        0x00000000]	|---> DUMMY=0x0
 Done decoding IB
 
 Decoding IB at 3@0x800000022c00 from 0@0x445068 of 2304 words (type 4)

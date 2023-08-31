@@ -43,6 +43,7 @@ Decoding IB at 0@0x400 from 0@0x0 of 256 words (type 4)
 [0@0x00000400 + 0x00a8]	[        0x00000000]	|---> DATA_HI=0x0
 [0@0x00000400 + 0x00ac]	[        0x00000000]	|---> INT_CTXID=0x0
 [0@0x00000400 + 0x00b0]	[        0xc0008b00]	Opcode 0x8b [PKT3_SWITCH_BUFFER] (1 words, type: 3, hdr: 0xc0008b00)
+[0@0x00000400 + 0x00b4]	[        0x00000000]	|---> DUMMY=0x0
 [0@0x00000400 + 0x00b8]	[        0xffff1000]	Opcode 0x10 [PKT3_NOP] (0 words, type: 3, hdr: 0xffff1000)
 [0@0x00000400 + 0x00bc]	[        0xffff1000]	Opcode 0x10 [PKT3_NOP] (0 words, type: 3, hdr: 0xffff1000)
 [0@0x00000400 + 0x00c0]	[        0xffff1000]	Opcode 0x10 [PKT3_NOP] (0 words, type: 3, hdr: 0xffff1000)
