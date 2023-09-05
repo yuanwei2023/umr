@@ -1410,6 +1410,7 @@ enum umr_ring_type {
 	UMR_RING_PM4_LITE,
 	UMR_RING_SDMA,
 	UMR_RING_MES,
+	UMR_RING_VPE,
 
 	UMR_RING_GUESS,
 	UMR_RING_UNK=0xFF, // if unknown
@@ -1513,6 +1514,7 @@ struct umr_packet_stream {
 		struct umr_pm4_stream *pm4;
 		struct umr_sdma_stream *sdma;
 		struct umr_mes_stream *mes;
+		struct umr_vpe_stream *vpe;
 	} stream;
 
 	void *cont;
@@ -1642,6 +1644,32 @@ struct umr_mes_stream {
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
 struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
 void umr_free_mes_stream(struct umr_mes_stream *stream);
+
+/* vpe decoding */
+struct umr_vpe_stream {
+	uint32_t
+		opcode,
+		sub_opcode,
+		nwords,
+		header_dw,
+		*words;
+
+	struct {
+		uint32_t vmid, size;
+		uint64_t addr;
+	} ib;
+
+	struct {
+		int vmid;
+		uint64_t addr;
+	} from;
+
+	struct umr_vpe_stream *next, *next_ib;
+};
+
+struct umr_vpe_stream *umr_vpe_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+void umr_free_vpe_stream(struct umr_vpe_stream *stream);
+struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vpe_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 
 int umr_shader_disasm(struct umr_asic *asic,
 		    uint8_t *inst, unsigned inst_bytes,

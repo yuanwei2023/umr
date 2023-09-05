@@ -61,6 +61,9 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 		case UMR_RING_MES:
 			p = str->stream.mes = umr_mes_decode_stream(asic, stream, nwords);
 			break;
+		case UMR_RING_VPE:
+			p = str->stream.vpe = umr_vpe_decode_stream(asic, asic->options.vm_partition, from_addr, from_vmid, stream, nwords);
+			break;
 		case UMR_RING_UNK:
 		default:
 			free(str);
@@ -110,6 +113,8 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 			rt = UMR_RING_SDMA;
 		} else if (!memcmp(ringname, "mes", 3)) {
 			rt = UMR_RING_MES;
+		} else if (!memcmp(ringname, "vpe", 3)) {
+			rt = UMR_RING_VPE;
 		} else {
 			asic->err_msg("[ERROR]: Unknown ring type <%s> for umr_packet_decode_ring()\n", ringname);
 			return NULL;
@@ -234,6 +239,9 @@ void umr_packet_free(struct umr_packet_stream *stream)
 			case UMR_RING_MES:
 				umr_free_mes_stream(stream->stream.mes);
 				break;
+			case UMR_RING_VPE:
+				umr_free_vpe_stream(stream->stream.vpe);
+				break;
 			case UMR_RING_UNK:
 			default:
 				stream->asic->err_msg("[BUG]: Invalid ring type in packet_free() call.\n");
@@ -259,7 +267,8 @@ struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream,
 
 		case UMR_RING_SDMA:
 		case UMR_RING_MES:
-			stream->asic->err_msg("[BUG]: Cannot find shader in MES or SDMA types of streams\n");
+		case UMR_RING_VPE:
+			stream->asic->err_msg("[BUG]: Cannot find shader in VPE, MES, or SDMA types of streams\n");
 			return NULL;
 
 		case UMR_RING_UNK:
@@ -299,6 +308,10 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
 			break;
 		case UMR_RING_MES:
 			stream->cont = umr_mes_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.mes, ib_addr, ib_vmid, opcodes);
+			break;
+		case UMR_RING_VPE:
+			stream->cont = umr_vpe_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.vpe, ib_addr, ib_vmid,
+														 from_addr, from_vmid, opcodes, follow);
 			break;
 		case UMR_RING_UNK:
 		default:

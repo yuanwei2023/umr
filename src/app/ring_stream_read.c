@@ -1162,6 +1162,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 		case UMR_RING_PM4_LITE:
 		case UMR_RING_SDMA:
 		case UMR_RING_MES:
+		case UMR_RING_VPE:
 		case UMR_RING_GUESS:
 			if (ringname)
 				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt);
@@ -1181,6 +1182,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
 			case UMR_RING_MES:
+			case UMR_RING_VPE:
 				umr_packet_disassemble_stream(str, ringname ? (uint64_t)start : addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
 			case UMR_RING_GUESS:
@@ -1204,6 +1206,7 @@ static void present(struct umr_asic *asic, char *ringname, int start, int end, u
 			case UMR_RING_PM4_LITE:
 			case UMR_RING_SDMA:
 			case UMR_RING_MES:
+			case UMR_RING_VPE:
 				umr_packet_free(str);
 				break;
 			case UMR_RING_GUESS:
@@ -1238,6 +1241,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		enable_decoder = 3;
 	} else if (sscanf(ringpath, "2/%s", fname) == 1) {
 		enable_decoder = 2;
+	} else if (sscanf(ringpath, "1/%s", fname) == 1) {
+		enable_decoder = 1;
 	} else {
 		memset(ringname, 0, sizeof ringname);
 		memset(from, 0, sizeof from);
@@ -1297,6 +1302,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_SDMA);
 	} else if (enable_decoder == 2) {
 		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_MES);
+	} else if (enable_decoder == 1) {
+		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_VPE);
 	} else if (enable_decoder == 0) {
 		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_GUESS);
 	} else {

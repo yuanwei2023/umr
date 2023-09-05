@@ -27,6 +27,7 @@ add_library(umrcore
   read_mes_stream.c
   read_pm4_stream.c
   read_sdma_stream.c
+  read_vpe_stream.c
   read_vram.c
   ring_is_halted.c
   scan_config.c
@@ -36,6 +37,7 @@ add_library(umrcore
   sq_cmd_halt_waves.c
   testing_harness.c
   version.c
+  vpe_decode_opcodes.c
   $<TARGET_OBJECTS:database>
 )
 
