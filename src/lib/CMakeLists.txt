@@ -27,6 +27,7 @@ add_library(umrcore
   read_mes_stream.c
   read_pm4_stream.c
   read_sdma_stream.c
+  read_umsch_stream.c
   read_vpe_stream.c
   read_vram.c
   ring_is_halted.c

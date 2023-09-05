@@ -1411,6 +1411,7 @@ enum umr_ring_type {
 	UMR_RING_SDMA,
 	UMR_RING_MES,
 	UMR_RING_VPE,
+	UMR_RING_UMSCH,
 
 	UMR_RING_GUESS,
 	UMR_RING_UNK=0xFF, // if unknown
@@ -1515,6 +1516,7 @@ struct umr_packet_stream {
 		struct umr_sdma_stream *sdma;
 		struct umr_mes_stream *mes;
 		struct umr_vpe_stream *vpe;
+		struct umr_umsch_stream *umsch;
 	} stream;
 
 	void *cont;
@@ -1671,6 +1673,33 @@ struct umr_vpe_stream *umr_vpe_decode_stream(struct umr_asic *asic, int vm_parti
 void umr_free_vpe_stream(struct umr_vpe_stream *stream);
 struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vpe_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 
+/* umsch decoding */
+struct umr_umsch_stream {
+	uint32_t
+		opcode,
+		type,
+		nwords,
+		header_dw,
+		*words;
+
+	struct {
+		uint32_t vmid, size;
+		uint64_t addr;
+	} ib;
+
+	struct {
+		int vmid;
+		uint64_t addr;
+	} from;
+
+	struct umr_umsch_stream *next, *next_ib;
+};
+
+struct umr_umsch_stream *umr_umsch_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+void umr_free_umsch_stream(struct umr_umsch_stream *stream);
+struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_umsch_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+
+/* shader disassembly */
 int umr_shader_disasm(struct umr_asic *asic,
 		    uint8_t *inst, unsigned inst_bytes,
 		    uint64_t PC,
@@ -1690,7 +1719,6 @@ int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t siz
 #define umr_write_vram(asic, partition, vmid, address, size, src) umr_access_vram(asic, partition, vmid, address, size, src, 1)
 
 // test harness support
-
 struct umr_test_harness *umr_create_test_harness_file(const char *fname);
 struct umr_test_harness *umr_create_test_harness(const char *script);
 void umr_free_test_harness(struct umr_test_harness *th);

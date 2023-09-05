@@ -522,7 +522,7 @@ int main(int argc, char **argv)
 				uint32_t vmid, len;
 				int pm;
 				char str[128];
-				char prefix[] = { ' ', ' ', '2', '3', '4' };
+				char prefix[] = { ' ', '1', '2', '3', '4', '5' };
 
 				if (!asic)
 					asic = get_asic();
@@ -553,7 +553,7 @@ int main(int argc, char **argv)
 				int pm;
 				char *name = argv[i+1];
 				char str[128];
-				char prefix[] = { ' ', ' ', '2', '3', '4' };
+				char prefix[] = { ' ', '1', '2', '3', '4', '5' };
 
 				if (!asic)
 					asic = get_asic();
@@ -1074,11 +1074,11 @@ printf(
 "\n\t--dump-ib, -di [vmid@]address length [pm]"
 	"\n\t\tDump an IB packet at an address with an optional VMID.  The length is specified"
 	"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
-	"\n\t\tCan specify '3' for SDMA packets, and '2' for MES packets\n"
+	"\n\t\tCan specify '3' for SDMA packets, '2' for MES packets, '1' for VPE packets, and '5' for UMSCH packets.\n"
 "\n\t--dump-ib-file, -df filename [pm]"
 	"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line."
-	"\n\t\tOptionally supply a PM type, can specify '2' for MES, '3' for SDMA IBs, or '4' for"
-	"\n\t\tPM4 IBs.  The default is PM4.\n"
+	"\n\t\tCan optionally specify '3' for SDMA packets, '2' for MES packets, '1' for VPE packets, and '5' for UMSCH packets.\n"
+	"\n\t\tThe default is PM4.\n"
 "\n\t--header-dump, -hd [HEADER_DUMP_reg]"
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
 	"\n\t\thuman readable string.\n"
