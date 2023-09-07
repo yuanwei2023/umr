@@ -1708,6 +1708,23 @@ int umr_vm_disasm_to_str(struct umr_asic *asic, int vm_partition, unsigned vmid,
 int umr_vm_disasm(struct umr_asic *asic, FILE *output, int vm_partition, unsigned vmid, uint64_t addr, uint64_t PC, uint32_t size, uint32_t start_offset, struct umr_wave_data *wd);
 uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition, struct umr_shaders_pgm *shader);
 
+// mqd decoding
+enum umr_mqd_engine_sel {
+	UMR_MQD_ENGINE_COMPUTE=0,
+	UMR_MQD_ENGINE_RESERVED,
+	UMR_MQD_ENGINE_SDMA0,
+	UMR_MQD_ENGINE_SDMA1,
+	UMR_MQD_ENGINE_GFX,
+};
+
+struct umr_mqd_fields {
+	uint32_t offset;
+	char *label;
+};
+
+uint32_t umr_mqd_decode_size(enum umr_mqd_engine_sel eng, enum chipfamily fam);
+uint32_t umr_mqd_decode_rows(enum umr_mqd_engine_sel eng, enum chipfamily fam);
+char **umr_mqd_decode_data(enum umr_mqd_engine_sel eng, enum chipfamily fam, uint32_t *data, char *match);
 
 // memory access
 int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en);

@@ -21,6 +21,7 @@ add_library(umrcore
   ih_decode_vectors.c
   get_ip_rev.c
   mmio.c
+  mqd_decode.c
   packet_stream.c
   pm4_decode_opcodes.c
   pm4_lite.c
