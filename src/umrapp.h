@@ -43,6 +43,7 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue);
 void umr_read_ring_stream(struct umr_asic *asic, char *ringpath);
 void umr_ib_read(struct umr_asic *asic, unsigned vmid, uint64_t addr, uint32_t len, int pm);
 void umr_ib_read_file(struct umr_asic *asic, char *filename, int pm);
+void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t *words, uint32_t nwords, enum umr_ring_type rt);
 
 void umr_lookup(struct umr_asic *asic, char *address, char *value);
 void umr_scan_log(struct umr_asic *asic);
@@ -69,3 +70,5 @@ void umr_enumerate_devices(umr_err_output errout);
 int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream);
 void umr_print_cpc(struct umr_asic *asic);
 void umr_print_sdma(struct umr_asic *asic);
+void umr_dump_runlists(struct umr_asic *asic, int node);
+int umr_kfd_topo_get_pci_busaddr(int node, char *busaddr);

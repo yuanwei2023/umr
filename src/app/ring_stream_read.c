@@ -1024,6 +1024,10 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 {
 	struct ui_data *data = ui->data;
 
+	// don't fetch MQD blocks if no_follow is enabled
+	if (asic->options.no_follow_ib)
+		return;
+
 	next_level(ui);
 	fprintf(data->stack[data->sp].f, "Data block from %"PRIu32"@[0x%"PRIx64" + 0x%"PRIx64"] at %"PRIu32"@0x%"PRIx64", type %d, ", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, buf_vmid, buf_addr, type);
 	// what type is this
@@ -1138,7 +1142,7 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 	return data;
 }
 
-static void present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t *words, uint32_t nwords, enum umr_ring_type rt)
+void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t *words, uint32_t nwords, enum umr_ring_type rt)
 {
 	struct umr_packet_stream *str = NULL;
 	struct umr_stream_decode_ui ui;
@@ -1302,17 +1306,17 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 
 	/* pm4 streams */
 	if (enable_decoder == 4) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_PM4);
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_PM4);
 	} else if (enable_decoder == 3) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_SDMA);
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_SDMA);
 	} else if (enable_decoder == 2) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_MES);
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_MES);
 	} else if (enable_decoder == 1) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_VPE);
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_VPE);
 	} else if (enable_decoder == 5) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_UMSCH);
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_UMSCH);
 	} else if (enable_decoder == 0) {
-		present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_GUESS);
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_GUESS);
 	} else {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
 	}

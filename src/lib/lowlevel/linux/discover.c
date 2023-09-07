@@ -69,6 +69,14 @@ static int find_pci_instance(const char* pci_string)
 		    strcmp(dir_entry->d_name, "..") == 0)
 			continue;
 
+		// ignore non AMDGPU DRI directoties
+		snprintf(name, sizeof(name), "/sys/kernel/debug/dri/%s/amdgpu_regs2",
+			dir_entry->d_name);
+		f = fopen(name, "r");
+		if (!f)
+			continue;
+
+		// now try to match PCI bus address
 		snprintf(name, sizeof(name), "/sys/kernel/debug/dri/%s/name",
 			dir_entry->d_name);
 

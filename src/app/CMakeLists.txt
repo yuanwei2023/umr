@@ -51,6 +51,7 @@ add_library(umrapp
   discovery.c
   print_cpc.c
   print_sdma.c
+  runlist.c
   ${GUI_SOURCE}
 )
 target_link_libraries(umrapp parson ${UMRAPP_DRM_LIBS})

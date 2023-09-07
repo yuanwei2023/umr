@@ -77,6 +77,7 @@ retry:
 		printf("ASIC not found (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
 		exit(EXIT_FAILURE);
 	}
+
 	umr_scan_config(asic, 1);
 
 	// assign linux callbacks
@@ -955,6 +956,25 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--runlist") || !strcmp(argv[i], "-rls")) {
+			char busaddr[64];
+			if (i + 1 < argc) {
+				int node = atoi(argv[i + 1]); ++i;
+				if (umr_kfd_topo_get_pci_busaddr(node, busaddr)) {
+					return EXIT_FAILURE;
+				}
+				sscanf(busaddr, "%04x:%02x:%02x.%01x", &options.pci.domain, &options.pci.bus, &options.pci.slot, &options.pci.func);
+				options.use_pci = 0;
+				// TODO: it'd be nice to get VMID from the PASID so we can enable these
+				options.no_follow_ib = 1;
+				options.no_follow_shader = 1;
+				options.no_follow_loadx = 1;
+				asic = asic ? asic: get_asic();
+				umr_dump_runlists(asic, node);
+			} else {
+				fprintf(stderr, "[ERROR]: --runlist requires one parameter\n");
+				return EXIT_FAILURE;
+			}
 		} else if (!strcmp(argv[i], "--dump-discovery-table") || !strcmp(argv[i], "-ddt")) {
 			asic = asic ? asic: get_asic();
 			umr_dump_discovery_table_info(asic, NULL);
@@ -1108,8 +1128,9 @@ printf(
 	"\n\t--vbios-info, -vi \n\t\tPrint Video BIOS information\n"
 "\n*** Test Vector Generation ***\n"
 	"\n\t--test-log, -tl <filename>\n\t\tLog all MMIO/memory reads to a file\n"
-	"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n");
-
+	"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n"
+"\n*** KFD Support ***\n"
+	"\n\t--runlist, -rls <node>\n\t\tDump any runlists for a given KFD node specified\n");
 #if UMR_SERVER
 printf(
 "\n*** GUI server ***\n");
