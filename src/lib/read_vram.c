@@ -1252,11 +1252,14 @@ pde_is_pte:
 				goto invalid_page;
 
 			// compute starting address
-			// this also accounts for PDE-is-PTE masking since current_depth > 0 at this point
-			if (!further)
+			if (pde_was_pte && current_depth) {
+				// Each PTB covers 2^page_table_block_size * 2^21 bytes (2MiB). Each non-zero level of PDB has 2^9 PDEs.
+				offset_mask = (1ULL << ((current_depth - 1) * 9 + (21 + page_table_block_size))) - 1;
+			} else if (!further) {
 				offset_mask = (1ULL << ((current_depth * 9) + (12 + pde0_block_fragment_size))) - 1;
-			else
+			} else {
 				offset_mask = (1ULL << (12 + pte_block_fragment_size)) - 1;
+			}
 
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
 		} else {
