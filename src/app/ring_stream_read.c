@@ -167,21 +167,22 @@ static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, u
 
 static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype)
 {
-	static const char *selnames[] = { "compute", "reserved", "sdma0", "sdma1", "gfx" };
 	struct ui_data *data = ui->data;
 	char **txt;
-	enum umr_mqd_engine_sel eng;
-	uint32_t mqd[512], x;
 
-	// don't fetch MQD blocks if no_follow is enabled
+	// don't fetch data blocks if no_follow is enabled
 	if (asic->options.no_follow_ib)
 		return;
 
 	next_level(ui);
 	fprintf(data->stack[data->sp].f, "Data block from %"PRIu32"@[0x%"PRIx64" + 0x%"PRIx64"] at %"PRIu32"@0x%"PRIx64", type %d, ", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, buf_vmid, buf_addr, type);
-	fprintf(data->stack[data->sp].f, "sub-type %"PRIu64"[%s]\n", etype, selnames[etype]);
 
 	if (type == UMR_DATABLOCK_MQD_VI || type == UMR_DATABLOCK_MQD_NV) {
+		static const char *selnames[] = { "compute", "reserved", "sdma0", "sdma1", "gfx" };
+		enum umr_mqd_engine_sel eng;
+		uint32_t mqd[512], x;
+
+		fprintf(data->stack[data->sp].f, "sub-type %"PRIu64"[%s]\n", etype, selnames[etype]);
 		switch (etype) { // ENGINE_SEL from MAP_QUEUES packet
 			case 0: eng = UMR_MQD_ENGINE_COMPUTE; break;
 			case 2:
@@ -190,11 +191,13 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 		}
 		if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
 			txt = umr_mqd_decode_data(eng, asic->family, mqd, "*");
-			for (x = 0; txt[x]; x++) {
-				fprintf(data->stack[data->sp].f, "\t%s\n", txt[x]);
-				free(txt[x]);
+			if (txt) {
+				for (x = 0; txt[x]; x++) {
+					fprintf(data->stack[data->sp].f, "\t%s\n", txt[x]);
+					free(txt[x]);
+				}
+				free(txt);
 			}
-			free(txt);
 		}
 	}
 	fprintf(data->stack[data->sp].f, "Done output of block\n\n");
