@@ -130,12 +130,34 @@ static uint64_t read_int_drm(int cardno, char *fname)
 	return 0;
 }
 
+void umr_scan_config_gca_data(struct umr_asic *asic)
+{
+	int r = 0;
+	switch (asic->config.data[0]) {
+		case 0: parse_rev0(asic, asic->config.data, &r);
+			break;
+		case 1: parse_rev1(asic, asic->config.data, &r);
+			break;
+		case 2: parse_rev2(asic, asic->config.data, &r);
+			break;
+		case 3: parse_rev3(asic, asic->config.data, &r);
+			break;
+		case 4: parse_rev4(asic, asic->config.data, &r);
+			break;
+		case 5: parse_rev5(asic, asic->config.data, &r);
+			break;
+		default:
+			asic->err_msg("Invalid or unknown GCA config data header version:%d\n",
+				      asic->config.data[0]);
+			return -1;
+	}
+}
+
 /**
  * umr_scan_config - Scan the debugfs configuration data
  */
 int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 {
-	uint32_t data[512];
 	FILE *f;
 	char fname[256];
 	int r;
@@ -219,14 +241,14 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 gca_config:
 	if (asic->options.test_log && !asic->options.test_log_fd) {
 		// grab from test harness instead of system
-		r = umr_test_harness_get_config_data(asic, (uint8_t *)data);
+		r = umr_test_harness_get_config_data(asic, (uint8_t *)asic->config.data);
 	} else {
 		// grab from system
 		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gca_config", asic->instance);
 		f = fopen(fname, "rb");
 		if (!f)
 			return -1;
-		r = fread(data, 1, sizeof(data), f);
+		r = fread(asic->config.data, 1, sizeof(asic->config.data), f);
 		fclose(f);
 		if (r < 0)
 			return -1;
@@ -234,7 +256,7 @@ gca_config:
 		// store in test vector if open
 		if (asic->options.test_log && asic->options.test_log_fd) {
 			int x;
-			uint8_t *d = (uint8_t *)data;
+			uint8_t *d = (uint8_t *)asic->config.data;
 			fprintf(asic->options.test_log_fd, "GCACONFIG = { ");
 			for (x = 0; x < r; x++) {
 				fprintf(asic->options.test_log_fd, "%02"PRIx8, d[x]);
@@ -243,24 +265,7 @@ gca_config:
 		}
 	}
 
-	switch (data[0]) {
-		case 0: parse_rev0(asic, data, &r);
-			break;
-		case 1: parse_rev1(asic, data, &r);
-			break;
-		case 2: parse_rev2(asic, data, &r);
-			break;
-		case 3: parse_rev3(asic, data, &r);
-			break;
-		case 4: parse_rev4(asic, data, &r);
-			break;
-		case 5: parse_rev5(asic, data, &r);
-			break;
-		default:
-			asic->err_msg("Invalid or unknown GCA config data header version:%d\n",
-				      data[0]);
-			return -1;
-	}
+	umr_scan_config_gca_data(asic);
 
 	if (asic->family == FAMILY_CONFIGURE) {
 		asic->was_ip_discovered = 1;

@@ -566,6 +566,7 @@ struct umr_asic {
 			int callbacks_applied;
 			struct umr_hive_info nodes[UMR_MAX_XGMI_DEVICES];
 		} xgmi;
+		uint32_t data[512];
 	} config;
 	struct {
 		int mmio,
@@ -1761,6 +1762,7 @@ void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize);
 
 void umr_bitfield_default(struct umr_asic *asic, char *asicname, char *ipname, char *regname, char *bitname, int start, int stop, uint32_t value);
 int umr_scan_config(struct umr_asic *asic, int xgmi_scan);
+void umr_scan_config_gca_data(struct umr_asic *asic);
 void umr_apply_callbacks(struct umr_asic *asic,
 			 struct umr_memory_access_funcs *mems,
 			 struct umr_register_access_funcs *regs);
