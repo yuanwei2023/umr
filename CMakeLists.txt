@@ -1,9 +1,5 @@
 # Copyright 2017 Edward O'Callaghan <funfunctor@folklore1984.net>
 
-# Temporarily disable GUI
-set(UMR_NO_GUI ON)
-
-
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 cmake_minimum_required(VERSION 3.15)

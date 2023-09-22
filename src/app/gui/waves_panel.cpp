@@ -140,15 +140,11 @@ public:
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		ImGui::Checkbox("Disable gfxoff", &turn_off_gfxoff);
 		ImGui::SameLine();
-		ImGui::Checkbox("Halt waves", &halt);
-		if (halt) {
-			ImGui::SameLine();
-			ImGui::Checkbox("Resume waves", &resume);
-		}
+		ImGui::Checkbox("Resume waves", &resume);
 		ImGui::SameLine();
 		ImGui::BeginDisabled(!can_send_request);
 		if (ImGui::Button("Query")) {
-			send_waves_command(halt, resume, turn_off_gfxoff);
+			send_waves_command(resume, turn_off_gfxoff);
 		}
 		ImGui::EndDisabled();
 
@@ -158,7 +154,6 @@ public:
 			bool force_scroll = false;
 			for (size_t i = 0; i < waves.size(); ++i) {
 				JSON_Object *wave = waves[i].wave;
-				JSON_Object *status = json_object(json_object_get_value(wave, "status"));
 
 				int active_threads = -1;
 				uint64_t exec = 0;
@@ -184,28 +179,6 @@ public:
 					sprintf(label, "Wave %s (#dbde79%d threads)", waves[i].id.c_str(), active_threads);
 
 				if (ImGui::TreeNode(waves[i].id.c_str(), "%s", label)) {
-					ImGui::Columns(3);
-					ImGui::Text("se:            #586e750x%x", (unsigned int)json_object_get_number(wave, "se"));
-					ImGui::NextColumn();
-					ImGui::Text("sh:            #586e750x%x", (unsigned int)json_object_get_number(wave, "sh"));
-					ImGui::NextColumn();
-					if (asic->family < FAMILY_NV) {
-						ImGui::Text("cu: #586e750x%x", (unsigned int)json_object_get_number(wave, "cu"));
-						ImGui::NextColumn();
-					} else {
-						ImGui::Text("wgp: #586e750x%x", (unsigned int)json_object_get_number(wave, "wgp"));
-						ImGui::NextColumn();
-					}
-					ImGui::Text("simd_id:       #586e750x%x", (unsigned int)json_object_get_number(wave, "simd_id"));
-					ImGui::NextColumn();
-					ImGui::Text("wave_id:       #586e750x%x", (unsigned int)json_object_get_number(wave, "wave_id"));
-					ImGui::NextColumn();
-					ImGui::NextColumn();
-					ImGui::Text("wave_inst_dw0: #586e750x%08x", (unsigned int)json_object_get_number(wave, "wave_inst_dw0"));
-					ImGui::NextColumn();
-					ImGui::Text("wave_inst_dw1: #586e750x%08x", (unsigned int)json_object_get_number(wave, "wave_inst_dw1"));
-					ImGui::Columns(1);
-					ImGui::Separator();
 					ImGui::NextColumn();
 					ImGui::Text("PC: #b589000x%" PRIx64, (uint64_t)json_object_get_number(wave, "PC"));
 					if (shader_address_str) {
@@ -226,42 +199,32 @@ public:
 					} else {
 					}
 					ImGui::NextColumn();
-					if (ImGui::TreeNodeEx("Status")) {
-						ImGui::Columns(4);
-						size_t n = json_object_get_count(status);
+					if (ImGui::TreeNodeEx("Registers")) {
+						JSON_Object *registers = json_object(json_object_get_value(wave, "registers"));
+						size_t n = json_object_get_count(registers);
 						for (size_t j = 0; j < n; j++) {
-							ImGui::Text("%s: #b58900%d", json_object_get_name(status, j),
-														 (unsigned)json_number(json_object_get_value_at(status, j)));
-							ImGui::NextColumn();
-						}
-						ImGui::Columns(1);
-						ImGui::TreePop();
-					}
-					if (ImGui::TreeNodeEx("Hardware Id")) {
-						ImGui::Columns(4);
-						JSON_Object *hw_id = json_object(json_object_get_value(wave, "hw_id"));
-						size_t n = json_object_get_count(hw_id);
-						for (size_t j = 0; j < n; j++) {
-							ImGui::Text("%s: #b58900%d", json_object_get_name(hw_id, j),
-														 (unsigned)json_number(json_object_get_value_at(hw_id, j)));
-							ImGui::NextColumn();
-						}
-						ImGui::Columns(1);
-						ImGui::TreePop();
-					}
-					if (ImGui::TreeNodeEx("GPR Alloc")) {
-						ImGui::Columns(4);
-						JSON_Object *gpr_alloc = json_object(json_object_get_value(wave, "gpr_alloc"));
-						size_t n = json_object_get_count(gpr_alloc);
-						for (size_t j = 0; j < n; j++) {
-							ImGui::Text("%s: #b58900%d", json_object_get_name(gpr_alloc, j),
-														 (unsigned)json_number(json_object_get_value_at(gpr_alloc, j)));
-							ImGui::NextColumn();
-						}
-						ImGui::Columns(1);
-						ImGui::TreePop();
-					}
+							char label[256];
+							JSON_Object *reg = json_object(json_object_get_value_at(registers, j));
+							sprintf(label, "%s: #b589000x%08x",
+								json_object_get_name(registers, j), (unsigned int)json_object_get_number(reg, "raw"));
 
+							if (ImGui::TreeNodeEx(label)) {
+								ImGui::BeginTable(json_object_get_name(registers, j), 2,
+												  ImGuiTableFlags_RowBg);
+								for (size_t k = 1; k < json_object_get_count(reg); k++) {
+									ImGui::TableNextRow();
+									ImGui::TableSetColumnIndex(0);
+									ImGui::TextUnformatted(json_object_get_name(reg, k));
+									ImGui::TableSetColumnIndex(1);
+									ImGui::Text("#dbde790x%x", (unsigned int)json_number(json_object_get_value_at(reg, k)));
+								}
+								ImGui::EndTable();
+								ImGui::TreePop();
+							}
+						}
+						ImGui::Columns(1);
+						ImGui::TreePop();
+					}
 					{
 						static const char *formats[] = { "s%*d: #d33682%d", "s%*d: #d33682%u", "s%*d: #d33682%08x" };
 						JSON_Array *sgpr = json_object_get_array(wave, "sgpr");
@@ -306,42 +269,31 @@ public:
 						if (vgpr && ImGui::TreeNodeEx("#6c71c4VGPRs")) {
 							int s = json_array_get_count(vgpr);
 
-							ImGui::BeginTable("vgprvalues", 5, ImGuiTableFlags_Borders);
-							ImGui::TableSetupColumn("Base");
-							ImGui::TableSetupColumn("+ 0");
-							ImGui::TableSetupColumn("+ 1");
-							ImGui::TableSetupColumn("+ 2");
-							ImGui::TableSetupColumn("+ 3");
-							ImGui::TableHeadersRow();
 							char label[128];
 							for (int vg = 0; vg < s; vg++) {
 								ImGui::PushID(vg);
-								ImGui::TableNextRow();
-								ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableRowBgAlt));
-								ImGui::TableSetColumnIndex(0);
-								sprintf(label, "show v%2d", vg);
-								ImGui::Checkbox(label, &waves[i].vgpr_show[vg]);
-								if (waves[i].vgpr_show[vg]) {
+								sprintf(label, "v%2d", vg);
+								if (ImGui::TreeNodeEx(label)) {
+									ImGui::BeginTable("vgprvalues", 4, ImGuiTableFlags_Borders);
+
 									int *mode = &waves[i].vgpr_view[vg];
-									ImGui::TableSetColumnIndex(1);
+									ImGui::TableNextRow();
+									ImGui::TableSetColumnIndex(0);
 									ImGui::RadioButton("as int", mode, 0);
-									ImGui::TableSetColumnIndex(2);
+									ImGui::TableSetColumnIndex(1);
 									ImGui::RadioButton("as uint", mode, 1);
-									ImGui::TableSetColumnIndex(3);
+									ImGui::TableSetColumnIndex(2);
 									ImGui::RadioButton("as hex", mode, 2);
-									ImGui::TableSetColumnIndex(4);
+									ImGui::TableSetColumnIndex(3);
 									ImGui::RadioButton("as float", mode, 3);
 
 									JSON_Array *vgp = json_array_get_array(vgpr, vg);
 									int num_thread = json_array_get_count(vgp);
 
 									for (int t = 0; t < num_thread; t++) {
-										if (t % 4 == 0) {
+										if (t % 4 == 0)
 											ImGui::TableNextRow();
-											ImGui::TableSetColumnIndex(0);
-											ImGui::Text("%d", t);
-										}
-										ImGui::TableSetColumnIndex(1 + t % 4);
+										ImGui::TableSetColumnIndex(t % 4);
 
 										const char **formats = (exec >> t) & 1 ? formats_active : formats_inactive;
 
@@ -354,12 +306,18 @@ public:
 										} else {
 											ImGui::Text(formats[*mode], aaa);
 										}
+										if (ImGui::IsItemHovered()) {
+											ImGui::BeginTooltip();
+											ImGui::Text("thread %d", t);
+											ImGui::EndTooltip();
+										}
 										ImGui::PopID();
 									}
+									ImGui::EndTable();
+									ImGui::TreePop();
 								}
 								ImGui::PopID();
 							}
-							ImGui::EndTable();
 							ImGui::TreePop();
 						}
 					}
@@ -468,11 +426,10 @@ public:
 	}
 
 private:
-	void send_waves_command(bool halt_waves, bool resume_waves, bool disable_gfxoff) {
+	void send_waves_command(bool resume_waves, bool disable_gfxoff) {
 		JSON_Value *req = json_value_init_object();
 		json_object_set_string(json_object(req), "command", "waves");
-		json_object_set_boolean(json_object(req), "halt_waves", halt_waves);
-		json_object_set_boolean(json_object(req), "resume_waves", halt_waves && resume_waves);
+		json_object_set_boolean(json_object(req), "resume_waves", resume_waves);
 		json_object_set_boolean(json_object(req), "disable_gfxoff", disable_gfxoff);
 		json_object_set_string(json_object(req), "ring", asic->family >= FAMILY_NV ? "gfx_0.0.0" : "gfx");
 		send_request(req);
@@ -495,7 +452,6 @@ private:
 	struct Wave {
 		std::string id; // "seN.saN.etc"
 		JSON_Object *wave;
-		bool vgpr_show[512] = {};
 		int vgpr_view[512] = {};
 
 		Wave(std::string id, JSON_Object *wave) : id(id), wave(wave) {}
@@ -505,7 +461,6 @@ private:
 	std::vector<Wave> waves;
 	std::unordered_map<std::string, JSON_Object *> shaders;
 	std::string active_shader_wave;
-	bool halt = true;
 	bool resume = true;
 	bool turn_off_gfxoff = true;
 };
