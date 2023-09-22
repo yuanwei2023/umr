@@ -247,7 +247,7 @@ public:
 							for (int i = 0; i < s; i++) {
 								JSON_Value *v = json_array_get_value(sgpr, i);
 								ImGui::PushID(v);
-								int aaa = (int)json_number(v);
+								uint32_t aaa = (uint32_t)json_number(v);
 								if (mode == 3) {
 									float f = reinterpret_cast<float&>(aaa);
 									ImGui::Text("s%*d: #d33682%f", align, i, f);
