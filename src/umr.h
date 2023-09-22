@@ -1327,6 +1327,8 @@ int umr_wave_data_get_flag_halt(struct umr_asic *asic, struct umr_wave_data *wd)
 int umr_wave_data_get_flag_fatal_halt(struct umr_asic *asic, struct umr_wave_data *wd);
 int umr_wave_data_get_flag_priv(struct umr_asic *asic, struct umr_wave_data *wd);
 int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_simd_id(struct umr_asic *asic, struct umr_wave_data *wd);
+int umr_wave_data_get_flag_wave_id(struct umr_asic *asic, struct umr_wave_data *wd);
 
 int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t cu,
 		       uint32_t simd, uint32_t wave, struct umr_wave_data *pwd);

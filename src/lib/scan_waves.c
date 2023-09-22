@@ -582,7 +582,6 @@ int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *w
 	return -1;
 }
 
-
 int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *vmid, uint64_t *addr)
 {
 	int maj, min;
@@ -600,6 +599,40 @@ int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data
 			*addr = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_LO") | ((uint64_t)umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_HI") << 32ULL);
 			*vmid = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID2", "VM_ID");
 			return 0;
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_simd_id(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID");
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID");
+	}
+	return -1;
+}
+
+int umr_wave_data_get_flag_wave_id(struct umr_asic *asic, struct umr_wave_data *wd)
+{
+	int maj, min;
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 6:
+		case 7:
+		case 8:
+		case 9:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID");
+		case 10:
+		case 11:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
 	}
 	return -1;
 }
