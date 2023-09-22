@@ -178,6 +178,7 @@ public:
 				else
 					sprintf(label, "Wave %s (#dbde79%d threads)", waves[i].id.c_str(), active_threads);
 
+				ImGui::PushID(i);
 				if (ImGui::TreeNode(waves[i].id.c_str(), "%s", label)) {
 					ImGui::NextColumn();
 					ImGui::Text("PC: #b589000x%" PRIx64, (uint64_t)json_object_get_number(wave, "PC"));
@@ -337,6 +338,7 @@ public:
 
 					ImGui::TreePop();
 				}
+				ImGui::PopID();
 			}
 			ImGui::EndChild();
 			ImGui::SameLine();
