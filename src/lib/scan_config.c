@@ -149,7 +149,6 @@ void umr_scan_config_gca_data(struct umr_asic *asic)
 		default:
 			asic->err_msg("Invalid or unknown GCA config data header version:%d\n",
 				      asic->config.data[0]);
-			return -1;
 	}
 }
 
