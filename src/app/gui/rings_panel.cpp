@@ -331,10 +331,9 @@ private:
 		int draw_dispatch_count = 0;
 
 		bool opcode_verbose = false;
-		struct umr_stream_decode_ui ui;
+		struct umr_stream_decode_ui ui = { };
 		ui.rt = type;
 		ui.start_ib = _start_ib;
-		ui.unhandled_dword = NULL;
 		ui.start_opcode = _start_opcode;
 		ui.add_field = _add_field;
 		ui.add_shader = _add_shader;
