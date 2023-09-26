@@ -316,7 +316,8 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *respons
 			JSON_Value *v = json_object_get_value(response, "answer");
 
 			for (auto panel: data->panels) {
-				panel->process_server_message(response, raw_data, raw_data_size);
+				if (panel->asic == data->asic)
+					panel->process_server_message(response, raw_data, raw_data_size);
 			}
 		}
 	}

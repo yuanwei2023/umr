@@ -49,7 +49,7 @@ public:
 		info = json_object(json_value_deep_copy(answer));
 	}
 
-protected:
 	struct umr_asic *asic;
+protected:
 	JSON_Object *info;
 };
