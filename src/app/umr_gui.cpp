@@ -98,7 +98,33 @@ struct Link {
 	bool use_sock;
 };
 
-JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsigned *raw_data_size) {
+static void save_to_disk(const char *session_folder, int msg_idx,
+						 const char *answer_as_str, size_t answer_len,
+						 void *raw_data, int raw_data_size) {
+	char filename[PATH_MAX];
+
+	sprintf(filename, "%s/%d.json", session_folder, msg_idx);
+	FILE *f = fopen(filename, "w");
+	if (f) {
+		fwrite(answer_as_str, 1, answer_len, f);
+		fclose(f);
+
+		if (raw_data_size) {
+			sprintf(filename, "%s/%d.raw", session_folder, msg_idx);
+			FILE *f = fopen(filename, "wb");
+			if (f) {
+				uint32_t s = htole32(raw_data_size);
+				fwrite(&s, 1, sizeof(raw_data_size), f);
+				fwrite(raw_data, 1, raw_data_size, f);
+				fclose(f);
+			}
+		}
+	}
+}
+
+JSON_Value *query(struct Link& lnk, JSON_Value *request,
+				  void **raw_data, unsigned *raw_data_size,
+				  const char *session_folder, int msg_idx) {
 	#if UMR_SERVER
 	if (lnk.use_sock) {
 		char* s = json_serialize_to_string(request);
@@ -121,7 +147,6 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsign
 		if (len == 0)
 			return NULL;
 
-
 		int strl = strlen(&buffer[sizeof(uint32_t)]) + 1;
 		memcpy(raw_data_size, buffer, sizeof(uint32_t));
 		assert(len == sizeof(uint32_t) + strl + *raw_data_size);
@@ -132,14 +157,34 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request, void **raw_data, unsign
 			memcpy(*raw_data,
 				   &buffer[sizeof(uint32_t) + strl],
 				   *raw_data_size);
+		} else {
+			assert(*raw_data_size == 0);
 		}
+
+		/* Save to disk for replay */
+		if (session_folder)
+			save_to_disk(session_folder, msg_idx,
+						 &buffer[sizeof(uint32_t)], strl,
+						 raw_data ? *raw_data : NULL, *raw_data_size);
 
 		nn_freemsg(buffer);
 
 		return out;
 	} else
 	#endif
-		return umr_process_json_request(json_object(request), raw_data, raw_data_size);
+	{
+		JSON_Value *in = umr_process_json_request(json_object(request), raw_data, raw_data_size);
+
+		if (session_folder) {
+			char *s = json_serialize_to_string(in);
+			save_to_disk(session_folder, msg_idx,
+						 s, strlen(s),
+						 raw_data ? *raw_data : NULL, *raw_data_size);
+			json_free_serialized_string(s);
+		}
+
+		return in;
+	}
 }
 
 void force_redraw() {
@@ -327,20 +372,24 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *respons
 
 static void *communication_thread(void *_job) {
 	int id = 0;
-	char session_filename[PATH_MAX - 4];
-	char session_filename_raw[PATH_MAX];
+	char session_folder[PATH_MAX];
 	while (id < 1024) {
 		struct stat statbuf;
-		snprintf(session_filename, sizeof(session_filename), "/tmp/umr_session.%d.json", id++);
-		if (stat(session_filename, &statbuf) == -1 && errno == ENOENT) {
+		snprintf(session_folder, sizeof(session_folder), "/tmp/umr_session.%d", id++);
+		if (stat(session_folder, &statbuf) == -1 && errno == ENOENT) {
 			break;
 		}
 	}
-	snprintf(session_filename_raw, sizeof(session_filename_raw), "%s.raw", session_filename);
-	JSON_Array *session = json_array(json_value_init_array());
+
+	int save_to_disk = mkdir(session_folder, 0755) == 0;
+	if (!save_to_disk) {
+		printf("Failed to create the replay folder (error: %d)\n", errno);
+	}
+
 	std::vector<AsicData*> *asics = (std::vector<AsicData*> *)_job;
 	int64_t last_ping = time_ns();
 
+	int msg_count = 0;
 	while (!done) {
 		pthread_mutex_lock(&mtx);
 		if (pending_request.empty()) {
@@ -364,20 +413,10 @@ static void *communication_thread(void *_job) {
 			unsigned raw_data_size = 0;
 			JSON_Value* req = pending_request[i];
 			pthread_mutex_unlock(&mtx);
-			JSON_Value *in = query(lnk, req, &raw_data, &raw_data_size);
+			JSON_Value *in = query(lnk, req, &raw_data, &raw_data_size,
+								   save_to_disk ? session_folder : NULL, msg_count++);
+
 			pthread_mutex_lock(&mtx);
-
-			/* Save to disk for replay */
-			json_array_append_value(session, json_value_deep_copy(in));
-			json_serialize_to_file(json_array_get_wrapping_value(session), session_filename);
-
-			if (raw_data_size) {
-				uint32_t s = htole32(raw_data_size);
-				int fd = open(session_filename_raw, O_WRONLY | O_CREAT | O_APPEND, 0644);
-				write(fd, &s, sizeof(raw_data_size));
-				write(fd, raw_data, raw_data_size);
-				close(fd);
-			}
 
 			process_response(asics, json_object(in), raw_data, raw_data_size);
 
@@ -385,9 +424,7 @@ static void *communication_thread(void *_job) {
 		}
 		pending_request.clear();
 		pthread_mutex_unlock(&mtx);
-
 	}
-	json_value_free(json_array_get_wrapping_value(session));
 	return 0;
 }
 
@@ -443,7 +480,8 @@ static int run_gui(const char *url)
 	bool replay = false;
 	if (url) {
 		struct stat statbuf;
-		if (stat(url, &statbuf) == 0 && statbuf.st_mode & S_IFMT) {
+		int r = stat(url, &statbuf);
+		if (r == 0 && S_ISDIR(statbuf.st_mode)) {
 			replay = true;
 		} else {
 			#if UMR_SERVER
@@ -479,24 +517,38 @@ static int run_gui(const char *url)
 
 	pthread_t t_id;
 	if (replay) {
-		char raw_filename[PATH_MAX];
-		sprintf(raw_filename, "%s.raw", url);
-		JSON_Array *session = json_array(json_parse_file(url));
-		if (!session)
-			return 1;
-		int fd = open(raw_filename, O_RDONLY);
-		for (int i = 0; i < json_array_get_count(session); i++) {
+		char filename[PATH_MAX];
+		void *raw_data = NULL;
+		int msg_idx = 0, fd;
+
+		while (true) {
 			uint32_t raw_data_size = 0;
-			void *raw_data = NULL;
-			JSON_Object *e = json_object(json_array_get_value(session, i));
-			if (json_object_get_boolean(e, "has_raw_data") && fd != -1) {
-				uint32_t s;
-				read(fd, &s, sizeof(raw_data_size));
-				raw_data_size = le32toh(s);
-				raw_data = malloc(raw_data_size);
-				read(fd, raw_data, raw_data_size);
+			JSON_Value *msg;
+
+			sprintf(filename, "%s/%d.json", url, msg_idx);
+
+			msg = json_parse_file(filename);
+			if (msg == NULL) {
+				/* We're done replaying everything. */
+				break;
+			} else {
+				JSON_Object *e = json_object(msg);
+
+				if (json_object_get_boolean(e, "has_raw_data")) {
+					sprintf(filename, "%s/%d.raw", url, msg_idx);
+
+					fd = open(filename, O_RDONLY);
+					uint32_t s;
+					read(fd, &s, sizeof(raw_data_size));
+					raw_data_size = le32toh(s);
+					raw_data = malloc(raw_data_size);
+					read(fd, raw_data, raw_data_size);
+				}
+
+				process_response(&asics, e, raw_data, raw_data_size);
 			}
-			process_response(&asics, e, raw_data, raw_data_size);
+
+			msg_idx++;
 		}
 	} else {
 		pthread_create(&t_id, NULL, communication_thread, &asics);
