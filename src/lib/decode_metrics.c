@@ -180,6 +180,72 @@
 	__FIELD(padding1), \
 	__FIELD(indep_throttle_status),
 
+#define METRICS_INFO_V1_4_LIST(__FIELD) \
+	__FIELD(temperature_hotspot),	\
+	__FIELD(temperature_mem),	\
+	__FIELD(temperature_vrsoc),	\
+	__FIELD(curr_socket_power),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_umc_activity),	\
+	__FIELD(vcn_activity[0]),	\
+	__FIELD(vcn_activity[1]),	\
+	__FIELD(vcn_activity[2]),	\
+	__FIELD(vcn_activity[3]),	\
+	__FIELD(energy_accumulator),	\
+	__FIELD(system_clock_counter),	\
+	__FIELD(throttle_status),	\
+	__FIELD(gfxclk_lock_status),	\
+	__FIELD(pcie_link_width),	\
+	__FIELD(pcie_link_speed),       \
+	__FIELD(xgmi_link_width),	\
+	__FIELD(xgmi_link_speed),	\
+	__FIELD(gfx_activity_acc), \
+	__FIELD(mem_activity_acc), \
+	__FIELD(pcie_bandwidth_acc),	\
+	__FIELD(pcie_bandwidth_inst),	\
+	__FIELD(pcie_l0_to_recov_count_acc),	\
+	__FIELD(pcie_replay_count_acc),	\
+	__FIELD(pcie_replay_rover_count_acc),	\
+	__FIELD(xgmi_read_data_acc[0]),	\
+	__FIELD(xgmi_read_data_acc[1]),	\
+	__FIELD(xgmi_read_data_acc[2]),	\
+	__FIELD(xgmi_read_data_acc[3]),	\
+	__FIELD(xgmi_read_data_acc[4]),	\
+	__FIELD(xgmi_read_data_acc[5]),	\
+	__FIELD(xgmi_read_data_acc[6]),	\
+	__FIELD(xgmi_read_data_acc[7]),	\
+	__FIELD(xgmi_write_data_acc[0]),	\
+	__FIELD(xgmi_write_data_acc[1]),	\
+	__FIELD(xgmi_write_data_acc[2]),	\
+	__FIELD(xgmi_write_data_acc[3]),	\
+	__FIELD(xgmi_write_data_acc[4]),	\
+	__FIELD(xgmi_write_data_acc[5]),	\
+	__FIELD(xgmi_write_data_acc[6]),	\
+	__FIELD(xgmi_write_data_acc[7]),	\
+	__FIELD(firmware_timestamp),	\
+	__FIELD(current_gfxclk[0]),	\
+	__FIELD(current_gfxclk[1]),	\
+	__FIELD(current_gfxclk[2]),	\
+	__FIELD(current_gfxclk[3]),	\
+	__FIELD(current_gfxclk[4]),	\
+	__FIELD(current_gfxclk[5]),	\
+	__FIELD(current_gfxclk[6]),	\
+	__FIELD(current_gfxclk[7]),	\
+	__FIELD(current_socclk[0]),	\
+	__FIELD(current_socclk[1]),	\
+	__FIELD(current_socclk[2]),	\
+	__FIELD(current_socclk[3]),	\
+	__FIELD(current_vclk0[0]),	\
+	__FIELD(current_vclk0[1]),	\
+	__FIELD(current_vclk0[2]),	\
+	__FIELD(current_vclk0[3]),	\
+	__FIELD(current_dclk0[0]),	\
+	__FIELD(current_dclk0[1]),	\
+	__FIELD(current_dclk0[2]),	\
+	__FIELD(current_dclk0[3]),	\
+	__FIELD(current_uclk),	\
+	__FIELD(padding),
+
 #define METRICS_INFO_V2_0_LIST(__FIELD) \
 	__FIELD(system_clock_counter),	\
 	__FIELD(temperature_gfx),	\
@@ -513,6 +579,11 @@ static struct field_info metrics_v1_3[] = {
 	METRICS_INFO_V1_3_LIST(METRICS_V1_3_INFO)
 };
 
+static struct field_info metrics_v1_4[] = {
+#define METRICS_V1_4_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_4, MEMBER)
+	METRICS_INFO_V1_4_LIST(METRICS_V1_4_INFO)
+};
+
 static struct field_info metrics_v2_0[] = {
 #define METRICS_V2_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_0, MEMBER)
 	METRICS_INFO_V2_0_LIST(METRICS_V2_0_INFO)
@@ -592,6 +663,9 @@ int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size)
 		break;
 	case METRICS_VERSION(1, 3):
 		umr_dump_field_info(asic, metrics_v1_3, ARRAY_SIZE(metrics_v1_3), "v1_3.", table);
+		break;
+	case METRICS_VERSION(1, 4):
+		umr_dump_field_info(asic, metrics_v1_4, ARRAY_SIZE(metrics_v1_4), "v1_4.", table);
 		break;
 	case METRICS_VERSION(2, 0):
 		umr_dump_field_info(asic, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table);
