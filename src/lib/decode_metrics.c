@@ -610,7 +610,7 @@ static struct field_info metrics_v2_4[] = {
 };
 
 static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *info,
-				const uint32_t count, const char *prefix, const uint8_t *ref)
+				const uint32_t count, const char *prefix, const uint8_t *ref, int delay)
 {
 	uint32_t i;
 	const struct field_info *tmp;
@@ -619,27 +619,72 @@ static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *
 	if (!prefix)
 		prefix = "";
 
-	for (i = 0, tmp = &info[i]; i < count; i++, tmp = &info[i]) {
-		switch (tmp->size) {
-		case 1:
-			asic->std_msg(fmt, prefix, tmp->name, *(uint8_t *)(ref + tmp->offset));
-			break;
-		case 2:
-			asic->std_msg(fmt, prefix, tmp->name, *(uint16_t *)(ref + tmp->offset));
-			break;
-		case 4:
-			asic->std_msg(fmt, prefix, tmp->name, *(uint32_t *)(ref + tmp->offset));
-			break;
-		case 8:
-			asic->std_msg(fmt, prefix, tmp->name, *(uint64_t *)(ref + tmp->offset));
-			break;
-		default:
-			break;
+	if (delay) {
+		struct timespec currentTime;
+		time_t seconds;
+		long milliseconds;
+		struct tm localTime;
+		char timebuf[256];
+
+		clock_gettime(CLOCK_REALTIME, &currentTime);
+		seconds = currentTime.tv_sec;
+		milliseconds = currentTime.tv_nsec / 1000000;
+		localtime_r(&seconds, &localTime);
+
+		strftime(timebuf, sizeof timebuf, "%d-%m-%Y %H:%M:%S", &localTime);
+		sprintf(timebuf + strlen(timebuf), ".%ld,", milliseconds);
+
+		if (delay > 0) {
+			asic->std_msg("time,");
+			for (i = 0, tmp = &info[i]; i < count; i++, tmp = &info[i]) {
+				asic->std_msg("%s,", tmp->name);
+			}
+			asic->std_msg("\n");
+		}
+
+		asic->std_msg("%s,", timebuf);
+		for (i = 0, tmp = &info[i]; i < count; i++, tmp = &info[i]) {
+			switch (tmp->size) {
+			case 1:
+				asic->std_msg("%lld,", *(uint8_t *)(ref + tmp->offset));
+				break;
+			case 2:
+				asic->std_msg("%lld,", *(uint16_t *)(ref + tmp->offset));
+				break;
+			case 4:
+				asic->std_msg("%lld,", *(uint32_t *)(ref + tmp->offset));
+				break;
+			case 8:
+				asic->std_msg("%lld,", *(uint64_t *)(ref + tmp->offset));
+				break;
+			default:
+				break;
+			}
+		}
+		asic->std_msg("\n");
+	} else {
+		for (i = 0, tmp = &info[i]; i < count; i++, tmp = &info[i]) {
+			switch (tmp->size) {
+			case 1:
+				asic->std_msg(fmt, prefix, tmp->name, *(uint8_t *)(ref + tmp->offset));
+				break;
+			case 2:
+				asic->std_msg(fmt, prefix, tmp->name, *(uint16_t *)(ref + tmp->offset));
+				break;
+			case 4:
+				asic->std_msg(fmt, prefix, tmp->name, *(uint32_t *)(ref + tmp->offset));
+				break;
+			case 8:
+				asic->std_msg(fmt, prefix, tmp->name, *(uint64_t *)(ref + tmp->offset));
+				break;
+			default:
+				break;
+			}
 		}
 	}
 }
 
-int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size)
+int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size, int delay)
 {
 	struct umr_metrics_table_header *header =
 		(struct umr_metrics_table_header *)table;
@@ -647,40 +692,41 @@ int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size)
 	if (!table || !size)
 		return -1;
 
-	umr_dump_field_info(asic, metrics_header, ARRAY_SIZE(metrics_header), " hdr.", table);
+	if (!delay)
+		umr_dump_field_info(asic, metrics_header, ARRAY_SIZE(metrics_header), " hdr.", table, delay);
 
 #define METRICS_VERSION(a, b)	((a << 16) | b )
 
 	switch (METRICS_VERSION(header->format_revision, header->content_revision)) {
 	case METRICS_VERSION(1, 0):
-		umr_dump_field_info(asic, metrics_v1_0, ARRAY_SIZE(metrics_v1_0), "v1_0.", table);
+		umr_dump_field_info(asic, metrics_v1_0, ARRAY_SIZE(metrics_v1_0), "v1_0.", table, delay);
 		break;
 	case METRICS_VERSION(1, 1):
-		umr_dump_field_info(asic, metrics_v1_1, ARRAY_SIZE(metrics_v1_1), "v1_1.", table);
+		umr_dump_field_info(asic, metrics_v1_1, ARRAY_SIZE(metrics_v1_1), "v1_1.", table, delay);
 		break;
 	case METRICS_VERSION(1, 2):
-		umr_dump_field_info(asic, metrics_v1_2, ARRAY_SIZE(metrics_v1_2), "v1_2.", table);
+		umr_dump_field_info(asic, metrics_v1_2, ARRAY_SIZE(metrics_v1_2), "v1_2.", table, delay);
 		break;
 	case METRICS_VERSION(1, 3):
-		umr_dump_field_info(asic, metrics_v1_3, ARRAY_SIZE(metrics_v1_3), "v1_3.", table);
+		umr_dump_field_info(asic, metrics_v1_3, ARRAY_SIZE(metrics_v1_3), "v1_3.", table, delay);
 		break;
 	case METRICS_VERSION(1, 4):
-		umr_dump_field_info(asic, metrics_v1_4, ARRAY_SIZE(metrics_v1_4), "v1_4.", table);
+		umr_dump_field_info(asic, metrics_v1_4, ARRAY_SIZE(metrics_v1_4), "v1_4.", table, delay);
 		break;
 	case METRICS_VERSION(2, 0):
-		umr_dump_field_info(asic, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table);
+		umr_dump_field_info(asic, metrics_v2_0, ARRAY_SIZE(metrics_v2_0), "v2_0.", table, delay);
 		break;
 	case METRICS_VERSION(2, 1):
-		umr_dump_field_info(asic, metrics_v2_1, ARRAY_SIZE(metrics_v2_1), "v2_1.", table);
+		umr_dump_field_info(asic, metrics_v2_1, ARRAY_SIZE(metrics_v2_1), "v2_1.", table, delay);
 		break;
 	case METRICS_VERSION(2, 2):
-		umr_dump_field_info(asic, metrics_v2_2, ARRAY_SIZE(metrics_v2_2), "v2_2.", table);
+		umr_dump_field_info(asic, metrics_v2_2, ARRAY_SIZE(metrics_v2_2), "v2_2.", table, delay);
 		break;
 	case METRICS_VERSION(2, 3):
-		umr_dump_field_info(asic, metrics_v2_3, ARRAY_SIZE(metrics_v2_3), "v2_3.", table);
+		umr_dump_field_info(asic, metrics_v2_3, ARRAY_SIZE(metrics_v2_3), "v2_3.", table, delay);
 		break;
 	case METRICS_VERSION(2, 4):
-		umr_dump_field_info(asic, metrics_v2_4, ARRAY_SIZE(metrics_v2_4), "v2_4.", table);
+		umr_dump_field_info(asic, metrics_v2_4, ARRAY_SIZE(metrics_v2_4), "v2_4.", table, delay);
 		break;
 	default:
 		asic->err_msg("[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);

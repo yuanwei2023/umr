@@ -912,9 +912,13 @@ int main(int argc, char **argv)
 		} else if (!strcmp(argv[i], "--gpu-metrics") ||
 			   !strcmp(argv[i], "--gpu_metrics") ||
 			   !strcmp(argv[i], "-gm")) {
+			int delay = 0;
 			if (!asic)
 				asic = get_asic();
-			if (umr_print_gpu_metrics(asic) != 0)
+			if (i + 1 < argc && sscanf(argv[i+1], "%d", &delay) == 1) {
+				++i;
+			}
+			if (umr_print_gpu_metrics(asic, delay) != 0)
 				fprintf(stderr, "[ERROR]: Cannot print pp table info.\n");
 #if 0
 		} else if (!strcmp(argv[i], "--iv")) {
@@ -1120,8 +1124,8 @@ printf(
 "\n\t--clock-auto, -ca\n\t\tSet power_dpm_force_performance_level to auto.\n"
 "\n\t--ppt-read, -pptr [ppt_field_name]\n\t\tRead powerplay table value and print it to stdout."
 	"\n\t\tThis command will print all the powerplay table information or the corresponding string in powerplay table.\n"
-"\n\t--gpu-metrics, -gm"
-	"\n\t\tPrint the GPU metrics table for the device."
+"\n\t--gpu-metrics, -gm [delay]"
+	"\n\t\tPrint the GPU metrics table for the device, optionally continuously read every 'delay' milliseconds.\n"
 "\n\t--power, -p \n\t\tRead the conetent of clocks, temperature, gpu loading at runtime"
 	"\n\t\toptions 'use_colour' to colourize output \n"
 "\n*** Video BIOS Information ***\n"

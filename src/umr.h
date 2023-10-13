@@ -1356,7 +1356,7 @@ struct field_info {
 #define FIELD_INFO(TYPE, MEMBER)	\
 { #MEMBER, sizeof_field(TYPE, MEMBER), offsetof(TYPE, MEMBER) }
 
-int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size);
+int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size, int delay);
 
 /* discover */
 // size of serialized umr_discovery_table_entry

@@ -24,7 +24,7 @@
  */
 #include "umrapp.h"
 
-int umr_print_gpu_metrics(struct umr_asic *asic)
+int umr_print_gpu_metrics(struct umr_asic *asic, int delay)
 {
 	FILE *f;
 	uint8_t *pp_data;
@@ -48,14 +48,21 @@ int umr_print_gpu_metrics(struct umr_asic *asic)
 		return -1;
 	}
 
-	fread(pp_data, 1, size, f);
-	fclose(f);
-
-	r = umr_dump_metrics(asic, pp_data, size);
-	if (r)
-		goto error;
-
+	do {
+		fread(pp_data, 1, size, f);
+		r = umr_dump_metrics(asic, pp_data, size, delay);
+		if (r)
+			goto error;
+		if (delay) {
+			usleep(abs(delay) * 1000UL);
+			fseek(f, 0, SEEK_SET);
+			if (delay > 0) {
+				delay = -delay;
+			}
+		}
+	} while (delay);
 error:
+	fclose(f);
 	free(pp_data);
 	return r;
 }
