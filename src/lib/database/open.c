@@ -39,7 +39,7 @@ FILE *umr_database_open(char *path, char *filename)
 		return f;
 
 	// 2. if there is a path option used try that
-	if (*path && strlen(path)) {
+	if (path && strlen(path)) {
 		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
 		sprintf(p, "%s%s%s", path, s, filename);
 		f = fopen(p, "r");

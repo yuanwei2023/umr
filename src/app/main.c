@@ -221,6 +221,7 @@ int main(int argc, char **argv)
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
 	struct umr_test_harness *th = NULL;
+	FILE *f;
 #if UMR_GUI
 	int running_as_gui = 0;
 	char *guiurl = NULL;
@@ -228,6 +229,19 @@ int main(int argc, char **argv)
 	if (strstr(argv[0], "umrgui"))
 		running_as_gui = 1;
 #endif
+
+	// sanity check
+	f = umr_database_open(NULL, "pci.did");
+	if (!f) {
+		fprintf(stderr, "[ERROR]: Cannot open pci.did which means the database isn't found.\n");
+		fprintf(stderr, "[ERROR]: UMR should either be installed via packaging or 'make install', or\n");
+		fprintf(stderr, "[ERROR]: you should run UMR from the original build tree it was built in.\n");
+		fprintf(stderr, "[ERROR]: Copying a build tree from one host to another may not work if the build tree\n");
+		fprintf(stderr, "[ERROR]: is not in the same path location.\n");
+		return EXIT_FAILURE;
+	} else {
+		fclose(f);
+	}
 
 	memset(&options, 0, sizeof options);
 
