@@ -157,7 +157,7 @@ static void add_field(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_
 		fprintf(data->stack[data->sp].f, ", ");
 	}
 
-	if (!strcmp(field_name, "REG") && ideal_radix == 16) {
+	if (field_name && !strcmp(field_name, "REG") && ideal_radix == 16) {
 		// register name/value pairs
 		fprintf(data->stack[data->sp].f, "%s%s%s=%s0x%"PRIx64"%s",
 			RED, str, RST,
