@@ -113,7 +113,7 @@ static int find_pci_instance(const char* pci_string)
  * The @options structure controls how the discovery works.
  *
  * 1.  If the @options->dev_name begins with a '.' then the
- * device is considered virtual and simply bound articially to
+ * device is considered virtual and simply bound artificially to
  * the asic structure.  No file handles or PCI mappings are performed.
  *
  * 2.  If the @options->dev_name begins with a '@' then the
@@ -121,12 +121,12 @@ static int find_pci_instance(const char* pci_string)
  *
  * 3.  If the @options->pci structure is filled out it will search
  * for a device that matches the PCI bus specified.  From there it will
- * extact the DID and search the table for it.
+ * extract the DID and search the table for it.
  *
  * 4.  A DRI instance can be specified in @options->instance.
  *
  * 5.  A name can be specified in @options->dev_name which will then
- * search for the first intance of a device with that public name.
+ * search for the first instance of a device with that public name.
  */
 struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output errout)
 {
