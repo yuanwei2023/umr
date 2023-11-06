@@ -27,6 +27,10 @@ for instance, '.vega10'.
 Force a specific PCI device using the domain:bus:slot.function format in hex.
 This is useful when more than one GPU is available. If the amdgpu driver is
 loaded the corresponding instance will be automatically detected.
+.IP "--by-pci <device>"
+Like --pci but still uses the traditional debugfs path to interface with
+the hardware.  This is useful for interacting with APIs that identify hardware
+by the PCI bus address.
 .IP "--gfxoff, -go <0 | 1>"
 Turn on or off GFXOFF on select hardware.  A non-zero value enables the GFXOFF feature and
 a zero value disables it.

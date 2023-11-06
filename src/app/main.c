@@ -383,6 +383,16 @@ int main(int argc, char **argv)
 				fprintf(stderr, "[ERROR]: --force requires a number/name\n");
 				return EXIT_FAILURE;
 			}
+		} else if (!strcmp(argv[i], "--by-pci")) {
+			if (i + 1 < argc && sscanf(argv[i+1], "%04x:%02x:%02x.%01x",
+				&options.pci.domain, &options.pci.bus, &options.pci.slot,
+				&options.pci.func ) >= 4) {
+				options.use_pci = 0; // always use debugfs!
+				++i;
+			} else {
+				fprintf(stderr, "[ERROR]: --by-pci requires domain:bus:slot.function\n");
+				return EXIT_FAILURE;
+			}
 		} else if (!strcmp(argv[i], "--pci")) {
 			if (i + 1 < argc && sscanf(argv[i+1], "%04x:%02x:%02x.%01x",
 				&options.pci.domain, &options.pci.bus, &options.pci.slot,
@@ -1024,6 +1034,10 @@ int main(int argc, char **argv)
 	"\n\t\tForce a specific PCI device using the domain:bus:slot.function format in hex."
 	"\n\t\tThis is useful when more than one GPU is available. If the amdgpu driver is"
 	"\n\t\tloaded the corresponding instance will be automatically detected.\n"
+"\n\t--by-pci <device>"
+	"\n\t\tLike --pci but still uses the traditional debugfs path to interface with"
+	"\n\t\tthe hardware.  This is useful for interacting with APIs that identify hardware"
+	"\n\t\tby the PCI bus address.\n"
 "\n\t--gfxoff, -go <0 | 1>"
 	"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
 	"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"
@@ -1057,12 +1071,12 @@ int main(int argc, char **argv)
 	"\n\t\tA trailing * on a regname will read any register that has a name that contains the"
 	"\n\t\tremainder of the name specified.\n"
 "\n\t--scan, -s <string>\n\t\tScan and print an ip block by name, e.g. \"uvd6\" or \"carrizo.uvd6\"."
-	"\n\t\tCan be used multiple times.\n"
-"\n\t--logscan, -ls\n\t\tRead and display contents of the MMIO register log (usually specified with"
-	"\n\t\t'-O bits,follow,empty_log' to continually dump the trace log.)\n",
+	"\n\t\tCan be used multiple times.\n",
 	UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
 
 printf(
+"\n\t--logscan, -ls\n\t\tRead and display contents of the MMIO register log (usually specified with"
+	"\n\t\t'-O bits,follow,empty_log' to continually dump the trace log.)\n"
 "\n*** Device Utilization ***\n"
 "\n\t--top, -t\n\t\tSummarize GPU utilization.  Can select a SE block with --bank.  Can use"
 	"\n\t\toptions 'use_colour' to colourize output and 'use_pci' to improve efficiency.\n"
