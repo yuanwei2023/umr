@@ -553,6 +553,104 @@
 	__FIELD(average_soc_current), \
 	__FIELD(average_gfx_current)
 
+#define METRICS_INFO_V3_0_LIST(__FIELD) \
+	__FIELD(temperature_gfx),	\
+	__FIELD(temperature_soc),	\
+	__FIELD(temperature_core[0]),	\
+	__FIELD(temperature_core[1]),	\
+	__FIELD(temperature_core[2]),	\
+	__FIELD(temperature_core[3]),	\
+	__FIELD(temperature_core[4]),	\
+	__FIELD(temperature_core[5]),	\
+	__FIELD(temperature_core[6]),	\
+	__FIELD(temperature_core[7]),	\
+	__FIELD(temperature_core[8]),	\
+	__FIELD(temperature_core[9]),	\
+	__FIELD(temperature_core[10]),	\
+	__FIELD(temperature_core[11]),	\
+	__FIELD(temperature_core[12]),	\
+	__FIELD(temperature_core[13]),	\
+	__FIELD(temperature_core[14]),	\
+	__FIELD(temperature_core[15]),	\
+	__FIELD(temperature_skin),	\
+	__FIELD(average_gfx_activity),	\
+	__FIELD(average_vcn_activity),	\
+	__FIELD(average_ipu_activity[0]),	\
+	__FIELD(average_ipu_activity[1]),	\
+	__FIELD(average_ipu_activity[2]),	\
+	__FIELD(average_ipu_activity[3]),	\
+	__FIELD(average_ipu_activity[4]),	\
+	__FIELD(average_ipu_activity[5]),	\
+	__FIELD(average_ipu_activity[6]),	\
+	__FIELD(average_ipu_activity[7]),	\
+	__FIELD(average_core_c0_activity[0]),	\
+	__FIELD(average_core_c0_activity[1]),	\
+	__FIELD(average_core_c0_activity[2]),	\
+	__FIELD(average_core_c0_activity[3]),	\
+	__FIELD(average_core_c0_activity[4]),	\
+	__FIELD(average_core_c0_activity[5]),	\
+	__FIELD(average_core_c0_activity[6]),	\
+	__FIELD(average_core_c0_activity[7]),	\
+	__FIELD(average_core_c0_activity[8]),	\
+	__FIELD(average_core_c0_activity[9]),	\
+	__FIELD(average_core_c0_activity[10]),	\
+	__FIELD(average_core_c0_activity[11]),	\
+	__FIELD(average_core_c0_activity[12]),	\
+	__FIELD(average_core_c0_activity[13]),	\
+	__FIELD(average_core_c0_activity[14]),	\
+	__FIELD(average_core_c0_activity[15]),	\
+	__FIELD(average_dram_reads),	\
+	__FIELD(average_dram_writes),	\
+	__FIELD(system_clock_counter),	\
+	__FIELD(average_socket_power),	\
+	__FIELD(average_ipu_power),	\
+	__FIELD(average_apu_power),	\
+	__FIELD(average_gfx_power),	\
+	__FIELD(average_dgpu_power),	\
+	__FIELD(average_all_core_power),	\
+	__FIELD(average_core_power[0]),	\
+	__FIELD(average_core_power[1]),	\
+	__FIELD(average_core_power[2]),	\
+	__FIELD(average_core_power[3]),	\
+	__FIELD(average_core_power[4]),	\
+	__FIELD(average_core_power[5]),	\
+	__FIELD(average_core_power[6]),	\
+	__FIELD(average_core_power[7]),	\
+	__FIELD(average_core_power[8]),	\
+	__FIELD(average_core_power[9]),	\
+	__FIELD(average_core_power[10]),	\
+	__FIELD(average_core_power[11]),	\
+	__FIELD(average_core_power[12]),	\
+	__FIELD(average_core_power[13]),	\
+	__FIELD(average_core_power[14]),	\
+	__FIELD(average_core_power[15]),	\
+	__FIELD(stapm_power_limit),	\
+	__FIELD(current_stapm_power_limit),	\
+	__FIELD(average_gfxclk_frequency),	\
+	__FIELD(average_socclk_frequency),	\
+	__FIELD(average_vpeclk_frequency),	\
+	__FIELD(average_ipuclk_frequency),	\
+	__FIELD(average_fclk_frequency),	\
+	__FIELD(average_vclk_frequency),	\
+	__FIELD(current_coreclk[0]),	\
+	__FIELD(current_coreclk[1]),	\
+	__FIELD(current_coreclk[2]),	\
+	__FIELD(current_coreclk[3]),	\
+	__FIELD(current_coreclk[4]),	\
+	__FIELD(current_coreclk[5]),	\
+	__FIELD(current_coreclk[6]),	\
+	__FIELD(current_coreclk[7]),	\
+	__FIELD(current_coreclk[8]),	\
+	__FIELD(current_coreclk[9]),	\
+	__FIELD(current_coreclk[10]),	\
+	__FIELD(current_coreclk[11]),	\
+	__FIELD(current_coreclk[12]),	\
+	__FIELD(current_coreclk[13]),	\
+	__FIELD(current_coreclk[14]),	\
+	__FIELD(current_coreclk[15]),	\
+	__FIELD(current_core_maxfreq),	\
+	__FIELD(current_gfx_maxfreq),	\
+	__FIELD(time_filter_alphavalue)
 
 static struct field_info metrics_header[] = {
 #define METRICS_HEADER_INFO(MEMBER)	FIELD_INFO(struct umr_metrics_table_header, MEMBER)
@@ -607,6 +705,11 @@ static struct field_info metrics_v2_3[] = {
 static struct field_info metrics_v2_4[] = {
 #define METRICS_V2_4_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_4, MEMBER)
 	METRICS_INFO_V2_4_LIST(METRICS_V2_4_INFO)
+};
+
+static struct field_info metrics_v3_0[] = {
+#define METRICS_V3_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v3_0, MEMBER)
+	METRICS_INFO_V3_0_LIST(METRICS_V3_0_INFO)
 };
 
 static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *info,
@@ -727,6 +830,9 @@ int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size, in
 		break;
 	case METRICS_VERSION(2, 4):
 		umr_dump_field_info(asic, metrics_v2_4, ARRAY_SIZE(metrics_v2_4), "v2_4.", table, delay);
+		break;
+	case METRICS_VERSION(3, 0):
+		umr_dump_field_info(asic, metrics_v3_0, ARRAY_SIZE(metrics_v3_0), "v3_0.", table, delay);
 		break;
 	default:
 		asic->err_msg("[ERROR]: Unknown Metrics table format: 0x%"PRIx8"\n", header->format_revision);
