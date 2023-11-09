@@ -290,7 +290,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 			value = umr_pcie_read(asic, addr);
 			break;
 		case REG_MMIO:
-			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) { // only use pci if enabled and not using high bits
+			if (asic->pci.mem && (addr < asic->pci.pdevice->regions[asic->pci.region].size)) {
 				value = asic->pci.mem[addr/4];
 				break;
 			} else {
@@ -379,7 +379,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 			r = umr_pcie_write(asic, addr, value);
 			break;
 		case REG_MMIO:
-			if (asic->pci.mem && !(addr & ~0xFFFFFULL)) {
+			if (asic->pci.mem && (addr < asic->pci.pdevice->regions[asic->pci.region].size)) {
 				asic->pci.mem[addr/4] = value;
 			} else {
 				if (asic->fd.mmio2 >= 0) {
