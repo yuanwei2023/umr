@@ -55,7 +55,9 @@ void umr_print_waves(struct umr_asic *asic)
 	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
 
 	if (asic->options.halt_waves) {
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
+		if (umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100) != 0) {
+			fprintf(stderr, "[WARNING]: Halting waves failed.\n");
+		}
 	} else {
 		fprintf(stderr, "[WARNING]: Wave listing is unreliable if waves aren't halted; use -O halt_waves\n");
 	}
@@ -232,7 +234,7 @@ void umr_print_waves(struct umr_asic *asic)
 		umr_packet_free(stream);
 
 	if (asic->options.halt_waves)
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
+		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
 	// dump output to stdout
 	fseek(output, 0, SEEK_SET);

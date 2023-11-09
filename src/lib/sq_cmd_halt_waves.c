@@ -42,8 +42,9 @@ static struct umr_reg *find_sq_cmd(struct umr_asic *asic)
  *
  * @mode:	Use UMR_SQ_CMD_HALT to halt waves and
  * 			UMR_SQ_CMD_RESUME to resume waves.
+ * @max_retries:	If > 0 halting the waves will be retried if it failed
  */
-int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mode)
+int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mode, int max_retries)
 {
 	struct umr_reg *reg;
 	uint32_t value;
@@ -79,7 +80,17 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 
 	// compose address
 	addr = reg->addr * 4;
+
+send_cmd:
 	asic->reg_funcs.write_reg(asic, addr, value, reg->type);
+
+	if (mode == UMR_SQ_CMD_HALT &&
+		max_retries > 0 &&
+		!umr_ring_is_halted(asic, asic->options.ring_name)) {
+		usleep(100);
+		max_retries--;
+		goto send_cmd;
+	}
 
 	/* restore whatever the user had picked */
 	asic->options.use_bank           = grbm.use_grbm;
@@ -87,7 +98,8 @@ int umr_sq_cmd_halt_waves(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mod
 	asic->options.bank.grbm.sh       = grbm.sh;
 	asic->options.bank.grbm.instance = grbm.instance;
 
-	return 0;
+	return mode == UMR_SQ_CMD_HALT && !umr_ring_is_halted(asic, asic->options.ring_name) ?
+		-1 : 0;
 }
 
 /**

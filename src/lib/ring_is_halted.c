@@ -46,9 +46,9 @@ int umr_ring_is_halted(struct umr_asic *asic, char *ringname)
 			free(ringdata);
 			return 0;
 		}
+		free(ringdata);
 		usleep(5);
 	}
 
-	free(ringdata);
 	return 1;
 }

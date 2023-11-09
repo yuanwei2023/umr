@@ -2115,14 +2115,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		asic->options.skip_gprs = 0;
 		asic->options.verbose = 0;
 
-		int ring_is_halted = 0;
-		int i;
-		for (i = 0; i < 100 && !ring_is_halted; i++) {
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
-			ring_is_halted = umr_ring_is_halted(asic, asic->options.ring_name);
-			if (!ring_is_halted)
-				usleep(100);
-		}
+		int ring_is_halted = umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100) == 0;
 
 		if (ring_is_halted) {
 			answer = json_value_init_object();
@@ -2132,7 +2125,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		if (resume_waves)
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
+			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
 		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
@@ -2201,7 +2194,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 	} else if (strcmp(command, "resume-waves") == 0) {
 		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
+		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 		answer = json_value_init_object();
 	} else if (strcmp(command, "ring") == 0) {
 		char *ring_name = (char*)json_object_get_string(request, "ring");
@@ -2209,6 +2202,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		int halt_waves = json_object_get_boolean(request, "halt_waves");
 		enum umr_ring_type rt;
 		asic->options.halt_waves = halt_waves;
+		strcpy(asic->options.ring_name, ring_name);
 
 		/* Disable gfxoff */
 		value = 0;
@@ -2216,7 +2210,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			write(asic->fd.gfxoff, &value, sizeof(value));
 
 		if (halt_waves)
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
+			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
 
 		struct ring_decoding_data data;
 		data.ibs = json_array(json_value_init_array());
@@ -2305,7 +2299,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		json_object_get_number(json_object(json_array_get_value(signaled_fences, 0)), "value"));
 
 		if (halt_waves)
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
+			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 		/* Reenable gfxoff */
 		value = 1;
 		if (asic->fd.gfxoff >= 0)

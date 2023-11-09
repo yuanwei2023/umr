@@ -129,8 +129,10 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 		}
 	}
 
-	if (halt_waves && asic->options.halt_waves)
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT);
+	if (halt_waves && asic->options.halt_waves) {
+		strcpy(asic->options.ring_name, ringname);
+		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
+	}
 
 	// read ring data and reduce indeices modulo ring size
 	// since the kernel returned values might be unwrapped.
@@ -192,7 +194,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 	free(ringdata);
 
 	if (halt_waves && asic->options.halt_waves)
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME);
+		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
 	return ps;
 }
