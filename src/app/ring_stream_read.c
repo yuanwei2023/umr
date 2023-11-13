@@ -251,18 +251,43 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 	char buf[128];
 	uint32_t  *data, x;
 
+	infile = fopen(filename, "rb");
+	if (!infile) {
+		asic->err_msg("Cannot open IB file");
+		return NULL;
+	}
+
+	if (strstr(filename, ".ring")) {
+		uint32_t size;
+		fseek(infile, 0, SEEK_END);
+		size = ftell(infile) - 12;
+		fseek(infile, 12, SEEK_SET);
+		data = calloc(1, size);
+		fread(data, 1, size, infile);
+		*nwords = size / 4;
+		fclose(infile);
+		return data;
+	}
+
+	if (strstr(filename, ".bin")) {
+		uint32_t size;
+		fseek(infile, 0, SEEK_END);
+		size = ftell(infile) ;
+		fseek(infile, 0, SEEK_SET);
+		data = calloc(1, size);
+		fread(data, 1, size, infile);
+		*nwords = size / 4;
+		fclose(infile);
+		return data;
+	}
+
 	data = calloc(sizeof(*data), 1024);
 	if (!data) {
+		fclose(infile);
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 
-	infile = fopen(filename, "r");
-	if (!infile) {
-		free(data);
-		asic->err_msg("Cannot open IB file");
-		return NULL;
-	}
 
 	x = 0;
 	while (fgets(buf, sizeof(buf)-1, infile) != NULL) {

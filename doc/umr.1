@@ -267,9 +267,10 @@ in bytes.  The type of decoder <pm> is optional and defaults to PM4 packets.
 Can specify '4' for PM4 packets, '3' for SDMA packets, '2' for MES packets, '1' for VPE packets,
 and '5' for UMSCH packets.
 .IP "--dump-ib-file, -df filename [pm]"
-Dump an IB stored in a file as a series of hexadecimal DWORDS one per line.
-Can specify '4' for PM4 packets, '3' for SDMA packets, '2' for MES packets, '1' for VPE packets,
-and '5' for UMSCH packets. The default is PM4.
+Dump an IB stored in a file as a series of hexadecimal DWORDS one per line.  If the filename
+ends in .bin the file is treated as binary, if the filename ends in .ring it treats it as a
+ring copy and skips the first 12 bytes.  Can optionally specify '3' for SDMA packets, '2' for
+MES packets, '1' for VPE packets, and '5' for UMSCH packets.  The default is PM4.
 .IP "--header-dump, -hd [HEADER_DUMP_reg]"
 Dump the contents of the HEADER_DUMP buffer and decode the opcode into a human readable string.
 .IP "--print-cpc, -cpc"

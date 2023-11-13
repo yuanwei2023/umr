@@ -575,7 +575,7 @@ int main(int argc, char **argv)
 			}
 		} else if (!strcmp(argv[i], "--dump-ib-file") || !strcmp(argv[i], "-df")) {
 			if (i + 1 < argc) {
-				int pm;
+				int pm, follow;
 				char *name = argv[i+1];
 				char str[128];
 				char prefix[] = { ' ', '1', '2', '3', '4', '5' };
@@ -591,8 +591,15 @@ int main(int argc, char **argv)
 				}
 
 				sprintf(str, "%c/%s", prefix[pm], name);
+				follow = asic->options.no_follow_ib;
+				asic->options.no_follow_ib = 1;
+				asic->options.no_follow_shader = 1;
+				asic->options.no_follow_loadx = 1;
 				umr_read_ring_stream(asic, str);
-			} else {
+				asic->options.no_follow_ib = follow;
+				asic->options.no_follow_shader = follow;
+				asic->options.no_follow_loadx = follow;
+				} else {
 				fprintf(stderr, "[ERROR]: --dump-ib-file requires two parameters\n");
 				return EXIT_FAILURE;
 			}
@@ -1128,9 +1135,10 @@ printf(
 	"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
 	"\n\t\tCan specify '3' for SDMA packets, '2' for MES packets, '1' for VPE packets, and '5' for UMSCH packets.\n"
 "\n\t--dump-ib-file, -df filename [pm]"
-	"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line."
-	"\n\t\tCan optionally specify '3' for SDMA packets, '2' for MES packets, '1' for VPE packets, and '5' for UMSCH packets.\n"
-	"\n\t\tThe default is PM4.\n"
+	"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line.  If the filename"
+	"\n\t\tends in .bin the file is treated as binary, if the filename ends in .ring it treats it as a"
+	"\n\t\tring copy and skips the first 12 bytes.  Can optionally specify '3' for SDMA packets, '2' for"
+	"\n\t\tMES packets, '1' for VPE packets, and '5' for UMSCH packets.  The default is PM4.\n"
 "\n\t--header-dump, -hd [HEADER_DUMP_reg]"
 	"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
 	"\n\t\thuman readable string.\n"
