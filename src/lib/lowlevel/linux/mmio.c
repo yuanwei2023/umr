@@ -84,9 +84,9 @@ static uint32_t umr_pcie_read(struct umr_asic *asic, uint64_t addr)
 		}
 	} else {
 		if (lseek(asic->fd.pcie, addr, SEEK_SET) < 0)
-			perror("Cannot seek to PCIE address");
+			asic->err_msg("[ERROR]: Cannot seek to PCIE address\n");
 		if (read(asic->fd.pcie, &value, 4) != 4)
-			perror("Cannot read from PCIE reg");
+			asic->err_msg("[ERROR]: Cannot read from PCIE reg\n");
 		return value;
 	}
 }
@@ -117,11 +117,11 @@ static uint32_t umr_pcie_write(struct umr_asic *asic, uint64_t addr, uint32_t va
 		}
 	} else {
 		if (lseek(asic->fd.pcie, addr, SEEK_SET) < 0) {
-			perror("Cannot seek to PCIE address");
+			asic->err_msg("[ERROR]: Cannot seek to PCIE address\n");
 			return -1;
 		}
 		if (write(asic->fd.pcie, &value, 4) != 4) {
-			perror("Cannot write to PCIE reg");
+			asic->err_msg("[ERROR]: Cannot write to PCIE reg\n");
 			return -1;
 		}
 	}
@@ -153,9 +153,9 @@ static uint32_t umr_smc_read(struct umr_asic *asic, uint64_t addr)
 		}
 	} else {
 		if (lseek(asic->fd.smc, addr, SEEK_SET) < 0)
-			perror("Cannot seek to SMC address");
+			asic->err_msg("[ERROR]: Cannot seek to SMC address\n");
 		if (read(asic->fd.smc, &value, 4) != 4)
-			perror("Cannot read from SMC reg");
+			asic->err_msg("[ERROR]: Cannot read from SMC reg\n");
 		return value;
 	}
 
@@ -185,11 +185,11 @@ static uint32_t umr_smc_write(struct umr_asic *asic, uint64_t addr, uint32_t val
 		}
 	} else {
 		if (lseek(asic->fd.smc, addr, SEEK_SET) < 0) {
-			perror("Cannot seek to SMC address");
+			asic->err_msg("[ERROR]: Cannot seek to SMC address\n");
 			return -1;
 		}
 		if (write(asic->fd.smc, &value, 4) != 4) {
-			perror("Cannot write to SMC reg");
+			asic->err_msg("[ERROR]: Cannot write to SMC reg\n");
 			return -1;
 		}
 	}
@@ -286,6 +286,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 		addr += asic->options.context_reg_bank * 0x1000;
 
 	switch (type) {
+		case REG_SMN:
 		case REG_PCIE:
 			value = umr_pcie_read(asic, addr);
 			break;
@@ -301,20 +302,20 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 						return 0;
 					}
 					if (lseek(asic->fd.mmio2, addr, SEEK_SET) < 0) {
-						perror("Cannot seek to MMIO address for read");
+						asic->err_msg("[ERROR]: Cannot seek to MMIO address for read\n");
 						return 0;
 					}
 					if (read(asic->fd.mmio2, &value, 4) != 4) {
-						perror("Cannot read from MMIO reg");
+						asic->err_msg("[ERROR]: Cannot read from MMIO reg\n");
 						return 0;
 					}
 				} else {
 					// this is the older debugfs route and will be deprecated eventually
 					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0)
-						perror("Cannot seek to MMIO address");
+						asic->err_msg("[ERROR]: Cannot seek to MMIO address\n");
 					if (read(asic->fd.mmio, &value, 4) != 4)
-						perror("Cannot read from MMIO reg");
+						asic->err_msg("[ERROR]: Cannot read from MMIO reg\n");
 				}
 				break;
 			}
@@ -375,6 +376,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 		addr += asic->options.context_reg_bank * 0x1000;
 
 	switch (type) {
+		case REG_SMN:
 		case REG_PCIE:
 			r = umr_pcie_write(asic, addr, value);
 			break;
@@ -389,20 +391,20 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 						return 0;
 					}
 					if (lseek(asic->fd.mmio2, addr, SEEK_SET) < 0) {
-						perror("Cannot seek to MMIO address");
+						asic->err_msg("[ERROR]: Cannot seek to MMIO address\n");
 						r = -1;
 					} else if (write(asic->fd.mmio2, &value, 4) != 4) {
-						perror("Cannot write to MMIO reg");
+						asic->err_msg("[ERROR]: Cannot write to MMIO reg\n");
 						r = -1;
 					}
 				} else {
 					// this is the older debugfs route and will be deprecated eventually
 					addr &= 0xFFFFFFUL;
 					if (lseek(asic->fd.mmio, addr | umr_apply_bank_selection_address(asic), SEEK_SET) < 0) {
-						perror("Cannot seek to MMIO address for write");
+						asic->err_msg("[ERROR]: Cannot seek to MMIO address for write\n");
 						r = -1;
 					} else if (write(asic->fd.mmio, &value, 4) != 4) {
-						perror("Cannot write to MMIO reg");
+						asic->err_msg("[ERROR]: Cannot write to MMIO reg\n");
 						r = -1;
 					}
 				}
