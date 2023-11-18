@@ -324,10 +324,18 @@ Log all MMIO/memory reads to a file.
 .IP "--test-harness, -th <filename>"
 Use a test harness file instead of reading from hardware.
 
+.SH RUMR Commands
+.IP "--rumr-client <server>"
+Run as a RUMR client connecting to 'server', e.g. tcp://127.0.0.1:9000.  You can also
+use the 'RUMR_SERVER_ADDR' environment variable to instruct umr to connect as a client.  With
+the environment variable set you don't need to specify --rumr-client.
+
+.IP "--rumr-server <server>"
+Run as a RUMR server binding to 'server', e.g. tcp://127.0.0.1:9000.
+
 .SH KFD Support
 .IP "--runlist, -rls <node>"
 Dump any runlists for a given KFD node specified.
-
 
 .SH "Notes"
 
@@ -341,6 +349,9 @@ GPU hangs occur frequently.  When PG is enabled it will read a constant 0.
 
 .B UMR_DATABASE_PATH
     Should be set to the top directory of the database tree used for register, IP, and ASIC model data.
+
+.B RUMR_SERVER_ADDR
+    Specifies the server address the rumr client should connect to.  This can be set to avoid needing to add --rumr-client to the command line.
 
 .SH FILES
 .B ${CMAKE_INSTALL_PREFIX}/share/bash-completion/completions/umr

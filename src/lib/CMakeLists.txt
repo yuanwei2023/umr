@@ -2,6 +2,7 @@
 
 add_subdirectory(database)
 add_subdirectory(lowlevel)
+add_subdirectory(rumr)
 
 add_library(umrcore
   add_ip_block.c

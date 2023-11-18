@@ -35,7 +35,7 @@ int umr_ring_is_halted(struct umr_asic *asic, char *ringname)
 	// read ring data and reduce indeices modulo ring size
 	// since the kernel returned values might be unwrapped.
 	for (n = 0; n < 100; n++) {
-		ringdata = umr_read_ring_data(asic, ringname, &ringsize);
+		ringdata = asic->ring_func.read_ring_data(asic, ringname, &ringsize);
 		if (!ringdata) {
 			return 0;
 		}

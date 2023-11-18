@@ -74,46 +74,37 @@ enum AMDGPU_DEBUGFS_GPRWAVE_CMDS {
 };
 #define AMDGPU_DEBUGFS_GPRWAVE_IOC_SET_STATE _IOWR(0x20, AMDGPU_DEBUGFS_GPRWAVE_CMD_SET_STATE, struct amdgpu_debugfs_gprwave_iocdata)
 
-static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, struct umr_wave_data *wd, uint32_t *dst)
+int umr_linux_read_gpr_gprwave_raw(struct umr_asic *asic, int v_or_s,
+				   uint32_t thread, uint32_t se, uint32_t sh, uint32_t cu, uint32_t wave, uint32_t simd,
+				   uint32_t offset, uint32_t size, uint32_t *dst)
 {
 	struct amdgpu_debugfs_gprwave_iocdata id;
 	int r = 0;
-	uint32_t size;
-	uint64_t addr = 0;
 
 	memset(&id, 0, sizeof id);
 	id.gpr_or_wave = 1;
 	if (asic->family < FAMILY_NV) {
-		id.se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SE_ID");
-		id.sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SH_ID");
-		id.cu = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "CU_ID");
-		id.wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID");
-		id.simd = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID");
+		id.se = se;
+		id.sh = sh;
+		id.cu = cu;
+		id.wave = wave;
+		id.simd = simd;
 
 		if (v_or_s == 0) {
-			uint32_t shift;
 			id.gpr.thread = 0;
-			if (asic->family <= FAMILY_CIK)
-				shift = 3;  // on SI..CIK allocations were done in 8-dword blocks
-			else
-				shift = 4;  // on VI allocations are in 16-dword blocks
-			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE") + 1) << shift);
 		} else {
 			id.gpr.thread = thread;
-			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
 		}
 	} else {
-		id.se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
-		id.sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID");
-		id.cu = ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) | umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"));
-		id.wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
+		id.se = se;
+		id.sh = sh;
+		id.cu = cu;
+		id.wave = wave;
 		id.simd = 0;
 		if (v_or_s == 0) {
 			id.gpr.thread = 0;
-			size = 4 * 124; // regular SGPRs, VCC, and TTMPs
 		} else {
 			id.gpr.thread = thread;
-			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
 		}
 	}
 	id.gpr.vpgr_or_sgpr = v_or_s;
@@ -123,8 +114,48 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 	if (r)
 		return r;
 
-	lseek(asic->fd.gprwave, 0, SEEK_SET);
-	r = read(asic->fd.gprwave, dst, size);
+	lseek(asic->fd.gprwave, offset, SEEK_SET);
+	return read(asic->fd.gprwave, dst, size);
+}
+
+// TODO: hoist id/lseek/read calls into raw function out of this function
+static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, struct umr_wave_data *wd, uint32_t *dst)
+{
+	uint32_t se, sh, cu, wave, simd, size;
+	int r = 0;
+	uint64_t addr = 0;
+
+	if (asic->family < FAMILY_NV) {
+		se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SE_ID");
+		sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SH_ID");
+		cu = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "CU_ID");
+		wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID");
+		simd = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID");
+
+		if (v_or_s == 0) {
+			uint32_t shift;
+			if (asic->family <= FAMILY_CIK)
+				shift = 3;  // on SI..CIK allocations were done in 8-dword blocks
+			else
+				shift = 4;  // on VI allocations are in 16-dword blocks
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE") + 1) << shift);
+		} else {
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
+		}
+	} else {
+		se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
+		sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID");
+		cu = ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) | umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"));
+		wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
+		simd = 0;
+		if (v_or_s == 0) {
+			size = 4 * 124; // regular SGPRs, VCC, and TTMPs
+		} else {
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
+		}
+	}
+
+	r = umr_linux_read_gpr_gprwave_raw(asic, v_or_s, thread, se, sh, cu, wave, simd, 0, size, dst);
 	if (r < 0)
 		return r;
 
@@ -137,11 +168,11 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 		addr =
 			((v_or_s ? 0ULL : 1ULL) << 60) | // reading SGPRs
 			((uint64_t)0)                  | // starting address to read from
-			((uint64_t)id.se << 12)        |
-			((uint64_t)id.sh << 20)        |
-			((uint64_t)id.cu << 28)        |
-			((uint64_t)id.wave << 36)      |
-			((uint64_t)id.simd << 44)      |
+			((uint64_t)se << 12)        |
+			((uint64_t)sh << 20)        |
+			((uint64_t)cu << 28)        |
+			((uint64_t)wave << 36)      |
+			((uint64_t)simd << 44)      |
 			((uint64_t)thread << 52ULL); // thread_id
 
 		fprintf(asic->options.test_log_fd, "%cGPR@0x%"PRIx64" = { ", "SV"[v_or_s], addr);
@@ -153,11 +184,11 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 		fprintf(asic->options.test_log_fd, "}\n");
 	}
 
+	// TODO: hoist trap to _raw
 	if (v_or_s == 0) {
 		// read trap if any
 		if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
-			lseek(asic->fd.gprwave, 4 * 0x6C, SEEK_SET);
-			r = read(asic->fd.gprwave, &dst[0x6C], 4 * 16);
+			r = umr_linux_read_gpr_gprwave_raw(asic, v_or_s, thread, se, sh, cu, wave, simd, 4 * 0x6C, size, &dst[0x6C]);
 			if (r > 0) {
 				if (asic->options.test_log && asic->options.test_log_fd) {
 					int x;
@@ -203,14 +234,11 @@ int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thr
 	}
 }
 
-int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
+int umr_get_wave_status_raw(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, uint32_t *buf)
 {
-	uint32_t buf[32];
 	int r = 0;
 	uint64_t addr = 0;
 	struct amdgpu_debugfs_gprwave_iocdata id;
-
-	memset(buf, 0, sizeof buf);
 
 	if (asic->fd.gprwave >= 0) {
 		memset(&id, 0, sizeof id);
@@ -227,7 +255,7 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 			return r;
 
 		lseek(asic->fd.gprwave, 0, SEEK_SET);
-		r = read(asic->fd.gprwave, buf, 32*4);
+		r = read(asic->fd.gprwave, buf, 64*4);
 		if (r < 0)
 			return r;
 	} else {
@@ -251,8 +279,20 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 		fprintf(asic->options.test_log_fd, "}\n");
 	}
 
+	return r;
+}
 
-	return umr_parse_wave_data_gfx(asic, ws, buf, r>>2);
+int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
+{
+	int r;
+	uint32_t buf[64];
+
+	memset(buf, 0, sizeof buf);
+	r = umr_get_wave_status_raw(asic, se, sh, cu, simd, wave, buf);
+	if (r > 0)
+		return umr_parse_wave_data_gfx(asic, ws, buf, r>>2);
+	else
+		return -1;
 }
 
 int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws)

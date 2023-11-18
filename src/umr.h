@@ -22,6 +22,9 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+#ifndef UMR_H_
+#define UMR_H_
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -139,7 +142,7 @@ struct umr_bitfield {
 	/* bit start/stop locations starting from 0 up to 31 */
 	unsigned char start, stop;
 	/* helper to print bitfield, optional */
-	void (*bitfield_print)(struct umr_asic *asic, char *asicname, char *ipname, char *regname, char *bitname, int start, int stop, uint32_t value); 
+	void (*bitfield_print)(struct umr_asic *asic, char *asicname, char *ipname, char *regname, char *bitname, int start, int stop, uint32_t value);
 };
 
 struct umr_reg {
@@ -517,12 +520,21 @@ struct umr_wave_data {
 };
 
 struct umr_read_gpr_funcs {
+	void *data;
+
 	/** read_vgprs -- Read VGPR data for a given wave and thread */
 	int (*read_vgprs)(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst);
 
 	/** read_sgprs -- Read VGPR data for a given wave */
 	int (*read_sgprs)(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst);
 };
+
+struct umr_read_ring_func {
+	void *data;
+
+	void *(*read_ring_data)(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
+};
+
 
 struct umr_hive_info {
 	uint64_t node_id;
@@ -600,6 +612,7 @@ struct umr_asic {
 	struct umr_shader_disasm_funcs shader_disasm_funcs;
 	struct umr_read_gpr_funcs gpr_read_funcs;
 	struct umr_mmio_accel_data *mmio_accel;
+	struct umr_read_ring_func ring_func;
 	uint32_t mmio_accel_size;
 	int (*err_msg)(const char *fmt, ...);
 	int (*std_msg)(const char *fmt, ...);
@@ -647,7 +660,7 @@ struct umr_ring_decoder {
 			addr,
 			vmid,
 			ib_addr;
-	} src; 
+	} src;
 
 	// working state for the PM4 decoder
 	struct {
@@ -1475,6 +1488,7 @@ int umr_update_string(struct umr_asic *asic, char *sdata);
 
 /* lib helpers */
 uint32_t umr_get_ip_revision(struct umr_asic *asic, const char *ipname);
+int umr_get_wave_status_raw(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, uint32_t *buf);
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws);
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic);
 
@@ -1503,6 +1517,13 @@ int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsign
 int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst);
 int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst);
 int umr_read_sensor(struct umr_asic *asic, int sensor, void *dst, int *size);
+
+// low level
+int umr_linux_read_gpr_gprwave_raw(struct umr_asic *asic, int v_or_s,
+								   uint32_t thread, uint32_t se, uint32_t sh, uint32_t cu, uint32_t wave, uint32_t simd,
+								   uint32_t offset, uint32_t size, uint32_t *dst);
+int umr_get_wave_status_raw(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, uint32_t *buf);
+
 
 /* mmio helpers */
 // init the mmio lookup table
@@ -1996,3 +2017,5 @@ int umr_discovery_table_is_supported(struct umr_asic *asic);
 int umr_discovery_read_table(struct umr_asic *asic, uint8_t *table, uint32_t *size);
 int umr_discovery_verify_table(struct umr_asic *asic, uint8_t *table);
 int umr_discovery_dump_table(struct umr_asic *asic, uint8_t *table, FILE *stream);
+
+#endif

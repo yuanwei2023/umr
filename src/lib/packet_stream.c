@@ -131,7 +131,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 
 	// read ring data and reduce indeices modulo ring size
 	// since the kernel returned values might be unwrapped.
-	ringdata = umr_read_ring_data(asic, ringname, &ringsize);
+	ringdata = asic->ring_func.read_ring_data(asic, ringname, &ringsize);
 
 	if ((*stop != -1) && (uint32_t)(*stop * 4) >= ringsize)
 		*stop = (ringsize / 4) - 1;

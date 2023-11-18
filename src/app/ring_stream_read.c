@@ -57,7 +57,7 @@ static void start_ib(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t
 
 	next_level(ui);
 	data->stack[data->sp].ib_addr = ib_addr;
-	fprintf(data->stack[data->sp].f, "Decoding IB at %s%lu%s@%s0x%"PRIx64"%s from %s%lu%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)", 
+	fprintf(data->stack[data->sp].f, "Decoding IB at %s%lu%s@%s0x%"PRIx64"%s from %s%lu%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)",
 	BLUE, (unsigned long)ib_vmid, RST,
 	YELLOW, ib_addr, RST,
 	BLUE, (unsigned long)from_vmid, RST,

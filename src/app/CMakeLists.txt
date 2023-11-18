@@ -57,7 +57,7 @@ add_library(umrapp
 target_link_libraries(umrapp parson ${UMRAPP_DRM_LIBS})
 
 add_executable(umr main.c)
-target_link_libraries(umr umrapp umrlow umrcore umrlow)
+target_link_libraries(umr umrapp umrlow rumr umrcore umrlow rumr)
 if(UMR_GUI)
     # Used by glad
     target_link_libraries(umr dl)

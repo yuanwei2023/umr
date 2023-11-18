@@ -22,6 +22,7 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+#include "umr_rumr.h"
 #include "umrapp.h"
 #include <signal.h>
 #include <time.h>
@@ -36,6 +37,7 @@ void sigint(int signo)
 }
 
 struct umr_options options;
+static struct umr_asic *asic;
 
 static int std_printf(const char *fmt, ...)
 {
@@ -54,6 +56,9 @@ static int err_printf(const char *fmt, ...)
 	va_list ap;
 	int r;
 
+	if (!options.verbose && strstr(fmt, "[VERBOSE]"))
+		return 0;
+
 	va_start(ap, fmt);
 	r = vfprintf(stderr, fmt, ap);
 	fflush(stderr);
@@ -61,11 +66,23 @@ static int err_printf(const char *fmt, ...)
 	return r;
 }
 
+static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
+{
+	struct rumr_comm_funcs *cf;
+	*addr = arg;
+
+	if (!memcmp(arg, "tcp://", 6)) {
+		cf = calloc(1, sizeof rumr_tcp_funcs);
+		*cf = rumr_tcp_funcs;
+		cf->log_msg = err_printf;
+		*addr = &arg[6];
+		return cf;
+	}
+	return NULL;
+}
 
 static struct umr_asic *get_asic(void)
 {
-	struct umr_asic *asic;
-
 retry:
 	asic = umr_discover_asic(&options, err_printf);
 	if (!asic && !options.forced_instance && options.instance < 128) {
@@ -94,6 +111,7 @@ retry:
 
 	asic->reg_funcs.read_reg = umr_read_reg;
 	asic->reg_funcs.write_reg = umr_write_reg;
+	asic->ring_func.read_ring_data = umr_read_ring_data;
 
 	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
 	asic->wave_funcs.get_wave_status = umr_get_wave_status;
@@ -391,14 +409,27 @@ static void do_help(void)
 }
 
 
+static void umr_start_rumr_client(struct rumr_client_state *cs, char *server)
+{
+	struct rumr_comm_funcs *cf;
+	char *cfp;
+	cf = rumr_get_cf(server, &cfp);
+	if (rumr_client_connect(cs, cf, cfp)) {
+		free(cf);
+		exit(EXIT_FAILURE);
+	}
+	asic = cs->asic;
+	free(cf);
+}
+
 int main(int argc, char **argv)
 {
 	int pass, i, j, k, l;
-	struct umr_asic *asic;
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
 	struct umr_test_harness *th = NULL;
 	FILE *f;
+	struct rumr_client_state client_st;
 #if UMR_GUI
 	int running_as_gui = 0;
 	char *guiurl = NULL;
@@ -430,6 +461,11 @@ int main(int argc, char **argv)
 	options.vm_partition = -1;
 	options.vgpr_granularity = -1;
 	options.forced_instance = 0;
+
+	str = getenv("RUMR_SERVER_ADDR");
+	if (str) {
+		umr_start_rumr_client(&client_st, str);
+	}
 
 	for (pass = 0; pass < PASS_MAX; pass++) {
 		// if we're the pass right after when an ASIC model is created
@@ -602,6 +638,14 @@ int main(int argc, char **argv)
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
+						return EXIT_FAILURE;
+					}
+				} else if (!strcmp(argv[i], "--rumr-client")) {
+					if (i + 1 < argc) {
+						umr_start_rumr_client(&client_st, argv[i+1]);
+						++i;
+					} else {
+						fprintf(stderr, "[ERROR]: --rumr-client requires one parameter\n");
 						return EXIT_FAILURE;
 					}
 				}
@@ -1104,6 +1148,27 @@ int main(int argc, char **argv)
 					umr_print_cpc(asic);
 				} else if (!strcmp(argv[i], "--print-sdma") || !strcmp(argv[i], "-sdma")) {
 					umr_print_sdma(asic);
+				} else if (!strcmp(argv[i], "--rumr-server")) {
+					struct rumr_comm_funcs *cf;
+					char *cfp;
+					struct rumr_server_state st;
+					if (!asic)
+						asic = get_asic();
+					if (i + 1 < argc) {
+						cf = rumr_get_cf(argv[i+1], &cfp);
+						++i;
+						st.asic = asic;
+						if (rumr_server_bind(&st, cf, cfp)) {
+							return EXIT_FAILURE;
+						}
+						for (;;) {
+							rumr_server_accept(&st);
+							while (!rumr_server_loop(&st));
+						}
+					} else {
+						fprintf(stderr, "[ERROR]: --rumr-server requires one parameter\n");
+						return EXIT_FAILURE;
+					}
 		#if UMR_SERVER
 				} else if (!strcmp(argv[i], "--server")) {
 					char *url = (i < argc - 1) ? argv[i + 1] : "tcp://*:1234";
@@ -1155,7 +1220,11 @@ int main(int argc, char **argv)
 		for (n = 0; asic->config.xgmi.nodes[n].asic; n++)
 			umr_close_asic(asic->config.xgmi.nodes[n].asic);
 	} else {
-		umr_close_asic(asic);
+		if (client_st.asic == asic) {
+			rumr_client_close(&client_st);
+		} else {
+			umr_close_asic(asic);
+		}
 	}
 
 	if (th) {

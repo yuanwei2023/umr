@@ -12,7 +12,7 @@ static uint32_t read_banked_reg(struct umr_asic *asic, char *name)
 		return 0xDEADBEEF;
 	}
 	bank_addr = umr_apply_bank_selection_address(asic);
-	return umr_read_reg(asic, bank_addr | (reg->addr * 4), REG_MMIO);
+	return asic->reg_funcs.read_reg(asic, bank_addr | (reg->addr * 4), REG_MMIO);
 }
 
 void umr_print_cpc(struct umr_asic *asic)
