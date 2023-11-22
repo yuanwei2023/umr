@@ -803,7 +803,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", vm0prefix);
 			registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		system_aperture_low = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << 18;
-		system_aperture_high = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR) << 18;
+		system_aperture_high = ((uint64_t)registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR + 1) << 18;
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
 			registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 	}
@@ -813,7 +813,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		fb_bottom = ((uint64_t)registers.mmMC_VM_FB_LOCATION_BASE) << 24;
 	sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", vm0prefix);
 		registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-		fb_top = ((uint64_t)registers.mmMC_VM_FB_LOCATION_TOP) << 24;
+		fb_top = ((uint64_t)registers.mmMC_VM_FB_LOCATION_TOP + 1) << 24;
 
 	// check if we are in ZFB mode
 	if (fb_top < fb_bottom)
@@ -830,7 +830,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			agp_bot = ((uint64_t)registers.mmMC_VM_AGP_BOT) << 24;
 		sprintf(buf, "mm%sMC_VM_AGP_TOP", regprefix);
 			registers.mmMC_VM_AGP_TOP = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-			agp_top = (((uint64_t)registers.mmMC_VM_AGP_TOP) << 24) | 0xFFFFFFULL;
+			agp_top = (((uint64_t)registers.mmMC_VM_AGP_TOP + 1) << 24) | 0xFFFFFFULL;
 	} else {
 		agp_base = agp_bot = agp_top = 0;
 	}
