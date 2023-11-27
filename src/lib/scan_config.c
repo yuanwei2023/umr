@@ -161,8 +161,44 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 	char fname[256];
 	int r;
 
-	if (asic->options.no_kernel)
+	if (asic->options.no_kernel) {
+		struct umr_ip_block *ip;
+
+		ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
+		if (!ip) {
+			asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+			return -1;
+		}
+
+		switch (ip->discoverable.maj) {
+			case 6:
+				asic->family = FAMILY_CIK;
+				asic->config.gfx.family = 0;
+				break;
+			case 7:
+				asic->family = FAMILY_SI;
+				asic->config.gfx.family = 120;
+				break;
+			case 8:
+				asic->family = FAMILY_VI;
+				asic->config.gfx.family = 130;
+				break;
+			case 9:
+				asic->family = FAMILY_AI;
+				asic->config.gfx.family = 141;
+				break;
+			case 10:
+				asic->family = FAMILY_NV;
+				asic->config.gfx.family = 143;
+				break;
+			case 11:
+				asic->family = FAMILY_GFX11;
+				asic->config.gfx.family = 145;
+				break;
+		}
+
 		return -1;
+	}
 
 	// don't read config if virtual and not using a test vector
 	if (!asic->options.test_log && asic->options.is_virtual)

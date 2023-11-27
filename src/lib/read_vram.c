@@ -35,20 +35,22 @@ int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t s
 
 	// find registers
 	if (asic->family >= FAMILY_NV) {
-		MM_INDEX    = umr_find_reg(asic, "mmBIF_BX_PF_MM_INDEX");
-		MM_INDEX_HI = umr_find_reg(asic, "mmBIF_BX_PF_MM_INDEX_HI");
-		MM_DATA     = umr_find_reg(asic, "mmBIF_BX_PF_MM_DATA");
+		MM_INDEX    = umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX");
+		MM_INDEX_HI = umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI");
+		MM_DATA     = umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA");
 	} else {
-		MM_INDEX    = umr_find_reg(asic, "mmMM_INDEX");
-		MM_INDEX_HI = umr_find_reg(asic, "mmMM_INDEX_HI");
-		MM_DATA     = umr_find_reg(asic, "mmMM_DATA");
+		MM_INDEX    = umr_find_reg(asic, "@mmMM_INDEX");
+		MM_INDEX_HI = umr_find_reg(asic, "@mmMM_INDEX_HI");
+		MM_DATA     = umr_find_reg(asic, "@mmMM_DATA");
 	}
 
 	if (MM_INDEX == 0xFFFFFFFF    ||
 	    MM_INDEX_HI == 0xFFFFFFFF ||
 	    MM_DATA == 0xFFFFFFFF) {
-		fprintf(stderr, "[BUG]: Cannot find MM access registers for this asic!\n");
-		return -1;
+		// the kernel kinda hardcodes these
+		MM_INDEX = 0;
+		MM_DATA = 1;
+		MM_INDEX_HI = 6;
 	}
 
 	// scale up to byte address
