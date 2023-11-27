@@ -32,100 +32,6 @@
  * configurations.
  */
 
-/** serialize_asic : Create a buffer containing the ASIC model data
- *
- * Note the order is very important obviously.  For non-amdgpu.ko platforms
- * the trickiest bit will be the CONFIG data which you DO actually need
- * bits and pieces of.
- */
-static struct rumr_buffer *serialize_asic(struct umr_asic *asic)
-{
-	struct rumr_buffer *buf;
-	int ip, reg, bit;
-	char tmpbuf[256];
-
-	buf = rumr_buffer_init();
-	if (!buf)
-		return NULL;
-
-	// ASICNAME
-		memset(tmpbuf, 0, sizeof tmpbuf);
-		strcpy(tmpbuf, asic->asicname);
-		rumr_buffer_add_data(buf, tmpbuf, 64);
-	// CHIPFAMILY
-		rumr_buffer_add_uint32(buf, asic->family);
-	// VGPR_GRANULARITY
-		rumr_buffer_add_uint32(buf, asic->parameters.vgpr_granularity);
-	// CONFIG (this comes from the gca_config debugfs file)
-		rumr_buffer_add_uint32(buf, sizeof(asic->config.data));
-		rumr_buffer_add_data(buf, asic->config.data, sizeof(asic->config.data));
-		// only certain fields are needed
-		// git grep asic-\>config src/lib/*.c src/lib/lowlevel/linux/*.c | grep -v scan_config
-	// VRAM
-		rumr_buffer_add_uint32(buf, asic->config.vram_size & 0xFFFFFFFFUL);
-		rumr_buffer_add_uint32(buf, asic->config.vram_size >> 32);
-	// VIS_VRAM
-		rumr_buffer_add_uint32(buf, asic->config.vis_vram_size & 0xFFFFFFFFUL);
-		rumr_buffer_add_uint32(buf, asic->config.vis_vram_size >> 32);
-	// GTT
-		rumr_buffer_add_uint32(buf, asic->config.gtt_size & 0xFFFFFFFFUL);
-		rumr_buffer_add_uint32(buf, asic->config.gtt_size >> 32);
-	// APU
-		rumr_buffer_add_uint32(buf, asic->is_apu);
-	// NO blocks
-		rumr_buffer_add_uint32(buf, asic->no_blocks);
-
-	// per IP block
-	for (ip = 0; ip < asic->no_blocks; ip++) {
-		// ipname
-			memset(tmpbuf, 0, sizeof tmpbuf);
-			strcpy(tmpbuf, asic->blocks[ip]->ipname);
-			rumr_buffer_add_data(buf, tmpbuf, 64);
-		// no_regs
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->no_regs);
-		// discoverable
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->discoverable.die);
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->discoverable.maj);
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->discoverable.min);
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->discoverable.rev);
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->discoverable.instance);
-			rumr_buffer_add_uint32(buf, asic->blocks[ip]->discoverable.logical_inst);
-		// registers
-		for (reg = 0; reg < asic->blocks[ip]->no_regs; reg++) {
-			// regname
-				memset(tmpbuf, 0, sizeof tmpbuf);
-				strcpy(tmpbuf, asic->blocks[ip]->regs[reg].regname);
-				rumr_buffer_add_data(buf, tmpbuf, 128);
-			// type
-				rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].type);
-			// ADDR_LO
-				rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].addr & 0xFFFFFFFFULL);
-			// ADDR_HI
-				rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].addr >> 32);
-			// bit64
-				rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].bit64);
-			// nobits
-				rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].no_bits);
-
-			for (bit = 0; bit < asic->blocks[ip]->regs[reg].no_bits; bit++) {
-				// regname
-					memset(tmpbuf, 0, sizeof tmpbuf);
-					strcpy(tmpbuf, asic->blocks[ip]->regs[reg].bits[bit].regname);
-					rumr_buffer_add_data(buf, tmpbuf, 128);
-				// start
-					rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].bits[bit].start);
-				// stop
-					rumr_buffer_add_uint32(buf, asic->blocks[ip]->regs[reg].bits[bit].stop);
-			}
-		}
-	}
-	if (buf->failed) {
-		rumr_buffer_free(buf);
-		return NULL;
-	}
-	return buf;
-}
-
 /** rumr_server_bind: Bind a server state to a comms host address
  *
  * state: the server state
@@ -137,7 +43,7 @@ int rumr_server_bind(struct rumr_server_state *state, struct rumr_comm_funcs *cf
 	// create serialized asic we can use over and over
 	memcpy(&state->comm, cf, sizeof *cf);
 	state->log_msg = state->comm.log_msg;
-	state->serialized_asic = serialize_asic(state->asic);
+	state->serialized_asic = rumr_serialize_asic(state->asic);
 	if (!state->serialized_asic)
 		return -1;
 	state->log_msg("[VERBOSE]: Serialized ASIC is %"PRIu32" bytes long\n", state->serialized_asic->woffset);

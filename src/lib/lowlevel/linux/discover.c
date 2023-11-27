@@ -26,6 +26,7 @@
 #include <sys/types.h>
 
 #include "umr.h"
+#include "umr_rumr.h"
 
 static int is_did_match(struct umr_asic *asic, unsigned did)
 {
@@ -172,10 +173,26 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			if (!options->quiet) printf("Could not read device id");
 			return NULL;
 		}
+
+		if (options->no_kernel) {
+			// try loading an .sasic
+			struct rumr_buffer *buf;
+			char fname[32];
+
+			sprintf(fname, "0x%"PRIx32".sasic", (uint32_t)did);
+			buf = rumr_load_serialized_asic(fname);
+			if (buf) {
+				asic = rumr_parse_serialized_asic(buf);
+				rumr_buffer_free(buf);
+				if (asic) {
+					asic->options = *options;
+				}
+			}
+		}
 	}
 
 	// try to scan via debugfs
-	if (options->instance >= 0 && !options->no_kernel) {
+	if (!asic && options->instance >= 0 && !options->no_kernel) {
 		asic = calloc(1, sizeof *asic);
 		if (asic) {
 			asic->instance = options->instance;
@@ -187,74 +204,76 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 		}
 	}
 
-	snprintf(name, sizeof(name)-1, "/sys/kernel/debug/dri/%d/name", options->instance);
-	f = fopen(name, "r");
-	if (!f && options->instance >= 0 && !options->no_kernel && !options->use_pci) {
-		int found = 0;
-		if (!options->quiet) {
-			f = popen("lsmod | grep ^amdgpu", "r");
-			while (fgets(name, sizeof(name)-1, f)) {
-				if (strstr(name, "amdgpu"))
-					found = 1;
+	if (!options->no_kernel) {
+		snprintf(name, sizeof(name)-1, "/sys/kernel/debug/dri/%d/name", options->instance);
+		f = fopen(name, "r");
+		if (!f && options->instance >= 0 && !options->no_kernel && !options->use_pci) {
+			int found = 0;
+			if (!options->quiet) {
+				f = popen("lsmod | grep ^amdgpu", "r");
+				while (fgets(name, sizeof(name)-1, f)) {
+					if (strstr(name, "amdgpu"))
+						found = 1;
+				}
+				pclose(f);
+
+				perror("Cannot open DRI name under debugfs");
+				if (!found)
+					printf("ERROR: amdgpu.ko is not loaded.\n");
+				else
+					printf("ERROR: amdgpu.ko is loaded but /sys/kernel/debug/dri/%d/name is not found\n", options->instance);
 			}
-			pclose(f);
+			return NULL;
+		} else if (f) {
+			int r;
 
-			perror("Cannot open DRI name under debugfs");
-			if (!found)
-				printf("ERROR: amdgpu.ko is not loaded.\n");
-			else
-				printf("ERROR: amdgpu.ko is loaded but /sys/kernel/debug/dri/%d/name is not found\n", options->instance);
-		}
-		return NULL;
-	} else if (f) {
-		int r;
+			r = fscanf(f, "%*s %s", name);
+			fclose(f);
+			if (r == 1) {
+				// strip off dev= for kernels > 4.7
+				if (strstr(name, "dev="))
+					memmove(name, name+4, strlen(name)-3);
 
-		r = fscanf(f, "%*s %s", name);
-		fclose(f);
-		if (r == 1) {
-			// strip off dev= for kernels > 4.7
-			if (strstr(name, "dev="))
-				memmove(name, name+4, strlen(name)-3);
-
-			if (!strlen(options->pci.name)) {
-				// read the PCI info
-				strcpy(options->pci.name, name);
-				sscanf(name, "%04x:%02x:%02x.%x",
-					&options->pci.domain,
-					&options->pci.bus,
-					&options->pci.slot,
-					&options->pci.func);
-				need_config_scan = 1;
+				if (!strlen(options->pci.name)) {
+					// read the PCI info
+					strcpy(options->pci.name, name);
+					sscanf(name, "%04x:%02x:%02x.%x",
+						&options->pci.domain,
+						&options->pci.bus,
+						&options->pci.slot,
+						&options->pci.func);
+					need_config_scan = 1;
+				}
 			}
 		}
-	}
 
-	if (trydid < 0) {
-		snprintf(driver, sizeof(driver)-1, "/sys/bus/pci/devices/%s/device", name);
-		f = fopen(driver, "r");
-		if (!f) {
-			if (!options->quiet) perror("Cannot open PCI device name under sysfs (is a display attached?)");
-			return NULL;
-		}
+		if (trydid < 0) {
+			snprintf(driver, sizeof(driver)-1, "/sys/bus/pci/devices/%s/device", name);
+			f = fopen(driver, "r");
+			if (!f) {
+				if (!options->quiet) perror("Cannot open PCI device name under sysfs (is a display attached?)");
+				return NULL;
+			}
 
-		parsed_did = fscanf(f, "0x%04x", &did);
-		fclose(f);
-		if (parsed_did != 1) {
-			if (!options->quiet) printf("Could not read device id");
-			return NULL;
-		}
-		asic = umr_discover_asic_by_did(options, did, errout, &tryipdiscovery);
-	} else {
-		if (options->dev_name[0]) {
-			asic = umr_discover_asic_by_name(options, options->dev_name, errout);
+			parsed_did = fscanf(f, "0x%04x", &did);
+			fclose(f);
+			if (parsed_did != 1) {
+				if (!options->quiet) printf("Could not read device id");
+				return NULL;
+			}
+			asic = umr_discover_asic_by_did(options, did, errout, &tryipdiscovery);
 		} else {
-			asic = umr_discover_asic_by_did(options, trydid, errout, &tryipdiscovery);
-			if (!asic && tryipdiscovery) {
-				char buf[32];
-				sprintf(buf, "amd%04" PRIx64, (uint64_t)trydid);
-				asic = umr_discover_asic_by_name(options, buf, errout);
-				if (asic)
-					errout("[WARNING]: Unknown ASIC [%s] should be added to pci.did to get proper name\n", buf);
+			if (options->dev_name[0]) {
+				asic = umr_discover_asic_by_name(options, options->dev_name, errout);
+			} else {
+				asic = umr_discover_asic_by_did(options, trydid, errout, &tryipdiscovery);
+				if (!asic && tryipdiscovery) {
+					char buf[32];
+					sprintf(buf, "amd%04" PRIx64, (uint64_t)trydid);
+					asic = umr_discover_asic_by_name(options, buf, errout);
+					if (asic)
+						errout("[WARNING]: Unknown ASIC [%s] should be added to pci.did to get proper name\n", buf);
+				}
 			}
 		}
 	}

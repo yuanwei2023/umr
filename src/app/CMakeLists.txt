@@ -26,8 +26,6 @@ if(UMR_SERVER)
   set (GUI_SOURCE ${GUI_SOURCE} server.c)
 endif()
 
-
-
 #application objects
 add_library(umrapp
   print.c
@@ -57,7 +55,7 @@ add_library(umrapp
 target_link_libraries(umrapp parson ${UMRAPP_DRM_LIBS})
 
 add_executable(umr main.c)
-target_link_libraries(umr umrapp umrlow rumr umrcore umrlow rumr)
+target_link_libraries(umr umrapp umrlow umrcore umrlow)
 if(UMR_GUI)
     # Used by glad
     target_link_libraries(umr dl)

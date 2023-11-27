@@ -97,3 +97,31 @@ void rumr_buffer_free(struct rumr_buffer *buf)
 		free(buf);
 	}
 }
+
+struct rumr_buffer *rumr_buffer_load_file(const char *fname)
+{
+	struct rumr_buffer *buf;
+	uint32_t size;
+	FILE *f;
+
+	f = umr_database_open(NULL, (char *)fname);
+	if (!f)
+		return NULL;
+	fseek(f, 0, SEEK_END);
+	size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	buf = calloc(1, sizeof *buf);
+	buf->data = calloc(1, size + RUMR_BUFFER_PREHEADER);
+	if (!buf->data) {
+		free(buf);
+		fclose(f);
+		return NULL;
+	}
+	buf->data += RUMR_BUFFER_PREHEADER;
+	buf->size = size;
+	fread(buf->data, 1, size, f);
+	fclose(f);
+	buf->woffset = size;
+	return buf;
+}

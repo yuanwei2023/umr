@@ -42,6 +42,7 @@ add_library(umrcore
   version.c
   vpe_decode_opcodes.c
   $<TARGET_OBJECTS:database>
+  $<TARGET_OBJECTS:rumr>
 )
 
 target_link_libraries(umrcore ${REQUIRED_EXTERNAL_LIBS})

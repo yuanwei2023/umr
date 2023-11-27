@@ -470,9 +470,6 @@ static void *read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *rin
 int rumr_client_discover(struct rumr_client_state *state)
 {
 	struct rumr_buffer *buf;
-	uint32_t v;
-	char linebuf[256];
-	int ip, reg, bit;
 
 	buf = send_opcode(state, RUMR_OP_DISCOVER, 0);
 	if (!buf) {
@@ -480,89 +477,9 @@ int rumr_client_discover(struct rumr_client_state *state)
 		return -1;
 	}
 
-	state->asic = calloc(1, sizeof *(state->asic));
+	state->asic = rumr_parse_serialized_asic(buf);
 
-	// read asicname
-		memset(linebuf, 0, sizeof linebuf);
-		rumr_buffer_read_data(buf, linebuf, 64);
-		state->asic->asicname = strdup(linebuf);
-	// CHIPFAMILY
-		state->asic->family = rumr_buffer_read_uint32(buf);
-	// VGPR Granularity
-		state->asic->parameters.vgpr_granularity = rumr_buffer_read_uint32(buf);
-	// config
-		v = rumr_buffer_read_uint32(buf);
-		if (v <= sizeof(state->asic->config.data)) {
-			rumr_buffer_read_data(buf, state->asic->config.data, v);
-		} else {
-			state->log_msg("[ERROR]: GCA Config data too large in discovery\n");
-			return -1;
-		}
-	// VRAM
-		state->asic->config.vram_size = rumr_buffer_read_uint32(buf);
-		state->asic->config.vram_size |= (uint64_t)rumr_buffer_read_uint32(buf) << 32ULL;
-	// VIS_VRAM
-		state->asic->config.vis_vram_size = rumr_buffer_read_uint32(buf);
-		state->asic->config.vis_vram_size |= (uint64_t)rumr_buffer_read_uint32(buf) << 32ULL;
-	// GTT
-		state->asic->config.gtt_size = rumr_buffer_read_uint32(buf);
-		state->asic->config.gtt_size |= (uint64_t)rumr_buffer_read_uint32(buf) << 32ULL;
-	// APU
-		state->asic->is_apu = rumr_buffer_read_uint32(buf);
-	// NO blocks
-		state->asic->no_blocks = rumr_buffer_read_uint32(buf);
-		state->asic->blocks = calloc(state->asic->no_blocks, sizeof state->asic->blocks[0]);
-
-	// per IP block
-	for (ip = 0; ip < state->asic->no_blocks; ip++) {
-		state->asic->blocks[ip] = calloc(1, sizeof *(state->asic->blocks[0]));
-		// ipname
-			memset(linebuf, 0, sizeof linebuf);
-			rumr_buffer_read_data(buf, linebuf, 64);
-			state->asic->blocks[ip]->ipname = strdup(linebuf);
-		// no_regs
-			state->asic->blocks[ip]->no_regs = rumr_buffer_read_uint32(buf);
-			state->asic->blocks[ip]->regs = calloc(state->asic->blocks[ip]->no_regs, sizeof state->asic->blocks[0]->regs[0]);
-		// discoverable
-			state->asic->blocks[ip]->discoverable.die = rumr_buffer_read_uint32(buf);
-			state->asic->blocks[ip]->discoverable.maj = rumr_buffer_read_uint32(buf);
-			state->asic->blocks[ip]->discoverable.min = rumr_buffer_read_uint32(buf);
-			state->asic->blocks[ip]->discoverable.rev = rumr_buffer_read_uint32(buf);
-			state->asic->blocks[ip]->discoverable.instance = rumr_buffer_read_uint32(buf);
-			state->asic->blocks[ip]->discoverable.logical_inst = rumr_buffer_read_uint32(buf);
-		// registers
-			for (reg = 0; reg < state->asic->blocks[ip]->no_regs; reg++) {
-			// regname
-				memset(linebuf, 0, sizeof linebuf);
-				rumr_buffer_read_data(buf, linebuf, 128);
-				state->asic->blocks[ip]->regs[reg].regname = strdup(linebuf);
-			// type
-				state->asic->blocks[ip]->regs[reg].type = rumr_buffer_read_uint32(buf);
-			// ADDR_LO
-				state->asic->blocks[ip]->regs[reg].addr = rumr_buffer_read_uint32(buf);
-			// ADDR_HI
-				state->asic->blocks[ip]->regs[reg].addr |= (uint64_t)rumr_buffer_read_uint32(buf) << 32ULL;
-			// bit64
-				state->asic->blocks[ip]->regs[reg].bit64 = rumr_buffer_read_uint32(buf);
-			// nobits
-				state->asic->blocks[ip]->regs[reg].no_bits = rumr_buffer_read_uint32(buf);
-				state->asic->blocks[ip]->regs[reg].bits = calloc(state->asic->blocks[ip]->regs[reg].no_bits, sizeof state->asic->blocks[0]->regs[0].bits[0]);
-
-			// bits
-				for (bit = 0; bit < state->asic->blocks[ip]->regs[reg].no_bits; bit++) {
-					// bitname
-						memset(linebuf, 0, sizeof linebuf);
-						rumr_buffer_read_data(buf, linebuf, 128);
-						state->asic->blocks[ip]->regs[reg].bits[bit].regname = strdup(linebuf);
-					// start
-						state->asic->blocks[ip]->regs[reg].bits[bit].start = rumr_buffer_read_uint32(buf);
-					// stop
-						state->asic->blocks[ip]->regs[reg].bits[bit].stop = rumr_buffer_read_uint32(buf);
-				}
-			}
-	}
-
-	return 0;
+	return state->asic ? 0 : -1;
 }
 
 int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs *cf, char *addr)
@@ -612,9 +529,6 @@ int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs 
 		state->asic->gpr_read_funcs.read_sgprs = read_sgprs;
 		state->asic->gpr_read_funcs.read_vgprs = read_vgprs;
 		state->asic->gpr_read_funcs.data = state;
-
-	// now we have to process the config data, etc...
-		umr_scan_config_gca_data(state->asic);
 
 	// default shader options
 		if (state->asic->family <= FAMILY_VI) { // on gfx9+ hs/gs are opaque

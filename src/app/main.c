@@ -1148,6 +1148,13 @@ int main(int argc, char **argv)
 					umr_print_cpc(asic);
 				} else if (!strcmp(argv[i], "--print-sdma") || !strcmp(argv[i], "-sdma")) {
 					umr_print_sdma(asic);
+				} else if (!strcmp(argv[i], "--rumr-export-asic")) {
+					struct rumr_buffer *buf;
+					if (!asic)
+						asic = get_asic();
+					buf = rumr_serialize_asic(asic);
+					rumr_save_serialized_asic(asic, buf);
+					rumr_buffer_free(buf);
 				} else if (!strcmp(argv[i], "--rumr-server")) {
 					struct rumr_comm_funcs *cf;
 					char *cfp;

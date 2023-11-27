@@ -34,7 +34,7 @@ FILE *umr_database_open(char *path, char *filename)
 	char p[512];
 
 	// 1. try to open it directly
-	f = fopen(filename, "r");
+	f = fopen(filename, "rb");
 	if (f)
 		return f;
 
@@ -42,7 +42,7 @@ FILE *umr_database_open(char *path, char *filename)
 	if (path && strlen(path)) {
 		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
 		sprintf(p, "%s%s%s", path, s, filename);
-		f = fopen(p, "r");
+		f = fopen(p, "rb");
 		if (f)
 			return f;
 	}
@@ -52,7 +52,7 @@ FILE *umr_database_open(char *path, char *filename)
 	if (path) {
 		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
 		sprintf(p, "%s%s%s", path, s, filename);
-		f = fopen(p, "r");
+		f = fopen(p, "rb");
 		if (f)
 			return f;
 	}
@@ -60,7 +60,7 @@ FILE *umr_database_open(char *path, char *filename)
 	// 4. try using UMR_DB_DIR define
 #ifdef UMR_DB_DIR
 	sprintf(p, "%s%s", UMR_DB_DIR, filename);
-	f = fopen(p, "r");
+	f = fopen(p, "rb");
 	if (f)
 		return f;
 #endif
