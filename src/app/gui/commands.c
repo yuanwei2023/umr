@@ -331,6 +331,8 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB10_A2, width, height);
 	} else if (fourcc == DRM_FORMAT_XRGB8888) {
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, width, height);
+	} else if (fourcc == DRM_FORMAT_R8) {
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_R8, width, height);
 	} else {
 		/* default is DRM_FORMAT_ARGB8888 */
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
@@ -441,10 +443,14 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 		unsigned format = (metadata.data.data[2 + 1] >> 20) & 0x3f;
 		if (format == 9)
 			fourcc = DRM_FORMAT_XRGB2101010;
+		else if (format == 1)
+			fourcc = DRM_FORMAT_R8;
 	} else {
 		unsigned format = (metadata.data.data[2 + 1] >> 20) & 0x1FF;
 		if (format >= 50 && format <= 55) /* GFX10_FORMAT_2_10_10_10_* */
 			fourcc = DRM_FORMAT_XRGB2101010;
+		else if (format == 1)
+			fourcc = DRM_FORMAT_R8;
 	}
 
 	int nplanes = 1;
