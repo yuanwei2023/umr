@@ -114,11 +114,17 @@ retry:
 	asic->ring_func.read_ring_data = umr_read_ring_data;
 
 	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
-	asic->wave_funcs.get_wave_status = umr_get_wave_status;
-	asic->shader_disasm_funcs.disasm = umr_shader_disasm;
+	if (options.no_kernel) {
+		asic->gpr_read_funcs.read_sgprs = umr_read_sgprs_via_mmio;
+		asic->gpr_read_funcs.read_vgprs = umr_read_vgprs_via_mmio;
+		asic->wave_funcs.get_wave_status = umr_get_wave_status_via_mmio;
+	} else {
+		asic->gpr_read_funcs.read_sgprs = umr_read_sgprs;
+		asic->gpr_read_funcs.read_vgprs = umr_read_vgprs;
+		asic->wave_funcs.get_wave_status = umr_get_wave_status;
+	}
 
-	asic->gpr_read_funcs.read_sgprs = umr_read_sgprs;
-	asic->gpr_read_funcs.read_vgprs = umr_read_vgprs;
+	asic->shader_disasm_funcs.disasm = umr_shader_disasm;
 
 	// default shader options
 	if (asic->family <= FAMILY_VI) { // on gfx9+ hs/gs are opaque

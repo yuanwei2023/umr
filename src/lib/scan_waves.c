@@ -29,6 +29,151 @@
 
 #define MANY_TO_INSTANCE(wgp, simd) (((simd) & 3) | ((wgp) << 2))
 
+static void wave_read_regs_via_mmio(struct umr_asic *asic, uint32_t simd,
+			   uint32_t wave, uint32_t thread,
+			   uint32_t regno, uint32_t num, uint32_t *out)
+{
+	struct umr_reg *ind_index, *ind_data;
+	uint32_t data;
+
+	ind_index = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_IND_INDEX");
+	ind_data  = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_IND_DATA");
+
+	if (ind_index && ind_data) {
+		data = umr_bitslice_compose_value(asic, ind_index, "WAVE_ID", wave);
+		data |= umr_bitslice_compose_value(asic, ind_index, "INDEX", regno);
+		if (asic->family < FAMILY_NV) {
+			data |= umr_bitslice_compose_value(asic, ind_index, "THREAD_ID", thread);
+			data |= umr_bitslice_compose_value(asic, ind_index, "FORCE_READ", 1);
+			data |= umr_bitslice_compose_value(asic, ind_index, "SIMD_ID", simd);
+		} else {
+			data |= umr_bitslice_compose_value(asic, ind_index, "WORKITEM_ID", thread);
+		}
+		data |= umr_bitslice_compose_value(asic, ind_index, "AUTO_INCR", 1);
+		asic->reg_funcs.write_reg(asic, ind_index->addr * 4, data, REG_MMIO);
+		while (num--)
+			*(out++) = asic->reg_funcs.read_reg(asic, ind_data->addr * 4, REG_MMIO);
+	} else {
+		asic->err_msg("[BUG]: The required SQ_IND_{INDEX,DATA} registers are not found on the asic <%s>\n", asic->asicname);
+		return;
+	}
+}
+
+static int read_gpr_mmio_raw(struct umr_asic *asic, int v_or_s,
+				   uint32_t thread, uint32_t se, uint32_t sh, uint32_t cu, uint32_t wave, uint32_t simd,
+				   uint32_t offset, uint32_t size, uint32_t *dst)
+{
+	umr_grbm_select_index(asic, se, sh, cu);
+	wave_read_regs_via_mmio(asic, simd, wave, thread, offset + (v_or_s ? 0x400 : 0x200), size, dst);
+	umr_grbm_select_index(asic, 0xFFFFFFFFUL, 0xFFFFFFFFUL, 0xFFFFFFFFUL);
+	return 0;
+}
+
+static int read_gpr_mmio(struct umr_asic *asic, int v_or_s, uint32_t thread, struct umr_wave_data *wd, uint32_t *dst)
+{
+	uint32_t se, sh, cu, wave, simd, size;
+	int r = 0;
+	uint64_t addr = 0;
+
+	if (asic->family < FAMILY_NV) {
+		se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SE_ID");
+		sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SH_ID");
+		cu = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "CU_ID");
+		wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID");
+		simd = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID");
+
+		if (v_or_s == 0) {
+			uint32_t shift;
+			if (asic->family <= FAMILY_CIK)
+				shift = 3;  // on SI..CIK allocations were done in 8-dword blocks
+			else
+				shift = 4;  // on VI allocations are in 16-dword blocks
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE") + 1) << shift);
+		} else {
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
+		}
+	} else {
+		se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
+		sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID");
+		cu = ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) | umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"));
+		wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
+		simd = 0;
+		if (v_or_s == 0) {
+			size = 4 * 124; // regular SGPRs, VCC, and TTMPs
+		} else {
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
+		}
+	}
+
+	r = read_gpr_mmio_raw(asic, v_or_s, thread, se, sh, cu, wave, simd, 0, size, dst);
+	if (r < 0)
+		return r;
+
+	// if we are reading SGPRS then optionally dump them
+	// and then read TRAP registers if necessary
+	if (asic->options.test_log && asic->options.test_log_fd) {
+		int x;
+
+		// we use addr for test logging
+		addr =
+			((v_or_s ? 0ULL : 1ULL) << 60) | // reading SGPRs
+			((uint64_t)0)                  | // starting address to read from
+			((uint64_t)se << 12)        |
+			((uint64_t)sh << 20)        |
+			((uint64_t)cu << 28)        |
+			((uint64_t)wave << 36)      |
+			((uint64_t)simd << 44)      |
+			((uint64_t)thread << 52ULL); // thread_id
+
+		fprintf(asic->options.test_log_fd, "%cGPR@0x%"PRIx64" = { ", "SV"[v_or_s], addr);
+		for (x = 0; x < r; x += 4) {
+			fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[x/4]);
+			if (x < (r - 4))
+				fprintf(asic->options.test_log_fd, ", ");
+		}
+		fprintf(asic->options.test_log_fd, "}\n");
+	}
+
+	if (v_or_s == 0) {
+		// read trap if any
+		if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
+			r = read_gpr_mmio_raw(asic, v_or_s, thread, se, sh, cu, wave, simd, 4 * 0x6C, size, &dst[0x6C]);
+			if (r > 0) {
+				if (asic->options.test_log && asic->options.test_log_fd) {
+					int x;
+					fprintf(asic->options.test_log_fd, "SGPR@0x%"PRIx64" = { ", addr + 0x6C * 4);
+					for (x = 0; x < r; x += 4) {
+						fprintf(asic->options.test_log_fd, "0x%"PRIx32, dst[0x6C + x/4]);
+						if (x < (r - 4))
+							fprintf(asic->options.test_log_fd, ", ");
+					}
+					fprintf(asic->options.test_log_fd, "}\n");
+				}
+			}
+		}
+	}
+
+	return r;
+}
+
+/**
+ * umr_read_sgprs - Read SGPR registers for a specific wave
+ */
+int umr_read_sgprs_via_mmio(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst)
+{
+	return read_gpr_mmio(asic, 0, 0, wd, dst);
+}
+
+int umr_read_vgprs_via_mmio(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst)
+{
+	// reading VGPR is not supported on pre GFX9 devices
+	if (asic->family < FAMILY_AI)
+		return -1;
+
+	return read_gpr_mmio(asic, 1, thread, wd, dst);
+}
+
+
 int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws)
 {
 	uint32_t value;
@@ -149,7 +294,7 @@ int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave
 {
 	/* type 2 wave data */
 	*no_fields = 0;
-	dst[(*no_fields)++] = 2;
+	dst[(*no_fields)++] = (asic->family == FAMILY_GFX11) ? 3 : 2;
 	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_STATUS")->addr);
 	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_LO")->addr);
 	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_HI")->addr);
@@ -169,6 +314,31 @@ int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave
 	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_MODE")->addr);
 
 	return 0;
+}
+
+int umr_get_wave_status_via_mmio(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
+{
+	int no_fields, min, maj;
+	uint32_t buf[64];
+
+	memset(buf, 0, sizeof buf);
+
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	no_fields = 0;
+
+	umr_grbm_select_index(asic, se, sh, cu);
+	switch (maj) {
+		case 8:
+		case 9: umr_read_wave_status_via_mmio_gfx8_9(asic, simd, wave, buf, &no_fields); break;
+		case 10:
+		case 11: umr_read_wave_status_via_mmio_gfx_10_11(asic, wave, buf, &no_fields); break;
+	};
+	umr_grbm_select_index(asic, 0xFFFFFFFFUL, 0xFFFFFFFFUL, 0xFFFFFFFFUL);
+
+	if (no_fields > 0)
+		return umr_parse_wave_data_gfx(asic, ws, buf, no_fields);
+	else
+		return -1;
 }
 
 int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf, uint32_t nwords)
