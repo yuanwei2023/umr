@@ -402,17 +402,32 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			}
 
 			// scan for a region 256K <= X <= 4096K which is 32-bit, non IO, non prefetchable
+			// manually scan because a lot of distro ship with a buggy libpciaccess
 			if (use_region == 6) {
-				for (use_region = 0; use_region < 6; use_region++)
-					if (asic->pci.pdevice->regions[use_region].is_64 == 0 &&
-					    asic->pci.pdevice->regions[use_region].is_prefetchable == 0 &&
-					    asic->pci.pdevice->regions[use_region].is_IO == 0 &&
-					    asic->pci.pdevice->regions[use_region].size >= (256UL * 1024) &&
-					    asic->pci.pdevice->regions[use_region].size <= (4096UL * 1024))
-						break;
+				// open /sys/bus/pci/devices/${pciaddr}/resource
+				uint64_t lowaddr, highaddr, size, flags;
+				char linebuf[512];
+				FILE *res;
+				sprintf(linebuf, "/sys/bus/pci/devices/%04"PRIx32":%02"PRIx32":%02"PRIx32".%d/resource",
+					(uint32_t)asic->pci.pdevice->domain,
+					(uint32_t)asic->pci.pdevice->bus,
+					(uint32_t)asic->pci.pdevice->dev,
+					(int)asic->pci.pdevice->func);
+				res = fopen(linebuf, "r");
+				if (res) {
+					use_region = 0;
+					while (fgets(linebuf, sizeof linebuf, res)) {
+						sscanf(linebuf, "0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64, &lowaddr, &highaddr, &flags);
+						size = highaddr - lowaddr + 1;
+						if (size >= (256 * 1024ULL) && size <= (4096 * 1024ULL) && !(flags & (1|4|8)))
+							break;
+						++use_region;
+					}
+					fclose(res);
+				}
 			}
 
-			if (use_region == 6) {
+			if (use_region >= 6) {
 				errout("[ERROR]: Could not find PCI region (debugfs mode might still work)\n");
 				goto err_pci;
 			}
