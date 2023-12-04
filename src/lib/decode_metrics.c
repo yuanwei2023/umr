@@ -601,6 +601,8 @@
 	__FIELD(average_core_c0_activity[15]),	\
 	__FIELD(average_dram_reads),	\
 	__FIELD(average_dram_writes),	\
+	__FIELD(average_ipu_reads),	\
+	__FIELD(average_ipu_writes),	\
 	__FIELD(system_clock_counter),	\
 	__FIELD(average_socket_power),	\
 	__FIELD(average_ipu_power),	\
@@ -624,6 +626,7 @@
 	__FIELD(average_core_power[13]),	\
 	__FIELD(average_core_power[14]),	\
 	__FIELD(average_core_power[15]),	\
+	__FIELD(average_sys_power),	\
 	__FIELD(stapm_power_limit),	\
 	__FIELD(current_stapm_power_limit),	\
 	__FIELD(average_gfxclk_frequency),	\
@@ -632,6 +635,8 @@
 	__FIELD(average_ipuclk_frequency),	\
 	__FIELD(average_fclk_frequency),	\
 	__FIELD(average_vclk_frequency),	\
+	__FIELD(average_uclk_frequency),	\
+	__FIELD(average_mpipu_frequency),	\
 	__FIELD(current_coreclk[0]),	\
 	__FIELD(current_coreclk[1]),	\
 	__FIELD(current_coreclk[2]),	\
@@ -650,6 +655,13 @@
 	__FIELD(current_coreclk[15]),	\
 	__FIELD(current_core_maxfreq),	\
 	__FIELD(current_gfx_maxfreq),	\
+	__FIELD(throttle_residency_prochot),	\
+	__FIELD(throttle_residency_spl),	\
+	__FIELD(throttle_residency_fppt),	\
+	__FIELD(throttle_residency_sppt),	\
+	__FIELD(throttle_residency_thm_core),	\
+	__FIELD(throttle_residency_thm_gfx),	\
+	__FIELD(throttle_residency_thm_soc),	\
 	__FIELD(time_filter_alphavalue)
 
 static struct field_info metrics_header[] = {
