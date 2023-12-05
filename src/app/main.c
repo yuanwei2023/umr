@@ -583,8 +583,8 @@ int main(int argc, char **argv)
 			} else if (pass == PASS_TEST_HARNESS) {
 				if (!strcmp(argv[i], "--test-log") || !strcmp(argv[i], "-tl")) {
 					if (i + 1 < argc) {
-						options.test_log_fd = fopen(argv[i + 1], "w");
-						options.test_log = 1;
+						asic->options.test_log_fd = fopen(argv[i + 1], "w");
+						asic->options.test_log = 1;
 						umr_scan_config(asic, 0);
 						++i;
 					} else {
@@ -635,10 +635,10 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--lookup") || !strcmp(argv[i], "-lu")) {
 					if (i + 2 < argc) {
-						int tmp = options.bitfields;
-						options.bitfields = 1;
+						int tmp = asic->options.bitfields;
+						asic->options.bitfields = 1;
 						umr_lookup(asic, argv[i+1], argv[i+2]);
-						options.bitfields = tmp;
+						asic->options.bitfields = tmp;
 						i += 2;
 					}
 				} else if (!strcmp(argv[i], "--write") || !strcmp(argv[i], "-w")) {
@@ -650,7 +650,7 @@ int main(int argc, char **argv)
 						else
 							umr_set_register(asic, argv[i+1], argv[i+2]);
 						i += 2;
-						options.need_scan = 0;
+						asic->options.need_scan = 0;
 					} else {
 						fprintf(stderr, "[ERROR]: --write requires two parameters\n");
 						return EXIT_FAILURE;
@@ -659,7 +659,7 @@ int main(int argc, char **argv)
 					if (i + 2 < argc) {
 						umr_set_register_bit(asic, argv[i+1], argv[i+2]);
 						i += 2;
-						options.need_scan = 0;
+						asic->options.need_scan = 0;
 					} else {
 						fprintf(stderr, "[ERROR]: --write requires two parameters\n");
 						return EXIT_FAILURE;
@@ -680,7 +680,7 @@ int main(int argc, char **argv)
 						if (!umr_scan_asic(asic, "", blockname, ""))
 							umr_print_asic(asic, blockname);
 						++i;
-						options.need_scan = 0;
+						asic->options.need_scan = 0;
 					} else {
 						fprintf(stderr, "[ERROR]: --scan requires one parameter\n");
 						return EXIT_FAILURE;
@@ -708,7 +708,7 @@ int main(int argc, char **argv)
 								return EXIT_FAILURE;
 							}
 							umr_scan_asic(asic, asicname, ipname, regname);
-							options.need_scan = 0;
+							asic->options.need_scan = 0;
 						}
 						++i;
 					} else {
@@ -844,7 +844,7 @@ int main(int argc, char **argv)
 						sscanf(argv[i+2], "%"SCNx32, &size);
 
 						// imply user hub if hub name specified
-						if (options.hub_name[0])
+						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
 						umr_read_vram(asic, asic->options.vm_partition, vmid, address, 0x1000UL * size, NULL);
@@ -870,7 +870,7 @@ int main(int argc, char **argv)
 							}
 
 						// imply user hub if hub name specified
-						if (options.hub_name[0])
+						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
 						sscanf(argv[i+2], "%"SCNx32, &size);
@@ -902,7 +902,7 @@ int main(int argc, char **argv)
 							}
 
 						// imply user hub if hub name specified
-						if (options.hub_name[0])
+						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
 						sscanf(argv[i+2], "%"SCNx32, &size);
@@ -933,7 +933,7 @@ int main(int argc, char **argv)
 							}
 
 						// imply user hub if hub name specified
-						if (options.hub_name[0])
+						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
 						sscanf(argv[i+2], "%"SCNx32, &data);
@@ -959,7 +959,7 @@ int main(int argc, char **argv)
 							}
 
 						// imply user hub if hub name specified
-						if (options.hub_name[0])
+						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
 						sscanf(argv[i+2], "%"SCNx32, &size);
@@ -1088,11 +1088,11 @@ int main(int argc, char **argv)
 							return EXIT_FAILURE;
 						}
 						sscanf(busaddr, "%04x:%02x:%02x.%01x", &options.pci.domain, &options.pci.bus, &options.pci.slot, &options.pci.func);
-						options.use_pci = 0;
+						asic->options.use_pci = 0;
 						// TODO: it'd be nice to get VMID from the PASID so we can enable these
-						options.no_follow_ib = 1;
-						options.no_follow_shader = 1;
-						options.no_follow_loadx = 1;
+						asic->options.no_follow_ib = 1;
+						asic->options.no_follow_shader = 1;
+						asic->options.no_follow_loadx = 1;
 						umr_dump_runlists(asic, node);
 					} else {
 						fprintf(stderr, "[ERROR]: --runlist requires one parameter\n");
