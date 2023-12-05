@@ -474,6 +474,11 @@ int main(int argc, char **argv)
 	}
 
 	for (pass = 0; pass < PASS_MAX; pass++) {
+		// if we already have an ASIC assign options
+		if (pass == PASS_ASIC_MODEL && asic) {
+			asic->options = options;
+		}
+
 		// if we're the pass right after when an ASIC model is created
 		// normally let's make sure we have one
 		if ((pass - 1) == PASS_ASIC_MODEL) {
