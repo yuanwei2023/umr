@@ -265,6 +265,10 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "overscubscription_timer", stream->words[i], NULL, 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_info", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 				}
+				// NOTE: this extra if will make sense later.
+				if (mes_ver_maj == 11) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "event_intr_history_gpu_mc_ptr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
+				}
 				break;
 
 			case 1: // MES_SCH_API_SET_SCHEDULING_CONFIG
