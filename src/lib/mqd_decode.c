@@ -1430,5 +1430,6 @@ char **umr_mqd_decode_data(enum umr_mqd_engine_sel eng, enum chipfamily fam, uin
 			return txt;
 		}
 	}
+	free(txt);
 	return NULL;
 }

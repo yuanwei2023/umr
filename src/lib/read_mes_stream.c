@@ -497,16 +497,16 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					switch (misc_opcode) {
 						case 0: // MODIFY_REG
 // todo: enum size...
-							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "subcode", misc_opcode = stream->words[i], NULL, 16, 32); ++i;
-							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", misc_opcode = stream->words[i], NULL, 16, 32); ++i;
-							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", misc_opcode = stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "subcode", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", stream->words[i], NULL, 16, 32); ++i;
 							break;
 						case 1: // INV_GART
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_size", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 							break;
 						case 2: // QUERY_STATUS
-							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "context_id", misc_opcode = stream->words[i], NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "context_id", stream->words[i], NULL, 16, 32); ++i;
 							break;
 					}
 					break;

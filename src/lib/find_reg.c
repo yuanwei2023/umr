@@ -223,7 +223,6 @@ retry:
 			int bot, top, mid, diff;
 			bot = 0;
 			top = asic->blocks[i]->no_regs;
-			mid = (bot + top) >> 1;
 			while (bot < top) {
 				mid = (bot + top) >> 1;
 				diff = istr_cmp(asic->blocks[i]->regs[mid].regname, regname);

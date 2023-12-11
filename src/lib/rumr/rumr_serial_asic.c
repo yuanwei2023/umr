@@ -145,6 +145,8 @@ struct umr_asic *rumr_parse_serialized_asic(struct rumr_buffer *buf)
 		if (v <= sizeof(asic->config.data)) {
 			rumr_buffer_read_data(buf, asic->config.data, v);
 		} else {
+			free(asic->asicname);
+			free(asic);
 			return NULL;
 		}
 	// VRAM
