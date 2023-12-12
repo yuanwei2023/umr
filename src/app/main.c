@@ -588,6 +588,7 @@ int main(int argc, char **argv)
 					if (i + 1 < argc) {
 						options.instance = atoi(argv[i+1]);
 						options.forced_instance = 1;
+						asic = get_asic();
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --instance requires a number\n");
