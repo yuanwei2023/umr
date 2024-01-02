@@ -544,7 +544,8 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						case 5: // SET_SHADER_DEBUGGER
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)stream->words[i] | ((uint64_t)stream->words[i+1] << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_memop", stream->words[i] & 1, NULL, 16, 32);
-							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_alu_op", (stream->words[i] & 2) >> 1, NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_alu_op", (stream->words[i] & 2) >> 1, NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_ctx_flush", (stream->words[i] >> 31) & 1, NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "spi_gdbg_per_vmid_cntl", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[0]", stream->words[i], NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[1]", stream->words[i], NULL, 16, 32); ++i;
