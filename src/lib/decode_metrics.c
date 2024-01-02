@@ -289,7 +289,7 @@
 	__FIELD(jpeg_activity[28]), \
 	__FIELD(jpeg_activity[29]), \
 	__FIELD(jpeg_activity[30]), \
-	__FIELD(jpeg_activity[32]), \
+	__FIELD(jpeg_activity[31]), \
 	__FIELD(energy_accumulator),	\
 	__FIELD(system_clock_counter),	\
 	__FIELD(throttle_status),	\
