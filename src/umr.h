@@ -1683,6 +1683,7 @@ enum umr_ring_type {
 	UMR_RING_MES,
 	UMR_RING_VPE,
 	UMR_RING_UMSCH,
+	UMR_RING_HSA,
 
 	UMR_RING_GUESS,
 	UMR_RING_UNK=0xFF, // if unknown
@@ -1788,6 +1789,7 @@ struct umr_packet_stream {
 		struct umr_mes_stream *mes;
 		struct umr_vpe_stream *vpe;
 		struct umr_umsch_stream *umsch;
+		struct umr_hsa_stream *hsa;
 	} stream;
 
 	void *cont;
@@ -1969,6 +1971,23 @@ struct umr_umsch_stream {
 struct umr_umsch_stream *umr_umsch_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
 void umr_free_umsch_stream(struct umr_umsch_stream *stream);
 struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_umsch_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+
+// HSA library
+struct umr_hsa_stream {
+	uint32_t *words,
+		 nwords,
+		 header,
+		 type,
+		 barrier,
+		 acquire_fence_scope,
+		 release_fence_scope;
+
+	struct umr_hsa_stream *next;
+};
+
+struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
+struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_hsa_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
+void umr_free_hsa_stream(struct umr_hsa_stream *stream);
 
 /* shader disassembly */
 int umr_shader_disasm(struct umr_asic *asic,

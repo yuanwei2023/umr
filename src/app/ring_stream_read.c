@@ -101,24 +101,57 @@ static void add_field(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_
 {
 	struct ui_data *data = ui->data;
 	struct umr_asic *asic = data->asic;
-	int i64 = field_size > 32;
+	int i64 = abs(field_size) > 32;
+	int use16 = (field_size < 0);
+	field_size = abs(field_size);
 	if (data->stack[data->sp].f_addr != ib_addr) {
 		data->stack[data->sp].f_addr = ib_addr;
-		if (!i64) {
-			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%08"PRIx32"%s]\t|---> ",
-				BLUE, (unsigned long)ib_vmid, RST,
-				YELLOW, data->stack[data->sp].ib_addr, RST,
-				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-				BMAGENTA, "", data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
+		if (!use16) {
+			if (!i64) {
+				fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%08"PRIx32"%s]\t|---> ",
+					BLUE, (unsigned long)ib_vmid, RST,
+					YELLOW, data->stack[data->sp].ib_addr, RST,
+					YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+					BMAGENTA, "", data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4], RST);
+			} else {
+				fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
+					BLUE, (unsigned long)ib_vmid, RST,
+					YELLOW, data->stack[data->sp].ib_addr, RST,
+					YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+					BMAGENTA,
+						data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/4],
+						data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4],
+					RST);
+			}
 		} else {
-			fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%08"PRIx32"%08"PRIx32"%s]\t|---> ",
-				BLUE, (unsigned long)ib_vmid, RST,
-				YELLOW, data->stack[data->sp].ib_addr, RST,
-				YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
-				BMAGENTA,
-					data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/4],
-					data->stack[data->sp].rawdata[(ib_addr - data->stack[data->sp].b_addr)/4],
-				RST);
+			// each rawdata[] only carries 16-bits of data
+			if (field_size <= 16) {
+				fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%12s0x%04"PRIx32"%s]\t|---> ",
+					BLUE, (unsigned long)ib_vmid, RST,
+					YELLOW, data->stack[data->sp].ib_addr, RST,
+					YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+					BMAGENTA, "", data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/2], RST);
+			} else if (field_size <= 32) {
+				fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%04"PRIx32"%04"PRIx32"%s]\t|---> ",
+					BLUE, (unsigned long)ib_vmid, RST,
+					YELLOW, data->stack[data->sp].ib_addr, RST,
+					YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+					BMAGENTA, "",
+						data->stack[data->sp].rawdata[2 + (ib_addr - data->stack[data->sp].b_addr)/2],
+						data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/2],
+					RST);
+			} else {
+				fprintf(data->stack[data->sp].f, "\n[%s%lu%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s0x%04"PRIx32"%04"PRIx32"%04"PRIx32"%04"PRIx32"%s]\t|---> ",
+					BLUE, (unsigned long)ib_vmid, RST,
+					YELLOW, data->stack[data->sp].ib_addr, RST,
+					YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
+					BMAGENTA,
+						data->stack[data->sp].rawdata[4 + (ib_addr - data->stack[data->sp].b_addr)/2],
+						data->stack[data->sp].rawdata[3 + (ib_addr - data->stack[data->sp].b_addr)/2],
+						data->stack[data->sp].rawdata[2 + (ib_addr - data->stack[data->sp].b_addr)/2],
+						data->stack[data->sp].rawdata[1 + (ib_addr - data->stack[data->sp].b_addr)/2],
+					RST);
+			}
 		}
 	} else {
 		fprintf(data->stack[data->sp].f, ", ");
@@ -339,6 +372,7 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 		case UMR_RING_VPE:
 		case UMR_RING_UMSCH:
 		case UMR_RING_GUESS:
+		case UMR_RING_HSA:
 			if (ringname)
 				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt);
 			else if (words)
@@ -359,6 +393,7 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_MES:
 			case UMR_RING_VPE:
 			case UMR_RING_UMSCH:
+			case UMR_RING_HSA:
 				umr_packet_disassemble_stream(str, ringname ? (uint64_t)start : addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
 			case UMR_RING_GUESS:
@@ -384,6 +419,7 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_MES:
 			case UMR_RING_VPE:
 			case UMR_RING_UMSCH:
+			case UMR_RING_HSA:
 				umr_packet_free(str);
 				break;
 			case UMR_RING_GUESS:
@@ -406,12 +442,20 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 	start = end = 0;
 	nwords = 0;
 	fname[0] = 0;
-	if (sscanf(ringpath, "4/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+	if (sscanf(ringpath, "6/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+		enable_decoder = 6;
+	} else if (sscanf(ringpath, "5/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+		enable_decoder = 5;
+	} else if (sscanf(ringpath, "4/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 4;
 	} else if (sscanf(ringpath, "3/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 3;
 	} else if (sscanf(ringpath, "2/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 2;
+	} else if (sscanf(ringpath, "6/%s", fname) == 1) {
+		enable_decoder = 6;
+	} else if (sscanf(ringpath, "5/%s", fname) == 1) {
+		enable_decoder = 5;
 	} else if (sscanf(ringpath, "4/%s", fname) == 1) {
 		enable_decoder = 4;
 	} else if (sscanf(ringpath, "3/%s", fname) == 1) {
@@ -420,8 +464,6 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		enable_decoder = 2;
 	} else if (sscanf(ringpath, "1/%s", fname) == 1) {
 		enable_decoder = 1;
-	} else if (sscanf(ringpath, "5/%s", fname) == 1) {
-		enable_decoder = 5;
 	} else {
 		memset(ringname, 0, sizeof ringname);
 		memset(from, 0, sizeof from);
@@ -485,6 +527,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_VPE);
 	} else if (enable_decoder == 5) {
 		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_UMSCH);
+	} else if (enable_decoder == 6) {
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_HSA);
 	} else if (enable_decoder == 0) {
 		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_GUESS);
 	} else {

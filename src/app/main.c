@@ -785,7 +785,7 @@ int main(int argc, char **argv)
 						uint32_t vmid, len;
 						int pm;
 						char str[128];
-						char prefix[] = { ' ', '1', '2', '3', '4', '5' };
+						char prefix[] = { ' ', '1', '2', '3', '4', '5', '6' };
 
 						if (sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address) != 2)
 							if (sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address) != 2) {
@@ -813,7 +813,7 @@ int main(int argc, char **argv)
 						int pm, follow;
 						char *name = argv[i+1];
 						char str[128];
-						char prefix[] = { ' ', '1', '2', '3', '4', '5' };
+						char prefix[] = { ' ', '1', '2', '3', '4', '5', '6' };
 
 						if ((i + 2 < argc) && sscanf(argv[i+2], "%d", &pm) == 1) {
 							i += 2;

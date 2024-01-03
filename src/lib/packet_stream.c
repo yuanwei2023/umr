@@ -67,6 +67,9 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 		case UMR_RING_UMSCH:
 			p = str->stream.umsch = umr_umsch_decode_stream(asic, asic->options.vm_partition, from_addr, from_vmid, stream, nwords);
 			break;
+		case UMR_RING_HSA:
+			p = str->stream.hsa = umr_hsa_decode_stream(asic, stream, nwords);
+			break;
 		case UMR_RING_UNK:
 		default:
 			free(str);
@@ -250,6 +253,9 @@ void umr_packet_free(struct umr_packet_stream *stream)
 			case UMR_RING_UMSCH:
 				umr_free_umsch_stream(stream->stream.umsch);
 				break;
+			case UMR_RING_HSA:
+				umr_free_hsa_stream(stream->stream.hsa);
+				break;
 			case UMR_RING_UNK:
 			default:
 				stream->asic->err_msg("[BUG]: Invalid ring type in packet_free() call.\n");
@@ -277,7 +283,8 @@ struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream,
 		case UMR_RING_MES:
 		case UMR_RING_VPE:
 		case UMR_RING_UMSCH:
-			stream->asic->err_msg("[BUG]: Cannot find shader in UMSCH, VPE, MES, or SDMA types of streams\n");
+		case UMR_RING_HSA:
+			stream->asic->err_msg("[BUG]: Cannot find shader in UMSCH, VPE, MES, HSA, or SDMA types of streams\n");
 			return NULL;
 
 		case UMR_RING_UNK:
@@ -325,6 +332,9 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
 		case UMR_RING_UMSCH:
 			stream->cont = umr_umsch_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.umsch, ib_addr, ib_vmid,
 														 from_addr, from_vmid, opcodes, follow);
+			break;
+		case UMR_RING_HSA:
+			stream->cont = umr_hsa_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.hsa, ib_addr, ib_vmid, opcodes);
 			break;
 		case UMR_RING_UNK:
 		default:

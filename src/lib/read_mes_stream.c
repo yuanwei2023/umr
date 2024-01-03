@@ -102,7 +102,7 @@ struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *st
 		return NULL;
 	}
 
-        if (ip->discoverable.maj == 10 && ip->discoverable.min >= 1) {
+    if (ip->discoverable.maj == 10 && ip->discoverable.min >= 1) {
 		mes_ver_maj = 10;
 	} else if (ip->discoverable.maj == 11) {
 		mes_ver_maj = 11;
