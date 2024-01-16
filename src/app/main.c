@@ -641,6 +641,14 @@ int main(int argc, char **argv)
 						fprintf(stderr, "[ERROR]: --pci requires domain:bus:slot.function\n");
 						return EXIT_FAILURE;
 					}
+				} else if (!strcmp(argv[i], "--rumr-client")) {
+					if (i + 1 < argc) {
+						umr_start_rumr_client(&client_st, argv[i+1]);
+						++i;
+					} else {
+						fprintf(stderr, "[ERROR]: --rumr-client requires one parameter\n");
+						return EXIT_FAILURE;
+					}
 				}
 			} else if (pass == PASS_TEST_HARNESS) {
 				if (!strcmp(argv[i], "--test-log") || !strcmp(argv[i], "-tl")) {
@@ -664,14 +672,6 @@ int main(int argc, char **argv)
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
-						return EXIT_FAILURE;
-					}
-				} else if (!strcmp(argv[i], "--rumr-client")) {
-					if (i + 1 < argc) {
-						umr_start_rumr_client(&client_st, argv[i+1]);
-						++i;
-					} else {
-						fprintf(stderr, "[ERROR]: --rumr-client requires one parameter\n");
 						return EXIT_FAILURE;
 					}
 				}
