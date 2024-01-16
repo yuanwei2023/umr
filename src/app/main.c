@@ -145,6 +145,20 @@ retry:
 	if (asic->options.vgpr_granularity >= 0)
 		asic->parameters.vgpr_granularity = asic->options.vgpr_granularity;
 
+	// sanity check if they didn't specify a partition
+	if (asic->options.vm_partition < 0) {
+		int n;
+		for (n = 0; n < asic->no_blocks; n++) {
+			if (!memcmp(asic->blocks[n]->ipname, "gfx", 3) && strstr(asic->blocks[n]->ipname, "{")) {
+				asic->err_msg(
+					"[WARNING]: No VM partition is selected on hardware with multiple GC blocks.\n"
+					"[WARNING]: Page walking and wave scanning are unlikely to work.\n"
+					"[WARNING]: Please use -vmp or --vm-partition to select a VM partition.\n");
+				break;
+			}
+		}
+	}
+
 	return asic;
 }
 
