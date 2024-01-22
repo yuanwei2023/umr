@@ -80,7 +80,7 @@ struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did,
 	char linebuf[128], lname[128];
 	uint32_t ldid;
 
-	f = umr_database_open(options->database_path, "pci.did");
+	f = umr_database_open(options->database_path, "pci.did", 0);
 	if (!f) {
 		errout("[ERROR]: Can't find [pci.did] file in database, required to map PCI DID to name\n");
 		errout("[ERROR]: The file [pci.did] is found in the source tree at 'database/pci.did'\n");

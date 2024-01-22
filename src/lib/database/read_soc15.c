@@ -31,7 +31,7 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 	char linebuf[1024];
 	int x;
 
-	f = umr_database_open(path, filename);
+	f = umr_database_open(path, filename, 0);
 	if (!f) {
 		errout("[ERROR]: SOC15 offset file [%s] not found\n", filename);
 		errout("[ERROR]: These files are typically found in the source tree under [database/]\n");

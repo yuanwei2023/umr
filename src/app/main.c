@@ -459,7 +459,7 @@ int main(int argc, char **argv)
 #endif
 
 	// sanity check
-	f = umr_database_open(NULL, "pci.did");
+	f = umr_database_open(NULL, "pci.did", 0);
 	if (!f) {
 		fprintf(stderr, "[ERROR]: Cannot open pci.did which means the database isn't found.\n");
 		fprintf(stderr, "[ERROR]: UMR should either be installed via packaging or 'make install', or\n");

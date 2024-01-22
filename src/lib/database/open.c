@@ -28,13 +28,14 @@
 	umr_database_open -- try to open a file from various paths
 **/
 
-FILE *umr_database_open(char *path, char *filename)
+FILE *umr_database_open(char *path, char *filename, int binary)
 {
 	FILE *f;
 	char p[512];
+	const char* mode = binary ? "rb" : "r";
 
 	// 1. try to open it directly
-	f = fopen(filename, "rb");
+	f = fopen(filename, mode);
 	if (f)
 		return f;
 
@@ -42,7 +43,7 @@ FILE *umr_database_open(char *path, char *filename)
 	if (path && strlen(path)) {
 		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
 		sprintf(p, "%s%s%s", path, s, filename);
-		f = fopen(p, "rb");
+		f = fopen(p, mode);
 		if (f)
 			return f;
 	}
@@ -52,7 +53,7 @@ FILE *umr_database_open(char *path, char *filename)
 	if (path) {
 		char *s = (path[strlen(path)-1] == '/') ? "" : "/";
 		sprintf(p, "%s%s%s", path, s, filename);
-		f = fopen(p, "rb");
+		f = fopen(p, mode);
 		if (f)
 			return f;
 	}
@@ -60,12 +61,12 @@ FILE *umr_database_open(char *path, char *filename)
 	// 4. try using UMR_DB_DIR define
 #ifdef UMR_DB_DIR
 	sprintf(p, "%s%s", UMR_DB_DIR, filename);
-	f = fopen(p, "rb");
+	f = fopen(p, mode);
 	if (f)
 		return f;
 #endif
 
 	// 5. try using CMAKE_SOURCE_DIR/database
 	sprintf(p, "%s/database/%s", UMR_SOURCE_DIR, filename);
-	return fopen(p, "r");
+	return fopen(p, mode);
 }

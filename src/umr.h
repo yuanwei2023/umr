@@ -2112,7 +2112,7 @@ struct umr_vbios_info {
 	uint8_t date[32];
 };
 
-FILE *umr_database_open(char *path, char *filename);
+FILE *umr_database_open(char *path, char *filename, int binary);
 struct umr_database_scan_item *umr_database_scan(char *path);
 struct umr_database_scan_item *umr_database_find_ip(
 	struct umr_database_scan_item *db,

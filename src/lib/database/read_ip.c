@@ -77,7 +77,7 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 		}
 	}
 
-	f = umr_database_open(path, filename);
+	f = umr_database_open(path, filename, 0);
 	if (!f) {
 		errout("[ERROR]: IP register file [%s] not found\n", filename);
 		errout("[ERROR]: These files are typically found in the source tree under [database/ip/]\n");
