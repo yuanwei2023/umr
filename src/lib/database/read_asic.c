@@ -44,7 +44,7 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 		int family, numblocks, vgpr_granularity, is_apu;
 	} asic_fields;
 
-	f = umr_database_open(options->database_path, filename);
+	f = umr_database_open(options->database_path, filename, 0);
 	if (!f) {
 		return NULL;
 	}

@@ -104,7 +104,7 @@ struct rumr_buffer *rumr_buffer_load_file(const char *fname)
 	uint32_t size;
 	FILE *f;
 
-	f = umr_database_open(NULL, (char *)fname);
+	f = umr_database_open(NULL, (char *)fname, 1);
 	if (!f)
 		return NULL;
 	fseek(f, 0, SEEK_END);
