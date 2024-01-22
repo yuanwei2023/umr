@@ -1540,7 +1540,16 @@ struct field_info {
 #define FIELD_INFO(TYPE, MEMBER)	\
 { #MEMBER, sizeof_field(TYPE, MEMBER), offsetof(TYPE, MEMBER) }
 
-int umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size, int delay);
+#define UMR_MAX_KEYS 100
+
+struct umr_key_value {
+	int used;
+	struct {
+		char name[128], value[32];
+	} keys[UMR_MAX_KEYS];
+};
+
+struct umr_key_value *umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size);
 
 /* discover */
 // size of serialized umr_discovery_table_entry
