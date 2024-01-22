@@ -113,8 +113,11 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 			ps->ib.vmid = (ps->header_dw >> 16) & 0xF;
 			ps->ib.addr = ((uint64_t)stream[1] << 32) | stream[0];
 			ps->ib.size = stream[2];
-			if (asic->family >= FAMILY_AI)
+			if (asic->family == FAMILY_AI) {
 				ps->ib.vmid |= UMR_MM_HUB;
+			} else {
+				ps->ib.vmid |= (from_vmid & 0xFF00);
+			}
 			ps->nwords = 5;
 			if (!asic->options.no_follow_ib) {
 				uint32_t *data = calloc(sizeof(*data), ps->ib.size);
