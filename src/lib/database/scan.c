@@ -55,7 +55,13 @@ static int umr_do_scan(struct umr_database_scan_item *it, char *path)
 			strcpy(it->path, path);
 			strcpy(it->fname, di->d_name);
 			if (sscanf(di->d_name, "%[a-z0-9]_%d_%d_%d.reg", it->ipname, &it->maj, &it->min, &it->rev) != 4) {
-				fprintf(stderr, "[WARNING]: Invalid reg file name %s\n", di->d_name);
+				char tmpbuf[128];
+				if (sscanf(di->d_name, "%[a-z0-9]_%[a-z0-9]_%d_%d_%d.reg", it->ipname, tmpbuf, &it->maj, &it->min, &it->rev) != 5) {
+					fprintf(stderr, "[WARNING]: Invalid reg file name %s\n", di->d_name);
+				} else {
+					strcat(it->ipname, "_");
+					strcat(it->ipname, tmpbuf);
+				}
 			}
 			it->next = calloc(1, sizeof *it);
 			if (!it->next) {
