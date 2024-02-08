@@ -1613,6 +1613,8 @@ void init_asics() {
 
 		if (asics[index]) {
 			/* Assign linux callbacks */
+			asics[index]->ring_func.read_ring_data = umr_read_ring_data;
+
 			asics[index]->mem_funcs.vm_message = dummy_printf;
 			asics[index]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
 			asics[index]->mem_funcs.access_sram = umr_access_sram;
