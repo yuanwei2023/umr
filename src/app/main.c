@@ -454,8 +454,20 @@ int main(int argc, char **argv)
 	int running_as_gui = 0;
 	char *guiurl = NULL;
 
-	if (strstr(argv[0], "umrgui"))
+	if (strstr(argv[0], "umrgui")) {
+		if (argc >= 2)
+			guiurl = argv[1];
 		running_as_gui = 1;
+	} else if (argc >= 2 && strcmp(argv[1], "--gui") == 0) {
+		if (argc >= 3)
+			guiurl = argv[2];
+		running_as_gui = 1;
+	}
+
+	if (running_as_gui) {
+		umr_run_gui(guiurl);
+		exit(EXIT_SUCCESS);
+	}
 #endif
 
 	// sanity check
@@ -1206,31 +1218,12 @@ int main(int argc, char **argv)
 		#if UMR_SERVER
 				} else if (!strcmp(argv[i], "--server")) {
 					char *url = (i < argc - 1) ? argv[i + 1] : "tcp://*:1234";
-					run_server_loop(url, asic);
-		#endif
-		#if UMR_GUI
-				} else if (!strcmp(argv[i], "--gui")) {
-					if (i < argc - 1 && argv[i+1][0] != '-') {
-						guiurl = argv[i+1];
-						i++;
-					}
-					if (!running_as_gui) {
-						umr_run_gui(guiurl);
-						exit(EXIT_SUCCESS);
-					}
+					run_server_loop(url, NULL);
 		#endif
 				}
 			}
 		}
 	}
-
-#if UMR_GUI
-	if (running_as_gui) {
-		umr_run_gui(guiurl);
-		exit(EXIT_SUCCESS);
-	}
-#endif
-
 
 	if (options.need_scan && options.print) {
 		asic = get_asic();
