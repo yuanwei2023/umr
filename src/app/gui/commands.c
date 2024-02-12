@@ -39,8 +39,8 @@
 #include <EGL/eglext.h>
 #if CAN_IMPORT_BO
 #include <gbm.h>
-#include <libdrm/drm_fourcc.h>
-#include <libdrm/amdgpu_drm.h>
+#include <drm_fourcc.h>
+#include <amdgpu_drm.h>
 #include <xf86drm.h>
 #include <amdgpu.h>
 #include <xf86drmMode.h>
