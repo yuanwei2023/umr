@@ -27,10 +27,5 @@ build() {
 
 package() {
 	DESTDIR="$pkgdir" cmake --install build
-	# Remove some files which should not be installed. See:
-	# https://gitlab.freedesktop.org/tomstdenis/umr/-/merge_requests/32
-	rm -rf "$pkgdir/usr/bin/umrgui"
-	rm -rf "$pkgdir/usr/include"
-	rm -rf "$pkgdir/usr/lib"
 	install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 "$pkgname-$pkgver/LICENSE"
 }
