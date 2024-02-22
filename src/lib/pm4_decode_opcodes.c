@@ -625,7 +625,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(stream->words[0], 0, 29), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "COHER_SIZE", stream->words[1], NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "COHER_BASE", stream->words[2], NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_INTERVAL", BITS(stream->words[3], 16, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_INTERVAL", BITS(stream->words[3], 0, 16), NULL, 10, 32);
 			break;
 		case 0x46: // EVENT_WRITE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(stream->words[0], 0, 6), NULL, 10, 32);
