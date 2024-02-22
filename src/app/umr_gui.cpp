@@ -337,6 +337,8 @@ static void *communication_thread(void *_job) {
 
 			/* Save to disk for replay */
 			json_array_append_value(session, json_value_deep_copy(in));
+			json_serialize_to_file(json_array_get_wrapping_value(session), session_filename);
+
 			if (raw_data_size) {
 				uint32_t s = htole32(raw_data_size);
 				int fd = open(session_filename_raw, O_WRONLY | O_CREAT | O_APPEND, 0644);
@@ -352,7 +354,6 @@ static void *communication_thread(void *_job) {
 		pending_request.clear();
 		pthread_mutex_unlock(&mtx);
 
-		json_serialize_to_file(json_array_get_wrapping_value(session), session_filename);
 	}
 	json_value_free(json_array_get_wrapping_value(session));
 	return 0;
