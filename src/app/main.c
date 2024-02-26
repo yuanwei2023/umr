@@ -644,6 +644,7 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--rumr-client")) {
 					if (i + 1 < argc) {
 						umr_start_rumr_client(&client_st, argv[i+1]);
+						asic->options = options;
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --rumr-client requires one parameter\n");
