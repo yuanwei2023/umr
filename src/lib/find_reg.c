@@ -186,8 +186,10 @@ struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const
 struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp)
 {
 	int i, k;
-	char tmpregname[96], instname[16];
+	char origname[96], tmpregname[96], instname[16];
 	const char *oregname = regname;
+
+	strcpy(origname, regname);
 
 	if (ipp)
 		*ipp = NULL;
@@ -251,8 +253,23 @@ retry:
 		goto retry;
 	}
 
-	if (!k)
+	if (!k) {
+		if (!asic->options.trap_unsorted_db) {
+			asic->options.trap_unsorted_db = 1;
+			for (i = 0; i < asic->no_blocks; i++) {
+				for (k = 0; k < asic->blocks[i]->no_regs; k++) {
+					if (!strcmp(asic->blocks[i]->regs[k].regname, regname) ||
+					    !strcmp(asic->blocks[i]->regs[k].regname, origname)) {
+						    asic->err_msg("[ERROR]: Register <%s> found in an **UNSORTED** database\n", origname);
+						    asic->err_msg("[ERROR]: Your UMR database is not sorted, please check /usr/share/umr or /usr/local/share/umr for outdated contents.\n");
+						    asic->err_msg("[ERROR]: UMR will not function correctly with outdated databases\n");
+						    return NULL;
+					}
+				}
+			}
+		}
 		asic->err_msg("[BUG]: reg [%s](%d) not found on asic [%s]\n", oregname, inst, asic->asicname);
+	}
 	return NULL;
 }
 

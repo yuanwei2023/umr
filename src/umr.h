@@ -313,7 +313,8 @@ struct umr_options {
 	    force_asic_file,
 	    export_model,
 	    vgpr_granularity,
-	    use_v1_regs_debugfs;
+	    use_v1_regs_debugfs,
+	    trap_unsorted_db;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
