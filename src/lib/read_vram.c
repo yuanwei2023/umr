@@ -32,9 +32,12 @@ int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t s
 {
 	uint32_t MM_INDEX, MM_INDEX_HI, MM_DATA;
 	uint32_t *out = dst;
+	int maj, min;
+
+	umr_gfx_get_ip_ver(asic, &maj, &min);
 
 	// find registers
-	if (asic->family >= FAMILY_NV) {
+	if (maj >= 10) {
 		MM_INDEX    = umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX");
 		MM_INDEX_HI = umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI");
 		MM_DATA     = umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA");
@@ -1402,6 +1405,10 @@ invalid_page:
  */
 int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en)
 {
+	int maj, min;
+
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+
 	// only aligned reads
 	if ((address & 3) || (size & 3)) {
 		fprintf(stderr, "[ERROR]:  The address and size must be a multiple of 4 to access VRAM\n");
@@ -1457,18 +1464,10 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 		return asic->mem_funcs.access_linear_vram(asic, address, size, data, write_en);
 	}
 
-	switch (asic->family) {
-		case FAMILY_SI:
-		case FAMILY_CIK:
-		case FAMILY_VI:
+	if (maj <= 8) {
 			return umr_access_vram_vi(asic, vmid, address, size, data, write_en);
-		case FAMILY_AI:
-		case FAMILY_NV:
-		case FAMILY_GFX11:
+	} else {
 			return umr_access_vram_ai(asic, partition, vmid, address, size, data, write_en);
-		default:
-			fprintf(stderr, "[BUG]: Unsupported ASIC family type for umr_read_vram()\n");
-			return -1;
 	}
 
 	return 0;
