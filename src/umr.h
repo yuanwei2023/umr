@@ -236,7 +236,7 @@ struct umr_fw_config {
 };
 
 #define UMR_MAX_FW 32
-#define UMR_MAX_XGMI_DEVICES 32
+#define UMR_MAX_XGMI_DEVICES 128
 
 #define NUM_HBM_INSTANCES 4
 
