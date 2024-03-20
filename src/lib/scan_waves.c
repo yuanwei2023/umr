@@ -181,43 +181,51 @@ int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, uns
 	struct {
 		uint32_t se, sh, instance, use_grbm;
 	} grbm;
+	struct umr_reg *ind_index, *ind_data;
 
-	index = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_IND_INDEX")->addr * 4;
-	data = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_IND_DATA")->addr * 4;
+	ind_index = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_IND_INDEX");
+	ind_data  = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_IND_DATA");
 
-	/* copy grbm options to restore later */
-	grbm.use_grbm = asic->options.use_bank;
-	grbm.se       = asic->options.bank.grbm.se;
-	grbm.sh       = asic->options.bank.grbm.sh;
-	grbm.instance = asic->options.bank.grbm.instance;
-
-	/* set GRBM banking options */
-	asic->options.use_bank           = 1;
-	asic->options.bank.grbm.se       = se;
-	asic->options.bank.grbm.sh       = sh;
-	asic->options.bank.grbm.instance = cu;
-
-	if (!index || !data) {
-		asic->err_msg("[BUG]: Cannot find SQ indirect registers on this asic!\n");
+	if (!(ind_index && ind_data)) {
 		return -1;
+	} else {
+		index = ind_index->addr * 4;
+		data = ind_data->addr * 4;
+
+		/* copy grbm options to restore later */
+		grbm.use_grbm = asic->options.use_bank;
+		grbm.se       = asic->options.bank.grbm.se;
+		grbm.sh       = asic->options.bank.grbm.sh;
+		grbm.instance = asic->options.bank.grbm.instance;
+
+		/* set GRBM banking options */
+		asic->options.use_bank           = 1;
+		asic->options.bank.grbm.se       = se;
+		asic->options.bank.grbm.sh       = sh;
+		asic->options.bank.grbm.instance = cu;
+
+		if (!index || !data) {
+			asic->err_msg("[BUG]: Cannot find SQ indirect registers on this asic!\n");
+			return -1;
+		}
+
+		asic->reg_funcs.write_reg(asic, index, 8 << 16, REG_MMIO);
+		value = asic->reg_funcs.read_reg(asic, data, REG_MMIO);
+
+		/* restore whatever the user had picked */
+		asic->options.use_bank           = grbm.use_grbm;
+		asic->options.bank.grbm.se       = grbm.se;
+		asic->options.bank.grbm.sh       = grbm.sh;
+		asic->options.bank.grbm.instance = grbm.instance;
+
+		/* Did we try to query a non-existing SQ instance? */
+		if (value == 0xbebebeef)
+			value = 0;
+
+		ws->sq_info.busy = value & 1;
+		ws->sq_info.wave_level = (value >> 4) & 0x3F;
+		return 0;
 	}
-
-	asic->reg_funcs.write_reg(asic, index, 8 << 16, REG_MMIO);
-	value = asic->reg_funcs.read_reg(asic, data, REG_MMIO);
-
-	/* restore whatever the user had picked */
-	asic->options.use_bank           = grbm.use_grbm;
-	asic->options.bank.grbm.se       = grbm.se;
-	asic->options.bank.grbm.sh       = grbm.sh;
-	asic->options.bank.grbm.instance = grbm.instance;
-
-	/* Did we try to query a non-existing SQ instance? */
-	if (value == 0xbebebeef)
-		value = 0;
-
-	ws->sq_info.busy = value & 1;
-	ws->sq_info.wave_level = (value >> 4) & 0x3F;
-	return 0;
 }
 
 static uint32_t wave_read_ind(struct umr_asic *asic, uint32_t simd, uint32_t wave, uint32_t address)
