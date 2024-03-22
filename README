@@ -1,5 +1,5 @@
 User Mode Register Debugger for AMDGPU Hardware
-Copyright (c) 2017 AMD Inc.
+Copyright (c) 2024 AMD Inc.
 
 Introduction
 -------------
@@ -85,13 +85,15 @@ Running umr
 ------------
 
 umr is a command line which parses options and commands from the
-command line supplied.  It processes arguments left to right which
-means that options specified after a command do not affect the command
-for instance
+command line supplied.  It processes options first, then anything
+that creates an ASIC model, then any commands to run.  So it is
+agnostic to the order they appear on the command line.
+
+For instance
 
     $ umr -r *.dce100.mmFOO -O bits
 
-is not the same as
+*is* the same as
 
     $ umr -O bits -r *.dce100.mmFOO
 
@@ -166,20 +168,20 @@ in order to work without '-f'.
 
 Once one is picked the number can be used for instance:
 
-    $ umr -i 1 -s uvd6
+    $ umr -i 1 -r *.*.CP_RB_BASE
 
-Would scan the uvd6 block on the second AMDGPU device.
+Would read the CP ring buffer base address register(s).
 
 If the AMDGPU driver is not loaded you can specify a device by name
 or PCI device ID for instance:
 
-    $ umr -f tahiti -s uvd4
+    $ umr -f tahiti -r *.*.CP_RB_BASE
 
 or
 
-    $ umr -f 0x6780 -s uvd4
+    $ umr -f 0x6780 -r *.*.CP_RB_BASE
 
-Would read the uvd4 block from the first tahiti device in the system.
+Would read the CP ring base address from the first tahiti device in the system.
 Note that the '-f' command does not support two instances of the same
 hardware.  To choose between those the --instance command needs to be
 used.
@@ -187,17 +189,6 @@ used.
 
 Quick Guide
 ------------
-
-To read registers you can use various commands.  To scan an entire
-IP block use the --scan command
-
-    $ umr --scan uvd6
-
-Would scan and print all of the MMIO registers for the uvd6 block (on
-the default instance 0 device).  This can be specifed multiple times
-to read multiple blocks, for instance:
-
-    $ umr --scan uvd6 --scan dce110
 
 To read a specific register the --read command can be used:
 
@@ -259,7 +250,7 @@ The status of valid wavefronts can be displayed with the --waves
 command.  The bits option enables bitfield decoding.  Normally,
 the columns would be pretty printed:
 
-    $ umr -wa | column -t
+    $ umr -wa
 
 Note that wave fetching is unstable if GFX PG is enabled as reading
 some of the wave related registers can lead to GPU hangs while the GFX
