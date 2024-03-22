@@ -120,6 +120,18 @@ error:
 	return NULL;
 }
 
+static uint32_t fetch_word(struct umr_asic *asic, struct umr_hsa_stream *stream, uint32_t off)
+{
+	if (off >= stream->nwords) {
+		if (!(stream->invalid))
+			asic->err_msg("[ERROR]: HSA decoding of type (%"PRIx32") went out of bounds.\n", stream->type);
+		stream->invalid = 1;
+		return 0;
+	} else {
+		return stream->words[off];
+	}
+}
+
 struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_hsa_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes)
 {
 	const char* opcode_name;
@@ -134,70 +146,74 @@ struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, stru
 
 		// recall HSA is viewed as 16-bit words which is also use
 		// negative "field_size" values
-		// even though stream->words[] is 32-bits we only store
+		// even though fetch_word(asic, stream, ) is 32-bits we only store
 		// 16-bits per entry
 		i = 0;
 		ib_addr += 2; // skip over header
 		switch (stream->type) {
 			case 2: // kernel dispatch
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "setup_dimensions", stream->words[i] & 3, NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_x", stream->words[i], NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_y", stream->words[i], NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_z", stream->words[i], NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved0", stream->words[i], NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "grid_size_x", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "setup_dimensions", fetch_word(asic, stream, i) & 3, NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_x", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_y", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_z", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved0", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "grid_size_x", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "grid_size_y", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "grid_size_y", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "grid_size_z", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "grid_size_z", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "private_segment_size", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "private_segment_size", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "group_segment_size", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "group_segment_size", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "kernel_object", t64, NULL, 16, -64); i += 4;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "kernarg_address", t64, NULL, 16, -64); i += 4;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved2", t64, NULL, 16, -64); i += 4;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "completion_signal", t64, NULL, 16, -64); i += 4;
 				break;
 			case 4: // agent dispatch
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "type", stream->words[i], NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved0", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "type", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved0", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "return_address", t64, NULL, 16, -64); i += 4;
 				for (j = 0; j < 4; j++) {
 					char str[32];
-					t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+					t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 					sprintf(str, "arg[%"PRIu32"]", j);
 					ui->add_field(ui, ib_addr + 2 * i, ib_vmid, str, t64, NULL, 16, -64); i += 4;
 				}
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved2", t64, NULL, 16, -64); i += 4;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "completion_signal", t64, NULL, 16, -64); i += 4;
 				break;
 			case 3: // barrier and test
 			case 5: // barrier or test (these have the same decoding)
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved0", stream->words[i], NULL, 10, -16); ++i;
-				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved1", ((uint32_t)stream->words[i]) | ((uint32_t)stream->words[i+1]<<16UL), NULL, 10, -32);
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved0", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
+				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved1", ((uint32_t)fetch_word(asic, stream, i)) | ((uint32_t)fetch_word(asic, stream, i+1)<<16UL), NULL, 10, -32);
 				i += 2;
 				for (j = 0; j < 5; j++) {
 					char str[32];
-					t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+					t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 					sprintf(str, "dep_signal[%"PRIu32"]", j);
 					ui->add_field(ui, ib_addr + 2 * i, ib_vmid, str, t64, NULL, 16, -64); i += 4;
 				}
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "reserved2", t64, NULL, 16, -64); i += 4;
-				t64 = ((uint64_t)stream->words[i]) | ((uint64_t)stream->words[i+1]<<16ULL) | ((uint64_t)stream->words[i+2]<<32ULL) | ((uint64_t)stream->words[i+3]<<48ULL);
+				t64 = ((uint64_t)fetch_word(asic, stream, i)) | ((uint64_t)fetch_word(asic, stream, i+1)<<16ULL) | ((uint64_t)fetch_word(asic, stream, i+2)<<32ULL) | ((uint64_t)fetch_word(asic, stream, i+3)<<48ULL);
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "completion_signal", t64, NULL, 16, -64); i += 4;
 				break;
 		}
+
+		if (stream->invalid)
+			break;
+
 		ib_addr += 2 * (stream->nwords - 1);
 		stream = stream->next;
 	}

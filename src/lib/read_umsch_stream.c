@@ -116,6 +116,18 @@ void umr_free_umsch_stream(struct umr_umsch_stream *stream)
 
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
 
+static uint32_t fetch_word(struct umr_asic *asic, struct umr_umsch_stream *stream, uint32_t off)
+{
+	if (off >= stream->nwords) {
+		if (!(stream->invalid))
+			asic->err_msg("[ERROR]: UMSCH decoding of opcode (%"PRIx32") went out of bounds.\n", stream->opcode);
+		stream->invalid = 1;
+		return 0;
+	} else {
+		return stream->words[off];
+	}
+}
+
 struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_umsch_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {
@@ -157,167 +169,170 @@ struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, 
 		switch (stream->opcode) {
 			case 0x00: // SET_HW_RSRC
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "SET_HW_RESOURCES", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vmid_mask_mm_vcn", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vmid_mask_mm_vpe", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "collaboration_mask_vpe", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_mask", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "logging_vmid", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vmid_mask_mm_vcn", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vmid_mask_mm_vpe", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "collaboration_mask_vpe", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_mask", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "logging_vmid", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				for (j = 0; j < params.MAX_VCN0_INSTANCES; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "vcn0_hqd_mask", stream->words[(m>>2)-1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + m, ib_vmid, "vcn0_hqd_mask", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32);
 					m += 4;
 				}
 				for (j = 0; j < params.MAX_VCN1_INSTANCES; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "vcn1_hqd_mask", stream->words[(m>>2)-1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + m, ib_vmid, "vcn1_hqd_mask", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32);
 					m += 4;
 				}
 				for (j = 0; j < params.MAX_VCN_INSTANCES; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "vcn_hqd_mask", stream->words[(m>>2)-1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + m, ib_vmid, "vcn_hqd_mask", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32);
 					m += 4;
 				}
 				for (j = 0; j < params.MAX_VPE_INSTANCES; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "vpe_hqd_mask", stream->words[(m>>2)-1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + m, ib_vmid, "vpe_hqd_mask", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32);
 					m += 4;
 				}
-				ui->add_field(ui, ib_addr + m, ib_vmid, "g_sch_ctx_gpu_mc_ptr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "g_sch_ctx_gpu_mc_ptr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
 				for (j = 0; j < params.UMSCH_MAX_HWIP_SEGMENT; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "mmhub_base", stream->words[(m>>2)-1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + m, ib_vmid, "mmhub_base", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32);
 					m += 4;
 				}
-				ui->add_field(ui, ib_addr + m, ib_vmid, "mmhub_version", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "mmhub_version", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				for (j = 0; j < params.UMSCH_MAX_HWIP_SEGMENT; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "ossssys_base", stream->words[(m>>2)-1], NULL, 16, 32);
+					ui->add_field(ui, ib_addr + m, ib_vmid, "ossssys_base", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32);
 					m += 4;
 				}
-				ui->add_field(ui, ib_addr + m, ib_vmid, "osssys_version", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vcn_version", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vpe_version", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "osssys_version", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vcn_version", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vpe_version", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 
-				ui->add_field(ui, ib_addr + m, ib_vmid, "disable_reset", BITS(stream->words[(m>>2)-1], 0, 1), NULL, 16, 32);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "disable_umsch_log", BITS(stream->words[(m>>2)-1], 1, 2), NULL, 16, 32);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "enable_level_process_quantum_check", BITS(stream->words[(m>>2)-1], 2, 3), NULL, 16, 32);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "is_vcn0_enabled", BITS(stream->words[(m>>2)-1], 3, 4), NULL, 16, 32);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "is_vcn1_enabled", BITS(stream->words[(m>>2)-1], 4, 5), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "disable_reset", BITS(fetch_word(asic, stream, (m>>2)-1), 0, 1), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "disable_umsch_log", BITS(fetch_word(asic, stream, (m>>2)-1), 1, 2), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "enable_level_process_quantum_check", BITS(fetch_word(asic, stream, (m>>2)-1), 2, 3), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "is_vcn0_enabled", BITS(fetch_word(asic, stream, (m>>2)-1), 3, 4), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "is_vcn1_enabled", BITS(fetch_word(asic, stream, (m>>2)-1), 4, 5), NULL, 16, 32);
 				m += 4;
 				break;
 			case 0x01: // SET_SCHEDULING_CONFIG
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "SET_SCHEDULING_CONFIG", stream->header_dw, stream->words);
 				for (j = 0; j < params.AMD_PRIORITY_NUM_LEVELS; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "grace_period_other_levels", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
+					ui->add_field(ui, ib_addr + m, ib_vmid, "grace_period_other_levels", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
 				}
 				for (j = 0; j < params.AMD_PRIORITY_NUM_LEVELS; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "process_quantum_for_level", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
+					ui->add_field(ui, ib_addr + m, ib_vmid, "process_quantum_for_level", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
 				}
 				for (j = 0; j < params.AMD_PRIORITY_NUM_LEVELS; j++) {
-					ui->add_field(ui, ib_addr + m, ib_vmid, "process_grace_period_same_level", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
+					ui->add_field(ui, ib_addr + m, ib_vmid, "process_grace_period_same_level", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
 				}
-				ui->add_field(ui, ib_addr + m, ib_vmid, "normal_yield_percent", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "normal_yield_percent", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x02: // ADD_QUEUE
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "ADD_QUEUE", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "process_id", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "page_table_base_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "process_va_start", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "process_va_end", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "process_quantum", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "process_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_quantum", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "inprocess_context_priority", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_global_priority_level", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_0", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_1", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "affinity", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "mqd_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "h_context", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "h_queue", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_type", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vm_context_cntl", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "is_context_suspended", BITS(stream->words[(m>>2)-1], 0, 1), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "process_id", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "page_table_base_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "process_va_start", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "process_va_end", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "process_quantum", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "process_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_quantum", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "inprocess_context_priority", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_global_priority_level", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_0", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_1", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "affinity", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "mqd_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "h_context", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "h_queue", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_type", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vm_context_cntl", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "is_context_suspended", BITS(fetch_word(asic, stream, (m>>2)-1), 0, 1), NULL, 16, 32);
 				m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x03: // REMOVE_QUEUE
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "REMOVE_QUEUE", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_0", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_1", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_0", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_1", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x04: // PERFORM_YIELD
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "PERFORM_YIELD", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "dummy", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "dummy", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x05: // SUSPEND
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "SUSPEND", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "suspend_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "suspend_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "suspend_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "suspend_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x06: // RESUME
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "RESUME", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "resume_option", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_type", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "resume_option", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_type", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x07: // RESET
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "RESET", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "reset_option", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_type", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "reset_option", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "doorbell_offset_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "engine_type", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x08: // SET_LOG_BUFFER
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "SET_LOG_BUFFER", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "log_type", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "logging_buffer_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "number_of_entries", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "interrupt_entry", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "log_type", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "logging_buffer_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "number_of_entries", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "interrupt_entry", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x09: // CHANGE_CONTEXT_PRIORITY
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "CHANGE_CONTEXT_PRIORITY", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "inprocess_context_priority", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_global_priority_level", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_quantum", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "inprocess_context_priority", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_global_priority_level", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_quantum", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x0A: // QUERY_SCHEDULER_STATUS
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "QUERY_SCHEDULER_STATUS", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "umsch_mm_healthy", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "umsch_mm_healthy", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			case 0x0B: // UPDATE_AFFINITY
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords + 1, "UPDATE_AFFINITY", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vcn0Affinity", BITS(stream->words[(m>>2)-1], 0, 2), NULL, 16, 32);
-				ui->add_field(ui, ib_addr + m, ib_vmid, "vcn1Affinity", BITS(stream->words[(m>>2)-1], 2, 4), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vcn0Affinity", BITS(fetch_word(asic, stream, (m>>2)-1), 0, 2), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + m, ib_vmid, "vcn1Affinity", BITS(fetch_word(asic, stream, (m>>2)-1), 2, 4), NULL, 16, 32);
 				m += 4;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)stream->words[(m>>2)-1] << 32) | stream->words[(m>>2)], NULL, 16, 64); m += 8;
-				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", stream->words[(m>>2)-1], NULL, 16, 32); m += 4;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "context_csa_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_addr", ((uint64_t)fetch_word(asic, stream, (m>>2)-1) << 32) | fetch_word(asic, stream, (m>>2)), NULL, 16, 64); m += 8;
+				ui->add_field(ui, ib_addr + m, ib_vmid, "api_completion_fence_value", fetch_word(asic, stream, (m>>2)-1), NULL, 16, 32); m += 4;
 				break;
 			default:
 				if (ui->unhandled)
 					ui->unhandled(ui, asic, ib_addr, ib_vmid, stream, UMR_RING_UMSCH);
 				break;
 		}
+
+		if (stream->invalid)
+			break;
 
 		ib_addr += (1 + stream->nwords) * 4;
 		stream = stream->next;

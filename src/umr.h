@@ -1840,6 +1840,8 @@ struct umr_pm4_stream {
 	} ib_source;					// where did an IB if any come from?
 
 	struct umr_shaders_pgm *shader; // shader program if any
+
+	int invalid;
 };
 
 void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsize);
@@ -1875,6 +1877,8 @@ struct umr_sdma_stream {
 		int vmid;
 		uint64_t addr;
 	} from;
+
+	int invalid;
 
 	struct umr_sdma_stream *next, *next_ib;
 };
@@ -1923,6 +1927,8 @@ struct umr_mes_stream {
 		 opcode,
 		 type;
 
+	int invalid;
+
 	struct umr_mes_stream *next;
 };
 
@@ -1948,6 +1954,8 @@ struct umr_vpe_stream {
 		int vmid;
 		uint64_t addr;
 	} from;
+
+	int invalid;
 
 	struct umr_vpe_stream *next, *next_ib;
 };
@@ -1975,6 +1983,8 @@ struct umr_umsch_stream {
 		uint64_t addr;
 	} from;
 
+	int invalid;
+
 	struct umr_umsch_stream *next, *next_ib;
 };
 
@@ -1991,6 +2001,8 @@ struct umr_hsa_stream {
 		 barrier,
 		 acquire_fence_scope,
 		 release_fence_scope;
+
+	int invalid;
 
 	struct umr_hsa_stream *next;
 };
