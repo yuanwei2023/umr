@@ -57,7 +57,7 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	ip->discoverable.min = det->min;
 	ip->discoverable.rev = det->rev;
 	ip->discoverable.instance = det->instance;
-        ip->discoverable.logical_inst = det->logical_inst;
+	ip->discoverable.logical_inst = det->logical_inst;
 
         // swap for common names
 	if (!strcmp(det->ipname, "gc")) {
@@ -72,18 +72,18 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 		strcpy(ipcmn, det->ipname);
 	}
 
-        if (det->logical_inst > 0) {
-                char ipname[512];
-                snprintf(ipname, sizeof ipname - 1, "%s%d%d%d{%d}", ipcmn,
-                         det->maj, det->min, det->rev, det->logical_inst);
-                ip->ipname = strdup(ipname);
-        } else {
-                char ipname[512];
+	if (det->logical_inst > 0) {
+		char ipname[512];
+		snprintf(ipname, sizeof ipname - 1, "%s%d%d%d{%d}", ipcmn,
+				 det->maj, det->min, det->rev, det->logical_inst);
+		ip->ipname = strdup(ipname);
+	} else {
+		char ipname[512];
 		snprintf(ipname, sizeof ipname - 1, "%s%d%d%d", ipcmn, det->maj, det->min, det->rev);
 		ip->ipname = strdup(ipname);
-        }
+	}
 
-        x = 0;
+	x = 0;
 	while (fgets(linebuf, sizeof linebuf, f)) {
 		uint32_t y;
 		struct {
