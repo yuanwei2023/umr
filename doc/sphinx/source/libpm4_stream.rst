@@ -21,20 +21,25 @@ the following structure if successful:
 
 ::
 
-	/* IB/ring decoding/dumping/etc */
 	struct umr_pm4_stream {
-		uint32_t
-			pkttype,	// packet type (0==simple write, 3 == packet)
-			pkt0off,	// base address for PKT0 writes
-			opcode,
-			n_words,	// number of words ignoring header
-			*words;		// words following header word
+		uint32_t pkttype,				// packet type (0==simple write, 3 == packet)
+				 pkt0off,				// base address for PKT0 writes
+				 opcode,
+				 header,				// header DWORD of packet
+				 n_words,				// number of words ignoring header
+				 *words;				// words following header word
 
-		struct umr_pm4_stream
-				*next,	// adjacent PM4 packet if any
-				*ib;	// IB this packet might point to
+		struct umr_pm4_stream *next,	// adjacent PM4 packet if any
+					  *ib;				// IB this packet might point to
+
+		struct {
+			uint64_t addr;
+			uint32_t vmid;
+		} ib_source;					// where did an IB if any come from?
 
 		struct umr_shaders_pgm *shader; // shader program if any
+
+		int invalid;
 	};
 
 Adjacent PM4 packets are pointed to by 'next' (NULL terminated) and
@@ -43,6 +48,8 @@ respectively.  The 'no_halt' parameter controls where the "halt_waves"
 option will be ignored or not.  This is used if the waves have already
 been halted and you don't wish to resume them with this call.
 
+The 'invalid' flag is set if the decoding of the packet fails due to
+out of bounds checking (e.g. not enough words for the packet to decode).
 
 --------------------
 Freeing a PM4 Stream
@@ -79,7 +86,13 @@ will not free these copies.
 		// VMID and length in bytes
 		uint32_t
 			vmid,
-			size;
+			size,
+			rsrc1,
+			rsrc2;
+
+		// shader type (0==PS, 1==VS, 2==COMPUTE)
+		int
+			type;
 
 		// address in VM space for this shader
 		uint64_t addr;
@@ -112,9 +125,9 @@ To decode packets the following function is used:
 
 	The function uses the following callback structure to pass information back to the caller:
 
-	::
+::
 
-		struct umr_stream_decode_ui {
+	struct umr_stream_decode_ui {
 		enum umr_ring_type rt;
 
 		/** start_ib -- Start a new IB/buffer object
@@ -124,6 +137,12 @@ To decode packets the following function is used:
 		 * type: type of IB (which type of packets)
 		 */
 		void (*start_ib)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
+
+		/** unhandled_dword -- Print out a dword that doesn't match a valid packet header
+		 * ib_addr/ib_vmid: address of dword
+		 * dword: the value that doesn't decode to a valid header
+		 */
+		void (*unhandled_dword)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t dword);
 
 		/** start_opcode -- Start a new opcode
 		 * ib_addr/ib_vmid: Address of where packet is found

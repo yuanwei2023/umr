@@ -15,6 +15,9 @@ These are indicated to libumr via the following enum:
 		UMR_RING_PM4_LITE,
 		UMR_RING_SDMA,
 		UMR_RING_MES,
+		UMR_RING_VPE,
+		UMR_RING_UMSCH,
+		UMR_RING_HSA,
 
 		UMR_RING_GUESS,
 		UMR_RING_UNK=0xFF, // if unknown
@@ -36,6 +39,9 @@ mapped buffer, or ring contents into a list described as follows:
 			struct umr_pm4_stream *pm4;
 			struct umr_sdma_stream *sdma;
 			struct umr_mes_stream *mes;
+			struct umr_vpe_stream *vpe;
+			struct umr_umsch_stream *umsch;
+			struct umr_hsa_stream *hsa;
 		} stream;
 
 		void *cont;
@@ -58,6 +64,12 @@ to be provided described as follows:
 		 * type: type of IB (which type of packets)
 		 */
 		void (*start_ib)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
+
+		/** unhandled_dword -- Print out a dword that doesn't match a valid packet header
+		 * ib_addr/ib_vmid: address of dword
+		 * dword: the value that doesn't decode to a valid header
+		 */
+		void (*unhandled_dword)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t dword);
 
 		/** start_opcode -- Start a new opcode
 		 * ib_addr/ib_vmid: Address of where packet is found
@@ -158,7 +170,8 @@ To decode a GPU mapped buffer into a stream the following function can be used:
 								  uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
 
 						      
-This will read 'nwords' 32-bit words from the GPU mapped space indicated by the 'vmid' and 'addr' indicated.						      
+This will read 'nwords' 32-bit words from the GPU mapped space indicated by the 'vmid' and 'addr' indicated and then proceed to
+decode the buffer via the user interface 'ui' presented.
 
 ---------------------------
 Decoding a ring file buffer
@@ -169,9 +182,9 @@ To decode a kernel ring buffer into a stream the following function can be used:
 ::
 
 	struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-							char *ringname, int halt_waves, int start, int stop, enum umr_ring_type rt);
+		char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt);
 
-This function will open up the amdgpu_'ringname' ring named.  The shader engines can be sent a halt command if the 'halt_waves'
+This function will open up the ring by prepending amdgpu_ to 'ringname'.  The shader engines can be sent a halt command if the 'halt_waves'
 flag is set.  The ring will be read from the 'start'th word to the 'stop'th word.  These can be specified as -1 to use the devices
 read and write ring pointers respectively.
 

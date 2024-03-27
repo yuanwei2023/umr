@@ -36,6 +36,13 @@ the following structure if successful:
 			uint64_t addr;
 		} ib;
 
+		struct {
+			int vmid;
+			uint64_t addr;
+		} from;
+
+		int invalid;
+
 		struct umr_sdma_stream *next, *next_ib;
 	};
 
@@ -90,6 +97,12 @@ These functions use the following callback structure to pass information back an
 		 * type: type of IB (which type of packets)
 		 */
 		void (*start_ib)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint32_t from_vmid, uint32_t size, int type);
+
+		/** unhandled_dword -- Print out a dword that doesn't match a valid packet header
+		 * ib_addr/ib_vmid: address of dword
+		 * dword: the value that doesn't decode to a valid header
+		 */
+		void (*unhandled_dword)(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t dword);
 
 		/** start_opcode -- Start a new opcode
 		 * ib_addr/ib_vmid: Address of where packet is found
