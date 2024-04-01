@@ -1596,14 +1596,32 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "XYZ_DIM_ENABLE", BITS(fetch_word(asic, stream, 1), 30, 31), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 2), NULL, 16, 32);
 			break;
-		case 0x58: // ACQUIRE_MEM (TODO: Sort out how PWS option works)
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 31, 32), BITS(fetch_word(asic, stream, 0), 31, 32) ? "ME" : "PFP", 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(fetch_word(asic, stream, 0), 0, 30), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "CP_COHER_SIZE", fetch_word(asic, stream, 1), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", BITS(fetch_word(asic, stream, 2), 0, 8), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 16, ib_vmid, "CP_COHER_BASE", fetch_word(asic, stream, 3), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", BITS(fetch_word(asic, stream, 4), 0, 8), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", BITS(fetch_word(asic, stream, 5), 0, 16), NULL, 10, 32);
+		case 0x58: // ACQUIRE_MEM
+			{
+				uint32_t pws_ena;
+
+				pws_ena = BITS(fetch_word(asic, stream, 5), 31, 32);
+				if (pws_ena) {
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "PWS_STAGE_SEL", BITS(fetch_word(asic, stream, 0), 11, 14), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "PWS_COUNTER_SEL", BITS(fetch_word(asic, stream, 0), 14, 16), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "PWS_ENA2", BITS(fetch_word(asic, stream, 0), 17, 18), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "PWS_COUNT", BITS(fetch_word(asic, stream, 0), 18, 24), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "GCR_SIZE", fetch_word(asic, stream, 1), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "GCR_SIZE_HI", BITS(fetch_word(asic, stream, 2), 0, 25), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "GCR_BASE", fetch_word(asic, stream, 3), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "GCR_BASE_HI", BITS(fetch_word(asic, stream, 4), 0, 25), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 24, ib_vmid, "PWS_ENA", BITS(fetch_word(asic, stream, 5), 31, 32), NULL, 16, 32);
+				} else {
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 31, 32), BITS(fetch_word(asic, stream, 0), 31, 32) ? "ME" : "PFP", 10, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(fetch_word(asic, stream, 0), 0, 30), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "CP_COHER_SIZE", fetch_word(asic, stream, 1), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", BITS(fetch_word(asic, stream, 2), 0, 8), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "CP_COHER_BASE", fetch_word(asic, stream, 3), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", BITS(fetch_word(asic, stream, 4), 0, 8), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", BITS(fetch_word(asic, stream, 5), 0, 16), NULL, 10, 32);
+				}
+				ui->add_field(ui, ib_addr + 28, ib_vmid, "GCR_CNTL", BITS(fetch_word(asic, stream, 6), 0, 19), NULL, 16, 32);
+			}
 			break;
 		case 0xA2: // PKT3_MAP_QUEUES
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EXTENDED_ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 2, 4), NULL, 10, 32);
