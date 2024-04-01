@@ -1573,8 +1573,7 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 			else
 				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", fetch_word(asic, stream, 5), NULL, 16, 32);
 
-			if (asic->family >= FAMILY_AI)
-				ui->add_field(ui, ib_addr + 28, ib_vmid, "INT_CTXID", fetch_word(asic, stream, 6), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "INT_CTXID", fetch_word(asic, stream, 6), NULL, 16, 32);
 			break;
 		case 0x4C: // DISPATCH_MESH_INDIRECT_MULTI
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
