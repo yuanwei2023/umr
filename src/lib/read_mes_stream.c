@@ -25,23 +25,26 @@
 #include <umr.h>
 
 static const char *mes_v10_opcodes[] = {
-	"MES_SCH_API_SET_HW_RSRC",
-	"MES_SCH_API_SET_SCHEDULING_CONFIG",
-	"MES_SCH_API_ADD_QUEUE",
-	"MES_SCH_API_REMOVE_QUEUE",
-	"MES_SCH_API_PERFORM_YIELD",
-	"MES_SCH_API_SET_GANG_PRIORITY_LEVEL",
-	"MES_SCH_API_SUSPEND",
-	"MES_SCH_API_RESUME",
-	"MES_SCH_API_RESET",
-	"MES_SCH_API_SET_LOG_BUFFER",
-	"MES_SCH_API_CHANGE_GANG_PRORITY",
-	"MES_SCH_API_QUERY_SCHEDULER_STATUS",
-	"MES_SCH_API_PROGRAM_GDS",
-	"MES_SCH_API_SET_DEBUG_VMID",
-	"MES_SCH_API_MISC",
-	"MES_SCH_API_UPDATE_ROOT_PAGE_TABLE",
-	"MES_SCH_API_AMD_LOG",
+/* 00 */	"MES_SCH_API_SET_HW_RSRC",
+/* 01 */	"MES_SCH_API_SET_SCHEDULING_CONFIG",
+/* 02 */	"MES_SCH_API_ADD_QUEUE",
+/* 03 */	"MES_SCH_API_REMOVE_QUEUE",
+/* 04 */	"MES_SCH_API_PERFORM_YIELD",
+/* 05 */	"MES_SCH_API_SET_GANG_PRIORITY_LEVEL",
+/* 06 */	"MES_SCH_API_SUSPEND",
+/* 07 */	"MES_SCH_API_RESUME",
+/* 08 */	"MES_SCH_API_RESET",
+/* 09 */	"MES_SCH_API_SET_LOG_BUFFER",
+/* 0A */	"MES_SCH_API_CHANGE_GANG_PRORITY",
+/* 0B */	"MES_SCH_API_QUERY_SCHEDULER_STATUS",
+/* 0C */	"MES_SCH_API_PROGRAM_GDS",
+/* 0D */	"MES_SCH_API_SET_DEBUG_VMID",
+/* 0E */	"MES_SCH_API_MISC",
+/* 0F */	"MES_SCH_API_UPDATE_ROOT_PAGE_TABLE",
+/* 10 */	"MES_SCH_API_AMD_LOG",
+/* 11 */	"UNK",
+/* 12 */	"UNK",
+/* 13 */	"MES_SCH_API_SET_HW_RSRC_1",
 };
 
 static char *mes_v10_misc_api_opcodes[] = {
@@ -88,6 +91,9 @@ static char *mes_v10_add_queue_priority_level[] = {
 
 #define STR_LOOKUP(str_lut, idx, default) \
 	((idx) < sizeof(str_lut) / sizeof(str_lut[0]) ? str_lut[(idx)] : (default))
+
+#define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
+
 
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
 {
@@ -581,6 +587,17 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "p_buffer_size_used", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				break;
+
+			case 19: // MES_SCH_API_SET_HW_RSRC_1
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_info_ctx", BITS(fetch_word(asic, stream, i), 0, 1), NULL, 16, 32);
+				++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_info_ctx_mc_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_info_ctx_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_kiq_unmap_timeout", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				break;
 		}
 
