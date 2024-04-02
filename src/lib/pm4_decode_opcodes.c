@@ -1608,16 +1608,16 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 					ui->add_field(ui, ib_addr + 4, ib_vmid, "PWS_COUNT", BITS(fetch_word(asic, stream, 0), 18, 24), NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "GCR_SIZE", fetch_word(asic, stream, 1), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 12, ib_vmid, "GCR_SIZE_HI", BITS(fetch_word(asic, stream, 2), 0, 25), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 16, ib_vmid, "GCR_BASE", fetch_word(asic, stream, 3), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "GCR_BASE_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "GCR_BASE_HI", BITS(fetch_word(asic, stream, 4), 0, 25), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 24, ib_vmid, "PWS_ENA", BITS(fetch_word(asic, stream, 5), 31, 32), NULL, 16, 32);
 				} else {
 					ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 31, 32), BITS(fetch_word(asic, stream, 0), 31, 32) ? "ME" : "PFP", 10, 32);
 					ui->add_field(ui, ib_addr + 4, ib_vmid, "COHER_CNTL", BITS(fetch_word(asic, stream, 0), 0, 30), NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 8, ib_vmid, "CP_COHER_SIZE", fetch_word(asic, stream, 1), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", BITS(fetch_word(asic, stream, 2), 0, 8), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 16, ib_vmid, "CP_COHER_BASE", fetch_word(asic, stream, 3), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", BITS(fetch_word(asic, stream, 4), 0, 8), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "CP_COHER_SIZE_HI", BITS(fetch_word(asic, stream, 2), 0, 24), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "CP_COHER_BASE_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "CP_COHER_BASE_HI", BITS(fetch_word(asic, stream, 4), 0, 24), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL_INTERVAL", BITS(fetch_word(asic, stream, 5), 0, 16), NULL, 10, 32);
 				}
 				ui->add_field(ui, ib_addr + 28, ib_vmid, "GCR_CNTL", BITS(fetch_word(asic, stream, 6), 0, 19), NULL, 16, 32);
