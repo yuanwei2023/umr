@@ -899,7 +899,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 			break;
 		case 0xA3: // PKT3_UNMAP_QUEUES
 			{
-				uint32_t action, queue_sel, num_queues, engine_sel;
+				uint32_t queue_sel, num_queues, engine_sel;
 
 				queue_sel = BITS(fetch_word(asic, stream, 0), 4, 6);
 				engine_sel = BITS(fetch_word(asic, stream, 0), 26, 29);

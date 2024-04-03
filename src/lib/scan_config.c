@@ -276,7 +276,7 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 gca_config:
 	if (asic->options.test_log && !asic->options.test_log_fd) {
 		// grab from test harness instead of system
-		r = umr_test_harness_get_config_data(asic, (uint8_t *)asic->config.data);
+		umr_test_harness_get_config_data(asic, (uint8_t *)asic->config.data);
 	} else {
 		// grab from system
 		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gca_config", asic->instance);

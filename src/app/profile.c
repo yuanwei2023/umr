@@ -102,9 +102,15 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 
 	nmax = samples;
 	nitems = 0;
-	ophit = phit = calloc(nmax, sizeof *phit);
-
+	phit = calloc(nmax, sizeof *phit);
 	otext = texts = calloc(1, sizeof *texts);
+
+	if (!phit || !texts) {
+		free(phit);
+		free(texts);
+		asic->err_msg("[ERROR]: Out of memory\n");
+		return;
+	}
 
 	ringname = asic->options.ring_name[0] ? asic->options.ring_name : "gfx";
 	gprs = asic->options.skip_gprs;
@@ -315,58 +321,66 @@ throw_back:
 			// disasm shader
 			strs = NULL;
 			data = texts->text;
-			umr_shader_disasm(asic, (uint8_t *)data, texts->size, 0xFFFFFFFF, &strs);
 
-			for (z = 0; z < shaders[x].hits[0].data.shader_size; z += 4) {
-				unsigned cnt=0, pct;
+			if (data) {
+				umr_shader_disasm(asic, (uint8_t *)data, texts->size, 0xFFFFFFFF, &strs);
 
-				// find this offset in the hits so we know the hit count
-				for (y = 0; y < shaders[x].nhits; y++) {
-					if (shaders[x].hits[y].data.pc == (shaders[x].hits[0].data.base_addr + z)) {
-						cnt = shaders[x].hits[y].cnt;
-						break;
+				for (z = 0; z < shaders[x].hits[0].data.shader_size; z += 4) {
+					unsigned cnt=0, pct;
+
+					// find this offset in the hits so we know the hit count
+					for (y = 0; y < shaders[x].nhits; y++) {
+						if (shaders[x].hits[y].data.pc == (shaders[x].hits[0].data.base_addr + z)) {
+							cnt = shaders[x].hits[y].cnt;
+							break;
+						}
 					}
+
+					// compute percentage for this address and then
+					// colour code the line
+					pct = (1000 * cnt) / shaders[x].total_cnt;
+					if (pct >= 300)
+						printf(RED);
+					else if (pct >= 200)
+						printf(YELLOW);
+					else if (pct >= 100)
+						printf(GREEN);
+
+					printf("\tshader[0x%llx + 0x%04llx] = 0x%08lx %-60s ",
+						(unsigned long long)shaders[x].hits[0].data.base_addr,
+						(unsigned long long)z,
+						(unsigned long)data[z/4],
+						strs[z/4]);
+					free(strs[z/4]);
+
+					if (cnt)
+						printf("(%5u hits, %3u.%01u %%)", cnt, pct/10, pct%10);
+					sum += cnt;
+
+					printf("\n%s", RST);
 				}
-
-				// compute percentage for this address and then
-				// colour code the line
-				pct = (1000 * cnt) / shaders[x].total_cnt;
-				if (pct >= 300)
-					printf(RED);
-				else if (pct >= 200)
-					printf(YELLOW);
-				else if (pct >= 100)
-					printf(GREEN);
-
-				printf("\tshader[0x%llx + 0x%04llx] = 0x%08lx %-60s ",
-					(unsigned long long)shaders[x].hits[0].data.base_addr,
-					(unsigned long long)z,
-					(unsigned long)data[z/4],
-					strs[z/4]);
-				free(strs[z/4]);
-
-				if (cnt)
-					printf("(%5u hits, %3u.%01u %%)", cnt, pct/10, pct%10);
-				sum += cnt;
-
-				printf("\n%s", RST);
+				if (sum != shaders[x].total_cnt)
+					printf("Sum mismatch: %lu != %lu\n", (unsigned long)sum, (unsigned long)shaders[x].total_cnt);
+				free(strs);
 			}
-			if (sum != shaders[x].total_cnt)
-				printf("Sum mismatch: %lu != %lu\n", (unsigned long)sum, (unsigned long)shaders[x].total_cnt);
-			free(strs);
 		}
 	}
 	total_hits = total_hits_by_type[0] + total_hits_by_type[1] +
 				 total_hits_by_type[2] + total_hits_by_type[3] +
 				 total_hits_by_type[4] + total_hits_by_type[5] +
 				 total_hits_by_type[6];
-	printf("\nPixel Shaders:   %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_PIXEL]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_PIXEL]) / total_hits) % 10);
-	printf("Vertex Shaders:  %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_VERTEX]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_VERTEX]) / total_hits) % 10);
-	printf("Compute Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_COMPUTE]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_COMPUTE]) / total_hits) % 10);
-	printf("HS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_HS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_HS]) / total_hits) % 10);
-	printf("GS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_GS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_GS]) / total_hits) % 10);
-	printf("ES Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_ES]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_ES]) / total_hits) % 10);
-	printf("LS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_LS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_LS]) / total_hits) % 10);
+
+	if (!total_hits) {
+		printf("No hits.\n");
+	} else {
+		printf("\nPixel Shaders:   %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_PIXEL]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_PIXEL]) / total_hits) % 10);
+		printf("Vertex Shaders:  %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_VERTEX]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_VERTEX]) / total_hits) % 10);
+		printf("Compute Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_COMPUTE]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_COMPUTE]) / total_hits) % 10);
+		printf("HS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_HS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_HS]) / total_hits) % 10);
+		printf("GS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_GS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_GS]) / total_hits) % 10);
+		printf("ES Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_ES]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_ES]) / total_hits) % 10);
+		printf("LS Shaders: %3u.%01u %%\n", ((1000 * total_hits_by_type[UMR_SHADER_LS]) / total_hits) / 10, ((1000 * total_hits_by_type[UMR_SHADER_LS]) / total_hits) % 10);
+	}
 
 	texts = otext;
 	while (texts) {

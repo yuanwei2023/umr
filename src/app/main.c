@@ -911,7 +911,7 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--vm-decode") || !strcmp(argv[i], "-vm")) {
 					if (i + 2 < argc) {
 						uint64_t address;
-						uint32_t size, n, vmid;
+						uint32_t size, vmid;
 						int overbose;
 
 						overbose = asic->options.verbose;
@@ -919,8 +919,8 @@ int main(int argc, char **argv)
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
-						if ((n = sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
-							if ((n = sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
+						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
+							if ((sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
 								fprintf(stderr, "[ERROR]: Must specify a VMID for the --vm-decode command\n");
 								exit(EXIT_FAILURE);
 							}
@@ -946,8 +946,8 @@ int main(int argc, char **argv)
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
-						if ((n = sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
-							if ((n = sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
+						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
+							if ((sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
 								sscanf(argv[i+1], "%"SCNx64, &address);
 								vmid = UMR_LINEAR_HUB;
 							}
@@ -978,8 +978,8 @@ int main(int argc, char **argv)
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
-						if ((n = sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
-							if ((n = sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
+						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
+							if ((sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
 								sscanf(argv[i+1], "%"SCNx64, &address);
 								vmid = UMR_LINEAR_HUB;
 							}
@@ -1005,12 +1005,12 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "-vww") || !strcmp(argv[i], "--vm-write-word")) {
 					if (i + 2 < argc) {
 						uint64_t address;
-						uint32_t n, data, vmid;
+						uint32_t data, vmid;
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
-						if ((n = sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
-							if ((n = sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
+						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
+							if ((sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
 								sscanf(argv[i+1], "%"SCNx64, &address);
 								vmid = UMR_LINEAR_HUB;
 							}
@@ -1031,12 +1031,12 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "-vdis") || !strcmp(argv[i], "--vm-disasm")) {
 					if (i + 2 < argc) {
 						uint64_t address;
-						uint32_t size, n, vmid;
+						uint32_t size, vmid;
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
-						if ((n = sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
-							if ((n = sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
+						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
+							if ((sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address)) != 2) {
 								sscanf(argv[i+1], "%"SCNx64, &address);
 								vmid = UMR_LINEAR_HUB;
 							}

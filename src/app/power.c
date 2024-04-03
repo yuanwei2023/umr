@@ -234,7 +234,6 @@ void umr_power(struct umr_asic *asic)
 		if ((i = wgetch(stdscr)) != ERR) {
 			if (i == 'q') {
 				quit = 1;
-				break;
 			}
 		}
 		refresh();

@@ -2027,6 +2027,8 @@ enum umr_mqd_engine_sel {
 	UMR_MQD_ENGINE_SDMA0,
 	UMR_MQD_ENGINE_SDMA1,
 	UMR_MQD_ENGINE_GFX,
+
+	UMR_MQD_ENGINE_INVALID,
 };
 
 struct umr_mqd_fields {

@@ -742,8 +742,8 @@ static void grab_vram(struct umr_asic *asic)
 {
 	char name[256];
 	FILE *f;
-	unsigned long total, free, used;
-	unsigned long man_size, ram_usage, vis_usage;
+	unsigned long total = 0, free, used = 0;
+	unsigned long man_size, ram_usage, vis_usage = 0;
 
 	snprintf(name, sizeof(name)-1, "/sys/kernel/debug/dri/%d/amdgpu_vram_mm", asic->instance);
 	f = fopen(name, "rb");
@@ -817,9 +817,10 @@ static void analyze_drm_info(struct umr_asic *asic)
 void save_options(void)
 {
 	FILE *f;
-	char path[512];
+	char path[512], *e;
 
-	sprintf(path, "%s/.umrtop", getenv("HOME"));
+	e = getenv("HOME");
+	sprintf(path, "%s/.umrtop", e ? e : "~/");
 	f = fopen(path, "w");
 	if (f) {
 		fprintf(f, "%d\n", top_options.wide);
@@ -844,12 +845,13 @@ void save_options(void)
 void load_options(void)
 {
 	FILE *f;
-	char path[512];
+	char path[512], *e;
 	int r;
 
 	memset(&top_options, 0, sizeof(top_options));
 
-	sprintf(path, "%s/.umrtop", getenv("HOME"));
+	e = getenv("HOME");
+	sprintf(path, "%s/.umrtop", e ? e : "~/");
 	f = fopen(path, "r");
 	if (f) {
 		r = 1;
@@ -1023,7 +1025,7 @@ static void top_build_vi_program(struct umr_asic *asic)
 			stat_counters[k].addr_mask = REG_USE_PG_LOCK;  // UVD requires PG lock
 		}
 
-		k = j = i;
+		j = i;
 		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE1", &stat_uvd_pgfsm1_bits[0], &top_options.vi.uvd, "UVD");
 		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE2", &stat_uvd_pgfsm2_bits[0], &top_options.vi.uvd, "UVD");
 		ENTRY(i++, vcn_prefix, "UVD_PGFSM_READ_TILE3", &stat_uvd_pgfsm3_bits[0], &top_options.vi.uvd, "UVD");
@@ -1050,12 +1052,10 @@ static void top_build_vi_program(struct umr_asic *asic)
 		}
 
 	// memory hub
-		k = i;
 		if (asic->family < FAMILY_AI)
 			ENTRY(i++, gfx_prefix, "MC_HUB_MISC_STATUS", &stat_mc_hub_bits[0], &top_options.vi.memory_hub, "MC HUB");
 
 	// SDMA
-		k = i;
 		if (asic->family < FAMILY_AI)
 			ENTRY(i++, gfx_prefix, "SRBM_STATUS2", &stat_sdma_bits[0], &top_options.vi.sdma, "SDMA");
 
@@ -1129,7 +1129,7 @@ void umr_top(struct umr_asic *asic)
 	time_t tt;
 	uint64_t ts;
 	char hostname[64] = { 0 };
-	char fname[64];
+	char fname[64], *e;
 	pthread_t sensor_thread;
 
 	// open drm file if not already open
@@ -1138,7 +1138,12 @@ void umr_top(struct umr_asic *asic)
 		asic->fd.drm = open(fname, O_RDWR);
 	}
 
-	if (getenv("HOSTNAME")) strcpy(hostname, getenv("HOSTNAME"));
+	e = getenv("HOSTNAME");
+	if (e) {
+		strcpy(hostname, e);
+	} else {
+		strcpy(hostname, "(nohost)");
+	}
 
 	// init stats
 	memset(&stat_counters, 0, sizeof stat_counters);

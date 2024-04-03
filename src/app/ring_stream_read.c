@@ -221,6 +221,8 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 			case 2:
 			case 3: eng = UMR_MQD_ENGINE_SDMA0; break;
 			case 4: eng = UMR_MQD_ENGINE_GFX; break;
+			default:
+				eng = UMR_MQD_ENGINE_INVALID; break;
 		}
 		if (!umr_read_vram(asic, asic->options.vm_partition, buf_vmid, buf_addr, 512 * 4, &mqd[0])) {
 			txt = umr_mqd_decode_data(eng, asic->family, mqd, "*");

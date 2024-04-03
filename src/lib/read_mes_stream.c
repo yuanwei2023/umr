@@ -608,6 +608,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 		stream = stream->next;
 	}
 	ui->done(ui);
+	(void)i; // silence "dead increment warnings"
 	return stream;
 }
 

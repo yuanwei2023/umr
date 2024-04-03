@@ -218,6 +218,7 @@ struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, stru
 		stream = stream->next;
 	}
 	ui->done(ui);
+	(void)i; // silence warnings
 	return stream;
 }
 

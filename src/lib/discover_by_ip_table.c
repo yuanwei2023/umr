@@ -336,7 +336,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 		snprintf(buf, sizeof(buf), "%s.soc15", asic->asicname);
 		fexp = fopen(buf, "w");
 		pexp_data = &exp_data;
-		while (pexp_data && strlen(pexp_data->det->ipname)) {
+		while (pexp_data && pexp_data->det && strlen(pexp_data->det->ipname)) {
 			if (!pexp_data->soc15) {
 				fprintf(fexp, "%s\n", pexp_data->det->ipname);
 				ppexp = pexp_data;

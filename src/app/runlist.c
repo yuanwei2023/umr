@@ -69,9 +69,15 @@ void umr_dump_runlists(struct umr_asic *asic, int node)
 	rlssize = 4096;
 	rlsbuf = calloc(1, rlssize);
 
+	if (!rlsbuf) {
+		asic->err_msg("[ERROR]: Out of memory\n");
+		return;
+	}
+
 	rls = fopen("/sys/kernel/debug/kfd/rls", "r");
 	if (!rls) {
 		asic->err_msg("[ERROR]: Could not open RLS file from KFD debug tree\n");
+		free(rlsbuf);
 		return;
 	}
 	while (fgets(linebuf, sizeof linebuf, rls)) {
@@ -84,6 +90,11 @@ void umr_dump_runlists(struct umr_asic *asic, int node)
 						words--; // skip offset
 						if ((words * 4 + rlsofs) > rlssize) {
 							void *t = realloc(rlsbuf, rlssize + 4096);
+							if (!t) {
+								asic->err_msg("[ERROR]: Out of memory\n");
+								free(rlsbuf);
+								return;
+							}
 							rlssize += 4096;
 							rlsbuf = t;
 						}
@@ -101,10 +112,9 @@ void umr_dump_runlists(struct umr_asic *asic, int node)
 				umr_ring_stream_present(asic, NULL, -1, -1, 0, 0, (uint32_t *)rlsbuf, rlsofs>>2, UMR_RING_PM4);
 
 			// we're done
-			free(rlsbuf);
-			fclose(rls);
-			return;
+			break;
 		}
 	}
+	free(rlsbuf);
 	fclose(rls);
 }

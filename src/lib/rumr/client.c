@@ -147,7 +147,7 @@ static int mem_op(struct umr_asic *asic, uint64_t *addr, uint32_t size, void *ds
 	pkt[2] = (write_en ? (1<<2) : 0) | (subop);
 	pkt[3] = size;
 	n = 0;
-	if (write_en) {
+	if (write_en && dst) {
 		uint32_t *pbuf = dst;
 		for (n = 0; n < (size >> 2); n++) {
 			pkt[4 + n] = pbuf[n];

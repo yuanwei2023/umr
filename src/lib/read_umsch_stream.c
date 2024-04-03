@@ -338,5 +338,6 @@ struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, 
 		stream = stream->next;
 	}
 	ui->done(ui);
+	(void)m; // silence warnings
 	return stream;
 }

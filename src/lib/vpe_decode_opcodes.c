@@ -75,11 +75,12 @@ struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, stru
 				break;
 			case 2: // PLANE CONFIG
 				{
-					uint32_t NPS0, NPD0, NPS1, NPD1;
+					//uint32_t NPS0, NPD0, NPS1, NPD1;
+					uint32_t NPS0, NPD0;
 					NPS0 = (stream->header_dw >> 16) & 3;
 					NPD0 = (stream->header_dw >> 18) & 3;
-					NPS1 = (stream->header_dw >> 20) & 3;
-					NPD1 = (stream->header_dw >> 22) & 3;
+					//NPS1 = (stream->header_dw >> 20) & 3;
+					//NPD1 = (stream->header_dw >> 22) & 3;
 
 					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "Plane Config", stream->header_dw, stream->words);
 					ui->add_field(ui, ib_addr + 0, ib_vmid, "NPS0", (stream->header_dw >> 16) & 0x3, NULL, 10, 32);
@@ -311,5 +312,7 @@ struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, stru
 		stream = stream->next;
 	}
 	ui->done(ui);
+	(void)n; // silence warnings
+	(void)m;
 	return stream;
 }

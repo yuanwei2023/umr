@@ -748,7 +748,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	} registers;
 
 	pde_fields_t pde_fields, pde_array[8];
-	pte_fields_t pte_fields;
+	pte_fields_t pte_fields = { 0 };
 	char buf[64];
 	unsigned char *pdst = dst;
 	char *hub, *vm0prefix, *regprefix;
@@ -992,7 +992,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		pde_cnt = 0;
 		ptb_mask = (1ULL << 9) - 1;
 		pte_page_mask = (1ULL << 12) - 1;
-		log2_ptb_entries = 9;
+		// log2_ptb_entries = 9; // this assignment is currently not needed
 		further = 0;
 		pde_was_pte = 0;
 

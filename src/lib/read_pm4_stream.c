@@ -24,6 +24,19 @@
  */
 #include "umr.h"
 
+
+static uint32_t fetch_word(struct umr_asic *asic, struct umr_pm4_stream *stream, uint32_t off)
+{
+	if (off >= stream->n_words) {
+		if (!(stream->invalid))
+			asic->err_msg("[ERROR]: PM4 decoding of opcode (%"PRIx32") went out of bounds.\n", stream->opcode);
+		stream->invalid = 1;
+		return 0;
+	} else {
+		return stream->words[off];
+	}
+}
+
 /**
  * parse_pm4 - Parse a PM4 packet looking for pointers to shaders or IBs
  *
@@ -45,7 +58,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 		case 0x76: // SET_SH_REG (looking for writes to shader registers);
 		{
 			unsigned n, na;
-			uint32_t reg_addr = ps->words[0] + 0x2C00;
+			uint32_t reg_addr = fetch_word(asic, ps, 0) + 0x2C00;
 			uint64_t shader_addr = 0;
 			int type = 0;
 			char *tmp;
@@ -78,16 +91,16 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 						type = asic->options.shader_enable.enable_comp_shader ? UMR_SHADER_COMPUTE : UMR_SHADER_OPAQUE;
 					}
 
-					shader_addr = (shader_addr & ~0xFFFFFFFFFFULL) | ((uint64_t)ps->words[n] << 8);
+					shader_addr = (shader_addr & ~0xFFFFFFFFFFULL) | ((uint64_t)fetch_word(asic, ps, n) << 8);
 					if (type != UMR_SHADER_OPAQUE)
 						na |= 1;
 				} else if (strstr(tmp, "SPI_SHADER_PGM_HI_") || strstr(tmp, "COMPUTE_PGM_HI")) {
-					shader_addr = (shader_addr & 0xFFFFFFFFFFULL) | ((uint64_t)ps->words[n] << 40);
+					shader_addr = (shader_addr & 0xFFFFFFFFFFULL) | ((uint64_t)fetch_word(asic, ps, n) << 40);
 					na |= 2;
 				} else if (strstr(tmp, "SPI_SHADER_PGM_RSRC1") || strstr(tmp, "COMPUTE_PGM_RSRC1")) {
-					rsrc1 = ps->words[n];
+					rsrc1 = fetch_word(asic, ps, n);
 				} else if (strstr(tmp, "SPI_SHADER_PGM_RSRC2") || strstr(tmp, "COMPUTE_PGM_RSRC2")) {
-					rsrc2 = ps->words[n];
+					rsrc2 = fetch_word(asic, ps, n);
 				}
 			}
 
@@ -109,14 +122,14 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 		case 0x3f: // INDIRECT_BUFFER_CIK
 		case 0x33: // INDIRECT_BUFFER_CONST
 			if (!asic->options.no_follow_ib) {
-				addr = (ps->words[0] & ~3ULL) | ((uint64_t)(ps->words[1] & 0xFFFF) << 32);
+				addr = (fetch_word(asic, ps, 0) & ~3ULL) | ((uint64_t)(fetch_word(asic, ps, 1) & 0xFFFF) << 32);
 
 				// abort if the IB is >8 MB in size which is very likely just garbage data
-				size = (ps->words[2] & ((1UL << 20) - 1)) * 4;
+				size = (fetch_word(asic, ps, 2) & ((1UL << 20) - 1)) * 4;
 				if (size > (1024UL * 1024UL * 8UL))
 					break;
 
-				tvmid = (ps->words[2] >> 24) & 0xF;
+				tvmid = (fetch_word(asic, ps, 2) >> 24) & 0xF;
 				if (!tvmid)
 					tvmid = vmid;
 				buf = calloc(1, size);
@@ -271,16 +284,16 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 			// except for the SIZE so we use a bitfield to keep
 			// track of them
 			if (strstr(name, "mmUVD_LMI_RBC_IB_VMID")) {
-				uvd_ib.vmid = ps->words[0] | ((asic->family <= FAMILY_VI) ? 0 : UMR_MM_HUB);
+				uvd_ib.vmid = fetch_word(asic, ps, 0) | ((asic->family <= FAMILY_VI) ? 0 : UMR_MM_HUB);
 				uvd_ib.n |= 1;
 			} else if (strstr(name, "mmUVD_LMI_RBC_IB_64BIT_BAR_LOW")) {
-				uvd_ib.addr |= ps->words[0];
+				uvd_ib.addr |= fetch_word(asic, ps, 0);
 				uvd_ib.n |= 2;
 			} else if (strstr(name, "mmUVD_LMI_RBC_IB_64BIT_BAR_HIGH")) {
-				uvd_ib.addr |= (uint64_t)ps->words[0] << 32;
+				uvd_ib.addr |= (uint64_t)fetch_word(asic, ps, 0) << 32;
 				uvd_ib.n |= 4;
 			} else if (strstr(name, "mmUVD_RBC_IB_SIZE")) {
-				uvd_ib.size = ps->words[0] * 4;
+				uvd_ib.size = fetch_word(asic, ps, 0) * 4;
 				uvd_ib.n |= 8;
 			}
 
