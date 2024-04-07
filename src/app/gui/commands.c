@@ -318,11 +318,14 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 		attrs);
 	if (image == EGL_NO_IMAGE)
 		return "EGL failure (unhandled format?)";
+	PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DProc = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC *) eglGetProcAddress("glEGLImageTargetTexture2DOES");
+	if (!imageTargetTexture2DProc)
+	    return "EGL failure (glEGLImageTargetTexture2DOES not available from extension)";
 
 	GLuint tex[2];
 	glGenTextures(2, tex);
 	glBindTexture(GL_TEXTURE_EXTERNAL_OES, tex[0]);
-	glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image);
+	imageTargetTexture2DProc(GL_TEXTURE_EXTERNAL_OES, image);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_EXTERNAL_OES, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
