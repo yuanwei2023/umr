@@ -111,6 +111,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 			!memcmp(ringname, "uvd", 3) ||
 			!memcmp(ringname, "vcn_dec", 7) ||
 			!memcmp(ringname, "vcn_enc", 7) ||
+			!memcmp(ringname, "mes_kiq", 7) ||
 			!memcmp(ringname, "kiq", 3) ||
 			!memcmp(ringname, "comp", 4)) {
 			rt = UMR_RING_PM4;
