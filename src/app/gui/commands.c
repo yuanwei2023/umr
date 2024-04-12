@@ -2152,7 +2152,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		asic->options.verbose = 0;
 
 		struct umr_wave_data wd;
-		memset(&wd, 0, sizeof(wd));
+		umr_wave_data_init(asic, &wd);
 
 		int r = umr_scan_wave_slot(asic, se, sh, wgp, simd_id, wave_id, &wd);
 		if (r < 0) {
@@ -2172,7 +2172,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			umr_sq_cmd_singlestep(asic, se, sh, wgp, simd_id, wave_id);
 
 			struct umr_wave_data new_wd;
-			memset(&new_wd, 0, sizeof(new_wd));
+			umr_wave_data_init(asic, &new_wd);
 
 			r = umr_scan_wave_slot(asic, se, sh, wgp, simd_id, wave_id, &new_wd);
 			if (r < 0) {

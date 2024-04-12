@@ -1584,6 +1584,7 @@ int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 int umr_get_wave_status_via_mmio(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws);
 struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic);
 
+int umr_wave_data_init(struct umr_asic *asic, struct umr_wave_data *wd);
 uint32_t umr_wave_data_get_value(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname);
 uint32_t umr_wave_data_get_bits(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname, const char *bitname);
 int umr_wave_data_get_bit_info(struct umr_asic *asic, struct umr_wave_data *wd, const char *regname, int *no_bits, struct umr_bitfield **bits);

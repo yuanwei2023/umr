@@ -542,6 +542,30 @@ static const char *gfx11_regs[] = {
 	NULL
 };
 
+int umr_wave_data_init(struct umr_asic *asic, struct umr_wave_data *wd) {
+	int maj, min;
+
+	memset(wd, 0, sizeof(*wd));
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 8:
+			wd->reg_names = gfx8_regs;
+			break;
+		case 9:
+			wd->reg_names = gfx9_regs;
+			break;
+		case 10:
+			wd->reg_names = gfx10_regs;
+			break;
+		case 11:
+			wd->reg_names = gfx11_regs;
+			break;
+		default:
+			return -1;
+	}
+	return 0;
+}
+
 /**
  * umr_scan_wave_data - Scan for any halted valid waves
  *
@@ -551,25 +575,19 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 {
 	uint32_t se, sh, simd;
 	struct umr_wave_data *ohead, *head, **ptail;
-	int r, maj, min;
+	int r;
 
-	ohead = head = calloc(1, sizeof *head);
+	ohead = head = malloc(sizeof *head);
 	if (!head) {
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
 	ptail = &head;
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
-	switch (maj) {
-		case 8: ohead->reg_names = gfx8_regs; break;
-		case 9: ohead->reg_names = gfx9_regs; break;
-		case 10: ohead->reg_names = gfx10_regs; break;
-		case 11: ohead->reg_names = gfx11_regs; break;
-		default:
-			asic->err_msg("[BUG]: Unsupported ASIC IP version in umr_scan_wave_data()\n");
-			free(ohead);
-			return NULL;
+	if (umr_wave_data_init(asic, ohead) < 0) {
+		asic->err_msg("[BUG]: Unsupported ASIC IP version in umr_scan_wave_data()\n");
+		free(ohead);
+		return NULL;
 	}
 
 	for (se = 0; se < asic->config.gfx.max_shader_engines; se++)
