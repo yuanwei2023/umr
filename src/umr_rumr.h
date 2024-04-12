@@ -123,7 +123,7 @@ uint32_t rumr_buffer_read_uint32(struct rumr_buffer *buf);
 
 void rumr_buffer_free(struct rumr_buffer *buf);
 
-struct rumr_buffer *rumr_buffer_load_file(const char *fname);
+struct rumr_buffer *rumr_buffer_load_file(const char *fname, char *database_path);
 
 // server functions
 int rumr_server_bind(struct rumr_server_state *state, struct rumr_comm_funcs *cf, char *host);
@@ -136,7 +136,7 @@ void rumr_server_close(struct rumr_server_state *state);
 struct rumr_buffer *rumr_serialize_asic(struct umr_asic *asic);
 struct umr_asic *rumr_parse_serialized_asic(struct rumr_buffer *buf);
 int rumr_save_serialized_asic(struct umr_asic *asic, struct rumr_buffer *buf);
-struct rumr_buffer *rumr_load_serialized_asic(const char *fname);
+struct rumr_buffer *rumr_load_serialized_asic(const char *fname, char *database_path);
 
 // EXTERNS
 // comms

@@ -65,7 +65,7 @@ int umr_print_vbios_info(struct umr_asic *asic);
 
 void run_server_loop(const char *url, struct umr_asic * asic);
 
-void umr_enumerate_devices(umr_err_output errout);
+void umr_enumerate_devices(umr_err_output errout, const char *database_path);
 
 int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream);
 void umr_print_cpc(struct umr_asic *asic);

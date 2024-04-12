@@ -471,19 +471,6 @@ int main(int argc, char **argv)
 	}
 #endif
 
-	// sanity check
-	f = umr_database_open(NULL, "pci.did", 0);
-	if (!f) {
-		fprintf(stderr, "[ERROR]: Cannot open pci.did which means the database isn't found.\n");
-		fprintf(stderr, "[ERROR]: UMR should either be installed via packaging or 'make install', or\n");
-		fprintf(stderr, "[ERROR]: you should run UMR from the original build tree it was built in.\n");
-		fprintf(stderr, "[ERROR]: Copying a build tree from one host to another may not work if the build tree\n");
-		fprintf(stderr, "[ERROR]: is not in the same path location.\n");
-		return EXIT_FAILURE;
-	} else {
-		fclose(f);
-	}
-
 	memset(&options, 0, sizeof options);
 
 	/* defaults */
@@ -511,6 +498,21 @@ int main(int argc, char **argv)
 		if ((pass - 1) == PASS_ASIC_MODEL) {
 			if (!asic)
 				asic = get_asic();
+		}
+
+		if ((pass - 1) == PASS_OPTIONS) {
+			// sanity check
+			f = umr_database_open(options.database_path, "pci.did", 0);
+			if (!f) {
+				fprintf(stderr, "[ERROR]: Cannot open pci.did which means the database isn't found.\n");
+				fprintf(stderr, "[ERROR]: UMR should either be installed via packaging or 'make install', or\n");
+				fprintf(stderr, "[ERROR]: you should run UMR from the original build tree it was built in.\n");
+				fprintf(stderr, "[ERROR]: Copying a build tree from one host to another may not work if the build tree\n");
+				fprintf(stderr, "[ERROR]: is not in the same path location.\n");
+				return EXIT_FAILURE;
+			} else {
+				fclose(f);
+			}
 		}
 
 		for (i = 1; i < argc; i++) {
@@ -899,7 +901,7 @@ int main(int argc, char **argv)
 					if (asic->fd.gfxoff >= 0)
 						write(asic->fd.gfxoff, &value, sizeof(value));
 				} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
-					umr_enumerate_devices(std_printf);
+					umr_enumerate_devices(std_printf, options.database_path);
 					return 0;
 				} else if (!strcmp(argv[i], "-mm")) {
 					if (i + 1 < argc) {

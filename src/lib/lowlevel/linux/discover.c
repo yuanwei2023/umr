@@ -180,7 +180,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			char fname[32];
 
 			sprintf(fname, "0x%"PRIx32".sasic", (uint32_t)did);
-			buf = rumr_load_serialized_asic(fname);
+			buf = rumr_load_serialized_asic(fname, options->database_path);
 			if (buf) {
 				asic = rumr_parse_serialized_asic(buf);
 				rumr_buffer_free(buf);

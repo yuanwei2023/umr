@@ -231,7 +231,7 @@ int rumr_save_serialized_asic(struct umr_asic *asic, struct rumr_buffer *buf)
 	return 0;
 }
 
-struct rumr_buffer *rumr_load_serialized_asic(const char *fname)
+struct rumr_buffer *rumr_load_serialized_asic(const char *fname, char *database_path)
 {
-	return rumr_buffer_load_file(fname);
+	return rumr_buffer_load_file(fname, database_path);
 }

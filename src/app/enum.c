@@ -32,7 +32,7 @@ struct gpus {
 	int instance;
 };
 
-void umr_enumerate_devices(umr_err_output errout)
+void umr_enumerate_devices(umr_err_output errout, const char *database_path)
 {
 	struct gpus asics[MAX_DEV];
 	struct umr_options options;
@@ -47,6 +47,7 @@ void umr_enumerate_devices(umr_err_output errout)
 	memset(asics, 0, sizeof(asics));
 	memset(&options, 0, sizeof(options));
 	options.quiet = 1;
+	strncpy(options.database_path, database_path, sizeof(options.database_path));
 
 	// scan PCI space for all AMDGPU devices...
 	pci_system_init();
