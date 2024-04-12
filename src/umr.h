@@ -1613,6 +1613,9 @@ int umr_read_sgprs_via_mmio(struct umr_asic *asic, struct umr_wave_data *wd, uin
 int umr_read_vgprs_via_mmio(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst);
 int umr_read_sensor(struct umr_asic *asic, int sensor, void *dst, int *size);
 
+int umr_singlestep_wave(struct umr_asic *asic, unsigned se, unsigned sh, unsigned wgp, unsigned simd, unsigned wave,
+								struct umr_wave_data *wd);
+
 // low level
 int umr_linux_read_gpr_gprwave_raw(struct umr_asic *asic, int v_or_s,
 								   uint32_t thread, uint32_t se, uint32_t sh, uint32_t cu, uint32_t wave, uint32_t simd,

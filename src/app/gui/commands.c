@@ -2160,31 +2160,13 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			goto error;
 		}
 
-		uint64_t pc, new_pc;
-		uint32_t vmid;
-
-		umr_wave_data_get_shader_pc_vmid(asic, &wd, &vmid, &pc);
-
-		// Send the single-step command in a limited retry loop because a small number of
-		// single-step commands are required before an instruction is actually issued after
-		// a branch.
-		for (int retry = 0; r == 1 && retry < 5; ++retry) {
-			umr_sq_cmd_singlestep(asic, se, sh, wgp, simd_id, wave_id);
-
-			struct umr_wave_data new_wd;
-			umr_wave_data_init(asic, &new_wd);
-
-			r = umr_scan_wave_slot(asic, se, sh, wgp, simd_id, wave_id, &new_wd);
-			if (r < 0) {
-				last_error = "failed to scan wave slot";
-				goto error;
-			}
-
-			umr_wave_data_get_shader_pc_vmid(asic, &new_wd, &vmid, &new_pc);
-			bool moved = pc != new_pc;
-			memcpy(&wd, &new_wd, sizeof(wd));
-			if (moved)
-				break;
+		r = umr_singlestep_wave(asic, se, sh, wgp, simd_id, wave_id, &wd);
+		if (r == -2) {
+			last_error = "failed to scan wave slot after single-stepping";
+			goto error;
+		} else if (r == -1) {
+			last_error = "failed to single-step wave";
+			goto error;
 		}
 
 		answer = json_value_init_object();

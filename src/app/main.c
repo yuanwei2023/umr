@@ -334,6 +334,8 @@ static void do_help(void)
 		"\n\t\twhich will then search a given ring for pointers to active shaders.  It will"
 		"\n\t\tdefault to the 'gfx' ring if nothing is specified.  Alternatively, an IB can be specified"
 		"\n\t\tby a vmid, address, and size (in hex bytes) triplet.\n"
+	"\n\t--singlestep, -ss <se>,<sh>,<wgp>,<simd>,<wave>\n\t\tSingle-step one wave."
+	"\n\t\tTries advancing execution on the specified wave by one instruction."
 	"\n\t--profiler, -prof [pixel= | vertex= | compute=]<nsamples> [ring]"
 		"\n\t\tCapture 'nsamples' samples of wave data. Optionally specify a ring to search"
 		"\n\t\tfor IBs that point to shaders.  Defaults to 'gfx'.  Additionally, the type"
@@ -758,6 +760,62 @@ int main(int argc, char **argv)
 						}
 					}
 					umr_print_waves(asic);
+				} else if (!strcmp(argv[i], "--singlestep") || !strcmp(argv[i], "-ss")) {
+					if (asic->family < FAMILY_NV) {
+						fprintf(stderr, "[ERROR]: --singlestep is only supported on gfx10+!\n");
+						return EXIT_FAILURE;
+					}
+					if (i + 1 < argc) {
+						if (argv[i + 1][0] == '-') {
+							fprintf(stderr, "[ERROR]: --singlestep requires two parameters\n");
+							return EXIT_FAILURE;
+						}
+
+						char *loc_start = argv[i + 1];
+						unsigned wave_loc[5];
+						for (j = 0; j < 5; ++j) {
+							char *loc_end = strstr(loc_start, ",");
+							unsigned loc_size = loc_end ? loc_end - loc_start : strlen(loc_start);
+							if (loc_size > 2) {
+								fprintf(stderr, "[ERROR]: Invalid format for wave id! Format: \"se,sh,wgp,simd,wave\"\n");
+								return EXIT_FAILURE;
+							}
+							char num[3];
+							strncpy(num, loc_start, loc_size);
+							memset(num + loc_size, 0, 3 - loc_size);
+							wave_loc[j] = strtoul(num, NULL, 10);
+
+							if (!loc_end) {
+								if (j == 4)
+									break;
+								fprintf(stderr, "[ERROR]: Not enough elements in wave id! Format: \"se,sh,wgp,simd,wave\"\n");
+								return EXIT_FAILURE;
+							}
+							loc_start = loc_end + 1;
+						}
+
+						struct umr_wave_data wd;
+						umr_wave_data_init(asic, &wd);
+
+						int r = umr_scan_wave_slot(asic, wave_loc[0], wave_loc[1], wave_loc[2], wave_loc[3], wave_loc[4],
+															&wd);
+						if (r < 0) {
+							fprintf(stderr, "[ERROR]: Failed to scan wave slot\n");
+							return EXIT_FAILURE;
+						} else if (r == 0) {
+							fprintf(stderr, "[ERROR]: Wave is not active!\n");
+							return EXIT_FAILURE;
+						}
+
+						r = umr_singlestep_wave(asic, wave_loc[0], wave_loc[1], wave_loc[2], wave_loc[3], wave_loc[4], &wd);
+						if (r < 0) {
+							fprintf(stderr, "[ERROR]: Failed to single-step wave!\n");
+							return EXIT_FAILURE;
+						}
+					} else {
+						fprintf(stderr, "[ERROR]: --singlestep requires two parameters\n");
+						return EXIT_FAILURE;
+					}
 				} else if (!strcmp(argv[i], "--scan") || !strcmp(argv[i], "-s")) {
 					if (i + 1 < argc) {
 						blockname = get_block_name(asic, argv[i+1]);

@@ -874,3 +874,48 @@ char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_da
 	}
 	return strdup(str);
 }
+
+int umr_singlestep_wave(struct umr_asic *asic, unsigned se, unsigned sh, unsigned wgp, unsigned simd, unsigned wave,
+								struct umr_wave_data *wd) {
+	int r = 1;
+	int skip_gprs = asic->options.skip_gprs;
+	int verbose = asic->options.verbose;
+
+	asic->options.skip_gprs = 0;
+	asic->options.verbose = 0;
+
+	uint64_t pc, new_pc;
+	uint32_t vmid;
+
+	umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
+
+	// Send the single-step command in a limited retry loop because a small number of
+	// single-step commands are required before an instruction is actually issued after
+	// a branch.
+	int retry = 0;
+	for (; r == 1 && retry < 5; ++retry) {
+		umr_sq_cmd_singlestep(asic, se, sh, wgp, simd, wave);
+
+		struct umr_wave_data new_wd;
+		umr_wave_data_init(asic, &new_wd);
+
+		r = umr_scan_wave_slot(asic, se, sh, wgp, simd, wave, &new_wd);
+		if (r < 0) {
+			r = -2;
+			goto out;
+		}
+
+		umr_wave_data_get_shader_pc_vmid(asic, &new_wd, &vmid, &new_pc);
+		bool moved = pc != new_pc;
+		memcpy(wd, &new_wd, sizeof(new_wd));
+		if (moved)
+			break;
+	}
+	if (retry == 5)
+		r = -1;
+
+	out:
+	asic->options.skip_gprs = skip_gprs;
+	asic->options.verbose = verbose;
+	return r;
+}
