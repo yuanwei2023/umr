@@ -318,7 +318,7 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 		attrs);
 	if (image == EGL_NO_IMAGE)
 		return "EGL failure (unhandled format?)";
-	PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DProc = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC *) eglGetProcAddress("glEGLImageTargetTexture2DOES");
+	PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DProc = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
 	if (!imageTargetTexture2DProc)
 	    return "EGL failure (glEGLImageTargetTexture2DOES not available from extension)";
 
