@@ -380,16 +380,16 @@ static void do_help(void)
 		"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line.  If the filename"
 		"\n\t\tends in .bin the file is treated as binary, if the filename ends in .ring it treats it as a"
 		"\n\t\tring copy and skips the first 12 bytes.  Can optionally specify '3' for SDMA packets, '2' for"
-		"\n\t\tMES packets, '1' for VPE packets, '5' for UMSCH packets, and '6' for HSA packets.  The default is PM4.\n"
+	"\n\t\tMES packets, '1' for VPE packets, '5' for UMSCH packets, and '6' for HSA packets.  The default is PM4.\n");
+
+	printf(
 	"\n\t--header-dump, -hd [HEADER_DUMP_reg]"
 		"\n\t\tDump the contents of the HEADER_DUMP buffer and decode the opcode into a"
 		"\n\t\thuman readable string.\n"
 	"\n\t--print-cpc, -cpc"
 		"\n\t\tPrint CPC register data.\n"
 	"\n\t--print-sdma, -sdma"
-		"\n\t\tPrint SDMA register data.\n");
-
-	printf(
+	"\n\t\tPrint SDMA register data.\n"
 	"\n*** Power and clock ***\n"
 	"\n\t--power, -p \n\t\tRead the content of clocks, temperature, gpu loading at runtime"
 		"\n\t\toptions 'use_colour' to colourize output.\n"
