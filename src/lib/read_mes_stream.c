@@ -352,12 +352,24 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "skip_process_ctx_clear", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "map_legacy_kq", (fetch_word(asic, stream, i) >> 13) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "exclusively_scheduled", (fetch_word(asic, stream, i) >> 14) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_long_running", (fetch_word(asic, stream, i) >> 15) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_dwm_queue", (fetch_word(asic, stream, i) >> 16) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_video_blit_queue", (fetch_word(asic, stream, i) >> 17) & 1, NULL, 10, 32);
+
 				}
 				++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				if (mes_ver_maj == 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tma_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "sch_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "pipe_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "alignment_mode_setting", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_flag_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				}
 				break;
 
