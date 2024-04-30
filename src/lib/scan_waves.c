@@ -249,7 +249,7 @@ static uint32_t wave_read_ind(struct umr_asic *asic, uint32_t simd, uint32_t wav
 	}
 }
 
-static uint32_t wave_read_ind_gfx_10_11(struct umr_asic *asic, uint32_t wave, uint32_t address)
+static uint32_t wave_read_ind_gfx_10_12(struct umr_asic *asic, uint32_t wave, uint32_t address)
 {
 	struct umr_reg *ind_index, *ind_data;
 	uint32_t data;
@@ -303,23 +303,54 @@ int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave
 	/* type 2 wave data */
 	*no_fields = 0;
 	dst[(*no_fields)++] = (asic->family == FAMILY_GFX11) ? 3 : 2;
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_STATUS")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_LO")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_HI")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_LO")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_HI")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID1")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID2")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_STATUS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID1")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID2")->addr);
 	if (asic->family < FAMILY_GFX11)
-		dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_INST_DW0")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS2")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_DBG1")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_M0")->addr);
-	dst[(*no_fields)++] = wave_read_ind_gfx_10_11(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_MODE")->addr);
+		dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_INST_DW0")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_TRAPSTS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS2")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_DBG1")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_M0")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_MODE")->addr);
+
+	return 0;
+}
+
+
+int umr_read_wave_status_via_mmio_gfx_12(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields)
+{
+	dst[(*no_fields)++] = 4;
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_STATUS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_PC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXEC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID1")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_HW_ID2")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_GPR_ALLOC")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_LDS_ALLOC")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_STS2")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_IB_DBG1")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_M0")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_MODE")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_STATE_PRIV")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXCP_FLAG_PRIV")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_EXCP_FLAG_USER")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_TRAP_CTRL")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_ACTIVE")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_VALID_AND_IDLE")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_DVGPR_ALLOC_LO")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_DVGPR_ALLOC_HI")->addr);
+	dst[(*no_fields)++] = wave_read_ind_gfx_10_12(asic, wave, umr_find_reg_data(asic, "ixSQ_WAVE_SCHED_MODE")->addr);
 
 	return 0;
 }
@@ -340,6 +371,8 @@ int umr_get_wave_status_via_mmio(struct umr_asic *asic, unsigned se, unsigned sh
 		case 9: umr_read_wave_status_via_mmio_gfx8_9(asic, simd, wave, buf, &no_fields); break;
 		case 10:
 		case 11: umr_read_wave_status_via_mmio_gfx_10_11(asic, wave, buf, &no_fields); break;
+		case 12:
+			umr_read_wave_status_via_mmio_gfx_12(asic, wave, buf, &no_fields); break;
 	};
 	umr_grbm_select_index(asic, 0xFFFFFFFFUL, 0xFFFFFFFFUL, 0xFFFFFFFFUL);
 
@@ -360,6 +393,8 @@ int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, c
 		case 9: if (buf[0] != 1) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX9\n"); return -1; }; break;
 		case 10: if (buf[0] != 2) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX10\n"); return -1; }; break;
 		case 11: if (buf[0] != 3) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX11\n"); return -1; }; break;
+		case 12:
+		if (buf[0] != 4) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX12\n"); return -1; }; break;
 	};
 	for (x = 1; x < nwords; x++) {
 		ws->reg_values[x - 1] = buf[x];
@@ -542,6 +577,34 @@ static const char *gfx11_regs[] = {
 	NULL
 };
 
+static const char *gfx12_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID1",
+	"ixSQ_WAVE_HW_ID2",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_STS2",
+	"ixSQ_WAVE_IB_DBG1",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	"ixSQ_WAVE_STATE_PRIV",
+	"ixSQ_WAVE_EXCP_FLAG_PRIV",
+	"ixSQ_WAVE_EXCP_FLAG_USER",
+	"ixSQ_WAVE_TRAP_CTRL",
+	"ixSQ_WAVE_ACTIVE",
+	"ixSQ_WAVE_VALID_AND_IDLE",
+	"ixSQ_WAVE_DVGPR_ALLOC_LO",
+	"ixSQ_WAVE_DVGPR_ALLOC_HI",
+	"ixSQ_WAVE_SCHED_MODE",
+	NULL
+};
+
 int umr_wave_data_init(struct umr_asic *asic, struct umr_wave_data *wd) {
 	int maj, min;
 
@@ -559,6 +622,9 @@ int umr_wave_data_init(struct umr_asic *asic, struct umr_wave_data *wd) {
 			break;
 		case 11:
 			wd->reg_names = gfx11_regs;
+			break;
+		case 12:
+			wd->reg_names = gfx12_regs;
 			break;
 		default:
 			return -1;
@@ -693,6 +759,7 @@ int umr_wave_data_get_flag_valid(struct umr_asic *asic, struct umr_wave_data *wd
 		case 9:
 		case 10:
 		case 11:
+		case 12:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "VALID");
 	}
 	return -1;
@@ -709,6 +776,7 @@ int umr_wave_data_get_flag_trap_en(struct umr_asic *asic, struct umr_wave_data *
 		case 9:
 		case 10:
 		case 11:
+		case 12:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "TRAP_EN");
 	}
 	return -1;
@@ -726,6 +794,8 @@ int umr_wave_data_get_flag_halt(struct umr_asic *asic, struct umr_wave_data *wd)
 		case 10:
 		case 11:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "HALT");
+		case 12:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATE_PRIV", "HALT");
 	}
 	return -1;
 }
@@ -741,6 +811,7 @@ int umr_wave_data_get_flag_fatal_halt(struct umr_asic *asic, struct umr_wave_dat
 		case 9:
 		case 10:
 		case 11:
+		case 12:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "FATAL_HALT");
 	}
 	return -1;
@@ -757,6 +828,7 @@ int umr_wave_data_get_flag_priv(struct umr_asic *asic, struct umr_wave_data *wd)
 		case 9:
 		case 10:
 		case 11:
+		case 12:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "PRIV");
 	}
 	return -1;
@@ -774,6 +846,8 @@ int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *w
 		case 10:
 		case 11:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_IB_STS2", "WAVE64");
+		case 12:
+			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_STATUS", "WAVE64");
 	}
 	return -1;
 }
@@ -792,6 +866,7 @@ int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data
 			return 0;
 		case 10:
 		case 11:
+		case 12:
 			*addr = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_LO") | ((uint64_t)umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_PC_HI") << 32ULL);
 			*vmid = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID2", "VM_ID");
 			return 0;
@@ -811,6 +886,7 @@ int umr_wave_data_get_flag_simd_id(struct umr_asic *asic, struct umr_wave_data *
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID");
 		case 10:
 		case 11:
+		case 12:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID");
 	}
 	return -1;
@@ -828,6 +904,7 @@ int umr_wave_data_get_flag_wave_id(struct umr_asic *asic, struct umr_wave_data *
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID");
 		case 10:
 		case 11:
+		case 12:
 			return umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
 	}
 	return -1;
@@ -843,7 +920,9 @@ uint32_t umr_wave_data_num_of_sgprs(struct umr_asic *asic, struct umr_wave_data 
 		case 8:
 		case 9: return (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE")) << 4;
 		case 10:
-		case 11: return 124;
+		case 11:
+		case 12: // TODO: confirm
+			return 124;
 	}
 	return 0;
 }
@@ -866,6 +945,7 @@ char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_da
 			break;
 		case 10:
 		case 11:
+		case 12:
 			snprintf(str, sizeof(str)-1, "se%" PRIu32 ".sa%" PRIu32 ".wgp%" PRIu32 ".simd%" PRIu32 ".wave%" PRIu32,
 				wd->se, wd->sh, wd->cu,
 				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"),

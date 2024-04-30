@@ -211,7 +211,7 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 	fprintf(data->stack[data->sp].f, "Data block from %"PRIu32"@[0x%"PRIx64" + 0x%"PRIx64"] at %"PRIu32"@0x%"PRIx64", type %d, ", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, buf_vmid, buf_addr, type);
 
 	if (type == UMR_DATABLOCK_MQD_VI || type == UMR_DATABLOCK_MQD_NV) {
-		static const char *selnames[] = { "compute", "reserved", "sdma0", "sdma1", "gfx" };
+		static const char *selnames[] = { "compute", "reserved", "sdma0", "sdma1", "gfx", "mes" };
 		enum umr_mqd_engine_sel eng;
 		uint32_t mqd[512], x;
 
@@ -221,6 +221,7 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 			case 2:
 			case 3: eng = UMR_MQD_ENGINE_SDMA0; break;
 			case 4: eng = UMR_MQD_ENGINE_GFX; break;
+			case 5: eng = UMR_MQD_ENGINE_MES; break;
 			default:
 				eng = UMR_MQD_ENGINE_INVALID; break;
 		}
@@ -454,6 +455,8 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		enable_decoder = 3;
 	} else if (sscanf(ringpath, "2/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
 		enable_decoder = 2;
+	} else if (sscanf(ringpath, "1/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
+		enable_decoder = 1;
 	} else if (sscanf(ringpath, "6/%s", fname) == 1) {
 		enable_decoder = 6;
 	} else if (sscanf(ringpath, "5/%s", fname) == 1) {

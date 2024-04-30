@@ -42,8 +42,8 @@ static const char *mes_v10_opcodes[] = {
 /* 0E */	"MES_SCH_API_MISC",
 /* 0F */	"MES_SCH_API_UPDATE_ROOT_PAGE_TABLE",
 /* 10 */	"MES_SCH_API_AMD_LOG",
-/* 11 */	"UNK",
-/* 12 */	"UNK",
+/* 11 */	"MES_SCH_API_SET_SE_MODE",
+/* 12 */	"MES_SCH_API_SET_GANG_SUBMIT",
 /* 13 */	"MES_SCH_API_SET_HW_RSRC_1",
 };
 
@@ -60,6 +60,8 @@ static char *mes_v11_misc_api_opcodes[] = {
 	"READ_REG",
 	"WAIT_REG_MEM",
 	"SET_SHADER_DEBUGGER",
+	"NOTIFY_WORK_ON_UNMAPPED_QUEUE",
+	"NOTIFY_TO_UNMAP_PROCESSES",
 };
 
 static char *mes_v11_wrm_operation[] = {
@@ -89,6 +91,18 @@ static char *mes_v10_add_queue_priority_level[] = {
 	"REALTIME",
 };
 
+static char *mes_v12_set_se_mode[] = {
+	"INVALID",
+	"SINGLE_SE",
+	"DUAL_SE",
+	"LOWER_POWER",
+};
+
+static char *mes_v12_query_mes_subopcode[] = {
+	"GET_CTX_ARRAY_SIZE",
+	"CHECK_HEALTHY",
+};
+
 #define STR_LOOKUP(str_lut, idx, default) \
 	((idx) < sizeof(str_lut) / sizeof(str_lut[0]) ? str_lut[(idx)] : (default))
 
@@ -112,6 +126,8 @@ struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *st
 		mes_ver_maj = 10;
 	} else if (ip->discoverable.maj == 11) {
 		mes_ver_maj = 11;
+	} else if (ip->discoverable.maj == 12) {
+		mes_ver_maj = 12;
 	}
 
 	if (!mes_ver_maj) {
@@ -189,10 +205,11 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 			MAX_GFX_PIPES,
 			MAX_SDMA_PIPES,
 			PRIORITY_NUM_LEVELS,
-			MAX_HWIP_SEGMENT;
+			MAX_HWIP_SEGMENT,
+			MISC_DATA_MAX_SIZE_IN_DWORDS;
 	} params;
         struct umr_ip_block *ip;
-	int mes_ver_maj;
+	int mes_ver_maj, pack8 = 0;
 	const char* opcode_name;
 
 	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
@@ -201,10 +218,13 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 		return NULL;
 	}
 
-        if (ip->discoverable.maj == 10 && ip->discoverable.min >= 1) {
+    if (ip->discoverable.maj == 10 && ip->discoverable.min >= 1) {
 		mes_ver_maj = 10;
 	} else if (ip->discoverable.maj == 11) {
 		mes_ver_maj = 11;
+	} else if (ip->discoverable.maj == 12) {
+		mes_ver_maj = 12;
+		pack8 = 1; // MESv12 uses 8-byte packed structs instead of 4-byte packed
 	} else {
 		asic->err_msg("[ERROR]: MES decoding not supported on this ASIC\n");
 		return NULL;
@@ -214,6 +234,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 	params.MAX_GFX_PIPES = 2;
 	params.MAX_SDMA_PIPES = 2;
 	params.PRIORITY_NUM_LEVELS = 5;
+	params.MISC_DATA_MAX_SIZE_IN_DWORDS = 20;
 	if (mes_ver_maj == 10) {
 		params.MAX_HWIP_SEGMENT = 6;
 	} else {
@@ -250,6 +271,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					sprintf(tmpfieldname, "aggregated_doorbells[%" PRIu32 "]", j);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, tmpfieldname, fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				}
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "g_sch_ctx_gpu_mc_ptr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "query_status_fence_gpu_mc_ptr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				for (j = 0; j < params.MAX_HWIP_SEGMENT; j++ ) {
@@ -264,6 +286,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					sprintf(tmpfieldname, "osssys_base[%" PRIu32 "]", j);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, tmpfieldname, fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				}
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 
@@ -274,23 +297,39 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "apply_grbm_remote_register_dummy_read_wa", (fetch_word(asic, stream, i) >> 4) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "second_gfx_pipe_enabled", (fetch_word(asic, stream, i) >> 5) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_level_process_quantum_check", (fetch_word(asic, stream, i) >> 6) & 1, NULL, 10, 32);
+
 				if (mes_ver_maj == 10) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "apply_cwsr_program_all_vmid_sq_shader_tba_registers_wa", (fetch_word(asic, stream, i) >> 7) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mqd_active_poll", (fetch_word(asic, stream, i) >> 8) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "disable_timer_int", (fetch_word(asic, stream, i) >> 9) & 1, NULL, 10, 32);
+				} else if (mes_ver_maj >= 11) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "legacy_sch_mode", (fetch_word(asic, stream, i) >> 7) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "disable_add_queue_wptr_mc_addr", (fetch_word(asic, stream, i) >> 8) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_event_int_logging", (fetch_word(asic, stream, i) >> 9) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_reg_active_poll", (fetch_word(asic, stream, i) >> 10) & 1, NULL, 10, 32);
+					if (mes_ver_maj == 12) {
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_disable_queue_in_legacy_uq_preemption", (fetch_word(asic, stream, i) >> 11) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "send_write_data", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_override", (fetch_word(asic, stream, i) >> 13) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_rs64mem_for_proc_gang_ctx", (fetch_word(asic, stream, i) >> 14) & 1, NULL, 10, 32);
+					}
 				}
 				++i;
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "overscubscription_timer", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_info", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-				}
-				// NOTE: this extra if will make sense later.
-				if (mes_ver_maj == 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "event_intr_history_gpu_mc_ptr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				}
+				if (mes_ver_maj == 12) {
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_in_sec", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				}
 				break;
 
 			case 1: // MES_SCH_API_SET_SCHEDULING_CONFIG
+				if (pack8 && !(i&1)) ++i;
 				for (j = 0; j < params.PRIORITY_NUM_LEVELS; j++ ) {
 					sprintf(tmpfieldname, "grace_period_other_levels[%" PRIu32 "]", j);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, tmpfieldname, (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
@@ -304,12 +343,17 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, tmpfieldname, (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				}
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "normal_yield_percent", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				}
 				break;
 
 			case 2: // MESAPI__ADD_QUEUE
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "page_table_base_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_va_end", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
@@ -321,8 +365,8 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 
 // todo: guessing what size an enum is...
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_global_priority_level", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_priority_level, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
-
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mqd_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "wptr_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "h_context", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
@@ -336,6 +380,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gws_base", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gws_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "oa_mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_handler_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "vm_context_cntl", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 
@@ -345,7 +390,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_gang_suspended", (fetch_word(asic, stream, i) >> 6) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_tmz_queue", (fetch_word(asic, stream, i) >> 7) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "map_kiq_utility_queue", (fetch_word(asic, stream, i) >> 8) & 1, NULL, 10, 32);
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_kfd_process", (fetch_word(asic, stream, i) >> 9) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", (fetch_word(asic, stream, i) >> 10) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_aql_queue", (fetch_word(asic, stream, i) >> 11) & 1, NULL, 10, 32);
@@ -355,154 +400,248 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_long_running", (fetch_word(asic, stream, i) >> 15) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_dwm_queue", (fetch_word(asic, stream, i) >> 16) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_video_blit_queue", (fetch_word(asic, stream, i) >> 17) & 1, NULL, 10, 32);
-
 				}
 				++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tma_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "sch_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "pipe_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "alignment_mode_setting", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_flag_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				}
 				break;
 
 			case 3: // MESAPI__REMOVE_QUEUE
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_legacy_gfx_queue", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32);
+				if (mes_ver_maj < 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_legacy_gfx_queue", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32);
+				}
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_kiq_utility_queue", (fetch_word(asic, stream, i) >> 1) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "preempt_legacy_gfx_queue", (fetch_word(asic, stream, i) >> 2) & 1, NULL, 10, 32);
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_legacy_queue", (fetch_word(asic, stream, i) >> 3) & 1, NULL, 10, 32);
 				}
 				++i;
-
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "pipe_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tf_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tf_data", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 
 // todo: guessing what size an enum is...
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_type, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+				}
+				if (mes_ver_maj == 12) {
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				}
 				break;
 
 			case 4: //MESAPI__PERFORM_YIELD
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "dummy", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				}
 				break;
 
-			case 5: // SET_GANG_PRIOR
-// TODO: I don't see a struct for this in the header
+			case 5: // SET_GANG_PRIORITY_LEVEL
+				// What structure is this?
 				break;
 
 			case 6: // MESAPI__SUSPEND
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_all_gangs", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_fence_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "sch_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "legacy_uq_type", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_type, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "legacy_uq_priority_level", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_priority_level, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				}
 				break;
 
 			case 7: // MESAPI__RESUME
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_all_gangs", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "resume_all_gangs", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				}
 				break;
 
 			case 8: // MESAPI__RESET
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reset_queue_only", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "hang_detect_then_reset", (fetch_word(asic, stream, i) >> 1) & 1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "hang_detect_only", (fetch_word(asic, stream, i) >> 2) & 1, NULL, 10, 32);
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reset_legacy_gfx", (fetch_word(asic, stream, i) >> 3) & 1, NULL, 10, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reset_legacy_gfx", (fetch_word(asic, stream, i) >> 3) & 1, NULL, 10, 32);
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_connected_queue_index", (fetch_word(asic, stream, i) >> 4) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_connected_queue_index_p1", (fetch_word(asic, stream, i) >> 5) & 1, NULL, 10, 32);
+				}
+				++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 // todo: guessing what size an enum is
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_type, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
-
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "pipe_id_lp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_id_lp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "vmid_ip_lp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mqd_mc_addr_lp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset_lp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "wptr_addr_lp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "pipe_id_hp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_id_hp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "vmid_ip_hp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mqd_mc_addr_hp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset_hp", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "wptr_addr_hp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "active_vmids", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "connected_queue_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "connected_queue_index_p1", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				}
 				break;
 
 			case 9: //MESAPI__SET_LOGGING_BUFFER
 // todo: guessing what size an enum is
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_type, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
 
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "logging_buffer_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "number_of_entries", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "interrupt_entry", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "vmid", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				}
 				break;
 
 			case 10: //MESAPI__CHANGE_GANG_PRIORITY_LEVEL
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inprocess_gang_priority", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 // todo: guessing what size an enum is...
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_global_priority_level", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_priority_level, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_quantum", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_quantum_scale", (fetch_word(asic, stream, i)) & 3, NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_quantum_duration", (fetch_word(asic, stream, i) >> 2) & 0xFF, NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "apply_quantum_all_processes", (fetch_word(asic, stream, i) >> 10) & 1, NULL, 16, 32);
+					++i;
+				}
 				break;
 
 			case 11: // MESAPI__QUERY_MES_STATUS
-// todo: guessing what size a bool is...
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_healthy", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
-
+			{
+				uint32_t subopcode;
+				if (mes_ver_maj < 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_healthy", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				} else {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "subopcode", subopcode = fetch_word(asic, stream, i), STR_LOOKUP(mes_v12_query_mes_subopcode, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+				}
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					switch (subopcode) {
+						case 0: // QUERY_MES__GET_CTX_ARRAY_SIZE
+							if (pack8 && !(i&1)) ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "proc_ctx_array_size_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_ctx_array_size_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							break;
+						case 1: // QUERY_MES__CHECK_HEALTHY
+							if (pack8 && !(i&1)) ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "healthy_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							break;
+					}
+				}
 				break;
+			}
 
 			case 12: // MESAPI__PROGRAM_GDS
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gds_base", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gds_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gws_base", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gws_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "oa_mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				break;
 
 			case 13: // MESAPI__SET_DEBUG_VMID
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_gds", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32);
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "operation", (fetch_word(asic, stream, i) >> 1) & 3, STR_LOOKUP(mes_v11_set_debug_opcodes, (fetch_word(asic, stream, i) >> 1) & 3, "UNKNOWN"), 10, 32);
 				}
 				++i;
+
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reserved", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "debug_vmid", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "page_table_base_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
@@ -512,27 +651,36 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gws_base", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gws_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "oa_mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
-				if (mes_ver_maj == 11) {
+				if (mes_ver_maj >= 11) {
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "output_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				}
+				if (mes_ver_maj == 12) {
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_vm_cntl", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "queue_type", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_add_queue_type, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "alignment_mode_setting", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				}
 				break;
 
 			case 14: // MESAPI__MISC (note this changes in v11)
 				if (mes_ver_maj == 10) {
 					uint32_t misc_opcode;
-// todo: enum size...
 					misc_opcode = fetch_word(asic, stream, i);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v10_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					switch (misc_opcode) {
 						case 0: // MODIFY_REG
-// todo: enum size...
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "subcode", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							break;
 						case 1: // INV_GART
+							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_size", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							break;
@@ -541,19 +689,21 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							break;
 					}
 					break;
-				} else if (mes_ver_maj == 11) {
-					uint32_t misc_opcode;
-// todo: enum size...
+				} else if (mes_ver_maj >= 11) {
+					uint32_t misc_opcode, j;
 					misc_opcode = fetch_word(asic, stream, i);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					j = i;
 					switch (misc_opcode) {
 						case 0: // WRITE_REG
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							break;
 						case 1: // INV_GART
+							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_size", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							break;
@@ -562,10 +712,15 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							break;
 						case 3: // READ_REG
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "buffer_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							if (mes_ver_maj == 12) {
+								ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "read64Bits", (fetch_word(asic, stream, i)) & 1, NULL, 16, 32);
+								++i;
+								ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "all", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							}
 							break;
 						case 4: // WAIT_REG_MEM
-// todo: enum size...
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "op", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_wrm_operation, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reference", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
@@ -573,6 +728,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset2", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
 							break;
 						case 5: // SET_SHADER_DEBUGGER
+							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_memop", fetch_word(asic, stream, i) & 1, NULL, 16, 32);
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_alu_op", (fetch_word(asic, stream, i) & 2) >> 1, NULL, 16, 32);
@@ -585,28 +741,69 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							break;
 					}
+					// if >= 12 set i to j + MISC_DATA_MAX_SIZE_IN_DWORDS
+					if (mes_ver_maj == 12) {
+						i = j + params.MISC_DATA_MAX_SIZE_IN_DWORDS;
+						if (pack8 && !(i&1)) ++i;
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_fence", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					}
 				}
 				break;
 			case 15: // MESAPI__UPDATE_ROOT_PAGE_TABLE
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "page_table_base_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				}
 				break;
 
 			case 16: // MESAPI_AMD_LOG
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "p_buffer_memory", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "p_buffer_size_used", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				}
+				break;
+
+			case 17: // MESAPI__SET_SE_MODE
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "new_se_mode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v12_set_se_mode, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "cpg_ctxt_sync_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "cpg_ctxt_sync_fence_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "log_seq_time", (fetch_word(asic, stream, i)) & 1, NULL, 16, 32);
+				++i;
+				if (pack8 && !(i&1)) ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				break;
+
+			case 18: // MESAPI__SET_GANG_SUBMIT
+				if (pack8 && !(i&1)) ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "slave_gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "slave_gang_context_array_index", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				break;
 
 			case 19: // MES_SCH_API_SET_HW_RSRC_1
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_info_ctx", BITS(fetch_word(asic, stream, i), 0, 1), NULL, 16, 32);
 				++i;
+				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_info_ctx_mc_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_info_ctx_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_kiq_unmap_timeout", fetch_word(asic, stream, i), NULL, 16, 32); ++i;

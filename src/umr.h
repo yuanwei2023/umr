@@ -106,6 +106,7 @@ enum chipfamily {
 	FAMILY_AI,
 	FAMILY_NV,    // NAVI1X, NAVI2X
 	FAMILY_GFX11,
+	FAMILY_GFX12,
 
 	FAMILY_NPI, // reserves for new devices that are not public yet
 	FAMILY_CONFIGURE,
@@ -376,7 +377,9 @@ typedef struct {
 		further,
 		tfs_addr,
 		llc_noalloc,
-		mtype;
+		mtype,
+		pa_rsvd,
+		mall_reuse;
 } pde_fields_t;
 
 typedef struct {
@@ -397,7 +400,10 @@ typedef struct {
 		pte_mask,
 		gcr,
 		llc_noalloc,
-		software;
+		software,
+		pa_rsvd,
+		dcc,
+		pte;
 } pte_fields_t;
 
 struct umr_memory_access_funcs {
@@ -1604,6 +1610,7 @@ int umr_scan_wave_slot(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t
 		       uint32_t simd, uint32_t wave, struct umr_wave_data *pwd);
 int umr_read_wave_status_via_mmio_gfx8_9(struct umr_asic *asic, uint32_t simd, uint32_t wave, uint32_t *dst, int *no_fields);
 int umr_read_wave_status_via_mmio_gfx_10_11(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields);
+int umr_read_wave_status_via_mmio_gfx_12(struct umr_asic *asic, uint32_t wave, uint32_t *dst, int *no_fields);
 int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, const uint32_t *buf, uint32_t nwords);
 int umr_get_wave_sq_info_vi(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);
 int umr_get_wave_sq_info(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, struct umr_wave_status *ws);
@@ -2031,6 +2038,7 @@ enum umr_mqd_engine_sel {
 	UMR_MQD_ENGINE_SDMA0,
 	UMR_MQD_ENGINE_SDMA1,
 	UMR_MQD_ENGINE_GFX,
+	UMR_MQD_ENGINE_MES,
 
 	UMR_MQD_ENGINE_INVALID,
 };

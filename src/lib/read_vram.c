@@ -387,6 +387,17 @@ static pde_fields_t decode_pde_entry(const struct umr_asic *asic, uint64_t pde_e
 			pde_fields.tfs_addr      = (pde_entry >> 57) & 1;
 			pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
 			break;
+		case 12:
+			pde_fields.frag_size     = (pde_entry >> 58) & 0x1F;
+			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
+			pde_fields.valid         = pde_entry & 1;
+			pde_fields.system        = (pde_entry >> 1) & 1;
+			pde_fields.coherent      = (pde_entry >> 2) & 1;
+			pde_fields.pa_rsvd       = (pde_entry >> 48) & 0xF;
+			pde_fields.mall_reuse    = (pde_entry >> 54) & 3;
+			pde_fields.tfs_addr      = (pde_entry >> 56) & 1;
+			pde_fields.pte           = (pde_entry >> 63) & 1;
+			break;
 	}
 	return pde_fields;
 }
@@ -475,6 +486,24 @@ static pte_fields_t decode_pte_entry(const struct umr_asic *asic, uint64_t pte_e
 			pte_fields.llc_noalloc    = (pte_entry >> 58) & 1;
 			is_pde                    = pte_fields.further;
 			break;
+		case 12:
+			pte_fields.valid          = pte_entry & 1;
+			pte_fields.system         = (pte_entry >> 1) & 1;
+			pte_fields.coherent       = (pte_entry >> 2) & 1;
+			pte_fields.tmz            = (pte_entry >> 3) & 1;
+			pte_fields.execute        = (pte_entry >> 4) & 1;
+			pte_fields.read           = (pte_entry >> 5) & 1;
+			pte_fields.write          = (pte_entry >> 6) & 1;
+			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
+			pte_fields.pa_rsvd        = (pte_entry >> 48) & 0xF;
+			pte_fields.software       = (pte_entry >> 52) & 3;
+			pte_fields.mtype          = (pte_entry >> 54) & 3;
+			pte_fields.prt            = (pte_entry >> 56) & 1;
+			pte_fields.gcr            = (pte_entry >> 57) & 1;
+			pte_fields.dcc            = (pte_entry >> 58) & 1;
+			pte_fields.pte            = (pte_entry >> 63) & 1;
+			is_pde                    = !pte_fields.pte;
+			break;
 	}
 
 	// PTEs hold physical address in 47:12
@@ -542,6 +571,21 @@ static void print_pde_fields(struct umr_asic *asic,
 					pde_fields.frag_size,
 					pde_fields.tfs_addr,
 					pde_fields.llc_noalloc);
+			break;
+		case 12:
+			asic->mem_funcs.vm_message(
+					", PBA==0x%012" PRIx64 ", V=%" PRIu64
+					", S=%" PRIu64 ", C=%" PRIu64
+					", U=%" PRIu64 ", A=%" PRIu64
+					", FS=%" PRIu64 ", P=%" PRIu64 "\n",
+					pde_fields.pte_base_addr,
+					pde_fields.valid,
+					pde_fields.system,
+					pde_fields.coherent,
+					pde_fields.mall_reuse,
+					pde_fields.tfs_addr,
+					pde_fields.frag_size,
+					pde_fields.pte);
 			break;
 	}
 }
@@ -688,6 +732,31 @@ static void print_pte(struct umr_asic *asic,
 					pte_fields.software,
 					pte_fields.gcr,
 					pte_fields.llc_noalloc);
+			break;
+		case 12:
+			asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64
+					", PBA==0x%012" PRIx64 ", V=%" PRIu64
+					", S=%" PRIu64 ", C=%" PRIu64 ", Z=%" PRIu64
+					", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
+					", FS=%" PRIu64 ", SW=%" PRIu64 ", T=%" PRIu64
+					", G=%" PRIu64 ", D=%" PRIu64 ", P=%" PRIu64
+					", MTYPE=",
+					pte_entry,
+					address & va_mask,
+					pte_fields.page_base_addr,
+					pte_fields.valid,
+					pte_fields.system,
+					pte_fields.coherent,
+					pte_fields.tmz,
+					pte_fields.execute,
+					pte_fields.read,
+					pte_fields.write,
+					pte_fields.fragment,
+					pte_fields.software,
+					pte_fields.prt,
+					pte_fields.gcr,
+					pte_fields.dcc,
+					pte_fields.pte);
 			break;
 	}
 
@@ -1192,6 +1261,10 @@ pde_is_pte:
 			}
 
 			int pte_is_pde = pte_fields.further && pte_fields.valid;
+
+			if (ip->discoverable.maj >= 12 && !pte_fields.pte && pte_fields.valid) {
+				pte_is_pde = 1;
+			}
 
 			if (asic->options.verbose) {
 				if (pte_is_pde) {

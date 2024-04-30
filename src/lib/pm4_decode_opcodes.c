@@ -221,13 +221,13 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // b5
 	"UNK", // b6
 	"UNK", // b7
-	"UNK", // b8
-	"UNK", // b9
-	"UNK", // ba
+	"PKT3_SET_CONTEXT_REG_PAIRS", // b8
+	"PKT3_SET_CONTEXT_REG_PAIRS_PACKED", // b9
+	"PKT3_SET_SH_REG_PAIRS", // ba
 	"UNK", // bb
-	"UNK", // bc
-	"UNK", // bd
-	"UNK", // be
+	"PKT3_SET_SH_REG_PAIRS_PACKED", // bc
+	"PKT3_SET_SH_REG_PAIRS_PACKED_N", // bd
+	"PKT3_SET_UCONFIG_REG_PAIRS", // be
 	"UNK", // bf
 	"UNK", // c0
 	"UNK", // c1
@@ -678,7 +678,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", fetch_word(asic, stream, 4), NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", fetch_word(asic, stream, 5), NULL, 16, 32);
 			break;
-		case 0x4A: // PREABMLE_CNTL
+		case 0x4A: // PREAMBLE_CNTL
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(fetch_word(asic, stream, 0), 28, 32), NULL, 16, 32);
 			break;
 		case 0x50: // DMA_DATA
@@ -1336,7 +1336,7 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 			if (asic->family >= FAMILY_AI)
 				ui->add_field(ui, ib_addr + 28, ib_vmid, "INT_CTXID", fetch_word(asic, stream, 6), NULL, 16, 32);
 			break;
-		case 0x4A: // PREABMLE_CNTL
+		case 0x4A: // PREAMBLE_CNTL
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND", BITS(fetch_word(asic, stream, 0), 28, 32), NULL, 16, 32);
 			break;
 		case 0x4C: // DISPATCH_MESH_INDIRECT_MULTI
@@ -1624,28 +1624,32 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 			}
 			break;
 		case 0xA2: // PKT3_MAP_QUEUES
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EXTENDED_ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 2, 4), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(fetch_word(asic, stream, 0), 4, 6), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE", BITS(fetch_word(asic, stream, 0), 13, 21), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_TYPE", BITS(fetch_word(asic, stream, 0), 21, 24), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "STATIC_QUEUE_GROUP", BITS(fetch_word(asic, stream, 0), 24, 26), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 26, 29), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", BITS(fetch_word(asic, stream, 0), 29, 32), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "CHECK_DISABLE", BITS(fetch_word(asic, stream, 1), 1, 2), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(fetch_word(asic, stream, 1), 2, 28), NULL, 16, 32);
-			{
-				uint32_t n;
-				for (n = 2; n + 4 <= stream->n_words; n += 4) {
-					ui->add_field(ui, ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_LO", fetch_word(asic, stream, n), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 16 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_HI", fetch_word(asic, stream, n + 1), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 20 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_LO", fetch_word(asic, stream, n + 2), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 24 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_HI", fetch_word(asic, stream, n + 3), NULL, 16, 32);
-					if (ui->add_data)
-						ui->add_data(ui, asic,
-									 ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid,
-									 ((uint64_t)fetch_word(asic, stream, n)) | (((uint64_t)fetch_word(asic, stream, n + 1)) << 32), BITS(fetch_word(asic, stream, 0), 8, 12),
-									 UMR_DATABLOCK_MQD_NV, BITS(fetch_word(asic, stream, 0), 26, 29));
+			{ uint32_t ext_sel = BITS(fetch_word(asic, stream, 0), 2, 4),
+					   engine_sel = BITS(fetch_word(asic, stream, 0), 26, 29);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "EXTENDED_ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 2, 4), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(fetch_word(asic, stream, 0), 4, 6), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE", BITS(fetch_word(asic, stream, 0), 13, 21), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_TYPE", BITS(fetch_word(asic, stream, 0), 21, 24), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "STATIC_QUEUE_GROUP", BITS(fetch_word(asic, stream, 0), 24, 26), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 26, 29), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", BITS(fetch_word(asic, stream, 0), 29, 32), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "CHECK_DISABLE", BITS(fetch_word(asic, stream, 1), 1, 2), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(fetch_word(asic, stream, 1), 2, 28), NULL, 16, 32);
+				{
+					uint32_t n;
+					for (n = 2; n + 4 <= stream->n_words; n += 4) {
+						ui->add_field(ui, ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_LO", fetch_word(asic, stream, n), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 16 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_HI", fetch_word(asic, stream, n + 1), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 20 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_LO", fetch_word(asic, stream, n + 2), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 24 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_HI", fetch_word(asic, stream, n + 3), NULL, 16, 32);
+						if (ui->add_data)
+							ui->add_data(ui, asic,
+										 ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid,
+										 ((uint64_t)fetch_word(asic, stream, n)) | (((uint64_t)fetch_word(asic, stream, n + 1)) << 32), BITS(fetch_word(asic, stream, 0), 8, 12),
+										 UMR_DATABLOCK_MQD_NV, ext_sel == 0 ? engine_sel : 2);
+										 // send SDMA0 if extended_engine_sel is enabled for now
+					}
 				}
 			}
 			break;
@@ -1686,6 +1690,319 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 	}
 }
 
+static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
+{
+	switch (stream->opcode) {
+		case 0x1d: // ATOMIC_GDS
+			// TODO: fill in
+			break;
+		case 0x1e: // ATOMIC_MEM
+			// TODO: fill in
+			break;
+		case 0x33: // INDIRECT_BUFFER_CONST
+		case 0x3F: // INDIRECT_BUFFER_CIK
+			if (stream->opcode == 0x3F && stream->n_words == 13) {
+				// COND packet
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "MODE", BITS(fetch_word(asic, stream, 0), 0, 2), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "FUNCTION", BITS(fetch_word(asic, stream, 0), 8, 11), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "COMPARE_ADDR_LO", BITS(fetch_word(asic, stream, 1), 3, 32), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "COMPARE_ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "MASK_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "MASK_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "REFERENCE_LO", fetch_word(asic, stream, 5), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 28, ib_vmid, "REFERENCE_HI", fetch_word(asic, stream, 6), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 32, ib_vmid, "IB_BASE1_LO", BITS(fetch_word(asic, stream, 7), 2, 32), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "IB_BASE1_HI", fetch_word(asic, stream, 8), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 40, ib_vmid, "IB_SIZE1", BITS(fetch_word(asic, stream, 9), 0, 20), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 40, ib_vmid, "TEMPORAL1", BITS(fetch_word(asic, stream, 9), 28, 30), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 44, ib_vmid, "IB_BASE2_LO", BITS(fetch_word(asic, stream, 10), 2, 32), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 48, ib_vmid, "IB_BASE2_HI", fetch_word(asic, stream, 11), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "IB_SIZE2", BITS(fetch_word(asic, stream, 12), 0, 20), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 52, ib_vmid, "TEMPORAL2", BITS(fetch_word(asic, stream, 12), 28, 30), NULL, 10, 32);
+			} else {
+				// not COND packet
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "IB_BASE_LO", BITS(fetch_word(asic, stream, 0), 2, 32) << 2, NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "SWAP", BITS(fetch_word(asic, stream, 0), 0, 2), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "IB_BASE_HI", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_SIZE", BITS(fetch_word(asic, stream, 2), 0, 20), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_VMID", BITS(fetch_word(asic, stream, 2), 24, 28), NULL, 10, 32);
+				if (asic->family >= FAMILY_AI) {
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "CHAIN", BITS(fetch_word(asic, stream, 2), 20, 21), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PRE_ENA", BITS(fetch_word(asic, stream, 2), 21, 22), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "TEMPORAL", BITS(fetch_word(asic, stream, 2), 28, 30), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PRE_RESUME", BITS(fetch_word(asic, stream, 2), 30, 31), NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "PRIV", BITS(fetch_word(asic, stream, 2), 31, 32), NULL, 10, 32);
+				}
+			}
+			break;
+		case 0x37: // WRITE_DATA
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 30, 32), op_37_engines[BITS(fetch_word(asic, stream, 0), 30, 32)], 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "AID_ID", BITS(fetch_word(asic, stream, 0), 23, 25), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "WR_CONFIRM", BITS(fetch_word(asic, stream, 0), 20, 21), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "WR_ONE_ADDR", BITS(fetch_word(asic, stream, 0), 16, 17), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", BITS(fetch_word(asic, stream, 0), 8, 12), op_37_dst_sel[BITS(fetch_word(asic, stream, 0), 8, 12)],  10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_ADDR_LO", BITS(fetch_word(asic, stream, 1), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DST_ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			if (BITS(fetch_word(asic, stream, 0), 8, 12) == 0) { // mem-mapped reg
+				uint32_t n;
+				uint64_t reg_addr = ((uint64_t)fetch_word(asic, stream, 2) << 32) | fetch_word(asic, stream, 1);
+				for (n = 3; n < stream->n_words; n++) {
+					ui->add_field(ui, ib_addr + 16 + (n - 3) * 4, ib_vmid, umr_reg_name(asic, reg_addr), fetch_word(asic, stream, n), NULL, 16, 32);
+					reg_addr += 1;
+				}
+			}
+			break;
+		case 0x3C: // WAIT_REG_MEM
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 8, 9), BITS(fetch_word(asic, stream, 0), 8, 9) ? "PFP" : "ME", 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "MEMSPACE", BITS(fetch_word(asic, stream, 0), 4, 5), BITS(fetch_word(asic, stream, 0), 4, 5) ? "MEM" : "REG", 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "OPERATION", BITS(fetch_word(asic, stream, 0), 6, 8), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "FUNCTION", BITS(fetch_word(asic, stream, 0), 0, 4), op_3c_functions[BITS(fetch_word(asic, stream, 0), 0, 4)], 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "MES_INTR_PIPE", BITS(fetch_word(asic, stream, 0), 22, 24), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "MES_ACTION", BITS(fetch_word(asic, stream, 0), 24, 25), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "POLL_ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "SWAP", BITS(fetch_word(asic, stream, 1), 0, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "POLL_ADDRESS_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "REFERENCE", fetch_word(asic, stream, 3), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "MASK", fetch_word(asic, stream, 4), NULL, 16, 32);
+// TODO: should this be 15:0 for gen12
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "POLL INTERVAL", fetch_word(asic, stream, 5), NULL, 16, 32);
+			break;
+		case 0x40: // PKT3_COPY_DATA
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_SEL", BITS(fetch_word(asic, stream, 0), 0, 4), op_40_mem_sel[BITS(fetch_word(asic, stream, 0), 0, 4)], 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", BITS(fetch_word(asic, stream, 0), 8, 12), op_40_mem_sel[BITS(fetch_word(asic, stream, 0), 8, 12)], 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_TEMPORAL", BITS(fetch_word(asic, stream, 0), 13, 15), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "COUNT_SEL", BITS(fetch_word(asic, stream, 0), 16, 17), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "WR_CONFIRM", BITS(fetch_word(asic, stream, 0), 20, 21), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "PQ_EXE_STATUS", BITS(fetch_word(asic, stream, 0), 29, 30), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 30, 32), NULL, 10, 32);
+
+			switch (BITS(fetch_word(asic, stream, 0), 0, 4)) {
+				case 0: ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_REG_OFFSET", BITS(fetch_word(asic, stream, 1), 0, 18), umr_reg_name(asic, BITS(fetch_word(asic, stream, 1), 0, 18)), 16, 32); break;
+				case 5: ui->add_field(ui, ib_addr + 8, ib_vmid, "IMM_DATA", fetch_word(asic, stream, 1), NULL, 16, 32); break;
+				default: ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_LO", BITS(fetch_word(asic, stream, 1), 2, 32) << 2, NULL, 16, 32); break;
+			}
+
+			if (BITS(fetch_word(asic, stream, 0), 0, 4) == 5 && BITS(fetch_word(asic, stream, 0), 16, 17) == 1)
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "IMM_DATA_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			else
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_DATA_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+
+			switch (BITS(fetch_word(asic, stream, 0), 0, 4)) {
+				case 0: ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_REG_OFFSET", BITS(fetch_word(asic, stream, 3), 0, 18), umr_reg_name(asic, BITS(fetch_word(asic, stream, 3), 0, 18)), 16, 32); break;
+				default: ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_LO", fetch_word(asic, stream, 3), NULL, 16, 32); break;
+			}
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
+			break;
+		case 0x46: // EVENT_WRITE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
+			if (stream->n_words > 2) {
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESS_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			}
+			break;
+		case 0x47: // EVENT_WRITE_EOP
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "INV_L2", BITS(fetch_word(asic, stream, 0), 20, 21), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESS_HI", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DATA_SEL", BITS(fetch_word(asic, stream, 2), 29, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "INT_SEL", BITS(fetch_word(asic, stream, 2), 24, 26), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DATA_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
+			break;
+		case 0x49: // RELEASE_MEM
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6)), 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "GCR_CNTL", BITS(fetch_word(asic, stream, 0), 12, 24), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EXECUTE", BITS(fetch_word(asic, stream, 0), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "GLK_INV", BITS(fetch_word(asic, stream, 0), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "PWS_ENABLE", BITS(fetch_word(asic, stream, 0), 31, 32), NULL, 10, 32);
+
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DST_SEL", BITS(fetch_word(asic, stream, 1), 16, 18), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "MES_INTR_PIPE", BITS(fetch_word(asic, stream, 1), 20, 22), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "MES_ACTION_ID", BITS(fetch_word(asic, stream, 1), 22, 24), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "INT_SEL", BITS(fetch_word(asic, stream, 1), 24, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DATA_SEL", BITS(fetch_word(asic, stream, 1), 29, 32), NULL, 10, 32);
+
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDR_LO", fetch_word(asic, stream, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "ADDR_HI", fetch_word(asic, stream, 3), NULL, 16, 32);
+
+			if (BITS(fetch_word(asic, stream, 1), 24, 27) == 5 ||
+			    BITS(fetch_word(asic, stream, 1), 24, 27) == 6) {
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "CMP_DATA_LO", fetch_word(asic, stream, 4), NULL, 16, 32);
+			} else if (BITS(fetch_word(asic, stream, 1), 29, 32) == 5) {
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "DW_OFFSET", BITS(fetch_word(asic, stream, 4), 0, 16), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "NUM_WORDS", BITS(fetch_word(asic, stream, 4), 16, 32), NULL, 10, 32);
+			} else {
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_LO", fetch_word(asic, stream, 4), NULL, 16, 32);
+			}
+
+			if (BITS(fetch_word(asic, stream, 1), 24, 27) == 5 ||
+			    BITS(fetch_word(asic, stream, 1), 24, 27) == 6)
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "CMP_DATA_HI", fetch_word(asic, stream, 5), NULL, 16, 32);
+			else
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_HI", fetch_word(asic, stream, 5), NULL, 16, 32);
+
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "INT_CTXID", fetch_word(asic, stream, 6), NULL, 16, 32);
+			break;
+		case 0x4D: // DISPATCH_TASKMESH_GFX
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "XYZ_DIM_LOC", BITS(fetch_word(asic, stream, 0), 0, 16), umr_reg_name(asic, BITS(fetch_word(asic, stream, 0), 0, 16) + 0x2C00), 16, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "RING_ENTRY_LOC", BITS(fetch_word(asic, stream, 0), 16, 32), umr_reg_name(asic, BITS(fetch_word(asic, stream, 0), 16, 32) + 0x2C00), 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "THREAD_TRACE_MARKER_ENABLE", BITS(fetch_word(asic, stream, 1), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "XYZ_DIM_ENABLE", BITS(fetch_word(asic, stream, 1), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "MODE1_ENABLE", BITS(fetch_word(asic, stream, 1), 29, 30), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "LINEAR_DISPATCH_ENABLE", BITS(fetch_word(asic, stream, 1), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 2), NULL, 16, 32);
+			break;
+		case 0x50: // DMA_DATA
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 0, 1), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_INDIRECT", BITS(fetch_word(asic, stream, 0), 1, 2), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_INDIRECT", BITS(fetch_word(asic, stream, 0), 2, 3), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_TEMPORAL", BITS(fetch_word(asic, stream, 0), 13, 15), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", BITS(fetch_word(asic, stream, 0), 20, 22), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_SEL", BITS(fetch_word(asic, stream, 0), 29, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CP_SYNC", BITS(fetch_word(asic, stream, 0), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "SRC_ADDR_LO_OR_DATA", fetch_word(asic, stream, 1), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "SRC_ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "BYTE_COUNT", BITS(fetch_word(asic, stream, 5), 0, 26), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "SAS", BITS(fetch_word(asic, stream, 5), 26, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "DAS", BITS(fetch_word(asic, stream, 5), 27, 28), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "SAIC", BITS(fetch_word(asic, stream, 5), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "DAIC", BITS(fetch_word(asic, stream, 5), 29, 30), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "RAW_WAIT", BITS(fetch_word(asic, stream, 5), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(fetch_word(asic, stream, 5), 31, 32), NULL, 10, 32);
+			break;
+		case 0x9A: // DMA_DATA_FILL_MULTI
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 0, 1), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "MEMLOG_CLEAR", BITS(fetch_word(asic, stream, 0), 10, 11), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_SEL", BITS(fetch_word(asic, stream, 0), 20, 22), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DST_TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SRC_SEL", BITS(fetch_word(asic, stream, 0), 29, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CP_SYNC", BITS(fetch_word(asic, stream, 0), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BYTE_STRIDE", fetch_word(asic, stream, 1), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DMA_COUNT", fetch_word(asic, stream, 2), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DST_ADDR_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "BYTE_COUNT", BITS(fetch_word(asic, stream, 5), 0, 26), NULL, 10, 32);
+			break;
+		case 0xA2: // PKT3_MAP_QUEUES
+			{ uint32_t ext_sel = BITS(fetch_word(asic, stream, 0), 2, 4),
+					   engine_sel = BITS(fetch_word(asic, stream, 0), 26, 29);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "EXT_ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 2, 4), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", BITS(fetch_word(asic, stream, 0), 4, 6), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "VMID", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "GWS_ENABLED", BITS(fetch_word(asic, stream, 0), 12, 13), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_ID", BITS(fetch_word(asic, stream, 0), 13, 16), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "PIPE_ID", BITS(fetch_word(asic, stream, 0), 16, 18), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ME_ID", BITS(fetch_word(asic, stream, 0), 18, 20), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_TYPE", BITS(fetch_word(asic, stream, 0), 21, 24), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "STATIC_QUEUE_GROUP", BITS(fetch_word(asic, stream, 0), 24, 26), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 26, 29), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", BITS(fetch_word(asic, stream, 0), 29, 32), NULL, 10, 32);
+
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "CHECK_DISABLE", BITS(fetch_word(asic, stream, 1), 1, 2), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET", BITS(fetch_word(asic, stream, 1), 2, 28), NULL, 16, 32);
+				{
+					uint32_t n;
+					for (n = 2; n + 4 <= stream->n_words; n += 4) {
+						ui->add_field(ui, ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_LO", fetch_word(asic, stream, n), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 16 + 16 * ((n - 2) / 4), ib_vmid, "MQD_ADDR_HI", fetch_word(asic, stream, n + 1), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 20 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_LO", fetch_word(asic, stream, n + 2), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 24 + 16 * ((n - 2) / 4), ib_vmid, "WPTR_ADDR_HI", fetch_word(asic, stream, n + 3), NULL, 16, 32);
+						if (ui->add_data)
+							ui->add_data(ui, asic,
+										 ib_addr + 12 + 16 * ((n - 2) / 4), ib_vmid,
+										 ((uint64_t)fetch_word(asic, stream, n)) | (((uint64_t)fetch_word(asic, stream, n + 1)) << 32), BITS(fetch_word(asic, stream, 0), 8, 12),
+										 UMR_DATABLOCK_MQD_NV, ext_sel == 0 ? engine_sel : 2);
+					}
+				}
+			}
+			break;
+		case 0xA3: // PKT3_UNMAP_QUEUES
+			{
+				uint32_t action, queue_sel, num_queues, engine_sel;
+
+				queue_sel = BITS(fetch_word(asic, stream, 0), 4, 6);
+				engine_sel = BITS(fetch_word(asic, stream, 0), 26, 29);
+				num_queues = BITS(fetch_word(asic, stream, 0), 29, 32);
+				action = BITS(fetch_word(asic, stream, 0), 0, 2);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ACTION", BITS(fetch_word(asic, stream, 0), 0, 2), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "QUEUE_SEL", queue_sel, NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", engine_sel, NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "EXT_ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 2, 4), NULL, 10, 32);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_QUEUES", num_queues, NULL, 10, 32);
+				if (queue_sel == 1)
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "PASID", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 10, 32);
+				else
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "DOORBELL_OFFSET0", BITS(fetch_word(asic, stream, 1), 2, 28), NULL, 16, 32);
+				if (action == 3)
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "TF_ADDR_LO32", BITS(fetch_word(asic, stream, 2), 2, 32), NULL, 16, 32);
+				else
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "DOORBELL_OFFSET1", BITS(fetch_word(asic, stream, 2), 2, 28), NULL, 16, 32);
+				if (action == 3)
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "TF_ADDR_HI32", BITS(fetch_word(asic, stream, 3), 0, 32), NULL, 16, 32);
+				else
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "DOORBELL_OFFSET2", BITS(fetch_word(asic, stream, 3), 2, 28), NULL, 16, 32);
+				if (action == 3)
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "TF_DATA", BITS(fetch_word(asic, stream, 4), 0, 32), NULL, 16, 32);
+				else
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(fetch_word(asic, stream, 4), 2, 28), NULL, 16, 32);
+			}
+			break;
+		case 0xB8: // SET_CONTEXT_REG_PAIRS
+		case 0xBA: // SET_SH_REG_PAIRS
+		case 0xBE: // SET_UCONFIG_REG_PAIRS
+			{
+				uint32_t offset, n, m;
+
+				switch (stream->opcode) {
+					case 0xB8: offset = 0xA000; break;
+					case 0xBA: offset = 0x2C00; break;
+					case 0xBE: offset = 0xC000; break;
+				}
+
+				for (m = n = 0; n < stream->n_words; n += 2, ++m) {
+					ui->add_field(ui, ib_addr + 4 + 8 * m, ib_vmid, "REG_OFFSET", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
+					ui->add_field(ui, ib_addr + 8 + 8 * m, ib_vmid, "REG_DATA", fetch_word(asic, stream, n+1), NULL, 16, 32);
+				}
+			}
+			break;
+		case 0xB9: // SET_CONTEXT_REG_PAIRS_PACKED
+		case 0xBC:
+		case 0xBD: // SET_SH_REG_PAIRS_PACKED(_N)
+			{
+				uint32_t offset, n, m;
+
+				switch (stream->opcode) {
+					case 0xB9: offset = 0xA000; break;
+					case 0xBC:
+					case 0xBD: offset = 0x2C00; break;
+				}
+
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "REG_WRITES_COUNT", BITS(fetch_word(asic, stream, 0), 0, 16), NULL, 10, 32);
+
+				for (m = 0, n = 1; n < stream->n_words; n += 3, ++m) {
+					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET0", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
+					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET1", BITS(fetch_word(asic, stream, n+0), 16, 32), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 16, 32)), 16, 32);
+					ui->add_field(ui, ib_addr + 12 + 12 * m, ib_vmid, "REG_DATA0", fetch_word(asic, stream, n+1), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16 + 12 * m, ib_vmid, "REG_DATA1", fetch_word(asic, stream, n+2), NULL, 16, 32);
+				}
+			}
+			break;
+		default:
+			decode_pkt3_gfx11(asic, ui, stream, ib_addr, ib_vmid);
+			break;
+	}
+}
 
 static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {
@@ -1700,6 +2017,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 		case 9: decode_pkt3_gfx9(asic, ui, stream, ib_addr, ib_vmid); break;
 		case 10: decode_pkt3_gfx10(asic, ui, stream, ib_addr, ib_vmid); break;
 		case 11: decode_pkt3_gfx11(asic, ui, stream, ib_addr, ib_vmid); break;
+		case 12: decode_pkt3_gfx12(asic, ui, stream, ib_addr, ib_vmid); break;
 		default:
 			asic->err_msg("[BUG]: GFX maj (%d) not supported in decode_pkt3()\n", maj);
 			return;
