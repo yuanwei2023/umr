@@ -775,7 +775,7 @@ int main(int argc, char **argv)
 						unsigned wave_loc[5];
 						for (j = 0; j < 5; ++j) {
 							char *loc_end = strstr(loc_start, ",");
-							unsigned loc_size = loc_end ? loc_end - loc_start : strlen(loc_start);
+							unsigned loc_size = loc_end ? (unsigned)(loc_end - loc_start) : strlen(loc_start);
 							if (loc_size > 2) {
 								fprintf(stderr, "[ERROR]: Invalid format for wave id! Format: \"se,sh,wgp,simd,wave\"\n");
 								return EXIT_FAILURE;
