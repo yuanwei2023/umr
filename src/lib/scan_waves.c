@@ -887,7 +887,9 @@ int umr_singlestep_wave(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 	uint64_t pc, new_pc;
 	uint32_t vmid;
 
-	umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
+	if (umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc)) {
+		return -1;
+	}
 
 	// Send the single-step command in a limited retry loop because a small number of
 	// single-step commands are required before an instruction is actually issued after
