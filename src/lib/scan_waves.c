@@ -907,7 +907,9 @@ int umr_singlestep_wave(struct umr_asic *asic, unsigned se, unsigned sh, unsigne
 			goto out;
 		}
 
-		umr_wave_data_get_shader_pc_vmid(asic, &new_wd, &vmid, &new_pc);
+		if (umr_wave_data_get_shader_pc_vmid(asic, &new_wd, &vmid, &new_pc)) {
+			return -1;
+		}
 		bool moved = pc != new_pc;
 		memcpy(wd, &new_wd, sizeof(new_wd));
 		if (moved)
