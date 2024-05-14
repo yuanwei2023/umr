@@ -312,6 +312,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "send_write_data", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_override", (fetch_word(asic, stream, i) >> 13) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_rs64mem_for_proc_gang_ctx", (fetch_word(asic, stream, i) >> 14) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmapped_doorbell_handling", (fetch_word(asic, stream, i) >> 15) & 3, NULL, 10, 32);
 					}
 				}
 				++i;
