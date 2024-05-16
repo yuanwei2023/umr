@@ -55,6 +55,13 @@
 #include <sys/syscall.h>
 #include <amdgpu_drm.h>
 
+static int64_t time_ns(void)
+{
+   struct timespec ts;
+   timespec_get(&ts, CLOCK_MONOTONIC);
+   return ts.tv_nsec + ts.tv_sec * 1000000000;
+}
+
 static char * _read_file(const char *path, char **buffer, unsigned *buffer_size) {
 	FILE *fd = fopen(path, "r");
 	if (fd) {
@@ -925,6 +932,127 @@ JSON_Value *compare_fence_infos(const char *fence_info_before, const char *fence
 	json_value_free(json_array_get_wrapping_value(after));
 
 	return fences;
+}
+
+
+static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev_id) {
+	/* Read fdinfo for each client. */
+	char fd_info_path[1024], fd_info[4096];
+	DIR *dir;
+	struct dirent *entry;
+
+	/* Parse the /proc/$fd tree, and find amdgpu's fd. */
+	sprintf(fd_info_path, "/proc/%d/fdinfo", (int)json_object_get_number(pid, "pid"));
+
+	dir = opendir(fd_info_path);
+	if (!dir)
+		return;
+
+	/* Process all fds. */
+	while ((entry = readdir(dir))) {
+		sprintf(fd_info, "%s/%s", fd_info_path, entry->d_name);
+
+		int64_t n = time_ns();
+		const char *c = read_file(fd_info);
+
+		if ((c = strstr(c, "drm-driver:\tamdgpu")) == NULL)
+			continue;
+
+		char *client_id = (char*)lookup_field(&c, "drm-client-id", ':');
+		if (!client_id)
+			continue;
+
+		if (json_object_has_value(json_object(container), client_id))
+			continue;
+		client_id = strdup(client_id);
+
+		/* Filter based on device name. */
+		const char *dev_id_v = lookup_field(&c, "drm-pdev", ':');
+		if (strcmp(dev_id_v, dev_id)) {
+			free(client_id);
+			continue;
+		}
+
+		const char *ptr = c;
+
+		JSON_Value *jv = json_value_init_object();
+
+		/* Lookup all drm-engine-* entries */
+		while ((ptr = strstr(ptr, "drm-engine-"))) {
+			ptr += strlen("drm-engine-");
+			char *cm = strchr(ptr, ':');
+			if (!cm)
+				continue;
+			char *engine_name = strndup(ptr, cm - ptr);
+			cm++;
+
+			while (cm && isspace(*cm))
+				cm++;
+			if (!cm)
+				continue;
+			uint64_t value = strtol(cm, NULL, 10);
+
+			if (value)
+				json_object_set_number(json_object(jv), engine_name, value);
+			free(engine_name);
+		}
+
+		if (json_object_get_count(json_object(jv))) {
+			json_object_set_number(json_object(jv), "ts", n);
+			json_object_set_value(json_object(jv), "app", json_value_deep_copy(json_object_get_wrapping_value(pid)));
+			json_object_set_number(json_object(jv), "fd", strtol(entry->d_name, NULL, 10));
+
+			json_object_set_value(json_object(container), client_id, jv);
+		}
+		free(client_id);
+	}
+	
+	closedir(dir);
+}
+
+JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
+{
+	char path[PATH_MAX];
+	JSON_Array *pids = json_array(json_value_init_array());
+	sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+	/* Find out about the active clients. */
+	const char *ptr = read_file(path);
+	while (ptr) {
+		unsigned pid;
+		char *next_pid = strstr(ptr, "pid:");
+		if (!next_pid)
+			break;
+		char *next_space = strchr(next_pid, '\t');
+		ptr = next_space + 1;
+
+		if (sscanf(next_pid, "pid:%u", &pid) == 1) {
+			if (pid == 0)
+				continue;
+
+			JSON_Value *p = NULL;
+			for (size_t i = 0; i < json_array_get_count(pids) && p == NULL; i++) {
+				JSON_Object *o = json_object(json_array_get_value(pids, i));
+				if (json_object_get_number(o, "pid") == pid)
+					p = json_object_get_wrapping_value(o);
+			}
+
+			if (p)
+				continue;
+
+			p = json_value_init_object();
+			json_array_append_value(pids, p);
+			json_object_set_number(json_object(p), "pid", pid);
+
+			ptr = next_space + 1 + strlen("Process:");
+			next_space = strchr(ptr, ' ');
+			int len = next_space - ptr;
+
+			json_object_set_string_with_len(json_object(p), "app", ptr, len);
+		} else {
+			break;
+		}
+	}
+	return pids;
 }
 
 JSON_Array *parse_vm_info(const char *content)
@@ -1984,8 +2112,29 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		char path[256];
+		/* Get our ID. */
+		sprintf(path, "/sys/kernel/debug/dri/%d/name", asic->instance);
+		char *dev_name = read_file(path);
+		dev_name = strstr(dev_name, "dev=");
+		if (!dev_name)
+			goto error;
+		dev_name += strlen("dev=");
+		int n = 0;
+		while (!isspace(dev_name[n]))
+			n++;
+		dev_name = strndup(dev_name, n);
+
+		JSON_Array *pids = get_active_amdgpu_clients(asic);
+
+		/* Read fdinfo for each client. */
+		JSON_Value *start = json_value_init_object();
+		for (size_t i = 0; i < json_array_get_count(pids); i++) {
+			JSON_Object *pid = json_object(json_array_get_value(pids, i));
+			read_fdinfo(start, pid, dev_name);
+		}
+
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
-		const char *content_before = read_file(path);
+		char *content_before = read_file_a(path);
 
 		struct timespec req, rem;
 		int steps = period_ms / step_ms;
@@ -2008,15 +2157,23 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 		}
 
+		/* Read fdinfo for each client. */
+		JSON_Value *end = json_value_init_object();
+		for (size_t i = 0; i < json_array_get_count(pids); i++) {
+			JSON_Object *pid = json_object(json_array_get_value(pids, i));
+			read_fdinfo(end, pid, dev_name);
+		}
+
+		free(dev_name);
+
 		/* Re-enable GFXOFF */
 		if (asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
 			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
-		char *copy = strdup(content_before);
-		JSON_Value *fences = compare_fence_infos(copy, read_file(path));
-		free(copy);
+		JSON_Value *fences = compare_fence_infos(content_before, read_file(path));
+		free(content_before);
 		json_object_set_value(json_object(answer), "fences", fences);
 
 		JSON_Value *values = json_value_init_array();
@@ -2031,6 +2188,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_array_append_value(json_array(values), regvalue);
 		}
 		json_object_set_value(json_object(answer), "values", values);
+		JSON_Object *fdinfo = json_object(json_value_init_object());
+		json_object_set_value(json_object(answer), "fdinfo", json_object_get_wrapping_value(fdinfo));
+		json_object_set_value(fdinfo, "start", start);
+		json_object_set_value(fdinfo, "end", end);
+		json_value_free(json_array_get_wrapping_value(pids));
 		free(counters);
 		free(reg);
 	} else if (strcmp(command, "write") == 0) {
