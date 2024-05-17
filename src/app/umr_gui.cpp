@@ -261,6 +261,14 @@ AsicData *answer_to_asic_data(std::vector<AsicData*> *asics, JSON_Object *reques
 	return NULL;
 }
 
+static int64_t time_ns(void)
+{
+   struct timespec ts;
+   timespec_get(&ts, CLOCK_MONOTONIC);
+   return ts.tv_nsec + ts.tv_sec * 1000000000;
+}
+
+static float ping_value = -1;
 
 static void process_response(std::vector<AsicData*> *asics, JSON_Object *response, void *raw_data, unsigned raw_data_size) {
 	JSON_Object *request = json_object(json_object_get_value(response, "request"));
@@ -293,6 +301,12 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *respons
 				return;
 			}
 		}
+		if (!error && !strcmp(cmd, "ping")) {
+			int64_t pong = time_ns();
+			int64_t ping = (int64_t)json_object_get_number(request, "ts");
+			ping_value =(pong - ping) / 1000000.0f;
+			return;
+		}
 
 		AsicData *data = answer_to_asic_data(asics, request);
 
@@ -322,11 +336,26 @@ static void *communication_thread(void *_job) {
 	snprintf(session_filename_raw, sizeof(session_filename_raw), "%s.raw", session_filename);
 	JSON_Array *session = json_array(json_value_init_array());
 	std::vector<AsicData*> *asics = (std::vector<AsicData*> *)_job;
+	int64_t last_ping = time_ns();
 
 	while (!done) {
 		pthread_mutex_lock(&mtx);
-		if (pending_request.empty())
-			pthread_cond_wait(&cond, &mtx);
+		if (pending_request.empty()) {
+			int64_t now = time_ns();
+
+			if (now - last_ping > 1000000000) {
+				JSON_Value *req = json_value_init_object();
+				json_object_set_string(json_object(req), "command", "ping");
+				json_object_set_number(json_object(req), "ts", now);
+				last_ping = now;
+				pending_request.push_back(req);
+			} else {
+				struct timespec t;
+				clock_gettime(CLOCK_REALTIME, &t);
+				t.tv_sec += 1;
+				pthread_cond_timedwait(&cond, &mtx, &t);
+			}
+		}
 		for (int i = 0; i < pending_request.size(); i++) {
 			void *raw_data = NULL;
 			unsigned raw_data_size = 0;
@@ -488,7 +517,7 @@ static int run_gui(const char *url)
 
 	char title[512];
 	if (lnk.use_sock)
-		sprintf(title, "umr (connected to %s)", url);
+		sprintf(title, "umr (%s)", url);
 	else
 		strcpy(title, "umr");
 	SDL_Window *window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED,
@@ -576,6 +605,7 @@ static int run_gui(const char *url)
 	send_request(req, NULL);
 
 	bool clear_goto_tab_flag = false;
+	float previous_ping = -1;
 
 	while (!done) {
 		struct timespec now;
@@ -587,6 +617,13 @@ static int run_gui(const char *url)
 			dt += (now.tv_nsec - before.tv_nsec) * 0.000000001;
 		}
 		memcpy(&before, &now, sizeof(now));
+
+		if (lnk.use_sock && previous_ping != ping_value) {
+			char title[512];
+			sprintf(title, "umr (%s, %.1f ms)", url, ping_value);
+			previous_ping = ping_value;
+			SDL_SetWindowTitle(window, title);
+		}
 
 		if (rebuild_scaled_font) {
 		    ImFontConfig cfg;

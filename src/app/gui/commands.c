@@ -1978,7 +1978,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 	int is_enumerate = strcmp(command, "enumerate") == 0;
 
-	if (!asic && !is_enumerate) {
+	if (!asic && !(is_enumerate || strcmp(command, "ping") == 0)) {
 		last_error = "asic not found";
 		goto error;
 	}
@@ -2061,6 +2061,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_array_append_value(json_array(answer), as);
 			i++;
 		}
+	} else if (strcmp(command, "ping") == 0) {
+		answer = json_value_init_object();
 	} else if (strcmp(command, "read") == 0) {
 		const char *block = json_object_get_string(request, "block");
 		struct umr_reg *r = umr_find_reg_data_by_ip(
