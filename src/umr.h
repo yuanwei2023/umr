@@ -2064,6 +2064,7 @@ struct umr_vpe_stream {
 struct umr_vpe_stream *umr_vpe_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
 void umr_free_vpe_stream(struct umr_vpe_stream *stream);
 struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vpe_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+int umr_osssys_get_ip_ver(struct umr_asic *asic, int *maj, int *min);
 
 /* umsch decoding */
 struct umr_umsch_stream {

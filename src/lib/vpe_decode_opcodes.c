@@ -39,12 +39,32 @@ static uint32_t fetch_word(struct umr_asic *asic, struct umr_vpe_stream *stream,
 	}
 }
 
+int umr_osssys_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
+{
+	struct umr_ip_block *ip;
+
+	ip = umr_find_ip_block(asic, "osssys", -1); // for single instance
+
+	if (ip) {
+		*maj = ip->discoverable.maj;
+		*min = ip->discoverable.min;
+		return 0;
+	}
+	return -1;
+}
+
 struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vpe_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {
 	uint32_t n, m;
 	struct umr_vpe_stream *os = stream;
 	static char *poll_regmem_funcs[] = { "always", "<", "<=", "==", "!=", ">=", ">", "N/A" };
+	int maj, min;
+
+	if (umr_osssys_get_ip_ver(asic, &maj, &min)) {
+		asic->err_msg("[BUG]: Cannot determine OSSSYS version for this ASIC\n");
+		maj = min = 0;
+	}
 
 	n = 0;
 	while (os) {
@@ -61,7 +81,11 @@ struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, stru
 				break;
 			case 1: // VPE Descriptor
 				ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "VPE Descriptor", stream->header_dw, stream->words);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "CD", (stream->header_dw >> 16) & 0xF, NULL, 10, 32);
+				if (maj == 6 && min == 1) {
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "CD", (stream->header_dw >> 16) & 0x1F, NULL, 10, 32);
+				} else {
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "CD", (stream->header_dw >> 16) & 0xF, NULL, 10, 32);
+				}
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "TMZ", (fetch_word(asic, stream, 0)) & 0x1, NULL, 10, 32);
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "PLANE_DESCRIPTOR_ADDR[31:2]", (fetch_word(asic, stream, 0)) & ~0x3UL, NULL, 16, 32);
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "PLANE_DESCRIPTOR_ADDR[63:32]", fetch_word(asic, stream, 1), NULL, 16, 32);
