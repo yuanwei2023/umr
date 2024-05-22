@@ -43,7 +43,9 @@ int umr_osssys_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 {
 	struct umr_ip_block *ip;
 
-	ip = umr_find_ip_block(asic, "osssys", -1); // for single instance
+	ip = umr_find_ip_block(asic, "osssys", -1);
+	if (!ip)
+		ip = umr_find_ip_block(asic, "oss", -1); // for static models that call it OSS
 
 	if (ip) {
 		*maj = ip->discoverable.maj;
