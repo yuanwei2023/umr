@@ -587,7 +587,6 @@ static const char *gfx12_regs[] = {
 	"ixSQ_WAVE_HW_ID2",
 	"ixSQ_WAVE_GPR_ALLOC",
 	"ixSQ_WAVE_LDS_ALLOC",
-	"ixSQ_WAVE_TRAPSTS",
 	"ixSQ_WAVE_IB_STS",
 	"ixSQ_WAVE_IB_STS2",
 	"ixSQ_WAVE_IB_DBG1",
