@@ -149,9 +149,10 @@ retry:
 	if (asic->options.vm_partition < 0) {
 		int n;
 		for (n = 0; n < asic->no_blocks; n++) {
-			if (!memcmp(asic->blocks[n]->ipname, "gfx", 3) && strstr(asic->blocks[n]->ipname, "{")) {
+			if ((!memcmp(asic->blocks[n]->ipname, "gfx", 3) && strstr(asic->blocks[n]->ipname, "{")) ||
+			    (!memcmp(asic->blocks[n]->ipname, "mmhub", 5) && strstr(asic->blocks[n]->ipname, "{"))) {
 				asic->err_msg(
-					"[WARNING]: No VM partition is selected on hardware with multiple GC blocks.\n"
+					"[WARNING]: No VM partition is selected on hardware with multiple GC and/or MMHUB blocks.\n"
 					"[WARNING]: Page walking and wave scanning are unlikely to work.\n"
 					"[WARNING]: Please use -vmp or --vm-partition to select a VM partition.\n");
 				break;
