@@ -543,6 +543,7 @@ static int run_gui(const char *url)
 					raw_data_size = le32toh(s);
 					raw_data = malloc(raw_data_size);
 					read(fd, raw_data, raw_data_size);
+					close(fd);
 				}
 
 				process_response(&asics, e, raw_data, raw_data_size);
