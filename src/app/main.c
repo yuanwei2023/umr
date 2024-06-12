@@ -454,6 +454,7 @@ int main(int argc, char **argv)
 	struct umr_test_harness *th = NULL;
 	FILE *f;
 	struct rumr_client_state client_st;
+	char *argflags;
 #if UMR_GUI
 	int running_as_gui = 0;
 	char *guiurl = NULL;
@@ -484,6 +485,8 @@ int main(int argc, char **argv)
 	options.vm_partition = -1;
 	options.vgpr_granularity = -1;
 	options.forced_instance = 0;
+
+	argflags = calloc(1, argc+1);
 
 	str = getenv("RUMR_SERVER_ADDR");
 	if (str) {
@@ -522,6 +525,8 @@ int main(int argc, char **argv)
 			if (pass == PASS_OPTIONS) {
 				if (!strcmp(argv[i], "--vgpr-granularity") || !strcmp(argv[i], "-vgpr")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						options.vgpr_granularity = atoi(argv[i+1]);
 						++i;
 					} else {
@@ -530,6 +535,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--option") || !strcmp(argv[i], "-O")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						parse_options(argv[i+1]);
 						++i;
 					} else {
@@ -538,6 +545,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--database-path") || !strcmp(argv[i], "-dbp")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						strcpy(options.database_path, argv[i+1]);
 						++i;
 					} else {
@@ -548,6 +557,8 @@ int main(int argc, char **argv)
 					   !strcmp(argv[i], "--vm_partition") ||
 					   !strcmp(argv[i], "-vmp")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						options.vm_partition = atoi(argv[i+1]);
 						++i;
 					} else {
@@ -556,6 +567,10 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--bank") || !strcmp(argv[i], "-b")) {
 					if (i + 3 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
+						argflags[i+3] = 1;
 						options.bank.grbm.se = argv[i+1][0] == 'x' ? 0xFFFFFFFFUL : (uint32_t)atoi(argv[i+1]);
 						options.bank.grbm.sh = argv[i+2][0] == 'x' ? 0xFFFFFFFFUL : (uint32_t)atoi(argv[i+2]);
 						options.bank.grbm.instance = argv[i+3][0] == 'x' ? 0xFFFFFFFFUL : (uint32_t)atoi(argv[i+3]);
@@ -567,6 +582,10 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--sbank") || !strcmp(argv[i], "-sb")) {
 					if (i + 3 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
+						argflags[i+3] = 1;
 						options.bank.srbm.me = atoi(argv[i+1]);
 						options.bank.srbm.pipe = atoi(argv[i+2]);
 						options.bank.srbm.queue = atoi(argv[i+3]);
@@ -582,6 +601,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--cbank") || !strcmp(argv[i], "-cb")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						options.context_reg_bank = atoi(argv[i+1]);
 						++i;
 					} else {
@@ -595,6 +616,8 @@ int main(int argc, char **argv)
 				if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
 					if (i + 1 < argc) {
 						char *s;
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						s = strstr(argv[i+1], "@");
 						if (s) {
 							strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
@@ -618,6 +641,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--instance") || !strcmp(argv[i], "-i")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						options.instance = atoi(argv[i+1]);
 						options.forced_instance = 1;
 						asic = get_asic();
@@ -629,6 +654,8 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--force") || !strcmp(argv[i], "-f")) {
 					if (i + 1 < argc) {
 						unsigned long did = 0;
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						if (sscanf(argv[i+1], "0x%lx", &did) == 0) {
 							strncpy(options.dev_name, argv[i+1], sizeof(options.dev_name) - 1);
 						}
@@ -643,6 +670,8 @@ int main(int argc, char **argv)
 					if (i + 1 < argc && sscanf(argv[i+1], "%04x:%02x:%02x.%01x",
 						&options.pci.domain, &options.pci.bus, &options.pci.slot,
 						&options.pci.func ) >= 4) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						options.use_pci = 0; // always use debugfs!
 						++i;
 					} else {
@@ -653,6 +682,8 @@ int main(int argc, char **argv)
 					if (i + 1 < argc && sscanf(argv[i+1], "%04x:%02x:%02x.%01x",
 						&options.pci.domain, &options.pci.bus, &options.pci.slot,
 						&options.pci.func ) >= 4) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						options.use_pci = 1; // implied by the --pci option
 						++i;
 					} else {
@@ -661,6 +692,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--rumr-client")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						umr_start_rumr_client(&client_st, argv[i+1]);
 						asic->options = options;
 						++i;
@@ -672,6 +705,8 @@ int main(int argc, char **argv)
 			} else if (pass == PASS_TEST_HARNESS) {
 				if (!strcmp(argv[i], "--test-log") || !strcmp(argv[i], "-tl")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						asic->options.test_log_fd = fopen(argv[i + 1], "w");
 						asic->options.test_log = 1;
 						umr_scan_config(asic, 0);
@@ -682,6 +717,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--test-harness") || !strcmp(argv[i], "-th")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						th = umr_create_test_harness_file(argv[i + 1]);
 						asic->options.th = th;
 						asic->options.test_log = 1;
@@ -696,15 +733,19 @@ int main(int argc, char **argv)
 				}
 			} else if (pass == PASS_COMMANDS) {
 				if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
+					argflags[i] = 1;
 					umr_apply_callbacks(asic, &asic->mem_funcs, &asic->reg_funcs);
 					umr_print_config(asic);
 				} else if (!strcmp(argv[i], "--list-blocks") || !strcmp(argv[i], "-lb")) {
+					argflags[i] = 1;
 					for (j = 0; j < asic->no_blocks; j++) {
 						printf("\t%s.%s (%d.%d.%d)\n", asic->asicname, asic->blocks[j]->ipname, asic->blocks[j]->discoverable.maj,
 						asic->blocks[j]->discoverable.min, asic->blocks[j]->discoverable.rev);
 					}
 				} else if (!strcmp(argv[i], "--list-regs") || !strcmp(argv[i], "-lr")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						blockname = get_block_name(asic, argv[i+1]);
 						if (!blockname)
 							return EXIT_FAILURE;
@@ -725,6 +766,9 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--lookup") || !strcmp(argv[i], "-lu")) {
 					if (i + 2 < argc) {
 						int tmp = asic->options.bitfields;
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 						asic->options.bitfields = 1;
 						umr_lookup(asic, argv[i+1], argv[i+2]);
 						asic->options.bitfields = tmp;
@@ -733,6 +777,10 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--write") || !strcmp(argv[i], "-w")) {
 					if (i + 2 < argc) {
 						uint32_t reg, val;
+
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 
 						if (!memcmp(argv[i+1], "0x", 2) && sscanf(argv[i+1], "%"SCNx32, &reg) == 1 && sscanf(argv[i+2], "%"SCNx32, &val) == 1)
 							umr_write_reg(asic, reg, val, REG_MMIO);
@@ -746,6 +794,9 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--writebit") || !strcmp(argv[i], "-wb")) {
 					if (i + 2 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 						umr_set_register_bit(asic, argv[i+1], argv[i+2]);
 						i += 2;
 						asic->options.need_scan = 0;
@@ -755,6 +806,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--waves") || !strcmp(argv[i], "-wa")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						if (argv[i+1][0] != '-') {
 							strcpy(asic->options.ring_name, argv[i+1]);
 							++i;
@@ -767,6 +820,8 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						if (argv[i + 1][0] == '-') {
 							fprintf(stderr, "[ERROR]: --singlestep requires two parameters\n");
 							return EXIT_FAILURE;
@@ -819,6 +874,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--scan") || !strcmp(argv[i], "-s")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						blockname = get_block_name(asic, argv[i+1]);
 						if (!blockname)
 							return EXIT_FAILURE;
@@ -833,6 +890,9 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--read") || !strcmp(argv[i], "-r")) {
 					if (i + 1 < argc) {
 						uint32_t reg;
+
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 
 						if (!memcmp(argv[i+1], "0x", 2) && sscanf(argv[i+1], "%"SCNx32, &reg) == 1) {
 							printf("0x%08lx\n", (unsigned long)asic->reg_funcs.read_reg(asic, reg, REG_MMIO));
@@ -862,6 +922,8 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--ring-stream") || !strcmp(argv[i], "-RS")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						umr_read_ring_stream(asic, argv[i+1]);
 						++i;
 					} else {
@@ -876,6 +938,10 @@ int main(int argc, char **argv)
 						char str[128];
 						char prefix[] = { ' ', '1', '2', '3', '4', '5', '6' };
 
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
+
 						if (sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address) != 2)
 							if (sscanf(argv[i+1], "%"SCNu32"@%"SCNx64, &vmid, &address) != 2) {
 								sscanf(argv[i+1], "%"SCNx64, &address);
@@ -886,6 +952,7 @@ int main(int argc, char **argv)
 							sscanf(argv[i+2], "%"SCNu32, &len);
 
 						if ((i + 3 < argc) && sscanf(argv[i+3], "%d", &pm) == 1) {
+							argflags[i+3] = 1;
 							i += 3;
 						} else {
 							pm = 4;
@@ -904,7 +971,11 @@ int main(int argc, char **argv)
 						char str[128];
 						char prefix[] = { ' ', '1', '2', '3', '4', '5', '6' };
 
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+
 						if ((i + 2 < argc) && sscanf(argv[i+2], "%d", &pm) == 1) {
+							argflags[i+2] = 1;
 							i += 2;
 						} else {
 							pm = 4;
@@ -920,13 +991,15 @@ int main(int argc, char **argv)
 						asic->options.no_follow_ib = follow;
 						asic->options.no_follow_shader = follow;
 						asic->options.no_follow_loadx = follow;
-						} else {
+					} else {
 						fprintf(stderr, "[ERROR]: --dump-ib-file requires two parameters\n");
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--logscan") || !strcmp(argv[i], "-ls")) {
 					if (options.follow) {
 						int r;
+
+						argflags[i] = 1;
 
 						signal(SIGINT, sigint);
 						r = system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_wreg/enable");
@@ -952,6 +1025,7 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--top") || !strcmp(argv[i], "-t")) {
 					uint32_t value;
+					argflags[i] = 1;
 					value = 0;
 					if (asic->fd.gfxoff >= 0)
 						write(asic->fd.gfxoff, &value, sizeof(value));
@@ -960,10 +1034,13 @@ int main(int argc, char **argv)
 					if (asic->fd.gfxoff >= 0)
 						write(asic->fd.gfxoff, &value, sizeof(value));
 				} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
+					argflags[i] = 1;
 					umr_enumerate_devices(std_printf, options.database_path);
 					return 0;
 				} else if (!strcmp(argv[i], "-mm")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						strcpy(options.hub_name, argv[i+1]);
 						++i;
 					} else {
@@ -975,6 +1052,10 @@ int main(int argc, char **argv)
 						uint64_t address;
 						uint32_t size, vmid;
 						int overbose;
+
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 
 						overbose = asic->options.verbose;
 						asic->options.verbose = 1;
@@ -1005,6 +1086,10 @@ int main(int argc, char **argv)
 						unsigned char buf[256];
 						uint64_t address;
 						uint32_t size, n, vmid;
+
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
@@ -1038,6 +1123,10 @@ int main(int argc, char **argv)
 						uint64_t address;
 						uint32_t size, n, vmid;
 
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
+
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
 						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
@@ -1069,6 +1158,10 @@ int main(int argc, char **argv)
 						uint64_t address;
 						uint32_t data, vmid;
 
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
+
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
 						if ((sscanf(argv[i+1], "0x%"SCNx32"@%"SCNx64, &vmid, &address)) != 2)
@@ -1094,6 +1187,10 @@ int main(int argc, char **argv)
 					if (i + 2 < argc) {
 						uint64_t address;
 						uint32_t size, vmid;
+
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
@@ -1125,7 +1222,11 @@ int main(int argc, char **argv)
 					if (i + 1 < argc) {
 						int n = 0, samples = -1, type = -1;
 
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+
 						if (i + 2 < argc && argv[i+2][0] != '-') {
+							argflags[i+2] = 1;
 							n = 1;
 							strcpy(asic->options.ring_name, argv[i+2]);
 						}
@@ -1146,6 +1247,7 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--header-dump") || !strcmp(argv[i], "-hd")) {
 					if (i + 1 < argc) {
 						int n;
+						argflags[i] = 1;
 						for (n = 0; n < 8; n++) {
 							uint32_t v = umr_read_reg_by_name(asic, argv[i+1]);
 							printf("\t[0x%08" PRIx32"] %s\n", v, umr_pm4_opcode_to_str(v));
@@ -1158,6 +1260,8 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--gfxoff") || !strcmp(argv[i], "-go")) {
 					uint32_t value;
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						sscanf(argv[i+1], "%"SCNu32, &value);
 						if (asic->fd.gfxoff >= 0)
 							write(asic->fd.gfxoff, &value, sizeof(value));
@@ -1171,9 +1275,12 @@ int main(int argc, char **argv)
 							fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
 					}
 				} else if (!strcmp(argv[i], "--power") || !strcmp(argv[i], "-p")) {
+					argflags[i] = 1;
 					umr_power(asic);
 				} else if (!strcmp(argv[i], "--clock-scan") || !strcmp(argv[i], "-cs")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						umr_clock_scan(asic, argv[i+1]);
 						i++;
 					} else {
@@ -1181,6 +1288,9 @@ int main(int argc, char **argv)
 					}
 				} else if (!strcmp(argv[i], "--clock-manual") || !strcmp(argv[i], "-cm")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
 						umr_clock_manual(asic, argv[i+1], argv[i+2]);
 						i += 2;
 					} else {
@@ -1189,14 +1299,17 @@ int main(int argc, char **argv)
 							printf("power_dpm_force_performance_level: %s", clockperformance);
 					}
 				} else if (!strcmp(argv[i], "--clock-high") || !strcmp(argv[i], "-ch")) {
+					argflags[i] = 1;
 					umr_set_clock_performance(asic, "high");
 					if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
 						printf("power_dpm_force_performance_level: %s", clockperformance);
 				} else if (!strcmp(argv[i], "--clock-low") || !strcmp(argv[i], "-cl")) {
+					argflags[i] = 1;
 					umr_set_clock_performance(asic, "low");
 					if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
 						printf("power_dpm_force_performance_level: %s", clockperformance);
 				} else if (!strcmp(argv[i], "--clock-auto") || !strcmp(argv[i], "-ca")) {
+					argflags[i] = 1;
 					umr_set_clock_performance(asic, "auto");
 					if (umr_check_clock_performance(asic, clockperformance, sizeof(clockperformance)) != 0)
 						printf("power_dpm_force_performance_level: %s", clockperformance);
@@ -1204,6 +1317,8 @@ int main(int argc, char **argv)
 					   !strcmp(argv[i], "--ppt_read") ||
 					   !strcmp(argv[i], "-pptr")) {
 					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						if (umr_print_pp_table(asic, argv[i+1]) != 0)
 							fprintf(stderr, "[ERROR]: can not print pp table info.\n");
 						i++;
@@ -1215,7 +1330,9 @@ int main(int argc, char **argv)
 					   !strcmp(argv[i], "--gpu_metrics") ||
 					   !strcmp(argv[i], "-gm")) {
 					int delay = 0;
+					argflags[i] = 1;
 					if (i + 1 < argc && sscanf(argv[i+1], "%d", &delay) == 1) {
+						argflags[i+1] = 1;
 						++i;
 					}
 					if (umr_print_gpu_metrics(asic, delay) != 0)
@@ -1223,12 +1340,15 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--vbios-info") ||
 					   !strcmp(argv[i], "--vbios_info") ||
 					   !strcmp(argv[i], "-vi")) {
+					argflags[i] = 1;
 					if (umr_print_vbios_info(asic) != 0)
 						fprintf(stderr, "[ERROR]: Cannot print vbios info.\n");
 				} else if (!strcmp(argv[i], "--runlist") || !strcmp(argv[i], "-rls")) {
 					char busaddr[64];
 					if (i + 1 < argc) {
 						int node = atoi(argv[i + 1]); ++i;
+						argflags[i] = 1;
+						argflags[i+1] = 1;
 						if (umr_kfd_topo_get_pci_busaddr(node, busaddr)) {
 							return EXIT_FAILURE;
 						}
@@ -1244,13 +1364,17 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--dump-discovery-table") || !strcmp(argv[i], "-ddt")) {
+					argflags[i] = 1;
 					umr_dump_discovery_table_info(asic, NULL);
 				} else if (!strcmp(argv[i], "--print-cpc") || !strcmp(argv[i], "-cpc")) {
+					argflags[i] = 1;
 					umr_print_cpc(asic);
 				} else if (!strcmp(argv[i], "--print-sdma") || !strcmp(argv[i], "-sdma")) {
+					argflags[i] = 1;
 					umr_print_sdma(asic);
 				} else if (!strcmp(argv[i], "--rumr-export-asic")) {
 					struct rumr_buffer *buf;
+					argflags[i] = 1;
 					if (!asic)
 						asic = get_asic();
 					buf = rumr_serialize_asic(asic);
@@ -1260,6 +1384,7 @@ int main(int argc, char **argv)
 					struct rumr_comm_funcs *cf;
 					char *cfp;
 					struct rumr_server_state st;
+					argflags[i] = 1;
 					if (!asic)
 						asic = get_asic();
 					if (i + 1 < argc) {
@@ -1286,6 +1411,14 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+
+	for (i = 1; i < argc; i++) {
+		if (!argflags[i]) {
+			fprintf(stderr, "[WARNING]: Command line argument #%d [%s] was not understood\n", i, argv[i]);
+		}
+	}
+
+	free(argflags);
 
 	if (options.need_scan && options.print) {
 		asic = get_asic();
