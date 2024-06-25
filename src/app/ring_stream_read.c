@@ -317,7 +317,7 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 		return data;
 	}
 
-	data = calloc(sizeof(*data), 1024);
+	data = calloc(1024, sizeof(*data));
 	if (!data) {
 		fclose(infile);
 		asic->err_msg("[ERROR]: Out of memory\n");

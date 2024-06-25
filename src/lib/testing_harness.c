@@ -189,7 +189,7 @@ static uint32_t *consume_words(const char **ptr, uint32_t *size)
 		return NULL;
 	}
 
-	p = calloc(sizeof(p[0]), s);
+	p = calloc(s, sizeof(p[0]));
 	if (!p) {
 		fprintf(stderr, "[ERROR]: Out of memory\n");
 		*size = 0;

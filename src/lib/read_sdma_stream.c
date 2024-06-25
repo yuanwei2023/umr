@@ -120,7 +120,7 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 			}
 			ps->nwords = 5;
 			if (!asic->options.no_follow_ib) {
-				uint32_t *data = calloc(sizeof(*data), ps->ib.size);
+				uint32_t *data = calloc(ps->ib.size, sizeof(*data));
 				if (umr_read_vram(asic, vm_partition, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0) {
 					ps->next_ib = umr_sdma_decode_stream(asic, ui, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
 					if (ps->next_ib) {

@@ -216,7 +216,7 @@ struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, str
 	uint32_t *words;
 	struct umr_packet_stream *str;
 
-	words = calloc(sizeof *words, nwords);
+	words = calloc(nwords, sizeof *words);
 	if (!words) {
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;

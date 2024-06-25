@@ -60,7 +60,7 @@ int umr_create_mmio_accel(struct umr_asic *asic)
 		}
 	}
 
-	asic->mmio_accel = calloc(sizeof asic->mmio_accel[0], no_regs);
+	asic->mmio_accel = calloc(no_regs, sizeof asic->mmio_accel[0]);
 	asic->mmio_accel_size = no_regs;
 	if (!asic->mmio_accel) {
 		asic->err_msg("[ERROR]: Out of memory\n");
