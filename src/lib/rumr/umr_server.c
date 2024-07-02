@@ -195,7 +195,7 @@ static int handle_op_mem_access(struct rumr_server_state *state, struct rumr_buf
 				r = umr_access_sram(asic, addr, in.size, dst, 0);
 			} else {
 				// read from vram
-				r = umr_access_vram(asic, asic->options.vm_partition, UMR_LINEAR_HUB, addr, in.size, dst, 0);
+				r = umr_access_vram(asic, asic->options.vm_partition, UMR_LINEAR_HUB, addr, in.size, dst, 0, NULL);
 			}
 			rumr_buffer_add_uint32(outbuf, r ? 0 : 1);
 			rumr_buffer_add_uint32(outbuf, in.addr_lo);
@@ -218,7 +218,7 @@ static int handle_op_mem_access(struct rumr_server_state *state, struct rumr_buf
 				r = umr_access_sram(asic, addr, in.size, dst, 1);
 			} else {
 				// write to vram
-				r = umr_access_vram(asic, asic->options.vm_partition, UMR_LINEAR_HUB, addr, in.size, dst, 1);
+				r = umr_access_vram(asic, asic->options.vm_partition, UMR_LINEAR_HUB, addr, in.size, dst, 1, NULL);
 			}
 			rumr_buffer_add_uint32(outbuf, r ? 0 : 1);
 			rumr_buffer_add_uint32(outbuf, in.addr_lo);
