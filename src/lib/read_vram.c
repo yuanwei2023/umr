@@ -1398,7 +1398,8 @@ pde_is_pte:
 				goto invalid_page;
 
 			// compute starting address
-			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & 0xFFF);
+			offset_mask = 0xFFF;
+			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
 		}
 
 next_page:
@@ -1413,22 +1414,24 @@ next_page:
 					vmdata->sys_or_vram = 1;
 					vmdata->phys = start_addr;
 				}
-				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 ", (reading: %" PRIu32 " bytes)\n",
+				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 ", (reading: %" PRIu32 " bytes from a %" PRIu32 " byte page)\n",
 											&indentation[18-pde_cnt*3-3],
 											"sys",
 											start_addr,
-											chunk_size);
+											chunk_size,
+											offset_mask + 1);
 			} else {
 				if (vmdata) {
 					vmdata->sys_or_vram = 0;
 					vmdata->phys = start_addr + vm_fb_offset;
 				}
-				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 " (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes)\n",
+				asic->mem_funcs.vm_message("%s Computed address we will read from: %s:%" PRIx64 " (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes from a %" PRIu32 " byte page)\n",
 											&indentation[18-pde_cnt*3-3],
 											"vram",
 											start_addr,
 											start_addr + vm_fb_offset,
-											chunk_size);
+											chunk_size,
+											offset_mask + 1);
 			}
 		}
 		// allow destination to be NULL to simply use decoder
