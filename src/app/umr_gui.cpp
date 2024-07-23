@@ -684,7 +684,6 @@ static int run_gui(const char *url)
 
 		ImVec2 topleft = ImGui::GetCursorScreenPos();
 		ImVec2 avail = ImGui::GetContentRegionAvail();
-		avail.x -= 2 * ImGui::GetStyle().WindowPadding.x;
 
 		pthread_mutex_lock(&mtx);
 

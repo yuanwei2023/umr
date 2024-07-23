@@ -1608,58 +1608,83 @@ static JSON_Value *shader_pgm_to_json(struct umr_asic *asic, uint32_t vmid, uint
 }
 
 /* Ring stream decoding */
+struct ib_raw_opcodes {
+	uint32_t *v;
+	uint32_t count;
+	uint32_t max;
+};
+
 struct ring_decoding_data {
 	JSON_Array *shaders;
 	JSON_Array *ibs;
 	JSON_Value *ring;
 	JSON_Array *open_ibs;
-	uint32_t *raw_opcodes;
-	uint32_t raw_opcodes_max;
-	uint32_t raw_opcodes_count;
-	uint32_t current_ib_count;
+	struct ib_raw_opcodes *raw_opcodes;
+	int total_ibs;
+
+	struct {
+		uint32_t *opcodes;
+		uint32_t count;
+	} concatenated;
 };
 
 static void _ring_start_ib(struct ring_decoding_data *data, uint64_t ib_addr, uint32_t ib_vmid) {
 	JSON_Object *current_ib = json_object(json_value_init_object());
 	json_object_set_number(current_ib, "address", ib_addr);
 	json_object_set_number(current_ib, "vmid", ib_vmid);
-	json_object_set_number(current_ib, "opcode_start", data->raw_opcodes_count);
 	json_array_append_value(data->open_ibs, json_object_get_wrapping_value(current_ib));
-	data->current_ib_count = 0;
+	data->raw_opcodes = (struct ib_raw_opcodes*)realloc(data->raw_opcodes, json_array_get_count(data->open_ibs) * sizeof(struct ib_raw_opcodes));
+	int idx = json_array_get_count(data->open_ibs) - 1;
+	data->raw_opcodes[idx].v = realloc(NULL, 128 * sizeof(uint32_t));
+	data->raw_opcodes[idx].max = 128;
+	data->raw_opcodes[idx].count = 0;
 }
 static void _ring_start_opcode(struct ring_decoding_data *data, uint32_t nwords, uint32_t header, const uint32_t* raw_data, bool is_sdma) {
-	JSON_Object *current_ib = json_object(json_array_get_value(data->open_ibs, json_array_get_count(data->open_ibs) - 1));
+	const int idx = json_array_get_count(data->open_ibs) - 1;
+
 	/* sdma stream already counts the header dw in nwords */
 	if (is_sdma)
 		nwords--;
 
+	struct ib_raw_opcodes *raw_opcodes = &data->raw_opcodes[idx];
+
 	int need_alloc = 0;
-	while ((data->raw_opcodes_count + nwords + 1) >= data->raw_opcodes_max) {
-		data->raw_opcodes_max = 2 * data->raw_opcodes_max;
+	while ((raw_opcodes->count + nwords + 1) >= raw_opcodes->max) {
+		raw_opcodes->max = 2 * raw_opcodes->max;
 		need_alloc = 1;
 	}
 	if (need_alloc)
-		data->raw_opcodes = realloc(data->raw_opcodes, data->raw_opcodes_max * sizeof(uint32_t));
+		raw_opcodes->v = realloc(raw_opcodes->v, raw_opcodes->max * sizeof(uint32_t));
 
-	data->raw_opcodes[data->raw_opcodes_count++] = header;
-	memcpy(&data->raw_opcodes[data->raw_opcodes_count], raw_data, nwords * sizeof(uint32_t));
-	data->raw_opcodes_count += nwords;
-
-	data->current_ib_count += nwords + 1;
-	json_object_set_number(current_ib, "opcode_count", data->current_ib_count);
+	raw_opcodes->v[raw_opcodes->count++] = header;
+	memcpy(&raw_opcodes->v[raw_opcodes->count], raw_data, nwords * sizeof(uint32_t));
+	raw_opcodes->count += nwords;
 }
 
 static void _ring_done(struct ring_decoding_data *data) {
-	int idx = json_array_get_count(data->open_ibs) - 1;
+	const int idx = json_array_get_count(data->open_ibs) - 1;
+	const struct ib_raw_opcodes *raw_opcodes = &data->raw_opcodes[idx];
 
 	JSON_Value *v = json_value_deep_copy(json_array_get_value(data->open_ibs, idx));
+	json_object_set_number(json_object(v), "opcode_start", data->concatenated.count);
+	json_object_set_number(json_object(v), "opcode_count", raw_opcodes->count);
+
+	data->concatenated.opcodes = realloc(data->concatenated.opcodes, sizeof(uint32_t) *
+		(raw_opcodes->count + data->concatenated.count));
+	memcpy(&data->concatenated.opcodes[data->concatenated.count],
+		raw_opcodes->v,
+		raw_opcodes->count * sizeof(uint32_t));
+	data->concatenated.count += raw_opcodes->count;
+	free(raw_opcodes->v);
+
 	if (json_object_get_number(json_object(v), "address") == 0)
 		data->ring = v;
 	else
 		json_array_append_value(data->ibs, v);
-	json_array_remove(data->open_ibs, idx);
-}
 
+	json_array_remove(data->open_ibs, idx);
+	data->total_ibs += 1;
+}
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -2365,9 +2390,10 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		data.ibs = json_array(json_value_init_array());
 		data.open_ibs = json_array(json_value_init_array());
 		data.shaders = json_array(json_value_init_array());
-		data.raw_opcodes_max = 1024 * sizeof(uint32_t);
-		data.raw_opcodes_count = 0;
-		data.raw_opcodes = realloc(NULL, data.raw_opcodes_max * sizeof(uint32_t));
+		data.raw_opcodes = NULL;
+		data.concatenated.count = 0;
+		data.concatenated.opcodes = NULL;
+		data.total_ibs = 0;
 
 		answer = json_value_init_object();
 
@@ -2433,12 +2459,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_object_set_number(json_object(answer), "ring_type", rt);
 			umr_packet_free(str);
 
-			*raw_data_size = data.raw_opcodes_count * sizeof(uint32_t);
-			*raw_data = data.raw_opcodes; /* will be freed later */
+			*raw_data_size = data.concatenated.count * sizeof(uint32_t);
+			*raw_data = data.concatenated.opcodes; /* will be freed later */
 		} else {
 			if (lineardatasize)
 				printf("umr_packet_decode_buffer error.\n");
 		}
+
+		free(data.raw_opcodes);
 
 		free(ring_data);
 		json_object_set_number(json_object(answer), "read_ptr", rptr);

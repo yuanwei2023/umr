@@ -24,13 +24,9 @@
  */
 #include "panels.h"
 
-static bool get_ring_name(void *data, int idx, const char **out) {
-	JSON_Array *rings = (JSON_Array *)data;
-	if (idx >= 0 && idx < json_array_get_count(rings)) {
-		*out = json_array_get_string(rings, idx);
-		return true;
-	}
-	return false;
+static const char * get_ring_name(JSON_Array *rings, int idx) {
+	assert(idx >= 0 && idx < json_array_get_count(rings));
+	return json_array_get_string(rings, idx) + strlen("amdgpu_ring_");
 }
 
 static void _start_ib(struct umr_stream_decode_ui *, uint64_t, uint32_t, uint64_t, uint32_t, uint32_t, int) {
@@ -43,6 +39,10 @@ static void _add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, 
 
 static void _add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {
 	/* no-op */
+}
+
+static void _ring_unhandled(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, void *str, enum umr_ring_type rt) {
+	/* Ignore */
 }
 
 static void _done(struct umr_stream_decode_ui *ui) {
@@ -59,13 +59,21 @@ static void _start_opcode(struct umr_stream_decode_ui *ui, uint64_t ib_addr,
 	ImGui::TableSetColumnIndex(1);
 	ImGui::Text("%08x", header);
 	ImGui::TableSetColumnIndex(2);
-	ImGui::Text("#8f979c%s", opcode_name);
+	if (ImGui::TreeNode((void*)ib_addr, "#8f979c%s", opcode_name)) {
+		*((bool*)ui->data) = true;
+		ImGui::TreePop();
+	} else {
+		*((bool*)ui->data) = false;
+	}
 }
 
 static void _add_field(struct umr_stream_decode_ui *ui, uint64_t ib_addr,
 					  uint32_t ib_vmid, const char *field_name,
 					  uint64_t value, char *str, int ideal_radix, int field_size)
 {
+	if (*((bool*)ui->data) == false)
+		return;
+
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
 	ImGui::Text("#0083d80x%" PRIx64, ib_addr);
@@ -120,7 +128,7 @@ public:
 		}
 	}
 
-	void process_server_message(JSON_Object *response, void *raw_data, unsigned raw_data_size) {
+	void process_server_message(JSON_Object *response, void *_raw_data, unsigned raw_data_size) {
 		JSON_Value *error = json_object_get_value(response, "error");
 		if (error)
 			return;
@@ -132,38 +140,65 @@ public:
 		if (!strcmp(command, "ring")) {
 			if (last_answer)
 				json_value_free(json_object_get_wrapping_value(last_answer));
-			free(this->raw_data);
 			last_answer = json_object(json_value_deep_copy(answer));
-			this->raw_data = (uint32_t*) raw_data;
+			free(this->raw_data);
+			this->raw_data = (uint32_t*)malloc(raw_data_size);
+			memcpy(this->raw_data, _raw_data, raw_data_size);
 		}
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
-		const float _8digitsize = ImGui::CalcTextSize("0x00000000").x + ImGui::GetStyle().FramePadding.x * 2;
+		const float padding = ImGui::GetStyle().FramePadding.x;
+		const float _8digitsize = ImGui::CalcTextSize("0x00000000").x + padding * 2;
 
 		JSON_Array *rings = json_object_get_array(info, "rings");
 		if (current_item < 0)
 			current_item = json_array_get_count(rings) - 1;
 
-		ImGui::Checkbox("Halt waves", &halt);
-		ImGui::SameLine();
 		ImGui::TextUnformatted("Select ring:");
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(_8digitsize * 4);
 		ImGui::PushID("selectring");
-		ImGui::Combo("", &current_item, get_ring_name, rings, json_array_get_count(rings));
+
+		float max_w = 0;
+		for (size_t i = 0; i < json_array_get_count(rings); i++) {
+			max_w = std::max(max_w, ImGui::CalcTextSize(get_ring_name(rings, i)).x);
+		}
+		ImGui::SetNextItemWidth(max_w + padding * 2 + ImGui::GetFrameHeight());
+		if (ImGui::BeginCombo("", json_array_get_string(rings, current_item) + strlen("amdgpu_ring_"))) {
+			for (size_t i = 0; i < json_array_get_count(rings); i++) {
+				const char *ring_name = get_ring_name(rings, i);
+				ImGui::BeginDisabled(strstr(ring_name, "vcn") || strstr(ring_name, "jpeg"));
+				if (ImGui::Selectable(ring_name, i == current_item)) {
+					current_item = i;
+				}
+				ImGui::EndDisabled();
+			}
+			ImGui::EndCombo();
+		}
+
 		ImGui::PopID();
 		ImGui::SameLine();
+
 		ImGui::BeginDisabled(!can_send_request);
-		ImGui::Checkbox("Limit to rptr/wptr", &rptr_wptr);
-		ImGui::SameLine();
-		ImGui::BeginDisabled(dt < 0);
-		if (ImGui::Button("Read")) {
-			const char *ring_name;
-			get_ring_name(rings, current_item, &ring_name);
-			send_ring_command(&ring_name[strlen("amdgpu_ring_")], halt, rptr_wptr);
+		if (ImGui::Button("  Read Ring  ")) {
+			const char *ring_name = get_ring_name(rings, current_item);
+			send_ring_command(ring_name, halt, rptr_wptr);
 		}
-		ImGui::EndDisabled();
+		ImGui::SameLine();
+
+		/* Right-align options. */
+		float w = ImGui::CalcTextSize("Options:").x +
+				  padding +
+				  ImGui::CalcTextSize("Halt waves").x + ImGui::GetFrameHeight() + 2 * padding +
+				  ImGui::CalcTextSize("Limit to rptr/wptr").x + ImGui::GetFrameHeight() + 2 * padding;
+
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - w);
+		ImGui::Text("Options:");
+		ImGui::SameLine();
+		ImGui::Checkbox("Halt waves", &halt);
+		ImGui::SameLine();
+		ImGui::Checkbox("Limit to rptr/wptr", &rptr_wptr);
 		ImGui::EndDisabled();
 		ImGui::Separator();
 		if (last_answer) {
@@ -282,15 +317,12 @@ private:
 			return 0;
 		}
 
-		ImGui::BeginTable("dis", rptr >= 0 ? 4 : 3, ImGuiTableFlags_BordersV);
+		ImGui::BeginTable("dis", 3, ImGuiTableFlags_BordersV);
 		ImGui::TableSetupColumn(rptr >= 0 ? "Index" : "Address", ImGuiTableColumnFlags_WidthFixed,
-			rptr >= 0 ? ImGui::CalcTextSize(" Index ").x : ImGui::CalcTextSize(" 0x0000000000000000 + 0x0000").x);
+			rptr >= 0 ? ImGui::CalcTextSize(" Index ").x : ImGui::CalcTextSize(" 0x0000000000000000 ").x);
 		ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed,
 			ImGui::CalcTextSize(" 00000000 ").x);
 		ImGui::TableSetupColumn("Opcode");
-		if (rptr >= 0)
-			ImGui::TableSetupColumn("Pointers", ImGuiTableColumnFlags_WidthFixed,
-				ImGui::CalcTextSize("Pointers").x);
 		ImGui::TableHeadersRow();
 
 		uint32_t start = (uint32_t)json_object_get_number(ib, "opcode_start");
@@ -298,6 +330,7 @@ private:
 
 		int draw_dispatch_count = 0;
 
+		bool opcode_verbose = false;
 		struct umr_stream_decode_ui ui;
 		ui.rt = type;
 		ui.start_ib = _start_ib;
@@ -306,7 +339,9 @@ private:
 		ui.add_field = _add_field;
 		ui.add_shader = _add_shader;
 		ui.add_data = _add_data;
+		ui.unhandled = _ring_unhandled;
 		ui.done = _done;
+		ui.data = &opcode_verbose;
 
 		struct umr_packet_stream *str = umr_packet_decode_buffer(
 			asic, &ui, 0, base,
