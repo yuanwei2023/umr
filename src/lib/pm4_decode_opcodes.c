@@ -1684,6 +1684,28 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(fetch_word(asic, stream, 4), 2, 28), NULL, 16, 32);
 			}
 			break;
+		case 0xB9: // SET_CONTEXT_REG_PAIRS_PACKED
+		case 0xBC:
+		case 0xBD: // SET_SH_REG_PAIRS_PACKED(_N)
+			{
+				uint32_t offset, n, m;
+
+				switch (stream->opcode) {
+					case 0xB9: offset = 0xA000; break;
+					case 0xBC:
+					case 0xBD: offset = 0x2C00; break;
+				}
+
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "REG_WRITES_COUNT", BITS(fetch_word(asic, stream, 0), 0, 16), NULL, 10, 32);
+
+				for (m = 0, n = 1; n < stream->n_words; n += 3, ++m) {
+					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET0", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
+					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET1", BITS(fetch_word(asic, stream, n+0), 16, 32), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 16, 32)), 16, 32);
+					ui->add_field(ui, ib_addr + 12 + 12 * m, ib_vmid, "REG_DATA0", fetch_word(asic, stream, n+1), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16 + 12 * m, ib_vmid, "REG_DATA1", fetch_word(asic, stream, n+2), NULL, 16, 32);
+				}
+			}
+			break;
 		default:
 			decode_pkt3_gfx10(asic, ui, stream, ib_addr, ib_vmid);
 			break;
@@ -1973,28 +1995,6 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 				for (m = n = 0; n < stream->n_words; n += 2, ++m) {
 					ui->add_field(ui, ib_addr + 4 + 8 * m, ib_vmid, "REG_OFFSET", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
 					ui->add_field(ui, ib_addr + 8 + 8 * m, ib_vmid, "REG_DATA", fetch_word(asic, stream, n+1), NULL, 16, 32);
-				}
-			}
-			break;
-		case 0xB9: // SET_CONTEXT_REG_PAIRS_PACKED
-		case 0xBC:
-		case 0xBD: // SET_SH_REG_PAIRS_PACKED(_N)
-			{
-				uint32_t offset, n, m;
-
-				switch (stream->opcode) {
-					case 0xB9: offset = 0xA000; break;
-					case 0xBC:
-					case 0xBD: offset = 0x2C00; break;
-				}
-
-				ui->add_field(ui, ib_addr + 4, ib_vmid, "REG_WRITES_COUNT", BITS(fetch_word(asic, stream, 0), 0, 16), NULL, 10, 32);
-
-				for (m = 0, n = 1; n < stream->n_words; n += 3, ++m) {
-					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET0", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
-					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET1", BITS(fetch_word(asic, stream, n+0), 16, 32), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 16, 32)), 16, 32);
-					ui->add_field(ui, ib_addr + 12 + 12 * m, ib_vmid, "REG_DATA0", fetch_word(asic, stream, n+1), NULL, 16, 32);
-					ui->add_field(ui, ib_addr + 16 + 12 * m, ib_vmid, "REG_DATA1", fetch_word(asic, stream, n+2), NULL, 16, 32);
 				}
 			}
 			break;
