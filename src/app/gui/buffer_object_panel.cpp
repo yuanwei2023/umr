@@ -63,7 +63,10 @@ public:
 				displayed_bo = NULL;
 			} else {
 				last_answer_peak_bo = json_object(json_value_deep_copy(answer));
-				this->raw_data = _raw_data;
+				if (this->raw_data)
+					free(this->raw_data);
+				this->raw_data = malloc(_raw_data_size);
+				memcpy(this->raw_data, _raw_data, _raw_data_size);
 				this->raw_data_size = _raw_data_size;
 			}
 		}
@@ -71,6 +74,9 @@ public:
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		if (raw_data) {
+			/* The creation has to be created in the display thread because
+			 * it requires the GL context.
+			 */
 			int width = json_object_get_number(last_answer_peak_bo, "width");
 			int height = json_object_get_number(last_answer_peak_bo, "height");
 			if (texture_id)

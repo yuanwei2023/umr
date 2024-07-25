@@ -55,6 +55,100 @@
 #include <sys/syscall.h>
 #include <amdgpu_drm.h>
 
+const char *fullscreen_vs =
+	"#version 320 es\n"
+	"precision highp float;\n"
+	"out vec2 texcoord;\n"
+    "void main() {\n"
+    "    const vec2 uv[4] = vec2[](\n"
+    "        vec2(0, 0),\n"
+    "        vec2(1, 0),\n"
+    "        vec2(0, 1),\n"
+    "        vec2(1, 1)\n"
+    "    );\n"
+    "    texcoord = uv[gl_VertexID];\n"
+    "    gl_Position = vec4(vec2(-1.0, -1.0) + uv[gl_VertexID] * vec2(2.0, 2.0), 0.0, 1.0);\n"
+    "}\n";
+
+const char *fullscreen_fs =
+	"#version 320 es\n"
+	"precision highp float;\n"
+	"centroid in vec2 texcoord;\n"
+	"uniform sampler2D tex;\n"
+	"out vec4 fragColor;\n"
+	"void main() {\n"
+	"  fragColor = texture(tex, texcoord);\n"
+   "}";
+
+static
+void* read_gl_tex_as_rgba(GLuint texture, int width, int height) {
+	GLuint fbo = 0, tex = 0, vao = 0, fs = 0, vs = 0, prog = 0;
+	void *pixels = NULL;
+
+	glGenTextures(1, &tex);
+
+	/* Create a FBO */
+	glGenFramebuffers(1, &fbo);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+
+	fs = glCreateShader(GL_FRAGMENT_SHADER);
+	vs = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(fs, 1, &fullscreen_fs, NULL);
+	glShaderSource(vs, 1, &fullscreen_vs, NULL);
+	glCompileShader(fs);
+	glCompileShader(vs);
+	prog = glCreateProgram();
+	glAttachShader(prog, fs);
+	glAttachShader(prog, vs);
+
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	glLinkProgram(prog);
+
+	if (glGetError() != GL_NO_ERROR)
+		goto end;
+
+	glUseProgram(prog);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(prog, "tex"), 0);
+
+	glViewport(0, 0, width, height);
+
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+	pixels = malloc(width * height * 4);
+
+	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+end:
+	if (vao)
+		glDeleteVertexArrays(1, &vao);
+	if (fbo)
+		glDeleteFramebuffers(1, &fbo);
+	if (tex)
+		glDeleteTextures(1, &tex);
+	if (fs)
+		glDeleteShader(fs);
+	if (vs)
+		glDeleteShader(vs);
+	if (prog)
+		glDeleteProgram(prog);
+
+	return pixels;
+}
+
 static int64_t time_ns(void)
 {
    struct timespec ts;
@@ -340,6 +434,8 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 
 	glBindTexture(GL_TEXTURE_2D, tex[1]);
 	if (fourcc == DRM_FORMAT_XRGB2101010) {
+		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB10, width, height);
+	} else if (fourcc == DRM_FORMAT_ARGB2101010) {
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB10_A2, width, height);
 	} else if (fourcc == DRM_FORMAT_XRGB8888) {
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB8, width, height);
@@ -349,6 +445,9 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 		/* default is DRM_FORMAT_ARGB8888 */
 		glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, width, height);
 	}
+	if (glGetError() != GL_NO_ERROR)
+		return "glTexStorage2D failed";
+
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
@@ -357,17 +456,10 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 					   tex[1], GL_TEXTURE_2D, 0,
 					   0, 0, 0,
 					   width, height, 1);
+	if (glGetError() != GL_NO_ERROR)
+		return "glCopyImageSubData failed";
 
-	void *pixels = malloc(width * height * 4);
-	GLuint fbo;
-	glGenFramebuffers(1, &fbo);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex[1], 0);
-
-	glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glDeleteFramebuffers(1, &fbo);
+	void *pixels = read_gl_tex_as_rgba(tex[1], width, height);
 
 	eglMakeCurrent (display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 	eglDestroyImage(display, image);
