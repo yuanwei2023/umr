@@ -1067,6 +1067,12 @@ int main(int argc, char **argv)
 								fprintf(stderr, "[ERROR]: Must specify a VMID for the --vm-decode command\n");
 								exit(EXIT_FAILURE);
 							}
+
+						// sometimes people forget the 0x when using different hubs...
+						if ((vmid & 0xFF) > 15) {
+							fprintf(stderr, "[WARNING]: VMID > 15 is likely a typo on the command line (did you forget to add 0x?)\n");
+						}
+
 						sscanf(argv[i+2], "%"SCNx32, &size);
 
 						// imply user hub if hub name specified
@@ -1102,6 +1108,11 @@ int main(int argc, char **argv)
 						// imply user hub if hub name specified
 						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
+
+						// sometimes people forget the 0x when using different hubs...
+						if ((vmid & 0xFF) > 15) {
+							fprintf(stderr, "[WARNING]: VMID > 15 is likely a typo on the command line (did you forget to add 0x?)\n");
+						}
 
 						sscanf(argv[i+2], "%"SCNx32, &size);
 						do {
@@ -1139,6 +1150,11 @@ int main(int argc, char **argv)
 						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
+						// sometimes people forget the 0x when using different hubs...
+						if ((vmid & 0xFF) > 15) {
+							fprintf(stderr, "[WARNING]: VMID > 15 is likely a typo on the command line (did you forget to add 0x?)\n");
+						}
+
 						sscanf(argv[i+2], "%"SCNx32, &size);
 						do {
 							n = size > sizeof(buf) ? sizeof(buf) : size;
@@ -1173,6 +1189,11 @@ int main(int argc, char **argv)
 						// imply user hub if hub name specified
 						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
+
+						// sometimes people forget the 0x when using different hubs...
+						if ((vmid & 0xFF) > 15) {
+							fprintf(stderr, "[WARNING]: VMID > 15 is likely a typo on the command line (did you forget to add 0x?)\n");
+						}
 
 						sscanf(argv[i+2], "%"SCNx32, &data);
 						if (umr_write_vram(asic, asic->options.vm_partition, vmid, address, 4, &data))
