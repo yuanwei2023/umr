@@ -1067,6 +1067,14 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "MASK", fetch_word(asic, stream, 1), NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "DATA", fetch_word(asic, stream, 2), NULL, 16, 32);
 			break;
+		case 0x5D: // PRIME_UTCL2
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_PERM", BITS(fetch_word(asic, stream, 0), 0, 3), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "PRIME_MODE", BITS(fetch_word(asic, stream, 0), 3, 4), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 30, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDR_LO", fetch_word(asic, stream, 1), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "REQUESTED_PAGES", BITS(fetch_word(asic, stream, 3), 0, 14), NULL, 10, 32);
+			break;
 		case 0x81: // WRITE_CONST_RAM
 			{
 				uint32_t addr = BITS(fetch_word(asic, stream, 0), 0, 16);
@@ -1902,14 +1910,6 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "DAIC", BITS(fetch_word(asic, stream, 5), 29, 30), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "RAW_WAIT", BITS(fetch_word(asic, stream, 5), 30, 31), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(fetch_word(asic, stream, 5), 31, 32), NULL, 10, 32);
-			break;
-		case 0x5D: // PRIME_UTCL2
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_PERM", BITS(fetch_word(asic, stream, 0), 0, 3), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "PRIME_MODE", BITS(fetch_word(asic, stream, 0), 3, 4), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 30, 32), NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDR_LO", fetch_word(asic, stream, 1), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 16, ib_vmid, "REQUESTED_PAGES", BITS(fetch_word(asic, stream, 3), 0, 14), NULL, 10, 32);
 			break;
 		case 0x9A: // DMA_DATA_FILL_MULTI
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 0, 1), NULL, 10, 32);
