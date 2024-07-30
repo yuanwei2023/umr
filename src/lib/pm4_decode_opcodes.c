@@ -130,7 +130,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 5a
 	"UNK", // 5b
 	"UNK", // 5c
-	"UNK", // 5d
+	"PKT3_PRIME_UTCL2", // 5d
 	"PKT3_LOAD_UCONFIG_REG", // 5e
 	"PKT3_LOAD_SH_REG", // 5f
 	"PKT3_LOAD_CONFIG_REG", // 60
@@ -204,7 +204,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_QUERY_STATUS", // a4
 	"PKT3_MES_RUN_LIST", // a5
 	"UNK", // a6
-	"UNK", // a7
+	"PKT3_DISPATCH_DIRECT_INTERLEAVED", // a7
 	"UNK", // a8
 	"PKT3_DISPATCH_TASK_STATE_INIT", // a9
 	"PKT3_DISPATCH_TASKMESH_DIRECT_ACE", // aa
@@ -1903,6 +1903,14 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "RAW_WAIT", BITS(fetch_word(asic, stream, 5), 30, 31), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 24, ib_vmid, "DIS_WC", BITS(fetch_word(asic, stream, 5), 31, 32), NULL, 10, 32);
 			break;
+		case 0x5D: // PRIME_UTCL2
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_PERM", BITS(fetch_word(asic, stream, 0), 0, 3), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "PRIME_MODE", BITS(fetch_word(asic, stream, 0), 3, 4), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 30, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDR_LO", fetch_word(asic, stream, 1), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "REQUESTED_PAGES", BITS(fetch_word(asic, stream, 3), 0, 14), NULL, 10, 32);
+			break;
 		case 0x9A: // DMA_DATA_FILL_MULTI
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 0, 1), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "MEMLOG_CLEAR", BITS(fetch_word(asic, stream, 0), 10, 11), NULL, 10, 32);
@@ -1979,6 +1987,12 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 				else
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(fetch_word(asic, stream, 4), 2, 28), NULL, 16, 32);
 			}
+			break;
+		case 0xA7: // DISPATCH_DIRECT_INTERLEAVED
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DIM_X", fetch_word(asic, stream, 0), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DIM_Y", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DIM_Z", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, 3), NULL, 16, 32);
 			break;
 		case 0xB8: // SET_CONTEXT_REG_PAIRS
 		case 0xBA: // SET_SH_REG_PAIRS
