@@ -82,7 +82,8 @@ int umr_vm_disasm_to_str(struct umr_asic *asic, int vm_partition, unsigned vmid,
 		goto error;
 	}
 
-	asic->shader_disasm_funcs.disasm(asic, (uint8_t *)opcodes, size, addr + start_offset, &opcode_strs);
+	if (!asic->options.no_disasm)
+		asic->shader_disasm_funcs.disasm(asic, (uint8_t *)opcodes, size, addr + start_offset, &opcode_strs);
 
 	for (y = 0, x = start_offset / 4; x < (start_offset + size)/4; x++, y++) {
 		snprintf(linebuf, sizeof(linebuf) - 1, "%s pgm[%s%u%s@%s0x%" PRIx64 "%s + %s0x%-4x%s] = %s0x%08" PRIx32 "%s\t%s%-60s%s\t",
@@ -91,8 +92,9 @@ int umr_vm_disasm_to_str(struct umr_asic *asic, int vm_partition, unsigned vmid,
 			YELLOW, addr, RST,
 			YELLOW, (unsigned)x * 4, RST,
 			BLUE, opcodes[y], RST,
-			GREEN, opcode_strs[y], RST);
-		free(opcode_strs[y]);
+			GREEN, opcode_strs ? opcode_strs[y] : "<...>", RST);
+		if (opcode_strs)
+			free(opcode_strs[y]);
 		(*out)[y] = strdup(linebuf);
 	}
 	free(opcode_strs);

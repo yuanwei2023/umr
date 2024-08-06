@@ -65,7 +65,7 @@ void umr_print_waves(struct umr_asic *asic)
 	// don't scan for shader info by reading the ring if no_disasm is
 	// requested.  This is useful for when the ring or IBs contain
 	// invalid or racy data that cannot be reliably parsed.
-	if (!asic->options.no_disasm && strcmp(asic->options.ring_name, "none")) {
+	if (strcmp(asic->options.ring_name, "none")) {
 		if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
 			use_ring = 0;
 
@@ -110,6 +110,7 @@ void umr_print_waves(struct umr_asic *asic)
 		for (x = 0; wd->reg_names[x]; x++) {
 			X(x);
 		}
+		fprintf(output, "\n\n");
 
 		if (asic->options.bitfields) {
 			H("Register Bits");
