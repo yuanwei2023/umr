@@ -242,12 +242,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 		// fetch basics out of header
 		ps->header = *stream;
 		ps->pkttype = *stream >> 30;
-		if (ps->pkttype == 3 || (asic->family <= FAMILY_AI && ps->pkttype == 0)) {
-			ps->n_words = ((*stream >> 16) + 1) & 0x3FFF;
-		} else {
-			ps->n_words = 0;
-			ps->pkttype = 0xff;
-		}
+		ps->n_words = ((*stream >> 16) + 1) & 0x3FFF;
 
 		// grab type specific header data
 		if (ps->pkttype == 0)
