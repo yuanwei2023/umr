@@ -312,7 +312,11 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "send_write_data", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_override", (fetch_word(asic, stream, i) >> 13) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_rs64mem_for_proc_gang_ctx", (fetch_word(asic, stream, i) >> 14) & 1, NULL, 10, 32);
-						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmapped_doorbell_handling", (fetch_word(asic, stream, i) >> 15) & 3, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "halt_on_misaligned_access", (fetch_word(asic, stream, i) >> 15) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_add_queue_unmap_flag_addr", (fetch_word(asic, stream, i) >> 16) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_sch_stb_log", (fetch_word(asic, stream, i) >> 17) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "limit_single_process", (fetch_word(asic, stream, i) >> 18) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmapped_doorbell_handling", (fetch_word(asic, stream, i) >> 19) & 3, NULL, 10, 32);
 					}
 				}
 				++i;
