@@ -84,6 +84,9 @@ static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
 static struct umr_asic *get_asic(void)
 {
 retry:
+	if (options.verbose) {
+		fprintf(stderr, "[VERBOSE]: Trying to connect to DRI instance %d...\n", options.instance);
+	}
 	asic = umr_discover_asic(&options, err_printf);
 	if (!asic && !options.forced_instance && options.instance < 128) {
 		options.instance++;
@@ -91,7 +94,7 @@ retry:
 	}
 
 	if (!asic) {
-		printf("ASIC not found (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
+		fprintf(stderr, "[ERROR]: ASIC not found or compatible (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
 		exit(EXIT_FAILURE);
 	}
 

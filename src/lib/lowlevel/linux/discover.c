@@ -150,7 +150,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 	// Try to map to instance if we have a specific pci device
 	if (options->pci.domain || options->pci.bus ||
 	    options->pci.slot || options->pci.func) {
-		int parsed_did;
+		int parsed_did, inst;
 		unsigned long did;
 
 		snprintf(options->pci.name, sizeof(options->pci.name), "%04x:%02x:%02x.%x",
@@ -158,34 +158,38 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 			options->pci.func);
 
 		if (!options->no_kernel)
-			options->instance = find_pci_instance(options->pci.name);
+			inst = find_pci_instance(options->pci.name);
 
-		snprintf(driver, sizeof(driver), "/sys/bus/pci/devices/%s/device", options->pci.name);
-		f = fopen(driver, "r");
-		if (!f) {
-			if (!options->quiet) perror("Cannot open PCI device name under sysfs (is a display attached?)");
-			return NULL;
-		}
-		parsed_did = fscanf(f, "0x%04lx", &did);
-		trydid = did;
-		fclose(f);
-		if (parsed_did != 1) {
-			if (!options->quiet) printf("Could not read device id");
-			return NULL;
-		}
+		if (inst >= 0) {
+			options->instance = inst;
 
-		if (options->no_kernel) {
-			// try loading an .sasic
-			struct rumr_buffer *buf;
-			char fname[32];
+			snprintf(driver, sizeof(driver), "/sys/bus/pci/devices/%s/device", options->pci.name);
+			f = fopen(driver, "r");
+			if (!f) {
+				if (!options->quiet) perror("Cannot open PCI device name under sysfs (is a display attached?)");
+				return NULL;
+			}
+			parsed_did = fscanf(f, "0x%04lx", &did);
+			trydid = did;
+			fclose(f);
+			if (parsed_did != 1) {
+				if (!options->quiet) printf("Could not read device id");
+				return NULL;
+			}
 
-			sprintf(fname, "0x%"PRIx32".sasic", (uint32_t)did);
-			buf = rumr_load_serialized_asic(fname, options->database_path);
-			if (buf) {
-				asic = rumr_parse_serialized_asic(buf);
-				rumr_buffer_free(buf);
-				if (asic) {
-					asic->options = *options;
+			if (options->no_kernel) {
+				// try loading an .sasic
+				struct rumr_buffer *buf;
+				char fname[32];
+
+				sprintf(fname, "0x%"PRIx32".sasic", (uint32_t)did);
+				buf = rumr_load_serialized_asic(fname, options->database_path);
+				if (buf) {
+					asic = rumr_parse_serialized_asic(buf);
+					rumr_buffer_free(buf);
+					if (asic) {
+						asic->options = *options;
+					}
 				}
 			}
 		}
