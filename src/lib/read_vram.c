@@ -1564,7 +1564,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 					break;
 				} else {
 					// otherwise subtract this vram size from the address and go to the next device
-					addr -= round_up_next_gib(asic->config.xgmi.nodes[n].asic->config.vram_size);
+					addr -= asic->config.xgmi.nodes[n].asic->config.vram_size;
 				}
 			}
 			// now {asic, address} are the device and it's relative address
