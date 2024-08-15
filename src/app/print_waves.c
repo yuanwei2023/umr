@@ -99,8 +99,11 @@ void umr_print_waves(struct umr_asic *asic)
 	owd = wd = umr_scan_wave_data(asic);
 
 	output = tmpfile();
-
 	while (wd) {
+		uint64_t pc;
+		uint32_t vmid;
+		uint32_t shader_size = NUM_OPCODE_WORDS*4;
+
 		first = 0;
 		wavefront_desc = umr_wave_data_describe_wavefront(asic, wd);
 		fprintf(output, "\n------------------------------------------------------\n%s\n", wavefront_desc);
@@ -183,40 +186,36 @@ void umr_print_waves(struct umr_asic *asic)
 				}
 			}
 
-			if (ring_halted) {
-				uint64_t pc;
-				uint32_t vmid;
-				uint32_t shader_size = NUM_OPCODE_WORDS*4;
+			/* always dump shaders */
+			umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
+			pgm_addr = pc;
 
-				umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
-				pgm_addr = pc;
+			fprintf(output, ring_halted ? "\n\nPGM_MEM:" : "\n\nPGM_MEM (guess based on PC):");
+			if (ring_halted && stream)
+				shader = umr_packet_find_shader(stream, vmid, pgm_addr);
+			if (shader) {
+				fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)\n",
+					BLUE, shader->vmid, RST,
+					YELLOW, (unsigned long long)shader->addr, RST,
+					BLUE, shader->size, RST);
 
-				fprintf(output, "\n\nPGM_MEM:");
-				if (stream)
-					shader = umr_packet_find_shader(stream, vmid, pgm_addr);
-				if (shader) {
-					fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)\n",
-						BLUE, shader->vmid, RST,
-						YELLOW, (unsigned long long)shader->addr, RST,
-						BLUE, shader->size, RST);
-
-					// start decoding a bit before PC if possible
-					if (!(asic->options.full_shader) && (shader->addr + ((NUM_OPCODE_WORDS*4)/2) < pgm_addr))
-						pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
-					else
-						pgm_addr = shader->addr;
-					if (asic->options.full_shader)
-						shader_size = shader->size;
-					shader_addr = shader->addr;
-					free(shader);
-				} else {
+				// start decoding a bit before PC if possible
+				if (!(asic->options.full_shader) && (shader->addr + ((NUM_OPCODE_WORDS*4)/2) < pgm_addr))
 					pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
-					shader_addr = pgm_addr;
-					fprintf(output, "\n");
-				}
-				umr_vm_disasm(asic, output, asic->options.vm_partition, vmid, shader_addr, pc, shader_size,
-					      pgm_addr - shader_addr, NULL);
+				else
+					pgm_addr = shader->addr;
+				if (asic->options.full_shader)
+					shader_size = shader->size;
+				shader_addr = shader->addr;
+				free(shader);
+				shader = NULL;
+			} else {
+				pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
+				shader_addr = pgm_addr;
+				fprintf(output, "\n");
 			}
+			umr_vm_disasm(asic, output, asic->options.vm_partition, vmid, shader_addr, pc, shader_size,
+					  pgm_addr - shader_addr, NULL);
 		}
 		wd = wd->next;
 	}
