@@ -1302,8 +1302,8 @@ int main(int argc, char **argv)
 					argflags[i] = 1;
 					umr_power(asic);
 				} else if (!strcmp(argv[i], "--clock-scan") || !strcmp(argv[i], "-cs")) {
+					argflags[i] = 1;
 					if (i + 1 < argc) {
-						argflags[i] = 1;
 						argflags[i+1] = 1;
 						umr_clock_scan(asic, argv[i+1]);
 						i++;
@@ -1311,8 +1311,8 @@ int main(int argc, char **argv)
 						umr_clock_scan(asic, NULL);
 					}
 				} else if (!strcmp(argv[i], "--clock-manual") || !strcmp(argv[i], "-cm")) {
+					argflags[i] = 1;
 					if (i + 1 < argc) {
-						argflags[i] = 1;
 						argflags[i+1] = 1;
 						argflags[i+2] = 1;
 						umr_clock_manual(asic, argv[i+1], argv[i+2]);
