@@ -886,6 +886,31 @@ void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 	asic->gpr_read_funcs.read_vgprs = read_vgprs;
 
 	asic->wave_funcs.get_wave_status = wave_status;
+	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
+	asic->ring_func.read_ring_data = umr_read_ring_data;
+
+	asic->shader_disasm_funcs.disasm = umr_shader_disasm;
+
+	if (asic->options.vgpr_granularity >= 0)
+		asic->parameters.vgpr_granularity = asic->options.vgpr_granularity;
 
 	th->asic = asic;
+
+	umr_scan_config(asic, 0);
+
+	// default shader options
+	if (asic->family <= FAMILY_VI) { // on gfx9+ hs/gs are opaque
+		asic->options.shader_enable.enable_gs_shader = 1;
+		asic->options.shader_enable.enable_hs_shader = 1;
+	}
+	asic->options.shader_enable.enable_vs_shader   = 1;
+	asic->options.shader_enable.enable_ps_shader   = 1;
+	asic->options.shader_enable.enable_es_shader   = 1;
+	asic->options.shader_enable.enable_ls_shader   = 1;
+	asic->options.shader_enable.enable_comp_shader = 1;
+
+	if (asic->family > FAMILY_VI)
+		asic->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
+
+	umr_create_mmio_accel(asic);
 }

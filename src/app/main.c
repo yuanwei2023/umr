@@ -38,6 +38,7 @@ void sigint(int signo)
 
 struct umr_options options;
 static struct umr_asic *asic;
+static struct umr_test_harness *th = NULL;
 
 static int std_printf(const char *fmt, ...)
 {
@@ -83,6 +84,16 @@ static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
 
 static struct umr_asic *get_asic(void)
 {
+	if (th && th->discovery.contents) {
+		asic = umr_discover_asic_by_discovery_table("emulated", &options, std_printf);
+		umr_attach_test_harness(th, asic);
+		return asic;
+	} else if (th && strlen(options.dev_name)) {
+		asic = umr_discover_asic_by_name(&options, options.dev_name, std_printf);
+		umr_attach_test_harness(th, asic);
+		return asic;
+	}
+
 retry:
 	if (options.verbose) {
 		fprintf(stderr, "[VERBOSE]: Trying to connect to DRI instance %d...\n", options.instance);
@@ -258,8 +269,8 @@ static void parse_options(char *str)
 
 enum {
 	PASS_OPTIONS=0,
-	PASS_ASIC_MODEL,
 	PASS_TEST_HARNESS,
+	PASS_ASIC_MODEL,
 	PASS_COMMANDS,
 
 	PASS_MAX
@@ -454,7 +465,6 @@ int main(int argc, char **argv)
 	int pass, i, j, k, l;
 	char *blockname, *str, *str2, asicname[256], ipname[256], regname[256], clockperformance[256];
 	struct timespec req;
-	struct umr_test_harness *th = NULL;
 	FILE *f;
 	struct rumr_client_state client_st;
 	char *argflags;
@@ -710,9 +720,8 @@ int main(int argc, char **argv)
 					if (i + 1 < argc) {
 						argflags[i] = 1;
 						argflags[i+1] = 1;
-						asic->options.test_log_fd = fopen(argv[i + 1], "w");
-						asic->options.test_log = 1;
-						umr_scan_config(asic, 0);
+						options.test_log_fd = fopen(argv[i + 1], "w");
+						options.test_log = 1;
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --test-log requires one parameter\n");
@@ -723,11 +732,9 @@ int main(int argc, char **argv)
 						argflags[i] = 1;
 						argflags[i+1] = 1;
 						th = umr_create_test_harness_file(argv[i + 1]);
-						asic->options.th = th;
-						asic->options.test_log = 1;
-						asic->options.test_log_fd = NULL;
-						umr_attach_test_harness(th, asic);
-						umr_scan_config(asic, 0);
+						options.th = th;
+						options.test_log = 1;
+						options.test_log_fd = NULL;
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
