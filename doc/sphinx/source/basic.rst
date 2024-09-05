@@ -150,8 +150,6 @@ The options available are:
 |                   | This option disables this and will print the full chain of PDEs for     |
 |                   | every page decoded.                                                     |
 +-------------------+-------------------------------------------------------------------------+
-| no_scan_waves     | Disable scaning for wave data during --ring-stream  output              |
-+-------------------+-------------------------------------------------------------------------+
 | force_asic_file   | Force the use of static .asic files instead of trying IP discovery      |
 +-------------------+-------------------------------------------------------------------------+
 | export_model      | Export a mostly complete .soc15/.asic model from IP discovered data     |

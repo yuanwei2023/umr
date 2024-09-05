@@ -252,8 +252,6 @@ static void parse_options(char *str)
 			options.disasm_anyways = 1;
 		} else if (!strcmp(option, "no_fold_vm_decode")) {
 			options.no_fold_vm_decode = 1;
-		} else if (!strcmp(option, "no_scan_waves")) {
-			options.no_scan_waves = 1;
 		} else if (!strcmp(option, "force_asic_file")) {
 			options.force_asic_file = 1;
 		} else if (!strcmp(option, "export_model")) {
@@ -285,7 +283,7 @@ static void do_help(void)
 	"\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
 		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib,"
 		"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
-		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, full_shader, no_fold_vm_decode, no_scan_waves, force_asic_file\n"
+		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, full_shader, no_fold_vm_decode, force_asic_file\n"
 	"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 		"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 	"\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"

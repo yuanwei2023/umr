@@ -302,7 +302,6 @@ struct umr_options {
 	    use_xgmi,
 	    disasm_anyways,
 	    skip_gprs,
-	    no_scan_waves,
 	    wave64,
 	    full_shader,
 	    context_reg_bank,

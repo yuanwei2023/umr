@@ -18,7 +18,7 @@ fi
 
 _umr_comp_option_flags()
 {
-    local FLAGS=(bits bitsfull empty_log follow no_follow_ib use_pci use_colour read_smc quiet no_kernel verbose halt_waves disasm_early_term no_disasm disasm_anyways wave64 full_shader no_fold_vm_decode no_scan_waves)
+    local FLAGS=(bits bitsfull empty_log follow no_follow_ib use_pci use_colour read_smc quiet no_kernel verbose halt_waves disasm_early_term no_disasm disasm_anyways wave64 full_shader no_fold_vm_decode)
     local F G CURR_OPTIONS
     local ACTIVE_OPTIONS=()
     local ACTIVE_FLAGS=()
@@ -347,7 +347,7 @@ _umr_completion()
 	--database-path|-dbp)
 	    compopt -o default -o dirnames
 	    ;;
-	--option|-O|bits|bitsfull|empty_log|follow|no_follow_ib|use_pci|use_colour|read_smc|quiet|no_kernel|verbose|halt_waves|disasm_early_term|no_disasm|disasm_anyways|wave64|full_shader|no_fold_vm_decode|no_scan_waves|,)
+	--option|-O|bits|bitsfull|empty_log|follow|no_follow_ib|use_pci|use_colour|read_smc|quiet|no_kernel|verbose|halt_waves|disasm_early_term|no_disasm|disasm_anyways|wave64|full_shader|no_fold_vm_decode|,)
 	    _umr_comp_option_flags
 	    ;;
 	--force|-f)
