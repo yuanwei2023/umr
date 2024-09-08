@@ -12,6 +12,7 @@ depends=('libpciaccess' 'ncurses' 'llvm-libs' 'sdl2' 'nanomsg')
 makedepends=('cmake' 'llvm' 'libdrm')
 source=("$pkgname-$pkgver.tar.bz2")
 sha256sums=('SKIP')
+options=(!debug)
 
 build() {
 	local cmake_args=(
