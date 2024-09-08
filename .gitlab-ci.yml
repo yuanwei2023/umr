@@ -158,7 +158,7 @@ build_deb:
     - .fdo.distribution-image@ubuntu
     - .release_rules
   variables:
-    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=DEB'
+    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=DEB -DUMR_INSTALL_DEV=ON'
     MAKE_EXTRA_ARGS: 'package'
   artifacts:
     paths:
@@ -170,7 +170,7 @@ build_rpm:
     - .fdo.distribution-image@fedora
     - .release_rules
   variables:
-    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=RPM -DLLVM_DIR=/usr/lib64/llvm11/lib/cmake/llvm'
+    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=RPM -DLLVM_DIR=/usr/lib64/llvm11/lib/cmake/llvm -DUMR_INSTALL_DEV=ON'
     MAKE_EXTRA_ARGS: 'package'
   artifacts:
     paths:

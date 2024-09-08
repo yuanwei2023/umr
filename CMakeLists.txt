@@ -64,6 +64,7 @@ option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7
 option(UMR_STATIC_LLVM "Force using static LLVM libraries instead of preferring dynamic" OFF)
 option(UMR_NO_GUI "Disable umr --gui option" OFF)
 option(UMR_NO_SERVER "Disable umr --server option" ${UMR_NO_GUI})
+option(UMR_INSTALL_DEV "Install the development headers and static library" OFF)
 # TODO: can server exist without GUI? assume not
 
 # NOT UMR_NO_GUI is confusing. create a hidden option instead. ON by default

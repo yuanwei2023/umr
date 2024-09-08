@@ -20,6 +20,7 @@ build() {
 		-DCMAKE_INSTALL_PREFIX=/usr
 		-DCMAKE_INSTALL_LIBDIR=lib
 		-DCMAKE_BUILD_TYPE=Release
+		-DUMR_INSTALL_DEV=ON
 	)
 
 	cmake "${cmake_args[@]}"
