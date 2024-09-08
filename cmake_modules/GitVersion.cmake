@@ -41,13 +41,6 @@
 ###############################################################################
 
 # Try to find version by looking at git tags
-#
-# Once done, this will define
-#
-# LIBDRM_FOUND
-# LIBDRM_INCLUDE_DIR
-# LIBDRM_LIBRARIES
-
 
 # Parses the VERSION_STRING variable and places
 # the first, second and third number values in
