@@ -62,7 +62,6 @@ option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(UMR_NO_DRM "Disable libdrm functions to read memory stats (disables server and GUI)" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
 option(UMR_STATIC_LLVM "Force using static LLVM libraries instead of preferring dynamic" OFF)
-option(UMR_NEED_RT "Link against RT library, needed for older glibc versions" OFF)
 option(UMR_NO_GUI "Disable umr --gui option" OFF)
 option(UMR_NO_SERVER "Disable umr --server option" ${UMR_NO_GUI})
 # TODO: can server exist without GUI? assume not
@@ -158,11 +157,7 @@ if(UMR_SERVER)
 endif()
 
 
-if(UMR_NEED_RT)
-set(RT_LIBS "-lrt")
-else()
-set(RT_LIBS "")
-endif()
+find_library(RT_LIBS rt)
 
 set(REQUIRED_EXTERNAL_LIBS
   ${CURSES_LIBRARIES}
