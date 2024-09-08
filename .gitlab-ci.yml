@@ -13,7 +13,7 @@ stages:
 variables:
   FDO_DISTRIBUTION_VERSION: latest
   FDO_UPSTREAM_REPO: '${CI_PROJECT_PATH}'
-  FDO_DISTRIBUTION_TAG: 'built-on-2023-06-26'
+  FDO_DISTRIBUTION_TAG: 'built-on-2024-09-09'
 
 # this is for general compilation/testing/day-to-day CI
 # this is also for umr.pkg.tar.zst release
@@ -123,7 +123,7 @@ build_docker_ubuntu:
       libopengl-dev
       libpciaccess-dev
       libsdl2-dev
-      llvm-11-dev
+      llvm-14-dev
       pkgconf
       rpm
       zlib1g-dev
@@ -170,7 +170,7 @@ build_rpm:
     - .fdo.distribution-image@fedora
     - .release_rules
   variables:
-    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=RPM -DLLVM_DIR=/usr/lib64/llvm11/lib/cmake/llvm -DUMR_INSTALL_DEV=ON -DUMR_INSTALL_TEST=ON'
+    CMAKE_EXTRA_ARGS: '-DCPACK_GENERATOR=RPM -DUMR_INSTALL_DEV=ON -DUMR_INSTALL_TEST=ON'
     MAKE_EXTRA_ARGS: 'package'
   artifacts:
     paths:

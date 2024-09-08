@@ -35,7 +35,7 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm14, zlib
 
 set(CPACK_RPM_PACKAGE_AUTOREQ 0)
 set(CPACK_RPM_PACKAGE_AUTOPROV 0)
-set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm11-libs, zlib, SDL2-devel, libgbm-devel, nanomsg-devel")
+set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm-libs, zlib, SDL2-devel, libgbm-devel, nanomsg-devel")
 
 include(CPack)
 
