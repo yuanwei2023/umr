@@ -15,7 +15,7 @@ sha256sums=('SKIP')
 
 build() {
 	local cmake_args=(
-		-B build -S "$pkgname-$pkgver"
+		-B build -S .
 		-DCMAKE_INSTALL_PREFIX=/usr
 		-DCMAKE_INSTALL_LIBDIR=lib
 		-DCMAKE_BUILD_TYPE=Release
@@ -27,5 +27,5 @@ build() {
 
 package() {
 	DESTDIR="$pkgdir" cmake --install build
-	install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 "$pkgname-$pkgver/LICENSE"
+	install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 "LICENSE"
 }
