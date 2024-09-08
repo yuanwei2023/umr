@@ -22,4 +22,6 @@ target_link_libraries(umrtest umrcore) #circular dependency umrcode->umrlow->umr
 
 target_link_libraries(umrtest ${REQUIRED_EXTERNAL_LIBS})
 
-install(TARGETS umrtest DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(UMR_INSTALL_TEST)
+	install(TARGETS umrtest DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
