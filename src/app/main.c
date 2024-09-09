@@ -738,6 +738,12 @@ int main(int argc, char **argv)
 						fprintf(stderr, "[ERROR]: --test-harness requires one parameter\n");
 						return EXIT_FAILURE;
 					}
+				} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
+					// not a test harness command but we want to run this before
+					// we hit the ASIC_MODEL step
+					argflags[i] = 1;
+					umr_enumerate_devices(std_printf, options.database_path);
+					goto stopprocessingcommands;
 				}
 			} else if (pass == PASS_COMMANDS) {
 				if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
@@ -1041,10 +1047,6 @@ int main(int argc, char **argv)
 					value = 1;
 					if (asic->fd.gfxoff >= 0)
 						write(asic->fd.gfxoff, &value, sizeof(value));
-				} else if (!strcmp(argv[i], "--enumerate") || !strcmp(argv[i], "-e")) {
-					argflags[i] = 1;
-					umr_enumerate_devices(std_printf, options.database_path);
-					return 0;
 				} else if (!strcmp(argv[i], "-mm")) {
 					if (i + 1 < argc) {
 						argflags[i] = 1;
@@ -1440,6 +1442,8 @@ int main(int argc, char **argv)
 			}
 		}
 	}
+
+stopprocessingcommands:
 
 	for (i = 1; i < argc; i++) {
 		if (!argflags[i]) {

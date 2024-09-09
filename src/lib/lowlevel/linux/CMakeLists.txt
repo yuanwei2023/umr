@@ -1,6 +1,7 @@
 add_library(umrlow
   build_discovery_entry_table.c
   discover.c
+  enumerate_devices.c
   mmio.c
   query_drm.c
   read_gprwave.c
