@@ -200,15 +200,27 @@ static uint64_t str_to_uint64(const char *s)
 		return (uint64_t)-1;
 }
 
-static char *read_file(const char *path) {
+static char *read_file(const char *format, ...) {
 	static char *buffer = NULL;
 	static unsigned buffer_size = 0;
+	char path[PATH_MAX];
+	va_list args;
+	va_start (args, format);
+	if (vsprintf(path, format, args) < 0)
+		return NULL;
+	va_end (args);
 	return _read_file(path, &buffer, &buffer_size);
 }
 
-static char * read_file_a(const char *path) {
+static char * read_file_a(const char *format, ...) {
 	char *buffer = NULL;
 	unsigned buffer_size = 0;
+	char path[PATH_MAX];
+	va_list args;
+	va_start (args, format);
+	if (vsprintf(path, format, args) < 0)
+		return NULL;
+	va_end (args);
 	return _read_file(path, &buffer, &buffer_size);
 }
 
@@ -220,9 +232,7 @@ static int find_pid_by_command_name(DIR *d, const char *process_name) {
 		if (fstatat(dirfd(d), ent->d_name, &fstat, 0) < 0)
 			continue;
 		if (S_ISDIR(fstat.st_mode)) {
-			char path[512];
-			sprintf(path, "/proc/%s/comm", ent->d_name);
-			char *command = read_file_a(path);
+			char *command = read_file_a("/proc/%s/comm", ent->d_name);
 			if (command && strncmp(command, process_name, strlen(process_name)) == 0) {
 				pid = atoi(ent->d_name);
 				break;
@@ -245,10 +255,7 @@ static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int m
 	if (d) {
 		struct dirent *entry;
 		while ((entry = readdir(d))) {
-			char path[1024];
-			sprintf(path, "%s/%s", folder, entry->d_name);
-
-			char *content = read_file_a(path);
+			char *content = read_file_a("%s/%s", folder, entry->d_name);
 			if (strstr(content, pci_name) && strstr(content, "amdgpu")) {
 				result[num_fds++] = atoi(entry->d_name);
 				free(content);
@@ -1106,11 +1113,9 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 
 JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
 {
-	char path[PATH_MAX];
 	JSON_Array *pids = json_array(json_value_init_array());
-	sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 	/* Find out about the active clients. */
-	const char *ptr = read_file(path);
+	const char *ptr = read_file("/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 	while (ptr) {
 		unsigned pid;
 		char *next_pid = strstr(ptr, "pid:");
@@ -1255,14 +1260,12 @@ static void cleanup_pids_mapping(struct pid_exported *pids_mapping,
 static uint32_t get_ino_to_pid_mapping(struct umr_asic *asic,
 									   struct pid_exported **out_pids_mapping)
 {
-	char path[512];
 	/* fd ownership can be confusing; for instance XWayland will appear as the owner
 	 * of all bo instead of the real application.
 	 * Try to map bo to the real pid by matching the "exported as XXXX" strings from
 	 * amdgpu_gem_info and amdgpu_vm_info
 	 */
-	sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
-	const char *content = read_file(path);
+	const char *content = read_file("/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 	int current_pid = 0;
 	struct pid_exported *pids_mapping = NULL;
 	int num_pids_mapping = 0;
@@ -2240,10 +2243,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
-		char path[256];
 		/* Get our ID. */
-		sprintf(path, "/sys/kernel/debug/dri/%d/name", asic->instance);
-		char *dev_name = read_file(path);
+		char *dev_name = read_file("/sys/kernel/debug/dri/%d/name", asic->instance);
 		dev_name = strstr(dev_name, "dev=");
 		if (!dev_name)
 			goto error;
@@ -2262,8 +2263,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			read_fdinfo(start, pid, dev_name);
 		}
 
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
-		char *content_before = read_file_a(path);
+		char *content_before =
+			read_file_a("/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
 
 		struct timespec req, rem;
 		int steps = period_ms / step_ms;
@@ -2301,7 +2302,9 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
-		JSON_Value *fences = compare_fence_infos(content_before, read_file(path));
+		JSON_Value *fences = compare_fence_infos(
+			content_before,
+			read_file("/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance));
 		free(content_before);
 		json_object_set_value(json_object(answer), "fences", fences);
 
@@ -2499,9 +2502,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		answer = json_value_init_object();
 
-		char path[256];
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
-		const char *fence_info = read_file(path);
+		const char *fence_info = read_file("/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
 		JSON_Array *signaled_fences = get_rings_last_signaled_fences(fence_info, ring_name);
 
 		ring_data = umr_read_ring_data(asic, ring_name, &ringsize);
@@ -2661,12 +2662,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				{
 					int min, max;
 					if (i == 0) {
-						snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/pp_dpm_sclk", asic->instance);
-						parse_sysfs_clock_file(read_file(fname), &min, &max);
+						parse_sysfs_clock_file(
+							read_file("/sys/class/drm/card%d/device/pp_dpm_sclk", asic->instance),
+							&min, &max);
 						json_object_set_string(v, "unit", "MHz");
 					} else if (i == 1) {
-						snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/pp_dpm_mclk", asic->instance);
-						parse_sysfs_clock_file(read_file(fname), &min, &max);
+						parse_sysfs_clock_file(
+							read_file("/sys/class/drm/card%d/device/pp_dpm_mclk", asic->instance),
+							&min, &max);
 						json_object_set_string(v, "unit", "MHz");
 					} else if (i == 2) {
 						min = 0;
@@ -2734,8 +2737,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 						JSON_Object *hwmon = json_object(json_value_init_object());
 						/* Read fan1 data */
 						for (int i = 0; i < 4 && r == i; i++) {
-							sprintf(fname, "%s/%s/%s", dname, dir->d_name, files[i]);
-							r += sscanf(read_file(fname), "%d", &values[i]);
+							r += sscanf(read_file("%s/%s/%s", dname, dir->d_name, files[i]),
+											"%d", &values[i]);
 						}
 						if (r == 4) {
 							JSON_Value *fan = json_value_init_object();
@@ -2756,13 +2759,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 						/* Read temp data */
 						for (int i = 1;; i++) {
 							int r = 0;
-							sprintf(fname, "%s/%s/temp%d_input", dname, dir->d_name, i);
-							r += sscanf(read_file(fname), "%d", &values[0]);
-							sprintf(fname, "%s/%s/temp%d_crit", dname, dir->d_name, i);
-							r += sscanf(read_file(fname), "%d", &values[1]);
+							r += sscanf(read_file("%s/%s/temp%d_input", dname, dir->d_name, i),
+											"%d", &values[0]);
+							r += sscanf(read_file("%s/%s/temp%d_crit", dname, dir->d_name, i),
+											"%d", &values[1]);
 							if (r == 2) {
-								sprintf(fname, "%s/%s/temp%d_label", dname, dir->d_name, i);
-								const char *label = read_file(fname);
+								const char *label = read_file("%s/%s/temp%d_label", dname, dir->d_name, i);
 
 								JSON_Object *temp = json_object(json_value_init_object());
 								json_object_set_string_with_len(temp, "label", label, strlen(label) - 1);
@@ -2830,9 +2832,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_object_set_value(json_object(answer), names[i], m);
 		}
 
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
-		JSON_Array *pids = parse_vm_info(read_file(path));
-		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
+		char *data = read_file_a("/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+		if (data) {
+			JSON_Array *pids = parse_vm_info(data);
+			json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
+			free(data);
+		}
 	} else if (!strcmp(command, "drm-counters")) {
 		uint64_t values[3] = { 0 };
 		umr_query_drm(asic, 0x0f /* AMDGPU_INFO_NUM_BYTES_MOVED */, &values[0], sizeof(values[0]));
@@ -2843,19 +2848,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		json_object_set_number(json_object(answer), "num-evictions", (double)values[1]);
 		json_object_set_number(json_object(answer), "cpu-page-faults", (double)values[2]);
 	} else if (!strcmp(command, "evict")) {
-		char path[256];
 		int type = json_object_get_number(request, "type");
 		const char *mem = type == 0 ? "vram" : "gtt";
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_evict_%s", asic->instance, mem);
-		read_file(path);
+		read_file("/sys/kernel/debug/dri/%d/amdgpu_evict_%s", asic->instance, mem);
 	} else if (!strcmp(command, "kms")) {
-		char path[256];
-		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
-		const char *content = read_file(path);
+		const char *content = read_file("/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(NULL, content);
 
-		sprintf(path, "/sys/kernel/debug/dri/%d/state", asic->instance);
-		content = read_file(path);
+		content = read_file("/sys/kernel/debug/dri/%d/state", asic->instance);
 		JSON_Object *state = parse_kms_state_sysfs_file(content);
 
 		answer = json_object_get_wrapping_value(state);
@@ -2866,10 +2866,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		for (int i = 0; i < (int)json_array_get_count(crtcs); i++) {
 			JSON_Object *crtc = json_object(json_array_get_value(crtcs, i));
 			if (json_object_get_boolean(crtc, "active")) {
-				sprintf(path, "mmHUBPREQ%d_DCSURF_SURFACE_CONTROL", i);
-				struct umr_reg *r = umr_find_reg_data(asic, path);
+				char reg_name[256];
+				sprintf(reg_name, "mmHUBPREQ%d_DCSURF_SURFACE_CONTROL", i);
+				struct umr_reg *r = umr_find_reg_data(asic, reg_name);
 				if (r) {
-					uint64_t value = umr_read_reg_by_name(asic, path);
+					uint64_t value = umr_read_reg_by_name(asic, reg_name);
 					int tmz = umr_bitslice_reg(asic, r, "PRIMARY_SURFACE_TMZ", value);
 					int dcc = umr_bitslice_reg(asic, r, "PRIMARY_SURFACE_DCC_EN", value);
 					json_object_set_number(crtc, "tmz", tmz);
@@ -2878,6 +2879,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 		}
 
+		char path[PATH_MAX];
 		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_dm_visual_confirm", asic->instance);
 		if (json_object_has_value(request, "dm_visual_confirm")) {
 			FILE *fd = fopen(path, "w");
@@ -2903,13 +2905,13 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			previous_framebuffers_answer = NULL;
 		}
 
-		char path[512];
 		struct pid_exported *pids_mapping = NULL;
 		uint32_t num_pids_mapping = get_ino_to_pid_mapping(asic, &pids_mapping);
 
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_gem_info", asic->instance);
 		answer = json_value_init_object();
-		JSON_Array *pids = parse_gem_info(read_file(path), pids_mapping, num_pids_mapping);
+		JSON_Array *pids = parse_gem_info(
+			read_file("/sys/kernel/debug/dri/%d/amdgpu_gem_info", asic->instance),
+			pids_mapping, num_pids_mapping);
 
 		cleanup_pids_mapping(pids_mapping, num_pids_mapping);
 
@@ -2955,8 +2957,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
 
-		sprintf(path, "/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
-		char *content = read_file(path);
+		char *content = read_file("/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(asic, content);
 		previous_framebuffers_answer = json_value_deep_copy(json_array_get_wrapping_value(framebuffers));
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
