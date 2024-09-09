@@ -1845,7 +1845,6 @@ void init_asics() {
 
 		memset(&opt, 0, sizeof(opt));
 		opt.instance = instance;
-		opt.need_scan = 1;
 		opt.forcedid = -1;
 		opt.scanblock = "";
 		opt.vm_partition = -1;

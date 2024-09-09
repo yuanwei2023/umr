@@ -94,6 +94,7 @@ static struct umr_asic *get_asic(void)
 		return asic;
 	}
 
+	options.quiet = 1;
 retry:
 	if (options.verbose) {
 		fprintf(stderr, "[VERBOSE]: Trying to connect to DRI instance %d...\n", options.instance);
@@ -490,7 +491,6 @@ int main(int argc, char **argv)
 
 	/* defaults */
 	asic = NULL;
-	options.need_scan = 1;
 	options.forcedid = -1;
 	options.scanblock = "";
 	options.vm_partition = -1;
@@ -801,7 +801,6 @@ int main(int argc, char **argv)
 						else
 							umr_set_register(asic, argv[i+1], argv[i+2]);
 						i += 2;
-						asic->options.need_scan = 0;
 					} else {
 						fprintf(stderr, "[ERROR]: --write requires two parameters\n");
 						return EXIT_FAILURE;
@@ -813,7 +812,6 @@ int main(int argc, char **argv)
 						argflags[i+2] = 1;
 						umr_set_register_bit(asic, argv[i+1], argv[i+2]);
 						i += 2;
-						asic->options.need_scan = 0;
 					} else {
 						fprintf(stderr, "[ERROR]: --write requires two parameters\n");
 						return EXIT_FAILURE;
@@ -896,7 +894,6 @@ int main(int argc, char **argv)
 						if (!umr_scan_asic(asic, "", blockname, ""))
 							umr_print_asic(asic, blockname);
 						++i;
-						asic->options.need_scan = 0;
 					} else {
 						fprintf(stderr, "[ERROR]: --scan requires one parameter\n");
 						return EXIT_FAILURE;
@@ -927,7 +924,6 @@ int main(int argc, char **argv)
 								return EXIT_FAILURE;
 							}
 							umr_scan_asic(asic, asicname, ipname, regname);
-							asic->options.need_scan = 0;
 						}
 						++i;
 					} else {
@@ -1453,18 +1449,8 @@ stopprocessingcommands:
 
 	free(argflags);
 
-	if (options.need_scan && options.print) {
-		asic = get_asic();
-		umr_scan_asic(asic, "", "", "");
-	}
-
-	if (options.print) {
-		asic = get_asic();
-		umr_print_asic(asic, "");
-	}
-
-	if (!asic) {
-		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2022, AMD Inc.\n\n"
+	if (argc == 1) {
+		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2024, AMD Inc.\n\n"
 			   "Use '--help' for a list of commands and options.\n",
 			    UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
 	}
@@ -1474,7 +1460,7 @@ stopprocessingcommands:
 		int n;
 		for (n = 0; asic->config.xgmi.nodes[n].asic; n++)
 			umr_close_asic(asic->config.xgmi.nodes[n].asic);
-	} else {
+	} else if (asic) {
 		if (client_st.asic == asic) {
 			rumr_client_close(&client_st);
 		} else {
