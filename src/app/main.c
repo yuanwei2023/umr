@@ -332,8 +332,6 @@ static void do_help(void)
 		"\n\t\tuses the same path notation as --write.  It also accepts * for regname."
 		"\n\t\tA trailing * on a regname will read any register that has a name that contains the"
 		"\n\t\tremainder of the name specified.\n"
-	"\n\t--scan, -s <string>\n\t\tScan and print an ip block by name, e.g. \"uvd6\" or \"carrizo.uvd6\"."
-		"\n\t\tCan be used multiple times.\n",
 		UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
 
 	printf(
@@ -882,20 +880,6 @@ int main(int argc, char **argv)
 						}
 					} else {
 						fprintf(stderr, "[ERROR]: --singlestep requires two parameters\n");
-						return EXIT_FAILURE;
-					}
-				} else if (!strcmp(argv[i], "--scan") || !strcmp(argv[i], "-s")) {
-					if (i + 1 < argc) {
-						argflags[i] = 1;
-						argflags[i+1] = 1;
-						blockname = get_block_name(asic, argv[i+1]);
-						if (!blockname)
-							return EXIT_FAILURE;
-						if (!umr_scan_asic(asic, "", blockname, ""))
-							umr_print_asic(asic, blockname);
-						++i;
-					} else {
-						fprintf(stderr, "[ERROR]: --scan requires one parameter\n");
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--read") || !strcmp(argv[i], "-r")) {

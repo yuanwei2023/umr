@@ -70,7 +70,7 @@ separated strings.  Options should be specified before --update or --force comma
 
 .B use_pci
      Enable PCI access for MMIO instead of using debugfs.  Used by the --read,
-     --scan, --top, --write, and --write-bit commands.  Does not currently
+     --top, --write, and --write-bit commands.  Does not currently
      support multiple instances of the same GPU (PCI device ID).  Note that access
      to non-MMIO registers might be disabled when using this flag.
 
@@ -164,12 +164,6 @@ a
 can be appended to a register name to read any register that contains
 a partial match.  For instance, "*.vcn10.ADDR*" would read any register
 from the 'VCN10' block which contains 'ADDR' in the name.
-.IP "--scan, -s <string>"
-Scan and print an IP block by name, for example,
-.B uvd6
-or
-.B carrizo.uvd6.
-Can be used multiple times in a single invocation.
 
 .SH Device Utilization
 .IP "--top, -t"

@@ -199,14 +199,6 @@ name can be replaced with * to simplify scripting, for instance:
 
     $ umr -r *.uvd4.mmUVD_VCPU_CNTL
 
-With both --scan and --read the bits option can be used to decode
-bitfields.  For instance,
-
-    $ umr -O bits -s uvd6
-
-Would scan the uvd6 block and print out all of the registers and their
-bitfield decodings.
-
 Registers can be written with --write and --writebit commands.
 
 To read ring contents the --ring command can be used.  Optionally,

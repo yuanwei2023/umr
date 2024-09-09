@@ -252,7 +252,7 @@ _umr_comp_lookup()
 
 _umr_comp_ipblock()
 {
-    # Handle --list-regs and --scan, using the --scan model
+    # Handle --list-regs
 
     _umr_setup_gpu_ipblocks
 
@@ -333,7 +333,7 @@ _umr_comp_ring_stream()
 
 _umr_completion()
 {
-    local ALL_LONG_ARGS=(--database-path --option --gpu --instance --force --pci --gfxoff --vm-partition --bank --sbank --cbank --config --enumerate --list-blocks --list-regs --dump-discovery-table --lookup --write --writebit --read --scan --logscan --top --waves --profiler --vm-decode --vm-read --vm-write --vm-write-word --vm-disasm --ring-stream --dump-ib --dump-ib-file --header-dump --power --clock-scan --clock-manual --clock-high --clock-low --clock-auto --ppt-read --gpu-metrics --power --vbios-info --test-log --test-harness --server --gui)
+    local ALL_LONG_ARGS=(--database-path --option --gpu --instance --force --pci --gfxoff --vm-partition --bank --sbank --cbank --config --enumerate --list-blocks --list-regs --dump-discovery-table --lookup --write --writebit --read --logscan --top --waves --profiler --vm-decode --vm-read --vm-write --vm-write-word --vm-disasm --ring-stream --dump-ib --dump-ib-file --header-dump --power --clock-scan --clock-manual --clock-high --clock-low --clock-auto --ppt-read --gpu-metrics --power --vbios-info --test-log --test-harness --server --gui)
 
     local cur prev
 
@@ -365,7 +365,7 @@ _umr_completion()
 	--gfxoff|-go)
 	    COMPREPLY=( $(compgen -W "0 1" -- "$cur") )
 	    ;;
-        -lr|--list-regs|-s|--scan)
+        -lr|--list-regs)
             _umr_comp_ipblock
             ;;
 	--lookup|-lu)
