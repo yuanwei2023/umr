@@ -235,6 +235,7 @@ static int find_pid_by_command_name(DIR *d, const char *process_name) {
 			char *command = read_file_a("/proc/%s/comm", ent->d_name);
 			if (command && strncmp(command, process_name, strlen(process_name)) == 0) {
 				pid = atoi(ent->d_name);
+				free(command);
 				break;
 			}
 			free(command);
@@ -1073,7 +1074,6 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 			free(client_id);
 			continue;
 		}
-
 		const char *ptr = c;
 
 		JSON_Value *jv = json_value_init_object();
@@ -1142,11 +1142,14 @@ JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
 			json_array_append_value(pids, p);
 			json_object_set_number(json_object(p), "pid", pid);
 
-			ptr = next_space + 1 + strlen("Process:");
-			next_space = strchr(ptr, ' ');
-			int len = next_space - ptr;
+			char *command = read_file_a("/proc/%d/comm", pid);
+			if (command) {
+				json_object_set_string_with_len(json_object(p), "app", command, strlen(command) - 1);
+				free(command);
+			}
 
-			json_object_set_string_with_len(json_object(p), "app", ptr, len);
+			ptr = next_space + 1 + strlen("Process:");
+
 		} else {
 			break;
 		}
@@ -1168,17 +1171,36 @@ JSON_Array *parse_vm_info(const char *content)
 		ptr = next_space + 1;
 
 		if (sscanf(next_pid, "pid:%u", &pid) == 1) {
-			JSON_Value *p = json_value_init_object();
-			json_array_append_value(pids, p);
-			json_object_set_number(json_object(p), "pid", pid);
+			/* Do we already know about this pid? */
+			JSON_Object *p = NULL;
+			for (size_t i = 0; i < json_array_get_count(pids); i++) {
+				JSON_Object *q = json_object(json_array_get_value(pids, i));
+				if (json_object_get_number(q, "pid") == pid) {
+					p = q;
+					break;
+				}
+			}
+			if (p == NULL) {
+				p = json_object(json_value_init_object());
+				json_array_append_value(pids, json_object_get_wrapping_value(p));
+				json_object_set_number(p, "pid", pid);
+
+				char *cmd = read_file("/proc/%d/comm", pid);
+				if (cmd && strlen(cmd))
+					json_object_set_string_with_len(p, "process", cmd, strlen(cmd) - 1);
+				json_object_set_value(p, "fds", json_value_init_array());
+			}
 
 			ptr = next_space + 1 + strlen("Process:");
 			next_space = strchr(ptr, ' ');
 			int len = next_space - ptr;
 
-			json_object_set_string_with_len(json_object(p), "command", ptr, len);
+			JSON_Object *fd = json_object(json_value_init_object());
+			json_array_append_value(json_array(json_object_get_value(p, "fds")),
+											json_object_get_wrapping_value(fd));
+			json_object_set_string_with_len(fd, "command", ptr, len);
 			JSON_Array *bos = json_array(json_value_init_array());
-			json_object_set_value(json_object(p), "bos", json_array_get_wrapping_value(bos));
+			json_object_set_value(fd, "bos", json_array_get_wrapping_value(bos));
 
 			ptr = next_space + 1;
 			const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
@@ -1208,15 +1230,30 @@ JSON_Array *parse_vm_info(const char *content)
 						json_object_set_number(json_object(bo), "size", sz);
 						pid_total += sz;
 
-						if (memmem(ptr, end_of_line - ptr, " GTT", strlen(" GTT")))
-							json_object_set_number(json_object(bo), "gtt", 1);
+						int placement = 0; /* unknown */
+						if (strncmp(ptr, "CPU", strlen("CPU")) == 0)
+							placement = 1;
+						else if (strncmp(ptr, "GTT", strlen("GTT")) == 0)
+							placement = 2;
+						else if (strncmp(ptr, "VRAM", strlen("VRAM")) == 0)
+							placement = 3;
+						else if (strncmp(ptr, "GDS", strlen("GDS")) == 0)
+							placement = 4;
+						else if (strncmp(ptr, "GWS", strlen("GWS")) == 0)
+							placement = 5;
+						else if (strncmp(ptr, "OA", strlen("OA")) == 0)
+							placement = 6;
+						else if (strncmp(ptr, "DOORBELL", strlen("DOORBELL")) == 0)
+							placement = 7;
+
+						json_object_set_number(json_object(bo), "placement", placement);
+
 						if (memmem(ptr, end_of_line - ptr, " CPU_ACCESS_REQUIRED", strlen(" CPU_ACCESS_REQUIRED")))
 							json_object_set_number(json_object(bo), "cpu", 1);
 						if (memmem(ptr, end_of_line - ptr, " pin count", strlen(" pin count")) == NULL)
 							json_object_set_boolean(json_object(bo), "pinned", false);
 						if (memmem(ptr, end_of_line - ptr, " VISIBLE", strlen(" VISIBLE")))
 							json_object_set_number(json_object(bo), "visible", 1);
-
 						char *exported_as = memmem(ptr, end_of_line - ptr, "exported as", strlen("exported as"));
 						if (exported_as) {
 							char *end = exported_as + strlen("exported as ");
@@ -1232,7 +1269,7 @@ JSON_Array *parse_vm_info(const char *content)
 					}
 				}
 			}
-			json_object_set_number(json_object(p), "total", pid_total);
+			json_object_set_number(fd, "total", pid_total);
 		}
 	}
 	return pids;

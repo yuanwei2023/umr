@@ -188,7 +188,8 @@ public:
 					if (v1 && v2 && delta_ns > 0) {
 						if (!client_legend_done) {
 							JSON_Object *app = json_object(json_object_get_value(fde, "app"));
-							ImGui::Text("%s:%d", json_object_get_string(app, "app"), (int)json_object_get_number(app, "pid"));
+							ImGui::Text("%d:%s", (int)json_object_get_number(app, "pid"),
+												 json_object_get_string(app, "app"));
 							client_legend_done = true;
 						}
 						ImGui::Indent();

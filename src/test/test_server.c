@@ -111,7 +111,9 @@ enum TEST_RESULT test_parse_vm_info()
     ASSERT_EQ(json_array_get_count(out), 2);
     for (int i = 0; i < 2; i++) {
         JSON_Object *v = json_object(json_array_get_value(out, i));
-        ASSERT_STR_EQ(json_object_get_string(v, "command"), names[i]);
+        JSON_Object *fd = json_object(
+            json_array_get_value(json_object_get_array(v, "fds"), 0));
+        ASSERT_STR_EQ(json_object_get_string(fd, "command"), names[i]);
         ASSERT_EQ(json_object_get_number(v, "pid"), pids[i]);
     }
     json_value_free(json_array_get_wrapping_value(out));

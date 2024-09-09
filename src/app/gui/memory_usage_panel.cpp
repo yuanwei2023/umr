@@ -51,14 +51,80 @@ ImColor palette[] = {
 	ImColor(253, 246, 227),
 };
 
+const char *mem_type_title[] = {
+	"Unknown",
+	"RAM",
+	"GTT",
+	"VRAM",
+	"GDS",
+	"GWS",
+	"OA",
+	"DOORBELL"
+};
+
+namespace Enum {
+	enum Layout {
+		LayoutHistory = 0,
+		LayoutTreemap,
+		LayoutCount,
+	};
+}
+
+static void draw_rect_at_cursor(float x_off, int size, ImColor col, bool outline, ImColor col2) {
+	ImVec2 base = ImGui::GetCursorScreenPos();
+	base.x += x_off;
+	ImVec2 c(base.x + 2 * size, base.y + size);
+
+	ImColor co(col);
+	if (col != col2)
+		co.Value.w = 0.5;
+	ImGui::GetWindowDrawList()->AddRectFilled(base, c, co, 3);
+
+	if (outline)
+		ImGui::GetWindowDrawList()->AddRect(base, c, IM_COL32_WHITE, 3);
+
+	if (col != col2)
+		ImGui::GetWindowDrawList()->AddLine(
+			ImVec2(base.x + 3, base.y + size * 0.5), ImVec2(c.x - 3, base.y + size * 0.5), col2, 4);
+
+	base.x += 2 * size + ImGui::GetStyle().FramePadding.x;
+	ImGui::SetCursorScreenPos(base);
+}
+
+static void draw_rectangle(const ImVec2& bl, const ImVec2& tr, const ImColor& c1, const ImColor& c2, bool filled = true) {
+	float rounding = (tr.y - bl.y > 6) ? 3 : 0;
+	if (tr.x - bl.x <= 5 || c1 == c2) {
+		if (filled)
+			ImGui::GetWindowDrawList()->AddRectFilled(bl, tr, c1, rounding);
+		else
+			ImGui::GetWindowDrawList()->AddRect(bl, tr, c1, rounding);
+
+		return;
+	}
+
+	ImColor c(c1);
+	c.Value.w = 0.5;
+	ImGui::GetWindowDrawList()->AddRectFilled(bl, tr, c, rounding);
+
+	ImGui::GetWindowDrawList()->AddRect(
+		ImVec2(bl.x + 3, bl.y + 3),
+		ImVec2(tr.x - 3, tr.y - 3), c2, rounding, 0, 2);
+}
+
+
 class MemoryUsagePanel : public Panel {
 public:
-	MemoryUsagePanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), last_vm_read(10), autorefresh(1) {
+	MemoryUsagePanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), last_vm_read(10), autorefresh(0.5) {
 		got_first_drm_counters = false;
 		show_gtt = true;
 		show_vram = true;
 		show_free_memory = true;
 		drm_counters_offset = 0;
+		show_mem_type[0] = true;
+		show_mem_type[1] = true;
+		show_mem_type[2] = true;
+		show_mem_type[3] = true;
+		autorefresh_enabled = true;
 	}
 	~MemoryUsagePanel() {
 		if (last_answer)
@@ -111,7 +177,7 @@ public:
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		if (can_send_request) {
-			if (!last_answer || (autorefresh > 0 && last_vm_read > autorefresh)) {
+			if (!last_answer || (autorefresh_enabled && last_vm_read > autorefresh)) {
 				send_memory_usage_command();
 				send_drm_counters_command();
 				last_vm_read = 0;
@@ -127,11 +193,8 @@ public:
 		ImGui::SameLine();
 		ImGui::Text("Auto-refresh");
 		ImGui::SameLine();
-		bool autorefresh_enabled = autorefresh >= 0;
 		ImGui::PushID("autorefresh");
-		if (ImGui::Checkbox("", &autorefresh_enabled)) {
-			autorefresh = autorefresh_enabled ? 0.0 : -1;
-		}
+		ImGui::Checkbox("", &autorefresh_enabled);
 		ImGui::PopID();
 		if (autorefresh_enabled) {
 			ImGui::SameLine();
@@ -142,14 +205,14 @@ public:
 		ImGui::Separator();
 		const char *evict_labels[] = { "Evict VRAM", "Evict GTT" };
 		ImGui::BeginChild("bars", ImVec2(avail.x, 0), false, ImGuiWindowFlags_NoTitleBar);
-		if (last_answer && !memory_usage_app.empty()) {
+		if (last_answer && !memory_usage_snapshots.empty()) {
 			const char * titles[] = { "VRAM", "GTT", "Visible VRAM" };
 			const char * names[] = { "vram", "gtt", "vis_vram" };
 
 			char overlay[200];
 			for (int i = 0; i < 3; i++) {
 				JSON_Object *o = json_object(json_object_get_value(last_answer, names[i]));
-				ImGui::Text("%*sUsed %s", (int)(strlen(titles[i]) - strlen(titles[2])), "", titles[i]);
+				ImGui::Text("%*s%s", (int)(strlen(titles[i]) - strlen(titles[2])), "", titles[i]);
 				ImGui::SameLine();
 				uint64_t used = ((uint64_t) json_object_get_number(o, "used")) / (1024 * 1024);
 				uint64_t total = ((uint64_t) json_object_get_number(o, "total")) / (1024 * 1024);
@@ -165,192 +228,38 @@ public:
 				}
 			}
 
-			ImGui::Separator();
-			ImGui::Text("Show: ");
-			ImGui::SameLine();
-			ImGui::Checkbox("GTT", &show_gtt);
-			ImGui::SameLine();
-			ImGui::Checkbox("VRAM", &show_vram);
-			ImGui::SameLine();
-			ImGui::Checkbox("Free memory", &show_free_memory);
+			if (memory_usage_snapshots.empty())
+				return false;
 
-			float max_s = 0;
-			const float s = ImGui::GetFontSize();
-			const float px = ImGui::GetStyle().FramePadding.x;
-			for (size_t i = 0; i < memory_usage_app.size(); i++) {
-				max_s = std::max(max_s,
-					ImGui::CalcTextSize(memory_usage_app[i].name.c_str()).x +
-					ImGui::CalcTextSize(format_bo_size(memory_usage_app[i].total)).x);
-			}
-			float legend_x = max_s + 4 * s + px;
+			if (current_snapshot_index < 0 || current_snapshot_index >= memory_usage_snapshots.size())
+				current_snapshot_index = memory_usage_snapshots.size() - 1;
 
-			ImGui::BeginChild("amdgpu_vm_info", ImVec2(legend_x, 0));
-			for (size_t i = 0; i < memory_usage_app.size(); i++) {
-				ImVec2 base = ImGui::GetCursorScreenPos();
-				ImVec2 end(base);
-				end.x += legend_x;
-				end.y += ImGui::GetTextLineHeightWithSpacing();
-				memory_usage_app[i].highlight = ImGui::IsMouseHoveringRect(base, end);
+			mem_app_snapshot *current_snapshot =
+				memory_usage_snapshots.data() + current_snapshot_index;
 
-				ImVec2 c(base.x + 2 * s, base.y + s);
-				ImGui::GetWindowDrawList()->AddRectFilled(base, c,
-														  palette[i % ARRAY_SIZE(palette)]);
-				if (memory_usage_app[i].highlight)
-					ImGui::GetWindowDrawList()->AddRect(base, c, IM_COL32_WHITE);
+			float legend_x = prepare_legend(current_snapshot);
 
-				base.x += 2 * s + px;
-				ImGui::SetCursorScreenPos(base);
-				if (memory_usage_app[i].name.size())
-					ImGui::TextUnformatted(memory_usage_app[i].name.c_str());
-				else
-					ImGui::Text("pid-%d", memory_usage_app[i].pid);
-				ImGui::SameLine();
-				ImGui::TextUnformatted(format_bo_size(memory_usage_app[i].total));
-			}
+			ImGui::BeginChild("legend", ImVec2(legend_x, 0));
+			draw_legend(current_snapshot, legend_x);
 			ImGui::EndChild();
+
 			ImGui::SameLine();
-			ImGui::BeginChild("amdgpu_vm_info2", ImVec2(avail.x - legend_x - px * 2, 0));
+
+			float remaining_w = avail.x - legend_x - ImGui::GetStyle().FramePadding.x * 2;
+			ImGui::BeginChild("graph", ImVec2(remaining_w, 0));
+
 			ImVec2 base = ImGui::GetCursorScreenPos();
-			ImVec2 size = ImVec2(avail.x - legend_x - px * 2,
+			ImVec2 size = ImVec2(remaining_w,
 								 avail.y - base.y - ImGui::GetTextLineHeightWithSpacing());
 
-			JSON_Object *o = json_object(json_object_get_value(last_answer, "gtt"));
-			const uint64_t total_gtt = json_object_get_number(o, "total");
-			o = json_object(json_object_get_value(last_answer, "vram"));
-			const uint64_t total_vram = json_object_get_number(o, "total");
-			o = json_object(json_object_get_value(last_answer, "vis_vram"));
-			const uint64_t total_vis_vram = (used_vis_vram == 0) ? 0 : json_object_get_number(o, "total");
+			if (layout == Enum::LayoutHistory)
+				draw_memory_usage_history(base, size, memory_usage_snapshots, current_snapshot);
+			else if (layout == Enum::LayoutTreemap)
+				draw_memory_snapshot_as_treemap(base, size, memory_usage_snapshots, current_snapshot);
 
-			float r;
-			if (show_free_memory)
-				r = (float)total_gtt / (total_gtt + total_vram);
-			else
-				r = (float)used_gtt / (used_gtt + used_vram);
-
-			/* Split frame between GTT and VRAM */
-			ImVec2 size_gtt, base_vram, size_vram;
-			bool is_vertical = update_bbox(base, size, r, size_gtt, base_vram, size_vram, 5);
-
-			if (show_gtt != show_vram) {
-				if (show_gtt) {
-					size_gtt = size;
-				} else {
-					base_vram = base;
-					size_vram = size;
-				}
-			}
-
-			int first_vram, first_vis_vram = -1;
-			for (first_vram = 0; first_vram < memory_usage_data.size(); first_vram++)
-				if (memory_usage_data[first_vram].memory_type == 1) {
-					if (memory_usage_data[first_vram].visible) {
-						if (first_vis_vram == -1)
-							first_vis_vram = first_vram;
-					} else {
-						break;
-					}
-				}
-
-			if (first_vis_vram < 0)
-				first_vis_vram = first_vram;
-
-			/* GTT */
-			if (show_gtt) {
-				ImGui::GetWindowDrawList()->AddRect(base, ImVec2(base.x + size_gtt.x, base.y + size_gtt.y),
-													IM_COL32_WHITE);
-
-				if (show_free_memory) {
-					r = (float)used_gtt / total_gtt;
-					ImVec2 size_rgtt, base_free, size_free;
-					update_bbox(base, size_gtt, r, size_rgtt, base_free, size_free, 0);
-					draw_treemap(0, first_vis_vram - 1, base, size_rgtt);
-					draw_freespace(base_free, size_free, "GTT");
-				} else {
-					draw_treemap(0, first_vis_vram - 1, base, size_gtt);
-				}
-				ImGui::SetCursorPosX(size_gtt.x * 0.5);
-				ImGui::SetCursorPosY(size.y);
-				ImGui::TextUnformatted("GTT");
-			}
-
-			/* VRAM */
-			if (show_vram) {
-				ImGui::GetWindowDrawList()->AddRect(base_vram, ImVec2(base_vram.x + size_vram.x, base_vram.y + size_vram.y),
-													IM_COL32_WHITE);
-
-				/* Visible VRAM is part of VRAM */
-				if (show_free_memory) {
-					ImVec2 base_non_vis_vram, size_non_vis_vram;
-					/* Split space between visible/non-visible VRAM */
-					if (used_vis_vram > 0) {
-						ImVec2 size_vis_vram;
-						r = (float)total_vis_vram / total_vram;
-						update_bbox(base_vram, size_vram, r, size_vis_vram, base_non_vis_vram, size_non_vis_vram, 3, is_vertical);
-						/* Draw visible VRAM */
-						ImVec2 size_vis_vram_used, base_vis_vram_free, size_vis_vram_free;
-						r = (float)used_vis_vram / total_vis_vram;
-						update_bbox(base_vram, size_vis_vram, r, size_vis_vram_used, base_vis_vram_free, size_vis_vram_free, 0);
-						draw_treemap(first_vis_vram, first_vram - 1, base_vram, size_vis_vram_used);
-						draw_freespace(base_vis_vram_free, size_vis_vram_free, "Vis VRAM");
-					} else {
-						base_non_vis_vram = base_vram;
-						size_non_vis_vram = size_vram;
-					}
-
-					/* Draw invisible VRAM */
-					ImVec2 size_vram_used, base_vram_free, size_vram_free;
-					r = (float)used_vram / (total_vram - total_vis_vram);
-					update_bbox(base_non_vis_vram, size_non_vis_vram, r, size_vram_used, base_vram_free, size_vram_free, 0);
-					draw_treemap(first_vram, memory_usage_data.size() - 1, base_non_vis_vram, size_vram_used);
-					draw_freespace(base_vram_free, size_vram_free, "VRAM");
-				} else {
-					/* Split space between visible/non-visible VRAM */
-					if (used_vis_vram > 0) {
-						ImVec2 size_vis_vram, base_non_vis_vram, size_non_vis_vram;
-						r = (float)used_vis_vram / used_vram;
-						update_bbox(base_vram, size_vram, r, size_vis_vram, base_non_vis_vram, size_non_vis_vram, 0, is_vertical);
-
-						draw_treemap(first_vis_vram, first_vram - 1,
-									 base_vram, size_vis_vram);
-						draw_treemap(first_vram, memory_usage_data.size() - 1,
-									 base_non_vis_vram, size_non_vis_vram);
-					} else {
-						draw_treemap(first_vram, memory_usage_data.size() - 1,
-									 base_vram, size_vram);
-					}
-				}
-				ImGui::SetCursorPosX(base_vram.x - base.x + size_vram.x * 0.5);
-				ImGui::SetCursorPosY(size.y);
-				ImGui::TextUnformatted("VRAM");
-			}
 			ImGui::EndChild();
 		}
 		ImGui::EndChild();
-		#if 0
-		ImGui::SameLine();
-		ImGui::BeginChild("counters", ImVec2(avail.x, 0), false, ImGuiWindowFlags_NoTitleBar);
-		const char *labels[] = {
-			"GB moved", " evictions", "CPU page faults"
-		};
-		for (int i = 0; i < NUM_DRM_COUNTERS; i++) {
-			float max = drm_counters[i * NUM_DRM_COUNTERS_VALUES + drm_counters_offset - 1];
-			char l[128];
-			if (i == 0)
-				sprintf(l, "%.1f %s", max, labels[i]);
-			else
-				sprintf(l, "%d %s", (int)max, labels[i]);
-			ImGui::PushID(labels[i]);
-			ImGui::PlotLines("",
-				 &drm_counters[i * NUM_DRM_COUNTERS_VALUES],
-				 NUM_DRM_COUNTERS_VALUES,
-				 drm_counters_offset,
-				 l,
-				 drm_counters_min[i], FLT_MAX,
-				 ImVec2(0, avail.y / 4));
-			ImGui::PopID();
-		}
-		ImGui::EndChild();
-		#endif
 
 		return autorefresh;
 	}
@@ -373,38 +282,50 @@ private:
 	}
 
 	struct mem_data {
-		mem_data(uint32_t size = 0, uint8_t t = 0, bool v = false) :
-				 bo_size(size), app_index(0), memory_type(t),
+		mem_data(uint32_t size = 0, uint8_t mt = 255, bool v = false) :
+				 bo_size(size), app_index(0), memory_type(mt),
 				 cpu_access(false), pinned(false), visible(v) {}
 		uint32_t bo_size;
 		uint32_t app_index;
+		uint32_t fd_index;
 		uint8_t memory_type;
 		bool cpu_access;
 		bool pinned;
 		bool visible;
 	};
+	struct mem_file {
+		mem_file() : total(0) {}
+		std::string name;
+		uint64_t total;
+	};
 	struct mem_app {
+		mem_app() : total(0), num_bos(0) {}
+
 		uint32_t pid;
 		std::string name;
 		uint64_t total;
+		uint32_t num_bos;
 		bool highlight;
+		std::vector<mem_file> per_fd;
 	};
-	std::vector<mem_data> memory_usage_data;
-	std::vector<mem_app> memory_usage_app;
-	uint64_t used_gtt, used_vram, used_vis_vram;
+	struct mem_app_snapshot {
+		mem_app_snapshot() {
+			memset(used_mem_type, 0, sizeof(used_mem_type));
+		}
+		std::vector<mem_app> apps;
+		std::vector<mem_data> bos;
+		uint64_t used_mem_type[8];
+	};
+	std::vector<mem_app_snapshot> memory_usage_snapshots;
+	int current_snapshot_index = -1;
+	bool show_mem_type[8];
+	float zoom = 1.0;
 
 	void prepare_memory_usage_data(JSON_Object *data) {
 		std::vector<uint32_t> exported_ino;
 
-		memory_usage_data.clear();
-		memory_usage_app.clear();
-		used_gtt = used_vram = used_vis_vram = 0;
-
-		struct mem_app kernel;
-		kernel.pid = -1;
-		kernel.name = "kernel";
-		kernel.total = 0;
-		memory_usage_app.push_back(kernel);
+		mem_app_snapshot snapshot;
+		auto &memory_usage_data = snapshot.bos;
 
 		JSON_Array *pids = json_object_get_array(data, "pids");
 		for (int i = 0; i < json_array_get_count(pids); i++) {
@@ -412,94 +333,57 @@ private:
 			JSON_Object *o = json_object(json_array_get_value(pids, i));
 			uint32_t pid = json_object_get_number(o, "pid");
 
-			/* Merge identical pid */
-			size_t app_idx = memory_usage_app.size();
-			for (size_t j = 0; j < memory_usage_app.size(); j++) {
-				if (memory_usage_app[j].pid == pid) {
-					app_idx = j;
-					total = memory_usage_app[j].total;
-					break;
-				}
-			}
+			struct mem_app app;
+			app.pid = pid;
+			const char *name = json_object_get_string(o, "process");
+			if (name)
+				app.name = name;
 
-			JSON_Array* bos = json_object_get_array(o, "bos");
-			int bo_count = json_array_get_count(bos);
+			JSON_Array* fds = json_object_get_array(o, "fds");
+			for (size_t j = 0; j < json_array_get_count(fds); j++) {
+				JSON_Object *fd = json_object(json_array_get_value(fds, j));
+				JSON_Array* bos = json_object_get_array(fd, "bos");
 
-			if (bo_count == 0)
-				continue;
+				struct mem_file file;
+				file.name = json_object_get_string(fd, "command");
+				if (file.name.empty())
+					file.name = app.name;
 
-			for (int k = 0; k < bo_count; k++) {
-				JSON_Object *bo = json_object(json_array_get_value(bos, k));
+				const int bo_count = json_array_get_count(bos);
+				for (int k = 0; k < bo_count; k++) {
+					JSON_Object *bo = json_object(json_array_get_value(bos, k));
 
-				/* The same bo may endup being exported multiple times. Only
-				 * consider the first one.
-				 */
-				if (json_object_has_value(bo, "ino")) {
-					uint32_t ino = json_object_get_number(bo, "ino");
-					if (std::find(exported_ino.begin(), exported_ino.end(), ino) != exported_ino.end()) {
-						continue;
+					/* The same bo may endup being exported multiple times. Only
+					 * consider the first one.
+					 */
+					if (json_object_has_value(bo, "ino")) {
+						uint32_t ino = json_object_get_number(bo, "ino");
+						if (std::find(exported_ino.begin(), exported_ino.end(), ino) != exported_ino.end()) {
+							continue;
+						}
+						exported_ino.push_back(ino);
 					}
-					exported_ino.push_back(ino);
+
+					struct mem_data m(json_object_get_number(bo, "size"),
+									  json_object_get_number(bo, "placement"),
+									  json_object_get_number(bo, "visible"));
+					m.app_index = i;
+					m.fd_index = j;
+					m.cpu_access = json_object_get_number(bo, "cpu");
+					m.pinned = json_object_get_boolean(bo, "pinned");
+					memory_usage_data.push_back(m);
+
+					if (m.memory_type <= 3) {
+						snapshot.used_mem_type[m.memory_type] += m.bo_size;
+						file.total += m.bo_size;
+						app.total += m.bo_size;
+						app.num_bos += 1;
+					}
 				}
-
-				struct mem_data m;
-				m.bo_size = json_object_get_number(bo, "size");
-				m.app_index = app_idx;
-				m.memory_type = json_object_get_number(bo, "gtt") ? 0 : 1;
-				m.cpu_access = json_object_get_number(bo, "cpu");
-				m.pinned = json_object_get_boolean(bo, "pinned");
-				m.visible = json_object_get_number(bo, "visible");
-
-				if (m.memory_type == 0)
-					used_gtt += m.bo_size;
-				else if (m.visible)
-					used_vis_vram += m.bo_size;
-				else
-					used_vram += m.bo_size;
-
-				total += m.bo_size;
-				memory_usage_data.push_back(m);
+				app.per_fd.push_back(file);
 			}
-			if (app_idx == memory_usage_app.size()) {
-				struct mem_app m;
-				m.pid = pid;
-				const char *name = json_object_get_string(o, "command");
-				if (name)
-					m.name = name;
-				m.total = total;
-				m.highlight = false;
-				memory_usage_app.push_back(m);
-			} else {
-				memory_usage_app[app_idx].total = total;
-			}
-		}
 
-		/* For each memory type add a fake buffer representing the mem allocations
-		 * not exposed by the kernel through syfs (eg: firmwares, etc)
-		 */
-		JSON_Object *o = json_object(json_object_get_value(last_answer, "gtt"));
-		const uint64_t total_gtt = json_object_get_number(o, "used");
-		if (used_gtt < total_gtt) {
-			memory_usage_data.push_back(mem_data(total_gtt - used_gtt));
-			memory_usage_app[0].total += total_gtt - used_gtt;
-			used_gtt = total_gtt;
-		}
-		o = json_object(json_object_get_value(last_answer, "vis_vram"));
-		const uint64_t total_vis_vram = used_vis_vram > 0 ? json_object_get_number(o, "used") : 0;
-		/* Only adjust vis_vram if the kernel reports VISIBLE. Otherwise don't display
-		 * visible VRAM separately.
-		 */
-		if (used_vis_vram > 0 && used_vis_vram < total_vis_vram) {
-			memory_usage_data.push_back(mem_data(total_vis_vram - used_vis_vram, 1, true));
-			memory_usage_app[0].total += total_vis_vram - used_vis_vram;
-			used_vis_vram = total_vis_vram;
-		}
-		o = json_object(json_object_get_value(last_answer, "vram"));
-		const uint64_t total_vram = json_object_get_number(o, "used");
-		if ((used_vis_vram + used_vram) < total_vram) {
-			memory_usage_data.push_back(mem_data(total_vram - (used_vram + used_vis_vram), 1));
-			memory_usage_app[0].total += total_vram - (used_vram + used_vis_vram);
-			used_vram = total_vram - total_vis_vram;
+			snapshot.apps.push_back(app);
 		}
 
 		std::sort(memory_usage_data.begin(), memory_usage_data.end(), [this](const struct mem_data& a, const struct mem_data& b) {
@@ -510,9 +394,326 @@ private:
 				return a.visible > b.visible;
 			return a.bo_size > b.bo_size;
 		});
+
+		memory_usage_snapshots.push_back(snapshot);
 	}
 
-	const char* format_bo_size(uint64_t bo_size) {
+
+	float prepare_legend(mem_app_snapshot *snapshot) const {
+		float max_s = 0;
+		const float s = ImGui::GetFontSize();
+		const float px = ImGui::GetStyle().FramePadding.x;
+
+		for (size_t i = 0; i < snapshot->apps.size(); i++) {
+			const auto& app = snapshot->apps[i];
+			max_s = std::max(max_s,
+				ImGui::CalcTextSize(app.name.c_str()).x +
+				ImGui::CalcTextSize(format_bo_size(app.total)).x);
+
+			for (size_t j = 0; j < app.per_fd.size(); j++) {
+				const auto& fd = app.per_fd[j];
+				max_s = std::max(max_s,
+					px + px + ImGui::CalcTextSize(fd.name.c_str()).x +
+					ImGui::CalcTextSize(format_bo_size(fd.total)).x);
+			}
+		}
+
+		return max_s + 4 * s + px;
+	}
+
+	void draw_legend(mem_app_snapshot *snapshot, float legend_width) {
+		const float s = ImGui::GetFontSize();
+
+		const char *titles[] = { "History", "Treemap" };
+		if (ImGui::BeginCombo("", titles[layout])) {
+			for (int i = 0; i < Enum::LayoutCount; i++) {
+				if (ImGui::Selectable(titles[i], layout == i)) {
+					layout = static_cast<Enum::Layout>(i);
+				}
+			}
+			ImGui::EndCombo();
+		}
+
+		ImGui::Text("Snapshot #%d", current_snapshot_index);
+
+		for (size_t i = 0; i < snapshot->apps.size(); i++) {
+			auto& app = snapshot->apps[i];
+			const ImColor col = palette[app.pid % ARRAY_SIZE(palette)];
+			ImVec2 base = ImGui::GetCursorScreenPos();
+			ImVec2 end(base);
+			end.x += legend_width;
+			end.y += ImGui::GetTextLineHeightWithSpacing();
+			app.highlight = ImGui::IsMouseHoveringRect(base, end);
+
+			bool no_per_fd = snapshot->apps[i].pid == 0 ||
+							 app.per_fd.size() == 1;
+			if (no_per_fd)
+				draw_rect_at_cursor(0, s, col, app.highlight, col);
+
+			if (!app.name.empty())
+				ImGui::TextUnformatted(snapshot->apps[i].name.c_str());
+			else
+				ImGui::Text("pid-%d", snapshot->apps[i].pid);
+			ImGui::SameLine();
+
+			/* Right Align. */
+			const char *sz = format_bo_size(app.total);
+			ImGui::GetWindowDrawList()->AddText(
+				ImVec2(end.x - ImGui::CalcTextSize(sz).x, base.y), IM_COL32_WHITE, sz);
+			ImGui::NewLine();
+
+			if (no_per_fd)
+				continue;
+
+			for (size_t j = 0; j < app.per_fd.size(); j++) {
+				const auto& fd = app.per_fd[j];
+				draw_rect_at_cursor(s, s, col, app.highlight,
+									palette[(app.pid + 1 + j) % ARRAY_SIZE(palette)]);
+				if (!fd.name.empty())
+					ImGui::TextUnformatted(fd.name.c_str());
+				ImGui::SameLine();
+
+				const char *sz = format_bo_size(fd.total);
+				ImGui::GetWindowDrawList()->AddText(
+					ImVec2(end.x - ImGui::CalcTextSize(sz).x, base.y +
+						   (j + 1) * ImGui::GetTextLineHeightWithSpacing()), IM_COL32_WHITE, sz);
+				ImGui::NewLine();
+			}
+		}
+	}
+
+	float get_box_width_history(float graph_with, size_t n_snapshots) const {
+		return std::min(ImGui::GetFontSize() * 2, (zoom * graph_with) / n_snapshots);
+	}
+
+	void draw_memory_usage_history(ImVec2 base, ImVec2 size,
+								   std::vector<mem_app_snapshot>& snapshots,
+								   const mem_app_snapshot *current) {
+		uint64_t total_vram = (uint64_t)json_object_dotget_number(last_answer, "vram.total");
+		uint64_t total_mem =
+			(uint64_t)json_object_dotget_number(last_answer, "gtt.total") + total_vram;
+
+		uint64_t max_used_mem = 0;
+		for (size_t i = 0; i < snapshots.size(); i++) {
+			uint64_t t = 0;
+			for (const auto& app: snapshots[i].apps) {
+				t += app.total;
+			}
+			max_used_mem = std::max(max_used_mem, t);
+		}
+
+		uint64_t displayed_mem = (max_used_mem * 1.1);
+
+		/* Reserve some space at the bottom for the options. */
+		const ImVec2 below_graph(base.x, base.y + size.y);
+		const float original_size_x = size.x;
+		size.y -= ImGui::GetTextLineHeightWithSpacing();
+
+		const float w = ImGui::GetIO().MouseWheel;
+		if (w) {
+			zoom += w * 0.1 * zoom;
+			if (zoom < 1)
+				zoom = 1;
+		}
+
+		const float box_width = get_box_width_history(size.x, snapshots.size());
+		const float hbox_spacing = box_width * 0.1;
+		const float px = ImGui::GetStyle().FramePadding.x;
+		const float base_x = base.x;
+		base.x += size.x - box_width;
+		base.y += size.y;
+		float base_y = base.y;
+		for (int i = (int)snapshots.size() - 1; i >= 0; i--) {
+			mem_app_snapshot& snapshot = snapshots[i];
+
+			ImVec2 r1(base.x + hbox_spacing, base.y - size.y);
+			ImVec2 r2(base.x + box_width - hbox_spacing, base.y);
+
+			if (r2.x < base_x)
+				break;
+
+			if (ImGui::IsMouseHoveringRect(r1, r2)) {
+				current_snapshot_index = i;
+				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					layout = Enum::LayoutTreemap;
+			}
+
+			/* Draw frame */
+			if (&snapshot == current) {
+				ImGui::GetWindowDrawList()->AddRectFilled(r1, r2, ImColor(1.0f, 1.0f, 1.0f, 0.2f), 3);
+
+				char title[32];
+				sprintf(title, "%.1f %% GTT+VRAM", 100 * max_used_mem / (float)total_mem);
+
+				float ty = base_y - size.y;
+				float tl = ImGui::CalcTextSize(title).x;
+				ImGui::GetWindowDrawList()->AddText(
+					ImVec2(base.x - tl * 0.5, ty), IM_COL32_WHITE, title);
+
+				ty += ImGui::GetTextLineHeight() * 0.5;
+
+				ImGui::GetWindowDrawList()->AddLine(
+					ImVec2(base_x, ty),
+					ImVec2(base.x - tl * 0.5 - px, ty), IM_COL32_WHITE, 3);
+				ImGui::GetWindowDrawList()->AddLine(
+					ImVec2(base.x + tl * 0.5 + px, ty),
+					ImVec2(base.x + size.x, ty), IM_COL32_WHITE, 3);
+			}
+
+			for (size_t j = 0; j < snapshot.apps.size(); j++) {
+				auto& app = snapshot.apps[j];
+
+				bool use_subcolor = app.pid && app.per_fd.size() > 1;
+
+				uint64_t app_total = app.total;
+
+				const float sy = (app_total * size.y) / displayed_mem;
+				ImColor col(palette[app.pid % ARRAY_SIZE(palette)]);
+				if (use_subcolor)
+					col.Value.w = 0.5;
+				draw_rectangle(ImVec2(r1.x, base.y),
+							   ImVec2(r2.x, base.y - sy),
+							   col, col);
+
+				if (use_subcolor) {
+					float by = base.y;
+					for (size_t k = 0; k < app.per_fd.size(); k++) {
+						float s_fd_y = (app.per_fd[k].total * size.y) / displayed_mem;
+						ImGui::GetWindowDrawList()->AddRectFilled(
+									ImVec2(r1.x + 2, by),
+								    ImVec2(r2.x - 2, by - std::min(sy, s_fd_y - 1)),
+									palette[(app.pid + 1 + k) % ARRAY_SIZE(palette)]);
+						app_total -= app.per_fd[k].total;
+						by -= s_fd_y;
+					}
+				}
+
+				base.y -= sy + 1;
+			}
+			base.x -= box_width;
+			base.y = base_y;
+		}
+
+		ImGui::SetCursorScreenPos(below_graph);
+		if (ImGui::Button("Clear Data"))
+			memory_usage_snapshots.clear();
+	}
+
+	void draw_memory_snapshot_as_treemap(ImVec2 base, ImVec2 size, std::vector<mem_app_snapshot>& snapshots,
+										 mem_app_snapshot *snapshot) {
+		uint64_t total_per_cat[4] = {
+			snapshot->used_mem_type[0], /* Unknown */
+			snapshot->used_mem_type[1], /* RAM */
+			show_free_memory ? (uint64_t)json_object_dotget_number(last_answer, "gtt.total") :
+							   snapshot->used_mem_type[2], /* GTT */
+			show_free_memory ? (uint64_t)json_object_dotget_number(last_answer, "vram.total") :
+							   snapshot->used_mem_type[3], /* VRAM */
+		};
+
+		/* Reserve some space at the bottom for the options. */
+		const ImVec2 below_graph(base.x, base.y + size.y);
+		const float original_size_x = size.x;
+		size.y -= 2 * ImGui::GetTextLineHeightWithSpacing();
+		const auto &memory_usage_data = snapshot->bos;
+
+		int start_bo_index = 0;
+		for (int i = 0; i < 4; i++) {
+			if (!show_mem_type[i] || total_per_cat[i] == 0)
+				continue;
+
+			/* Determine how much space this category can use. */
+			uint64_t total_considered_memory = 0;
+			for (int j = i; j < 4; j++)
+				total_considered_memory += show_mem_type[j] ? total_per_cat[j] : 0;
+			float r = total_per_cat[i] / (float) total_considered_memory;
+
+			ImVec2 cat_size, remain_base, remain_size;
+			bool is_vertical = update_bbox(base, size, r, cat_size, remain_base, remain_size, 5);
+
+			int end_bo_index = -1;
+			bool start_valid = false;
+			for (int j = start_bo_index; j < memory_usage_data.size(); j++) {
+				if (memory_usage_data[j].memory_type == i) {
+					if (!start_valid) {
+						start_bo_index = j;
+						start_valid = true;
+					}
+					end_bo_index = j;
+				} else if (start_valid) {
+					break;
+				}
+			}
+
+			if (end_bo_index >= 0) {
+				float ts = ImGui::CalcTextSize(mem_type_title[i]).x;
+				if (cat_size.x > ts) {
+					ImGui::GetWindowDrawList()->AddText(
+						ImVec2(base.x + cat_size.x * 0.5 - ts * 0.5,
+							   base.y + size.y),
+						IM_COL32_WHITE,
+						mem_type_title[i]);
+				}
+			}
+
+			ImVec2 free_cat_base, free_cat_size;
+			if (show_free_memory && (i == 2 || i ==3)) {
+				ImVec2 used_cat_size;
+
+				float used_ratio = snapshot->used_mem_type[i] / (float)total_per_cat[i];
+				update_bbox(base, cat_size, used_ratio, used_cat_size, free_cat_base, free_cat_size, 0);
+				cat_size = used_cat_size;
+			}
+			if (end_bo_index >= 0)
+				draw_treemap(*snapshot, start_bo_index, end_bo_index, base, cat_size);
+
+			if (show_free_memory && (i == 2 || i ==3)) {
+				draw_freespace(free_cat_base, free_cat_size, "GTT");
+			}
+
+			start_bo_index = end_bo_index + 1;
+
+			base = remain_base;
+			size = remain_size;
+		}
+
+		/* Draw snapshot selection. */
+		base = below_graph;
+		size.y = ImGui::GetTextLineHeight();
+		float box_width = get_box_width_history(original_size_x, snapshots.size());
+		const float hbox_spacing = box_width * 0.1;
+		base.x += original_size_x - box_width;
+
+		for (int i = (int)snapshots.size() - 1; i >= 0 && base.x >= below_graph.x; i--) {
+			mem_app_snapshot& snapshot = snapshots[i];
+
+			ImVec2 r1(base.x + hbox_spacing, base.y - size.y);
+			ImVec2 r2(base.x + box_width - hbox_spacing, base.y);
+
+			if (ImGui::IsMouseHoveringRect(r1, r2)) {
+				current_snapshot_index = i;
+				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					layout = Enum::LayoutHistory;
+			}
+
+			ImGui::GetWindowDrawList()->AddRectFilled(r1, r2,
+				ImColor(1.0f, 1.0f, 1.0f, current_snapshot_index == i ? 0.2f : 1.0f));
+
+			base.x -= box_width;
+		}
+
+
+		ImGui::SetCursorScreenPos(below_graph);
+		ImGui::Text("Show: ");
+		for (int i = 0; i < ARRAY_SIZE(show_mem_type) && i <= 3; i++) {
+			ImGui::SameLine();
+			ImGui::Checkbox(mem_type_title[i], &show_mem_type[i]);
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Free memory", &show_free_memory);
+	}
+
+
+	const char* format_bo_size(uint64_t bo_size) const {
 		static char txt[256];
 		if (bo_size < 1024)
 			sprintf(txt, "%lu bytes", bo_size);
@@ -528,7 +729,7 @@ private:
 	bool update_bbox(const ImVec2& base, const ImVec2& size, float ratio,
 					 ImVec2& size1, ImVec2& base2, ImVec2& size2,
 					 float padding = 0,
-					 bool force_vertical_split = false) {
+					 bool force_vertical_split = false) const {
 		size1 = size2 = size;
 		base2 = base;
 
@@ -545,53 +746,61 @@ private:
 		}
 	}
 
-	void draw_treemap(int begin, int end, ImVec2 base, ImVec2 size) {
+	void draw_treemap(const mem_app_snapshot& snapshot, int begin, int end, ImVec2 base, ImVec2 size) {
 		const ImVec2 padding(1.0, 1.0);
+		
 		if (begin == end) {
 			ImVec2 corner1(base.x + padding.x, base.y + padding.y);
 			ImVec2 corner2(corner1.x + size.x - 2 * padding.x,
 						   corner1.y + size.y - 2 * padding.y);
-			int idx = memory_usage_data[begin].app_index;
+			int app_idx = snapshot.bos[begin].app_index;
+			assert(app_idx < snapshot.apps.size());
+			const auto& app = snapshot.apps[app_idx];
+			bool use_subcolor = app.pid && app.per_fd.size() > 1;
+			int fd_idx = snapshot.bos[begin].fd_index;
 
-			ImGui::GetWindowDrawList()->AddRectFilled(corner1, corner2,
-				ImColor(palette[idx % ARRAY_SIZE(palette)]));
+			draw_rectangle(corner1, corner2,
+						   palette[app.pid % ARRAY_SIZE(palette)],
+						   palette[(app.pid + (use_subcolor ? (1 + fd_idx): 0)) % ARRAY_SIZE(palette)]);
 			if (ImGui::IsMouseHoveringRect(corner1, corner2))
-				ImGui::SetTooltip("App : %s\nSize: %s",
-								  memory_usage_app[idx].name.c_str(),
-								  format_bo_size(memory_usage_data[begin].bo_size));
-			if (memory_usage_app[idx].highlight)
+				ImGui::SetTooltip("App : %s\nFd  : %s\nSize: %s",
+								  app.name.empty() ? "" : app.name.c_str(),
+								  app.per_fd[fd_idx].name.empty() ? "" : app.per_fd[fd_idx].name.c_str(),
+								  format_bo_size(snapshot.bos[begin].bo_size));
+			if (snapshot.apps[app_idx].highlight)
 				ImGui::GetWindowDrawList()->AddRect(corner1, corner2, IM_COL32_WHITE);
-			if (memory_usage_data[begin].cpu_access) {
-				corner2.x = corner1.x + size.x * 0.3;
-				ImGui::GetWindowDrawList()->AddRectFilled(
-					corner1, corner2, ImColor(1.0f, 1.0f, 1.0f, 0.5f));
-			}
-			if (memory_usage_data[begin].pinned) {
-				ImGui::GetWindowDrawList()->AddLine(
-					corner1, corner2, ImColor(0.0f, 0.0f, 0.0f, 0.5f));
-				std::swap(corner1.x, corner2.x);
-				ImGui::GetWindowDrawList()->AddLine(
-					corner1, corner2, ImColor(0.0f, 0.0f, 0.0f, 0.5f));
+			if (size.x > 20 && size.y > 20) {
+				if (snapshot.bos[begin].cpu_access)
+					ImGui::GetWindowDrawList()->AddCircleFilled(
+						ImVec2(corner2.x - 10, corner1.y + 10), 5, ImColor(1.0f, 1.0f, 1.0f, 0.5f));
+				if (snapshot.bos[begin].pinned)
+					ImGui::GetWindowDrawList()->AddCircleFilled(
+						ImVec2(corner1.x + 10, corner1.y + 10), 5, ImColor(0.0f, 0.0f, 0.0f, 0.5f));
 			}
 		} else if (size.x * size.y < 50) {
 			/* Area is too small. Draw a single rect. */
 			ImVec2 corner1(base.x + padding.x, base.y + padding.y);
 			ImVec2 corner2(corner1.x + size.x - 2 * padding.x,
 						   corner1.y + size.y - 2 * padding.y);
-			int idx = memory_usage_data[begin].app_index;
+			int app_idx = snapshot.bos[begin].app_index;
+			const auto& app = snapshot.apps[app_idx];
+			int fd_idx =
+				(app.pid && app.per_fd.size() > 1) ?
+					snapshot.bos[begin].fd_index : -1;
 
-			ImGui::GetWindowDrawList()->AddRectFilled(corner1, corner2,
-				ImColor(palette[idx % ARRAY_SIZE(palette)]));
+			draw_rectangle(corner1, corner2,
+						   palette[app.pid % ARRAY_SIZE(palette)],
+						   palette[(app.pid + 1 + fd_idx) % ARRAY_SIZE(palette)]);
 		} else {
 			uint64_t total = 0;
 			for (int i = begin; i <= end; i++) {
-				total += memory_usage_data[i].bo_size;
+				total += snapshot.bos[i].bo_size;
 			}
 			uint64_t target = total / 2;
 			uint64_t partial = 0, closest = total;
 			int cut = -1;
 			for (int i = begin; i <= end; i++) {
-				partial += memory_usage_data[i].bo_size;
+				partial += snapshot.bos[i].bo_size;
 				if (partial < target) {
 					closest = partial;
 					cut = i;
@@ -611,12 +820,12 @@ private:
 			update_bbox(base, size, ratio, size_left, base_right, size_right);
 
 			if (end == begin + 1) {
-				draw_treemap(begin, begin, base, size_left);
-				draw_treemap(end, end, base_right, size_right);
+				draw_treemap(snapshot, begin, begin, base, size_left);
+				draw_treemap(snapshot, end, end, base_right, size_right);
 			} else {
 				assert(cut != end);
-				draw_treemap(begin, cut, base, size_left);
-				draw_treemap(cut + 1, end, base_right, size_right);
+				draw_treemap(snapshot, begin, cut, base, size_left);
+				draw_treemap(snapshot, cut + 1, end, base_right, size_right);
 			}
 		}
 	}
@@ -626,8 +835,11 @@ private:
 	float drm_counters[NUM_DRM_COUNTERS * NUM_DRM_COUNTERS_VALUES];
 	float last_vm_read;
 	float autorefresh;
+	bool autorefresh_enabled;
 	bool got_first_drm_counters;
 	bool show_gtt, show_vram, show_free_memory;
 	float drm_counters_min[NUM_DRM_COUNTERS];
 	int drm_counters_offset;
+
+	Enum::Layout layout = Enum::LayoutHistory;
 };
