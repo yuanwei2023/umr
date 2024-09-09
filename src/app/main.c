@@ -277,7 +277,7 @@ enum {
 
 static void do_help(void)
 {
-	printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2022, AMD Inc.\n"
+	printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2024, AMD Inc.\n"
 	"\n*** Device Selection ***\n"
 	"\n\t--database-path, -dbp <path>"
 		"\n\t\tSpecify a database path for register, ip, and asic model data.\n"
@@ -331,7 +331,7 @@ static void do_help(void)
 	"\n\t--read, -r <string>\n\t\tRead a value from a register and print it to stdout.  This command"
 		"\n\t\tuses the same path notation as --write.  It also accepts * for regname."
 		"\n\t\tA trailing * on a regname will read any register that has a name that contains the"
-		"\n\t\tremainder of the name specified.\n"
+		"\n\t\tremainder of the name specified.\n",
 		UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
 
 	printf(
