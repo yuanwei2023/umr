@@ -1088,6 +1088,8 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 		}
 		const char *ptr = c;
 
+		const char *client_name = lookup_field(&c, "drm-client-name", ':');
+
 		JSON_Value *jv = json_value_init_object();
 
 		/* Lookup all drm-engine-* entries */
@@ -1113,6 +1115,12 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 		if (json_object_get_count(json_object(jv))) {
 			json_object_set_number(json_object(jv), "ts", n);
 			json_object_set_value(json_object(jv), "app", json_value_deep_copy(json_object_get_wrapping_value(pid)));
+			if (client_name) {
+				char name[1024];
+				snprintf(name, 1023, "%s|%s",
+					json_object_dotget_string(json_object(jv), "app.app"), client_name);
+				json_object_dotset_string(json_object(jv), "app.app", name);
+			}
 			json_object_set_number(json_object(jv), "fd", strtol(entry->d_name, NULL, 10));
 
 			json_object_set_value(json_object(container), client_id, jv);
