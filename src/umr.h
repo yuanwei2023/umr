@@ -2253,7 +2253,7 @@ int umr_discovery_read_table(struct umr_asic *asic, uint8_t *table, uint32_t *si
 int umr_discovery_verify_table(struct umr_asic *asic, uint8_t *table);
 int umr_discovery_dump_table(struct umr_asic *asic, uint8_t *table, FILE *stream);
 
-int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_asic ***asics, int *no_asics);
+int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics);
 void umr_enumerate_device_list_free(struct umr_asic **asics);
 
 #endif

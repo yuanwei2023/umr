@@ -29,7 +29,7 @@ void umr_enumerate_devices(umr_err_output errout, const char *database_path)
 	struct umr_asic **asics;
 	int no_asics, x, y;
 
-	if (umr_enumerate_device_list(errout, database_path, &asics, &no_asics) == 0) {
+	if (umr_enumerate_device_list(errout, database_path, NULL, &asics, &no_asics) == 0) {
 		errout("[VERBOSE]: Found %d AMDGPU devices\n", no_asics);
 		for (x = 0; x < no_asics; x++) {
 			errout("\n\nGPU #%d => %s\n", asics[x]->instance, asics[x]->asicname);

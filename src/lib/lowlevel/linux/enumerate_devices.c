@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_asic ***asics, int *no_asics)
+int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics)
 {
 	struct umr_options options;
 	int x;
@@ -47,6 +47,8 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 	x = 0;
 	while (x < 128 && (de  = readdir(dir))) {
 		memset(&options, 0, sizeof options);
+		if (global_options)
+			options = *global_options;
 		options.quiet = 1;
 		strncpy(options.database_path, database_path, sizeof(options.database_path));
 		if (sscanf(de->d_name, "%04x:%02x:%02x.%01x",
