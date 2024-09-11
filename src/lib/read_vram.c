@@ -1561,7 +1561,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 				segment_size = umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmGCMC_VM_XGMI_LFB_SIZE") << 24ULL;
 			} else {
 				// fallback to just rounding up vram size
-				segment_size = round_up_next_gib(asic->config.xgmi.nodes[n].asic->config.vram_size);
+				segment_size = 0;
 			}
 
 			// copy callbacks so that sysram/vram accesses
@@ -1577,7 +1577,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 					break;
 				} else {
 					// otherwise subtract this vram size from the address and go to the next device
-					addr -= segment_size;
+					addr -= segment_size ? segment_size : round_up_next_gib(asic->config.xgmi.nodes[n].asic->config.vram_size);
 				}
 			}
 			// now {asic, address} are the device and it's relative address
