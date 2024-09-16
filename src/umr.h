@@ -1144,6 +1144,15 @@ struct umr_gpu_metrics_v1_5 {
         uint16_t                        padding;
 };
 
+struct umr_amdgpu_xcp_metrics {
+	/* Utilization Instantaneous (%) */
+	uint32_t gfx_busy_inst[8];
+	uint16_t jpeg_busy[32];
+	uint16_t vcn_busy[4];
+	/* Utilization Accumulated (%) */
+	uint64_t gfx_busy_acc[8];
+};
+
 struct umr_gpu_metrics_v1_6 {
 	struct umr_metrics_table_header	common_header;
 
@@ -1158,8 +1167,6 @@ struct umr_gpu_metrics_v1_6 {
 	/* Utilization (%) */
 	uint16_t			average_gfx_activity;
 	uint16_t			average_umc_activity; // memory controller
-	uint16_t			vcn_activity[4];
-	uint16_t			jpeg_activity[32];
 
 	/* Energy (15.259uJ (2^-16) units) */
 	uint64_t			energy_accumulator;
@@ -1168,17 +1175,14 @@ struct umr_gpu_metrics_v1_6 {
 	uint64_t			system_clock_counter;
 
 	/* Accumulation cycle counter */
-	uint32_t			accumulation_counter;
+	uint32_t                        accumulation_counter;
 
 	/* Accumulated throttler residencies */
-	uint32_t			prochot_residency_acc;
-	uint32_t			ppt_residency_acc;
-	uint32_t			socket_thm_residency_acc;
-	uint32_t			vr_thm_residency_acc;
-	uint32_t			hbm_thm_residency_acc;
-
-	/* Throttle status */
-	uint32_t			throttle_status;
+	uint32_t                        prochot_residency_acc;
+	uint32_t                        ppt_residency_acc;
+	uint32_t                        socket_thm_residency_acc;
+	uint32_t                        vr_thm_residency_acc;
+	uint32_t                        hbm_thm_residency_acc;
 
 	/* Clock Lock Status. Each bit corresponds to clock instance */
 	uint32_t			gfxclk_lock_status;
@@ -1195,10 +1199,10 @@ struct umr_gpu_metrics_v1_6 {
 	uint32_t			gfx_activity_acc;
 	uint32_t			mem_activity_acc;
 
-	/*PCIE accumulated bandwidth (Mbps) */
+	/*PCIE accumulated bandwidth (GB/sec) */
 	uint64_t			pcie_bandwidth_acc;
 
-	/*PCIE instantaneous bandwidth (Mbps) */
+	/*PCIE instantaneous bandwidth (GB/sec) */
 	uint64_t			pcie_bandwidth_inst;
 
 	/* PCIE L0 to recovery state transition accumulated count */
@@ -1230,9 +1234,15 @@ struct umr_gpu_metrics_v1_6 {
 	uint16_t			current_dclk0[4];
 	uint16_t			current_uclk;
 
-	uint16_t			padding;
-};
+	/* Number of current partition */
+	uint16_t			num_partition;
 
+	/* XCP metrics stats */
+	struct umr_amdgpu_xcp_metrics	xcp_stats[8];
+
+	/* PCIE other end recovery counter */
+	uint32_t			pcie_lc_perf_other_end_recovery;
+};
 
 struct umr_gpu_metrics_v2_0 {
 	struct umr_metrics_table_header	common_header;
