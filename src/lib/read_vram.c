@@ -1035,6 +1035,8 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				break;
 			case 3: // inside system aperture is unmapped, otherwise mapped
 				if (address >= system_aperture_low && address < system_aperture_high) {
+					if (asic->options.verbose)
+						asic->std_msg("[VERBOSE]: Address is inside SAM\n[VERBOSE]: address: 0x%"PRIx64 ", system_apperture_low: 0x%"PRIx64 ", system_aperture_high: 0x%"PRIx64 ", fb_bottom: 0x%"PRIx64  ", fb_top: 0x%"PRIx64 "\n", address, system_aperture_low, system_aperture_high, fb_bottom, fb_top);
 					if (address >= fb_bottom && address < fb_top) {
 						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en, vmdata) : 0;
 					} else {
@@ -1377,11 +1379,15 @@ pde_is_pte:
 			pte_idx = (address >> (12 + pde0_block_fragment_size));
 
 			if (pde_fields.system == 0) {
-				if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0)
+				if (umr_read_vram(asic, partition, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry) < 0) {
+					asic->err_msg("[ERROR]: Cannot read PTE from VRAM at address 0x%" PRIx64 "\n", pde_fields.pte_base_addr + pte_idx * 8);
 					return -1;
+				}
 			} else {
-				if (asic->mem_funcs.access_sram(asic, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry, 0) < 0)
+				if (asic->mem_funcs.access_sram(asic, pde_fields.pte_base_addr + pte_idx * 8, 8, &pte_entry, 0) < 0) {
+					asic->err_msg("[ERROR]: Cannot read PTE from SYS RAM at address 0x%" PRIx64 "\n", pde_fields.pte_base_addr + pte_idx * 8);
 					return -1;
+				}
 			}
 
 			if (vmdata) {
