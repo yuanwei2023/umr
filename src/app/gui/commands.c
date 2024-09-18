@@ -1833,88 +1833,97 @@ char *ip_discovery_dumps[16] = {0};
 
 void init_asics() {
 	struct umr_options opt;
-	char devname[512];
-	int index = 0;
+	char database_path[256] = { 0 };
+	int asic_count = 0;
 
-	for (int instance = 0; instance < 128; instance++) {
-		/* Iterate dri cards */
-		sprintf(devname, "/dev/dri/card%d", instance);
-		/* Stop looking further only if we found at least one GPU (on Fedora 38 the first GPU is card1) */
-		if (access(devname, F_OK) != 0 && index)
-			break;
+	struct umr_asic **enum_asics;
 
-		memset(&opt, 0, sizeof(opt));
-		opt.instance = instance;
-		opt.forcedid = -1;
-		opt.scanblock = "";
-		opt.vm_partition = -1;
+	memset(&opt, 0, sizeof(opt));
+	opt.forcedid = -1;
+	opt.scanblock = "";
+	opt.vm_partition = -1;
+	/* Allocate a buffer to pass ip discovery info to the client. */
+	char *ip_discovery_dump = calloc(1, 100000);
+	opt.test_log_fd = fmemopen(ip_discovery_dump, 100000, "w");
+	if (!opt.test_log_fd)
+		opt.force_asic_file = 1;
+	else
+		opt.test_log = 1;
 
-		/* Allocate a buffer to pass ip discovery info to the client. */
-		char *ip_discovery_dump = calloc(1, 100000);
-		opt.test_log_fd = fmemopen(ip_discovery_dump, 100000, "w");
-		if (!opt.test_log_fd)
-			opt.force_asic_file = 1;
+	if (umr_enumerate_device_list(printf, database_path, &opt, &enum_asics, &asic_count) < 0) {
+		exit(0);
+	}
+
+	fflush(opt.test_log_fd);
+	char *asic_discovery_data = ip_discovery_dump;
+
+	for (int i = 0; i < asic_count; i++) {
+		asics[i] = enum_asics[i];
+
+		/* Assign linux callbacks */
+		asics[i]->ring_func.read_ring_data = umr_read_ring_data;
+
+		asics[i]->mem_funcs.vm_message = dummy_printf;
+		asics[i]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
+		asics[i]->mem_funcs.access_sram = umr_access_sram;
+
+		asics[i]->shader_disasm_funcs.disasm = umr_shader_disasm;
+
+		if (asics[i]->options.use_pci == 0)
+			asics[i]->mem_funcs.access_linear_vram = umr_access_linear_vram;
 		else
-			opt.test_log = 1;
+			asics[i]->mem_funcs.access_linear_vram = umr_access_vram_via_mmio;
 
-		/* Is this an AMD gpu? */
-		asics[index] = umr_discover_asic(&opt, printf);
+		asics[i]->reg_funcs.read_reg = umr_read_reg;
+		asics[i]->reg_funcs.write_reg = umr_write_reg;
 
-		if (asics[index]) {
-			/* Assign linux callbacks */
-			asics[index]->ring_func.read_ring_data = umr_read_ring_data;
+		asics[i]->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
+		asics[i]->wave_funcs.get_wave_status = umr_get_wave_status;
 
-			asics[index]->mem_funcs.vm_message = dummy_printf;
-			asics[index]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
-			asics[index]->mem_funcs.access_sram = umr_access_sram;
+		/* Default shader options */
+		if (asics[i]->family <= FAMILY_VI) {
+			asics[i]->options.shader_enable.enable_gs_shader = 1;
+			asics[i]->options.shader_enable.enable_hs_shader = 1;
+		}
+		asics[i]->options.shader_enable.enable_vs_shader   = 1;
+		asics[i]->options.shader_enable.enable_ps_shader   = 1;
+		asics[i]->options.shader_enable.enable_es_shader   = 1;
+		asics[i]->options.shader_enable.enable_ls_shader   = 1;
+		asics[i]->options.shader_enable.enable_comp_shader = 1;
 
-			asics[index]->shader_disasm_funcs.disasm = umr_shader_disasm;
+		asics[i]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
+		asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
 
-			if (asics[index]->options.use_pci == 0)
-				asics[index]->mem_funcs.access_linear_vram = umr_access_linear_vram;
-			else
-				asics[index]->mem_funcs.access_linear_vram = umr_access_vram_via_mmio;
+		asics[i]->err_msg = printf;
 
-			asics[index]->reg_funcs.read_reg = umr_read_reg;
-			asics[index]->reg_funcs.write_reg = umr_write_reg;
+		if (asics[i]->family > FAMILY_VI)
+			asics[i]->options.shader_enable.enable_es_ls_swap = 1;
 
-			asics[index]->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
-			asics[index]->wave_funcs.get_wave_status = umr_get_wave_status;
+		umr_scan_config(asics[i], 1);
+		if (asics[i]->fd.drm < 0) {
+			char devname[PATH_MAX];
+			sprintf(devname, "/dev/dri/card%d", asics[i]->instance);
+			asics[i]->fd.drm = open(devname, O_RDWR);
+		}
 
-			/* Default shader options */
-			if (asics[index]->family <= FAMILY_VI) {
-				asics[index]->options.shader_enable.enable_gs_shader = 1;
-				asics[index]->options.shader_enable.enable_hs_shader = 1;
+		if (asics[i]->was_ip_discovered && opt.test_log_fd) {
+			const char *separator = "-----\n";
+			if (asic_discovery_data == NULL) {
+				printf("Unexpected discovery buffer:\n'%s'\n", ip_discovery_dump);
+				exit(0);
 			}
-			asics[index]->options.shader_enable.enable_vs_shader   = 1;
-			asics[index]->options.shader_enable.enable_ps_shader   = 1;
-			asics[index]->options.shader_enable.enable_es_shader   = 1;
-			asics[index]->options.shader_enable.enable_ls_shader   = 1;
-			asics[index]->options.shader_enable.enable_comp_shader = 1;
+			char *next_asic = strstr(asic_discovery_data, separator);
+			assert(next_asic);
 
-			asics[index]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
-			asics[index]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
-
-			asics[index]->err_msg = printf;
-
-			if (asics[index]->family > FAMILY_VI)
-				asics[index]->options.shader_enable.enable_es_ls_swap = 1;
-
-			umr_scan_config(asics[index], 1);
-			if (asics[index]->fd.drm < 0)
-				asics[index]->fd.drm = open(devname, O_RDWR);
-
-			if (opt.test_log_fd) {
-				fflush(opt.test_log_fd);
-				ip_discovery_dumps[index] = strdup(ip_discovery_dump);
-			}
-
-			index++;
-		} else {
-			fclose(opt.test_log_fd);
-			free(ip_discovery_dump);
+			ip_discovery_dumps[i] =
+				strndup(asic_discovery_data, next_asic - asic_discovery_data);
+			asic_discovery_data = next_asic + strlen(separator);
 		}
 	}
+	free(enum_asics);
+
+	fclose(opt.test_log_fd);
+	free(ip_discovery_dump);
 }
 
 static bool is_thread_alive(struct umr_asic *asic, struct umr_wave_data *wd, int tid) {
