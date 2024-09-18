@@ -56,6 +56,7 @@ extern void add_vertical_line(const ImVec2& avail);
 extern bool kb_shortcut(int keycode);
 extern GLuint texture_from_qoi_buffer(int width, int height, void *buffer, int buffer_size);
 extern void goto_tab(int keycode);
+extern float get_gui_scale();
 extern "C" {
 	JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned int *raw_data_size);
 }
@@ -80,6 +81,8 @@ private:
 	regmatch_t *pmatch;
 	char *output;
 };
+
+static pthread_mutex_t mtx;
 
 #include "gui/info_panel.cpp"
 #include "gui/registers_panel.cpp"
@@ -194,7 +197,6 @@ void force_redraw() {
 }
 
 static struct Link lnk;
-static pthread_mutex_t mtx;
 static pthread_cond_t cond;
 static bool done;
 
@@ -225,7 +227,7 @@ struct AsicData {
 			}
 			umr_free_test_harness(th);
 		} else {
-			/* Don't rely on local IP discovery data zvzn if available, because
+			/* Don't rely on local IP discovery data if available, because
 			 * it probably won't match the one on the server.
 			 */
 			options.force_asic_file = 1;
@@ -469,6 +471,11 @@ void goto_tab(int key_code) {
 	force_redraw();
 }
 
+static float gui_scale = 1.0;
+float get_gui_scale() {
+	return gui_scale;
+}
+
 static int run_gui(const char *url)
 {
 	pthread_mutexattr_t mat;
@@ -547,6 +554,10 @@ static int run_gui(const char *url)
 				}
 
 				process_response(&asics, e, raw_data, raw_data_size);
+
+				free(raw_data);
+				raw_data = NULL;
+				json_value_free(msg);
 			}
 
 			msg_idx++;
@@ -625,23 +636,25 @@ static int run_gui(const char *url)
 	bool rebuild_scaled_font = false;
 	ImFont *scaled_font = NULL;
 	float old_scale = 1;
-	float scale = 1;
 
 	if (config_filename) {
 		FILE *f = fopen(config_filename, "r");
 		if (f) {
-			if (fscanf(f, "ui_scale=%f", &scale) == 1) {
-				scale = std::max(1.0f, std::min(2.0f, scale));
-				old_scale = scale;
-				if (scale != 1.0)
+			if (fscanf(f, "ui_scale=%f", &gui_scale) == 1) {
+				gui_scale = std::max(1.0f, std::min(2.0f, gui_scale));
+				old_scale = gui_scale;
+				if (gui_scale != 1.0)
 					rebuild_scaled_font = true;
 			}
 			fclose(f);
 		}
+		free((void*)config_filename);
 	}
 
 	// Setup Dear ImGui style (todo: support switch to light theme)
 	ImGui::StyleColorsDark();
+
+	ImGui::GetStyle().AntiAliasedLines = false;
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
@@ -683,12 +696,12 @@ static int run_gui(const char *url)
 
 		if (rebuild_scaled_font) {
 		    ImFontConfig cfg;
-			cfg.SizePixels = 13 * scale;
+			cfg.SizePixels = 13 * gui_scale;
 			scaled_font = ImGui::GetIO().Fonts->AddFontDefault(&cfg);
 			ImGui::GetIO().Fonts->Build();
 			ImGui_ImplOpenGL3_CreateFontsTexture();
-			old_scale = scale;
-			ImGui::GetStyle().ScaleAllSizes(scale / old_scale);
+			old_scale = gui_scale;
+			ImGui::GetStyle().ScaleAllSizes(gui_scale / old_scale);
 
 			rebuild_scaled_font = false;
 			force_redraw();
@@ -741,11 +754,11 @@ static int run_gui(const char *url)
 		pthread_mutex_lock(&mtx);
 
 		ImGui::SetNextItemWidth(avail.x / 16);
-		if (ImGui::SliderFloat("scale", &scale, 1, 2, "%.1f")) {
-			if (scale < 1)
-				scale = 1;
-			if (scale > 2)
-				scale = 2;
+		if (ImGui::SliderFloat("scale", &gui_scale, 1, 2, "%.1f")) {
+			if (gui_scale < 1)
+				gui_scale = 1;
+			if (gui_scale > 2)
+				gui_scale = 2;
 
 			rebuild_scaled_font = true;
 		}
@@ -896,7 +909,7 @@ static int run_gui(const char *url)
 	if (config_filename) {
 		FILE *f = fopen(config_filename, "w");
 		if (f) {
-			fprintf(f, "ui_scale=%.1f\n", scale);
+			fprintf(f, "ui_scale=%.1f\n", gui_scale);
 			fclose(f);
 		}
 	}
@@ -918,6 +931,9 @@ SyntaxHighlighter::~SyntaxHighlighter() {
 	free (pmatch);
 	free (output);
 	for (Def& def: definitions) {
+		for (int i = 0; i < def.preg.re_nsub; i++) {
+			free((void*)def.colors[i]);
+		}
 		regfree(&def.preg);
 	}
 }
@@ -959,7 +975,6 @@ char * SyntaxHighlighter::transform(const char *in) {
 		int write_cursor = 0;
 		int size = strlen(input);
 		int end = 0;
-		bool one_match = false;
 		while (true) {
 			if ((regexec(&def.preg, &input[read_cursor], def.preg.re_nsub + 1, pmatch, 0) == REG_NOMATCH) ||
 				(pmatch[0].rm_so == -1))

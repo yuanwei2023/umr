@@ -36,20 +36,6 @@
 #define NUM_DRM_COUNTERS            3
 #define NUM_DRM_COUNTERS_VALUES   100
 
-/* Solarized palette (MIT License), https://github.com/altercation/solarized */
-ImColor palette[] = {
-	ImColor(181, 137,   0),
-	ImColor(203,  75,  22),
-	ImColor(220,  50,  47),
-	ImColor(211,  54, 130),
-	ImColor(108, 113, 196),
-	ImColor( 38, 139, 210),
-	ImColor( 42, 161, 152),
-	ImColor(133, 153,   0),
-	ImColor(131, 148, 150),
-	ImColor(238, 232, 213),
-	ImColor(253, 246, 227),
-};
 
 const char *mem_type_title[] = {
 	"Unknown",
