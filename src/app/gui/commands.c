@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Advanced Micro Devices, Inc.
+ * Copyright 2024 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -148,6 +148,11 @@ end:
 
 	return pixels;
 }
+
+#define SYSFS_PATH_DRM       "/sys/class/drm/"
+#define SYSFS_PATH_DEBUG_DRI "/sys/kernel/debug/dri/"
+#define SYSFS_PATH_TRACING   "/sys/kernel/tracing/"
+#define SYSFS_PATH_TRACING_AMDGPU SYSFS_PATH_TRACING "events/amdgpu/"
 
 static int64_t time_ns(void)
 {
@@ -1302,7 +1307,7 @@ static uint32_t get_ino_to_pid_mapping(struct umr_asic *asic,
 	 * Try to map bo to the real pid by matching the "exported as XXXX" strings from
 	 * amdgpu_gem_info and amdgpu_vm_info
 	 */
-	const char *content = read_file("/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+	const char *content = read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_vm_info", asic->instance);
 	int current_pid = 0;
 	struct pid_exported *pids_mapping = NULL;
 	int num_pids_mapping = 0;
@@ -2079,6 +2084,13 @@ static JSON_Value *wave_to_json(struct umr_asic *asic, struct umr_wave_data *wd,
 	return wave;
 }
 
+static void read_clock_min_max(struct umr_asic *asic, const char *clk_name, int *min, int *max)
+{
+	parse_sysfs_clock_file(
+		read_file(SYSFS_PATH_DRM "card%d/device/pp_dpm_%s", asic->instance, clk_name),
+		min, max);
+}
+
 static void waves_to_json(struct umr_asic *asic, JSON_Object *out) {
 	int start = -1, stop = -1;
 	struct umr_wave_data *wd, *owd;
@@ -2180,7 +2192,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				JSON_Value *rings = json_value_init_array();
 				char fname[256];
 				struct dirent *dir;
-				sprintf(fname, "/sys/kernel/debug/dri/%d/", asics[i]->instance);
+				sprintf(fname, SYSFS_PATH_DEBUG_DRI "%d/", asics[i]->instance);
 				DIR *d = opendir(fname);
 				if (d) {
 					while ((dir = readdir(d))) {
@@ -2196,12 +2208,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			/* PCIe link speed/width */
 			{
 				char fname[256];
-				sprintf(fname, "/sys/class/drm/card%d/device/current_link_speed", asics[i]->instance);
+				sprintf(fname, SYSFS_PATH_DRM "card%d/device/current_link_speed", asics[i]->instance);
 				const char *content = read_file(fname);
 				JSON_Value *pcie = json_value_init_object();
 				if (content)
 					json_object_set_string(json_object(pcie), "speed", content);
-				sprintf(fname, "/sys/class/drm/card%d/device/current_link_width", asics[i]->instance);
+				sprintf(fname, SYSFS_PATH_DRM "card%d/device/current_link_width", asics[i]->instance);
 				uint64_t width = read_sysfs_uint64(fname);
 				if (width)
 					json_object_set_number(json_object(pcie), "width", width);
@@ -2281,7 +2293,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		/* Get our ID. */
-		char *dev_name = read_file("/sys/kernel/debug/dri/%d/name", asic->instance);
+		char *dev_name = read_file(SYSFS_PATH_DEBUG_DRI "%d/name", asic->instance);
 		dev_name = strstr(dev_name, "dev=");
 		if (!dev_name)
 			goto error;
@@ -2301,7 +2313,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		char *content_before =
-			read_file_a("/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
+			read_file_a(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_fence_info", asic->instance);
 
 		struct timespec req, rem;
 		int steps = period_ms / step_ms;
@@ -2539,7 +2551,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		answer = json_value_init_object();
 
-		const char *fence_info = read_file("/sys/kernel/debug/dri/%d/amdgpu_fence_info", asic->instance);
+		const char *fence_info = read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_fence_info", asic->instance);
 		JSON_Array *signaled_fences = get_rings_last_signaled_fences(fence_info, ring_name);
 
 		ring_data = umr_read_ring_data(asic, ring_name, &ringsize);
@@ -2642,7 +2654,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		json_object_set_value(json_object(answer), "profiles", valid);
 		const char *write = json_object_get_string(request, "set");
 		char path[512];
-		sprintf(path, "/sys/class/drm/card%d/device/power_dpm_force_performance_level", asic->instance);
+		sprintf(path, SYSFS_PATH_DRM "card%d/device/power_dpm_force_performance_level", asic->instance);
 		if (!write) {
 			char *content = read_file(path);
 			size_t s = strlen(content);
@@ -2675,9 +2687,6 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			{"MEM_LOAD", 0, AMDGPU_PP_SENSOR_MEM_LOAD, SENSOR_IDENTITY },
 			{NULL, 0, 0, 0},
 		};
-		char fname[256];
-		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_sensors", asic->instance);
-		asic->fd.sensors = open(fname, O_RDWR);
 		answer = json_value_init_object();
 		if (asic->fd.sensors) {
 			uint32_t gpu_power_data[32];
@@ -2699,14 +2708,10 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				{
 					int min, max;
 					if (i == 0) {
-						parse_sysfs_clock_file(
-							read_file("/sys/class/drm/card%d/device/pp_dpm_sclk", asic->instance),
-							&min, &max);
+						read_clock_min_max(asic, "sclk", &min, &max);
 						json_object_set_string(v, "unit", "MHz");
 					} else if (i == 1) {
-						parse_sysfs_clock_file(
-							read_file("/sys/class/drm/card%d/device/pp_dpm_mclk", asic->instance),
-							&min, &max);
+						read_clock_min_max(asic, "mclk", &min, &max);
 						json_object_set_string(v, "unit", "MHz");
 					} else if (i == 2) {
 						min = 0;
@@ -2727,7 +2732,6 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 				json_array_append_value(values, json_object_get_wrapping_value(v));
 			}
-			close(asic->fd.sensors);
 			json_object_set_value(json_object(answer), "values", json_array_get_wrapping_value(values));
 		}
 	} else if (strcmp(command, "hwmon") == 0) {
@@ -2739,7 +2743,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			int fan_idx = json_object_get_number(set, "hwmon");
 			int new_mode = json_object_get_number(set, "mode");
 			if (new_mode >= 0) {
-				snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1_enable", asic->instance, fan_idx);
+				snprintf(fname, sizeof(fname)-1, SYSFS_PATH_DRM "card%d/device/hwmon/hwmon%d/pwm1_enable", asic->instance, fan_idx);
 				FILE *fd = fopen(fname, "w");
 				if (fd) {
 					fprintf(fd, "%d", new_mode);
@@ -2748,7 +2752,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 			int new_pwm = json_object_get_number(set, "value");
 			if (new_pwm >= 0) {
-				snprintf(fname, sizeof(fname)-1, "/sys/class/drm/card%d/device/hwmon/hwmon%d/pwm1", asic->instance, fan_idx);
+				snprintf(fname, sizeof(fname)-1, SYSFS_PATH_DRM "card%d/device/hwmon/hwmon%d/pwm1", asic->instance, fan_idx);
 				FILE *fd = fopen(fname, "w");
 				if (fd) {
 					fprintf(fd, "%d", new_pwm);
@@ -2762,7 +2766,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		JSON_Array *hwmons = json_array(json_value_init_array());
 
 		struct dirent *dir;
-		sprintf(dname, "/sys/class/drm/card%d/device/hwmon/", asic->instance);
+		sprintf(dname, SYSFS_PATH_DRM "card%d/device/hwmon/", asic->instance);
 		DIR *d = opendir(dname);
 		if (d) {
 			while ((dir = readdir(d))) {
@@ -2827,7 +2831,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 	} else if (strcmp(command, "pp_features") == 0) {
 		char path[512];
-		sprintf(path, "/sys/class/drm/card%d/device/pp_features", asic->instance);
+		sprintf(path, SYSFS_PATH_DRM "card%d/device/pp_features", asic->instance);
 		if (!json_object_has_value(request, "set")) {
 			char *content = read_file(path);
 			if (content && strlen(content)) {
@@ -2862,14 +2866,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		for (int i = 0; names[i]; i++) {
 			JSON_Value *m = json_value_init_object();
 			for (int j = 0; suffixes[j]; j++) {
-				sprintf(path, "/sys/class/drm/card%d/device/mem_info_%s_%s", asic->instance, names[i], suffixes[j]);
+				sprintf(path, SYSFS_PATH_DRM "card%d/device/mem_info_%s_%s", asic->instance, names[i], suffixes[j]);
 				uint64_t v = read_sysfs_uint64(path);
 				json_object_set_number(json_object(m), suffixes[j], v);
 			}
 			json_object_set_value(json_object(answer), names[i], m);
 		}
 
-		char *data = read_file_a("/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
+		char *data = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_vm_info", asic->instance);
 		if (data) {
 			JSON_Array *pids = parse_vm_info(data);
 			json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
@@ -2887,12 +2891,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 	} else if (!strcmp(command, "evict")) {
 		int type = json_object_get_number(request, "type");
 		const char *mem = type == 0 ? "vram" : "gtt";
-		read_file("/sys/kernel/debug/dri/%d/amdgpu_evict_%s", asic->instance, mem);
+		read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_evict_%s", asic->instance, mem);
 	} else if (!strcmp(command, "kms")) {
-		const char *content = read_file("/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
+		const char *content = read_file(SYSFS_PATH_DEBUG_DRI "%d/framebuffer", asic->instance);
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(NULL, content);
 
-		content = read_file("/sys/kernel/debug/dri/%d/state", asic->instance);
+		content = read_file(SYSFS_PATH_DEBUG_DRI "%d/state", asic->instance);
 		JSON_Object *state = parse_kms_state_sysfs_file(content);
 
 		answer = json_object_get_wrapping_value(state);
@@ -2917,7 +2921,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		char path[PATH_MAX];
-		sprintf(path, "/sys/kernel/debug/dri/%d/amdgpu_dm_visual_confirm", asic->instance);
+		sprintf(path, SYSFS_PATH_DEBUG_DRI "%d/amdgpu_dm_visual_confirm", asic->instance);
 		if (json_object_has_value(request, "dm_visual_confirm")) {
 			FILE *fd = fopen(path, "w");
 			if (fd) {
@@ -2947,7 +2951,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		answer = json_value_init_object();
 		JSON_Array *pids = parse_gem_info(
-			read_file("/sys/kernel/debug/dri/%d/amdgpu_gem_info", asic->instance),
+			read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_gem_info", asic->instance),
 			pids_mapping, num_pids_mapping);
 
 		cleanup_pids_mapping(pids_mapping, num_pids_mapping);
@@ -2994,7 +2998,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
 
-		char *content = read_file("/sys/kernel/debug/dri/%d/framebuffer", asic->instance);
+		char *content = read_file(SYSFS_PATH_DEBUG_DRI "%d/framebuffer", asic->instance);
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(asic, content);
 		previous_framebuffers_answer = json_value_deep_copy(json_array_get_wrapping_value(framebuffers));
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
