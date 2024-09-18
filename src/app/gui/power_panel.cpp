@@ -38,6 +38,7 @@ class PowerPanel : public Panel {
 public:
 	PowerPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL),
 		sensors_last_answer(NULL),
+		runtimepm_last_answer(NULL),
 		pp_last_answer(NULL),
 		hwmon_last_answer(NULL),
 		consumed(true),
@@ -48,6 +49,8 @@ public:
 			json_value_free(json_object_get_wrapping_value(last_answer));
 		if (sensors_last_answer)
 			json_value_free(json_object_get_wrapping_value(sensors_last_answer));
+		if (runtimepm_last_answer)
+			json_value_free(json_object_get_wrapping_value(runtimepm_last_answer));
 		if (pp_last_answer)
 			json_value_free(json_object_get_wrapping_value(pp_last_answer));
 		if (hwmon_last_answer)
@@ -73,6 +76,10 @@ public:
 				json_value_free(json_object_get_wrapping_value(sensors_last_answer));
 			sensors_last_answer = json_object(json_value_deep_copy(answer));
 			consumed = false;
+		} else if (!strcmp(command, "runtimepm")) {
+			if (runtimepm_last_answer)
+				json_value_free(json_object_get_wrapping_value(runtimepm_last_answer));
+			runtimepm_last_answer = json_object(json_value_deep_copy(answer));
 		} else if (!strcmp(command, "pp_features")) {
 			if (pp_last_answer)
 				json_value_free(json_object_get_wrapping_value(pp_last_answer));
@@ -87,6 +94,8 @@ public:
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
+		const float gui_scale = get_gui_scale();
+
 		ImGui::BeginChild("power profiles", ImVec2(avail.x / 5, 0), false, ImGuiWindowFlags_NoTitleBar);
 		static float last_sensor_read = 0;
 		static float sensor_read_interval = 0.5;
@@ -129,22 +138,79 @@ public:
 		ImGui::EndChild();
 		ImGui::SameLine();
 		ImGui::BeginChild("power sensors", ImVec2(avail.x * 1.0 / 2, 0), false, ImGuiWindowFlags_NoTitleBar);
-		ImGui::Text("Sensors values:");
+		ImGui::SetNextItemWidth(avail.x / 4);
+		ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
+		bool suspended = false;
+		if (runtimepm_last_answer) {
+			auto *rpm = runtimepm_last_answer;
+			bool rpm_enabled;
+
+			if (strcmp(json_object_get_string(rpm, "runtime_enabled"), "forbidden") == 0) {
+				ImGui::Text("Runtime Power Management: disabled (always on)");
+				rpm_enabled = false;
+			} else {
+				ImGui::Text("Runtime Power Management");
+				rpm_enabled = true;
+			}
+			ImGui::Text("Status: ");
+			ImGui::SameLine();
+			ImColor col;
+			auto *str_status = json_object_get_string(rpm, "runtime_status");
+			if (strcmp(str_status, "suspended") == 0) {
+				suspended = true;
+				col = palette[2];
+			}
+			else if (strcmp(str_status, "suspending") == 0 ||
+					 strcmp(str_status, "resuming") == 0)
+				col = palette[1];
+			else if (strcmp(str_status, "active") == 0)
+				col = palette[7];
+			else
+				col = palette[8];
+
+			ImVec2 c1 = ImGui::GetCursorScreenPos();
+			c1.x += ImGui::GetStyle().FramePadding.x;
+			c1.y += ImGui::GetTextLineHeight() * 0.5;
+			ImGui::GetWindowDrawList()->AddCircleFilled(c1, 6 * gui_scale, col);
+
+			if (suspended) {
+				c1.x += 20 * gui_scale;
+				c1.y -= ImGui::GetTextLineHeight() * 0.5;
+				ImGui::SetCursorScreenPos(c1);
+				if (ImGui::Button("Wake up"))
+					send_wakeup_command();
+			} else {
+				ImGui::NewLine();
+			}
+
+			if (rpm_enabled) {
+				ImGui::Text("Statistics:");
+				ImGui::Indent();
+				double active = json_object_get_number(rpm, "active_time") / 1000;
+				ImGui::Text("Active   : %s", format_duration(active));
+				double spd = json_object_get_number(rpm, "suspended_time") / 1000;
+				ImGui::Text("Suspended: %s", format_duration(spd));
+				ImGui::Unindent();
+			}
+
+			ImGui::Separator();
+		}
+
 		if (last_sensor_read > sensor_read_interval) {
 			if (can_send_request) {
-				send_sensors_command();
+				send_runtimepm_command();
 				send_pp_features_command(0, false);
-				send_fans_command(-1, -1, -1);
+				if (!suspended) {
+					send_sensors_command();
+					send_fans_command(-1, -1, -1);
+				}
 				last_sensor_read = 0;
 			}
 		} else {
 			last_sensor_read += dt;
 		}
-
-		if (sensors_last_answer) {
-			ImGui::SetNextItemWidth(avail.x / 4);
-			ImGui::DragFloat("Refresh interval (drag to modify)", &sensor_read_interval, 0.1, 0.1, 5, "%.1f sec");
-
+		if (sensors_last_answer && !suspended) {
+			ImGui::Text("Sensors values:");
 			const int old_value_count = 100;
 			JSON_Array *values = json_object_get_array(sensors_last_answer, "values");
 			int sensors_count = json_array_get_count(values);
@@ -169,16 +235,16 @@ public:
 					ImGui::SetCursorScreenPos(previous_cursor);
 				}
 
-				ImGui::PlotLines(same_graph ? "" : json_object_get_string(v, "name"),
-									 &sensor_previous_values[i * old_value_count],
-									 old_value_count,
-									 sensor_values_offset + 1,
-									 NULL,
-									 json_object_get_number(v, "min"),
-									 json_object_get_number(v, "max"),
-									 ImVec2(0, avail.y / (2 + sensors_count)),
-									 sizeof(float),
-									 same_graph);
+				ImGui::PlotLines(json_object_get_string(v, "name"),
+								 &sensor_previous_values[i * old_value_count],
+								  old_value_count,
+								  sensor_values_offset + 1,
+								  NULL,
+								  json_object_get_number(v, "min"),
+								  json_object_get_number(v, "max"),
+								  ImVec2(0, avail.y / (2 + sensors_count)),
+								  sizeof(float),
+								  same_graph);
 				ImGui::SameLine();
 				if (same_graph) {
 					ImVec2 c = ImGui::GetCursorScreenPos();
@@ -186,7 +252,7 @@ public:
 					ImGui::SetCursorScreenPos(c);
 				}
 				ImGui::Text("%s: %d %s",
-					same_graph ? json_object_get_string(v, "name") : "",
+					json_object_get_string(v, "name"),
 					(int)sensor_previous_values[i * old_value_count + sensor_values_offset],
 					json_object_get_string(v, "unit"));
 			}
@@ -294,6 +360,12 @@ public:
 	}
 
 private:
+	void send_runtimepm_command() {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "runtimepm");
+		send_request(req);
+	}
+
 	void send_sensors_command() {
 		JSON_Value *req = json_value_init_object();
 		json_object_set_string(json_object(req), "command", "sensors");
@@ -305,6 +377,12 @@ private:
 		json_object_set_string(json_object(req), "command", "power");
 		if (new_value)
 			json_object_set_string(json_object(req), "set", new_value);
+		send_request(req);
+	}
+
+	void send_wakeup_command() {
+		JSON_Value *req = json_value_init_object();
+		json_object_set_string(json_object(req), "command", "wakeup");
 		send_request(req);
 	}
 
@@ -332,6 +410,7 @@ private:
 private:
 	JSON_Object *last_answer;
 	JSON_Object *sensors_last_answer;
+	JSON_Object *runtimepm_last_answer;
 	JSON_Object *pp_last_answer;
 	JSON_Object *hwmon_last_answer;
 	bool consumed;

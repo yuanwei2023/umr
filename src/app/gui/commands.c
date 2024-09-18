@@ -692,8 +692,15 @@ static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_
 }
 #endif
 
-static uint64_t read_sysfs_uint64(const char *path) {
-	char *content = read_file(path);
+static uint64_t read_sysfs_uint64(const char *path, ...) {
+	char _path[PATH_MAX];
+	va_list args;
+	va_start (args, path);
+	if (vsprintf(_path, path, args) < 0)
+		return 0;
+	va_end (args);
+
+	char *content = read_file(_path);
 	uint64_t v;
 	if (sscanf(content, "%lu", &v) == 1)
 		return v;
@@ -2734,6 +2741,45 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 			json_object_set_value(json_object(answer), "values", json_array_get_wrapping_value(values));
 		}
+	} else if (strcmp(command, "runtimepm") == 0) {
+		const char *int_attr[] = {
+			"suspended_time",
+			"active_time",
+			"usage",
+		};
+		const char *str_attr[] = {
+			"control",
+			"runtime_enabled",
+			"runtime_status",
+		};
+		answer = json_value_init_object();
+		for (size_t i = 0; i < ARRAY_SIZE(int_attr); i++) {
+			uint64_t v = read_sysfs_uint64(SYSFS_PATH_DRM "card%d/device/power/runtime_%s",
+													 asic->instance, int_attr[i]);
+			json_object_set_number(json_object(answer), int_attr[i], (double)v);
+		}
+		for (size_t i = 0; i < ARRAY_SIZE(str_attr); i++) {
+			const char *s = read_file(SYSFS_PATH_DRM "card%d/device/power/%s",
+											  asic->instance, str_attr[i]);
+			json_object_set_string_with_len(
+				json_object(answer), str_attr[i], s, strlen(s) - 1);
+		}
+	} else if (strcmp(command, "wakeup") == 0) {
+		char path[PATH_MAX];
+		sprintf(path, SYSFS_PATH_DRM "card%d/device/power/control", asic->instance);
+		FILE *fd = fopen(path, "w");
+		if (fd) {
+			/* Disable runtimepm */
+			fprintf(fd, "on");
+			fclose(fd);
+		}
+		fd = fopen(path, "w");
+		if (fd) {
+			/* Re-enable runtimepm */
+			fprintf(fd, "auto\n");
+			fclose(fd);
+		}
+		answer = json_value_init_object();
 	} else if (strcmp(command, "hwmon") == 0) {
 		char dname[256], fname[1024];
 		int values[4];
@@ -2834,7 +2880,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		sprintf(path, SYSFS_PATH_DRM "card%d/device/pp_features", asic->instance);
 		if (!json_object_has_value(request, "set")) {
 			char *content = read_file(path);
-			if (content && strlen(content)) {
+			if (content && strlen(content) > 1) {
 				answer = json_object_get_wrapping_value(parse_pp_features_sysfs_file(content));
 			} else {
 				last_error = "unsupported";

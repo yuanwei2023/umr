@@ -52,6 +52,17 @@ public:
 	struct umr_asic *asic;
 protected:
 	JSON_Object *info;
+
+	const char* format_duration(double dt) const {
+		static char txt[32];
+		if (dt > 1)
+			sprintf(txt, "%.3f sec", dt);
+		else if (dt > 0.001)
+			sprintf(txt, "%.3f ms", dt * 1000);
+		else
+			sprintf(txt, "%.3f us", dt * 1000000);
+		return txt;
+	}
 };
 
 static inline const char *color_to_hex_str(const ImColor& color) {
