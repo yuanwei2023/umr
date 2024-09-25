@@ -1958,7 +1958,7 @@ void init_asics() {
 			asics[i]->fd.drm = open(devname, O_RDWR);
 		}
 
-		if (asics[i]->was_ip_discovered && opt.test_log_fd) {
+		if (opt.test_log_fd) {
 			const char *separator = "-----\n";
 			if (asic_discovery_data == NULL) {
 				printf("Unexpected discovery buffer:\n'%s'\n", ip_discovery_dump);
@@ -1967,8 +1967,10 @@ void init_asics() {
 			char *next_asic = strstr(asic_discovery_data, separator);
 			assert(next_asic);
 
-			ip_discovery_dumps[i] =
-				strndup(asic_discovery_data, next_asic - asic_discovery_data);
+			if (asics[i]->was_ip_discovered)
+				ip_discovery_dumps[i] =
+					strndup(asic_discovery_data, next_asic - asic_discovery_data);
+
 			asic_discovery_data = next_asic + strlen(separator);
 		}
 	}
