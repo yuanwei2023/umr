@@ -60,7 +60,7 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 				umr_scan_config((*asics)[x], 1);
 				++x;
 
-				if (global_options->test_log && global_options->test_log_fd) {
+				if (global_options && global_options->test_log && global_options->test_log_fd) {
 					fprintf(global_options->test_log_fd, "-----\n");
 				}
 			}
