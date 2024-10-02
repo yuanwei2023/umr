@@ -1973,6 +1973,8 @@ void init_asics() {
 
 			asic_discovery_data = next_asic + strlen(separator);
 		}
+		asics[i]->options.test_log = false;
+		asics[i]->options.test_log_fd = 0;
 	}
 	free(enum_asics);
 
