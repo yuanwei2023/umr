@@ -234,7 +234,7 @@ public:
 		ImGui::TextUnformatted("Buffer Object from KMS framebuffers");
 		ImGui::PopStyleColor();
 		ImGui::Indent();
-		ImGui::Text("(appname         resolution)");
+		ImGui::Text("(appname  id    resolution)");
 		JSON_Array *fbs = json_object_get_array(last_answer_gem_info, "framebuffers");
 		for (int i = 0; i < json_array_get_count(apps); i++) {
 			JSON_Object *fb = json_object(json_array_get_value(fbs, i));
@@ -255,6 +255,8 @@ public:
 			int l = strlen(cmd);
 			if (l > 15) l = 15;
 			ImGui::Text(" #dbde79%.*s", l, cmd);
+			ImGui::SameLine();
+			ImGui::Text(" %d", (int)json_object_get_number(fb, "id"));
 			if (ImGui::IsItemHovered()) {
 				ImGui::BeginTooltip();
 				ImGui::Text("#dbde79%s", json_object_get_string(fb, "allocated by"));
