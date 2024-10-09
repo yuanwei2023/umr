@@ -266,6 +266,11 @@ public:
 					fourcc++;
 					ImGui::Text("fourcc: %.*s", (int)(strlen(fourcc) - 1), fourcc);
 					ImGui::Text("modifier: 0x%s", json_object_get_string(fb, "modifier"));
+					if (json_object_has_value(fb, "modifier_str") && ImGui::IsItemHovered()) {
+						ImGui::BeginTooltip();
+						ImGui::Text("Description: %s", json_object_get_string(fb, "modifier_str"));
+						ImGui::EndTooltip();
+					}
 					ImGui::Text("size: %dx%d",
 						(int)json_object_get_number(size, "w"),
 						(int)json_object_get_number(size, "h"));

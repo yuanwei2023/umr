@@ -861,7 +861,14 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 
 		parse_kms_field(&content, "format", "format", KMS_STRING, fb);
 		parse_kms_field(&content, "modifier", "modifier", KMS_INT_16, fb);
+		uint64_t modifier_i = str_to_uint64(json_object_get_string(fb, "modifier"));
+		char *mod_str = drmGetFormatModifierName(modifier_i);
+		if (mod_str) {
+			json_object_set_string(fb, "modifier_str", mod_str);
+			free(mod_str);
+		}
 		parse_kms_field(&content, "size", "size", KMS_SIZE, fb);
+
 
 		JSON_Value *layers = json_value_init_array();
 		content = strstr(content, "layers:");

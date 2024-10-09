@@ -192,7 +192,7 @@ enum TEST_RESULT test_parse_sysfs_framebuffer()
         "[ \
             { \
                 \"id\": 135, \"allocated by\": \"gnome-shell\", \"format\": \"AR24 little-endian (0x34325241)\", \
-                \"modifier\": \"0\", \"size\": { \"w\": 256, \"h\": 256 }, \
+                \"modifier\": \"0\", \"modifier_str\": \"LINEAR\", \"size\": { \"w\": 256, \"h\": 256 }, \
                 \"layers\": [ \
                     { \
                         \"size\": { \"w\": 256, \"h\": 256 }, \
