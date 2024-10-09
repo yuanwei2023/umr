@@ -265,7 +265,7 @@ public:
 					ImGui::Text("format: %.*s", (int)(fourcc - fmt), fmt);
 					fourcc++;
 					ImGui::Text("fourcc: %.*s", (int)(strlen(fourcc) - 1), fourcc);
-					ImGui::Text("modifier: 0x%" PRIx64, (uint64_t) json_object_get_number(fb, "modifier"));
+					ImGui::Text("modifier: 0x%s", json_object_get_string(fb, "modifier"));
 					ImGui::Text("size: %dx%d",
 						(int)json_object_get_number(size, "w"),
 						(int)json_object_get_number(size, "h"));
