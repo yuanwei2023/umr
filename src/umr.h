@@ -1739,7 +1739,7 @@ uint32_t umr_find_reg(struct umr_asic *asic, const char *regname);
 
 // wildcard searches
 struct umr_find_reg_iter *umr_find_reg_wild_first(struct umr_asic *asic, const char *ip, const char *reg);
-struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter *iter);
+struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter **iterp);
 
 // find a register and return a printable name (used for human readable output)
 char *umr_reg_name(struct umr_asic *asic, uint64_t addr);

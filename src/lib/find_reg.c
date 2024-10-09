@@ -95,9 +95,10 @@ struct umr_find_reg_iter* umr_find_reg_wild_first(struct umr_asic* asic, const c
 	return iter;
 }
 
-struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter* iter)
+struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter **iterp)
 {
 	struct umr_find_reg_iter_result res;
+	struct umr_find_reg_iter *iter = *iterp;
 	for (;;) {
 		// if reg_i == -1 find the next IP block
 		if (iter->reg_i == -1) {
@@ -114,6 +115,7 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter*
 				free(iter);
 				res.ip = NULL;
 				res.reg = NULL;
+				*iterp = NULL;
 				return res;
 			}
 
