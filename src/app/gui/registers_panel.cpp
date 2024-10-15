@@ -28,19 +28,34 @@
 #include <SDL.h>
 
 struct PinnedRegister {
-	PinnedRegister(struct umr_ip_block *_blk, struct umr_reg *_reg) : blk(_blk), reg(_reg) {
-		value_is_valid = false;
-		value_is_dirty = false;
-	}
+	PinnedRegister(struct umr_ip_block *_blk, struct umr_reg *_reg) : blk(_blk), reg(_reg) { }
 	struct umr_ip_block *blk;
 	struct umr_reg *reg;
-	bool value_is_valid;
-	bool value_is_dirty;
+	uint32_t new_value;
+	bool collapsed;
 };
+
+const char *skip_register_prefix(const char *reg_name) {
+	if (strncmp(reg_name, "mm", 2) == 0)
+		return reg_name + 2;
+	else if (strncmp(reg_name, "reg", 3) == 0)
+		return reg_name + 3;
+	return reg_name;
+}
+
+static ImColor get_value_color(int index, uint32_t value, uint32_t original, bool highlight)
+{
+	if (value == original) {
+		return palette[highlight ? 0 : (8 + 2 * (index % 2))];
+	} else {
+		return palette[highlight ? 2 : 3];
+	}
+}
+
 
 class RegistersPanel : public Panel {
 public:
-	RegistersPanel(struct umr_asic *asic) : Panel(asic), autorefresh(false), autorefresh_hz(5), elapsed_since_last_refresh(0) {}
+	RegistersPanel(struct umr_asic *asic) : Panel(asic), hightlighted_field(NULL) {}
 
 	~RegistersPanel() {}
 
@@ -68,30 +83,29 @@ public:
 		if (!pinned) {
 			/* This can happen in replay mode: pin the register */
 			struct umr_reg *r = umr_find_reg_data_by_ip(asic, blk, reg);
-			struct umr_ip_block *b = NULL;
-			umr_find_reg_by_addr(asic, r->addr, &b);
-			pinned_registers.push_back(PinnedRegister(b, r));
-			pinned = &pinned_registers.back();
+			struct umr_ip_block *b = umr_find_ip_block(asic, blk, 0);
+			if (r && b) {
+				pinned_registers.push_back(PinnedRegister(b, r));
+				pinned = &pinned_registers.back();
+			}
 		}
 
-		pinned->reg->value = json_object_get_number(json_object(answer), "value");
-		pinned->value_is_valid = true;
-		pinned->value_is_dirty = false;
+		pinned->reg->value = pinned->new_value = json_object_get_number(json_object(answer), "value");
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
-		const float _8digitsize = ImGui::CalcTextSize("0x00000000").x + ImGui::GetStyle().FramePadding.x * 2;
+		const float _8digitsize = ImGui::CalcTextSize("00000000").x + ImGui::GetStyle().FramePadding.x * 2;
 
 		/* Split pane */
 		ImGui::BeginChild("Registers list", ImVec2(avail.x / 3, 0), false,
-							ImGuiWindowFlags_NoTitleBar);
+							ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_HorizontalScrollbar);
 		char details[128];
 		for (int i = 0; i < (int) asic->no_blocks; i++) {
 			unsigned matching = 0;
 			struct umr_ip_block *b = asic->blocks[i];
 			if (filter[0] != '\0' || field_filter[0] != '\0') {
 				for (int j = 0; j < b->no_regs; j++) {
-					if (filter[0] != '\0' && fuzzy_match_simple(filter, b->regs[j].regname)) {
+					if (filter[0] != '\0' && fuzzy_match_simple(filter, skip_register_prefix(b->regs[j].regname))) {
 						matching++;
 					} else if (field_filter[0] != '\0') {
 						for (int k = 0; k < b->regs[j].no_bits; k++) {
@@ -116,7 +130,7 @@ public:
 					for (int k = 0; k < (int) pinned_registers.size() && !pinned; k++)
 						pinned = pinned_registers[k].reg == &b->regs[j];
 
-					if (filter[0] != '\0' && !fuzzy_match_simple(filter, b->regs[j].regname))
+					if (filter[0] != '\0' && !fuzzy_match_simple(filter, skip_register_prefix(b->regs[j].regname)))
 						continue;
 
 					if (field_filter[0] != '\0') {
@@ -134,8 +148,8 @@ public:
 					}
 					at_least_one = true;
 					if (pinned) {
-						ImGui::TextUnformatted(b->regs[j].regname);
-					} else if (ImGui::Button(b->regs[j].regname)) {
+						ImGui::TextUnformatted(skip_register_prefix(b->regs[j].regname));
+					} else if (ImGui::Button(skip_register_prefix(b->regs[j].regname))) {
 						pinned_registers.push_back(PinnedRegister(b, &b->regs[j]));
 						send_read_reg_command(&pinned_registers.back());
 					}
@@ -149,139 +163,236 @@ public:
 		ImGui::EndChild();
 		ImGui::SameLine();
 
-		ImGui::BeginChild("Filters:", ImVec2(2 * avail.x / 3, 0), false, ImGuiWindowFlags_NoTitleBar);
+		ImGui::BeginChild("filters", ImVec2(3 * avail.x / 4, 0), false,
+			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::NewLine();
-		ImGui::Text("Filters");
+		ImGui::PushStyleColor(ImGuiCol_Text, ImU32(palette[4]));
+		ImGui::Text("Search register by:");
+		ImGui::PopStyleColor();
 		if (kb_shortcut(SDLK_f))
 			ImGui::SetKeyboardFocusHere();
-		ImGui::InputText("Register name	  ", filter, sizeof(filter));
+		ImGui::BulletText("Name:      ");
+		ImGui::SameLine();
+		ImGui::InputText("", filter, sizeof(filter));
 		ImGui::SameLine();
 		if (ImGui::Button("Clear") || (kb_shortcut(SDLK_BACKSPACE)))
 			filter[0] = '\0';
-		ImGui::InputText("Register field name", field_filter, sizeof(field_filter));
+		ImGui::BulletText("Field Name:");
+		ImGui::SameLine();
+		ImGui::PushID("field");
+		ImGui::InputText("", field_filter, sizeof(field_filter));
+		ImGui::PopID();
 		ImGui::SameLine();
 		ImGui::PushID("Field");
 		if (ImGui::Button("Clear") || (ImGui::GetIO().KeyCtrl && ImGui::IsKeyReleased(SDLK_BACKSPACE)))
 			field_filter[0] = '\0';
 		ImGui::PopID();
 		ImGui::Separator();
-		ImGui::Text("Register watchlist:");
-		ImGui::NewLine();
 		bool auto_read_reg = false;
 		if (pinned_registers.empty()) {
 			ImGui::Indent();
 			ImGui::Text("(Click on a register name to add it to the watchlist.)");
 			ImGui::Unindent();
 			ImGui::NewLine();
-		} else {
-			if (dt >= 0 && ImGui::Checkbox("Auto-refresh", &autorefresh)) {
-				elapsed_since_last_refresh = 0;
-			}
-			if (autorefresh) {
-				ImGui::SameLine();
-				elapsed_since_last_refresh += dt;
-				ImGui::SetNextItemWidth(_8digitsize);
-				ImGui::InputInt("Frequency", &autorefresh_hz);
-				ImGui::SameLine();
-				ImGui::ProgressBar(elapsed_since_last_refresh / autorefresh_hz, ImVec2(), "");
-				if (elapsed_since_last_refresh >= autorefresh_hz) {
-					elapsed_since_last_refresh = 0;
-					auto_read_reg = true;
-				}
-			}
 		}
 
-		ImGui::BeginTable("register", 7, ImGuiTableFlags_SizingStretchProp |
-										 ImGuiTableFlags_Borders);
-		ImGui::TableSetupColumn("Pin", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" R ").x);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x00000000 ").x);
-		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, _8digitsize);
-		ImGui::TableSetupColumn("Bitfield");
-		ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" R ").x);
-		ImGui::TableSetupColumn("W", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" R ").x);
-		ImGui::TableHeadersRow();
+		std::vector<ImVec2> folded_coords;
+		const float line_height = ImGui::GetTextLineHeight();
+		struct umr_bitfield *highlighted = NULL;
 		for (int i = 0; i < (int) pinned_registers.size(); ++i) {
-			bool pin = true;
 			PinnedRegister& pinned = pinned_registers[i];
 			ImGui::PushID(pinned.reg->regname);
 
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			if (ImGui::Checkbox(" ", &pin)) {
-				pinned_registers.erase(pinned_registers.begin() + i);
-				i--;
-			}
-			ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted(pinned.reg->regname);
-			ImGui::TableSetColumnIndex(2); ImGui::Text("0x%08lx", pinned.reg->addr);
-			ImGui::SetNextItemWidth(_8digitsize);
-			ImGui::TableSetColumnIndex(3);
-			{
-				char tmp[512];
-				bool was_dirty = pinned.value_is_dirty;
-				if (was_dirty)
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0, 0, 0, 1));
-				sprintf(tmp, "0x%08lx", pinned.reg->value);
-				if (ImGui::InputText("", tmp, 16, ImGuiInputTextFlags_CharsHexadecimal)) {
-					unsigned value;
-					if (sscanf(tmp, "0x%x", &value) == 1) {
-						pinned.reg->value = value;
-						pinned.value_is_dirty = true;
-						force_redraw();
-					}
-				}
-				if (was_dirty)
-					ImGui::PopStyleColor();
-			}
-			ImGui::TableSetColumnIndex(4);
-			ImGui::BeginTable("bitfield", 2);
-			ImGui::TableSetupColumn("Field");
-			ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, _8digitsize);
-			for (int j = 0; j < pinned.reg->no_bits; j++) {
-				ImGui::TableNextRow();
-				struct umr_bitfield *bit = &pinned.reg->bits[j];
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("#b58900%s [%d:%d]", bit->regname, bit->stop, bit->start);
+			ImGui::PushStyleColor(ImGuiCol_Text, ImU32(palette[6]));
+			if (ImGui::TreeNodeEx(skip_register_prefix(pinned.reg->regname), ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::PopStyleColor();
+				pinned.collapsed = false;
 
-				unsigned mask = 0;
-				for (unsigned k = bit->start; k <= bit->stop; k++)
-					mask |= 1u << k;
-				unsigned v = (pinned.reg->value & mask) >> bit->start;
-				ImGui::PushID(bit->regname);
+				char tmp[9];
+				bool dirty = pinned.new_value != pinned.reg->value;
+				if (dirty) {
+					ImColor col(get_value_color(0, pinned.new_value, pinned.reg->value, false));
+					ImGui::PushStyleColor(ImGuiCol_Text, ImU32(col));
+				}
+
+				/* Mess up a bit with the cursor to:
+				 * - remove horizontal spacing
+				 * - aligned vertically with the InputText
+				 */
+				ImVec2 prev = ImGui::GetCursorScreenPos();
+				ImGui::SetCursorScreenPos(ImVec2(prev.x, prev.y + ImGui::GetStyle().FramePadding.y));
+				ImGui::Text("Value: 0x");
+				ImGui::SameLine();
+				prev.x = ImGui::GetCursorScreenPos().x - ImGui::GetStyle().ItemSpacing.x;
+				ImGui::SetCursorScreenPos(prev);
+
+				sprintf(tmp, "%08x", pinned.new_value);
 				ImGui::SetNextItemWidth(_8digitsize);
-				ImGui::TableSetColumnIndex(1);
-				char tmp[16];
-				sprintf(tmp, "0x%x", v);
-				if (ImGui::InputText("", tmp, 16, ImGuiInputTextFlags_CharsHexadecimal)) {
-					if (sscanf(tmp, "%x", &v) == 1) {
-						pinned.reg->value = (pinned.reg->value & ~mask) | ((v << (unsigned)bit->start) & mask);
-						pinned.value_is_dirty = true;
+				if (ImGui::InputText("", tmp, sizeof(tmp), ImGuiInputTextFlags_CharsHexadecimal)) {
+					unsigned value;
+					if (sscanf(tmp, "%x", &value) == 1) {
+						pinned.new_value = value;
 						force_redraw();
 					}
 				}
-				ImGui::PopID();
-			}
-			ImGui::EndTable();
 
-			bool read = false;
-			ImGui::TableSetColumnIndex(5);
-			ImGui::BeginDisabled(!can_send_request);
-			if (ImGui::ArrowButton("read", ImGuiDir_Down) || auto_read_reg) {
-				send_read_reg_command(&pinned);
-			}
-			if (pinned.value_is_dirty) {
-				ImGui::TableSetColumnIndex(6);
-				if (ImGui::ArrowButton("write", ImGuiDir_Up)) {
-					send_write_reg_command(&pinned, pinned.reg->value);
+				if (dirty)
+					ImGui::PopStyleColor();
+
+				ImGui::BeginDisabled(!can_send_request);
+				ImGui::SameLine();
+				if (ImGui::Button("Read") || auto_read_reg) {
+					send_read_reg_command(&pinned);
 				}
+				ImGui::EndDisabled();
+
+				ImGui::BeginDisabled(!can_send_request || pinned.reg->value == pinned.new_value);
+				ImGui::SameLine();
+				if (ImGui::Button("Write")) {
+					send_write_reg_command(&pinned, pinned.new_value);
+				}
+				ImGui::EndDisabled();
+
+				ImVec2 p = ImGui::GetCursorScreenPos();
+				float cx = ImGui::GetFontSize();
+
+				ImVec2 bitfield_pos[32];
+
+				/* Display bits value. */
+				int previous_bit = 32;
+				for (int j = pinned.reg->no_bits - 1; j >= 0; j--) {
+					struct umr_bitfield *bit = &pinned.reg->bits[j];
+
+					bitfield_pos[j].x = p.x;
+
+					bool outside;
+					for (int k = previous_bit - 1; k >= bit->start; k--) {
+						if (k > bit->stop) {
+							ImGui::GetWindowDrawList()->AddText(p, ImColor(1.f, 1.f, 1.f, 0.2f), "x");
+							outside = true;
+						} else {
+							if (outside) {
+								p.x += cx * 0.5;
+								outside = false;
+							}
+
+							unsigned mask = 1u << k;
+							unsigned v = (pinned.new_value & mask) >> k;
+							unsigned v_original = (pinned.reg->value & mask) >> k;
+
+							ImColor col(get_value_color(j, v, v_original, hightlighted_field == bit));
+							if (ImGui::IsMouseHoveringRect(p, ImVec2(p.x + cx * 0.5, p.y + line_height))) {
+								col = IM_COL32_WHITE;
+								if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+									if (v)
+										pinned.new_value &= ~mask;
+									else
+										pinned.new_value |= mask;
+								}
+							}
+
+							ImGui::GetWindowDrawList()->AddText(p, col, v ? "1" : "0");
+						}
+						if (ImGui::IsMouseHoveringRect(p, ImVec2(p.x + cx * 0.5, p.y + line_height)))
+							highlighted = bit;
+						p.x += cx * 0.5;
+
+					}
+					bitfield_pos[j].x = p.x - cx * 0.25;
+					p.x += cx * 0.5;
+					previous_bit = bit->start;
+				}
+
+				ImGui::NewLine();
+				/* Display bitfields name */
+				ImVec2 c[4];
+				float max_x_pos = 0;
+				for (int j = 0; j < pinned.reg->no_bits; j++) {
+					struct umr_bitfield *bit = &pinned.reg->bits[j];
+					ImColor color(get_value_color(j, 0, 0, hightlighted_field == bit));
+
+					ImGui::PushStyleColor(ImGuiCol_Text, ImU32(color));
+					ImVec2 cursor(ImGui::GetCursorScreenPos());
+
+					c[0] = ImVec2(bitfield_pos[j].x, p.y + ImGui::GetTextLineHeight());
+					c[3] = ImVec2(bitfield_pos[j].x - cx * 0.5 * (bit->stop - bit->start),
+								  p.y + ImGui::GetTextLineHeight());
+					c[1] = ImVec2(bitfield_pos[j].x, cursor.y + ImGui::GetTextLineHeight() * .5);
+					c[2] = ImVec2(bitfield_pos[j].x + cx * 0.5, c[1].y);
+					color.Value.w = hightlighted_field == bit ? 0.4 : 0.2;
+					ImGui::GetWindowDrawList()->AddPolyline(c, 3, color, 0, 1.0);
+					ImGui::GetWindowDrawList()->AddLine(c[3], c[0], color);
+
+					c[2].x += cx * 0.5;
+					c[2].y = cursor.y;
+					ImGui::SetCursorScreenPos(c[2]);
+					ImGui::TextUnformatted(bit->regname);
+					if (ImGui::IsItemHovered())
+						highlighted = bit;
+					ImGui::PopStyleColor();
+
+					bitfield_pos[j].y = c[2].y;
+
+					max_x_pos = std::max(max_x_pos, c[2].x + ImGui::CalcTextSize(bit->regname).x);
+				}
+
+				/* Display field value. */
+				for (int j = 0; j < pinned.reg->no_bits; j++) {
+					struct umr_bitfield *bit = &pinned.reg->bits[j];
+
+					unsigned mask = (1llu << (1 + (bit->stop - bit->start))) - 1;
+					unsigned v = (pinned.new_value >> bit->start) & mask;
+					unsigned v_original = (pinned.reg->value >> bit->start) & mask;
+
+					ImColor color(get_value_color(j, v, v_original, hightlighted_field == bit));
+
+					ImGui::PushStyleColor(ImGuiCol_Text, ImU32(color));
+					ImVec2 cursor(ImGui::GetCursorScreenPos());
+					ImGui::SetCursorScreenPos(ImVec2(max_x_pos + cx, bitfield_pos[j].y));
+					ImGui::Text("0x%x", v);
+
+					if (ImGui::IsItemHovered())
+						highlighted = bit;
+					ImGui::PopStyleColor();
+				}
+
+				ImGui::TreePop();
+			} else {
+				ImGui::SameLine();
+				folded_coords.push_back(ImGui::GetCursorScreenPos());
+				ImGui::NewLine();
+				pinned.collapsed = true;
+				ImGui::PopStyleColor();
 			}
-			ImGui::EndDisabled();
 			ImGui::PopID();
 		}
-		ImGui::EndTable();
+
+		ImGui::PushStyleColor(ImGuiCol_Text, ImU32(palette[6]));
+		float align_x = 0;
+		for (auto v: folded_coords) {
+			align_x = std::max(align_x, v.x);
+		}
+		for (int i = 0, j = 0; i < (int) pinned_registers.size(); ++i) {
+			PinnedRegister& pinned = pinned_registers[i];
+			if (!pinned.collapsed)
+				continue;
+
+
+			ImGui::SetCursorScreenPos(ImVec2(align_x, folded_coords[j++].y));
+			ImGui::Text("... 0x%08x%c",
+            			pinned.new_value,
+                        pinned.new_value != pinned.reg->value ? '*' : ' ');
+
+		}
+		ImGui::PopStyleColor();
+
 		ImGui::EndChild();
 
-		return autorefresh;
+		if (hightlighted_field != highlighted) {
+			hightlighted_field = highlighted;
+			return true;
+		}
+		return false;
 	}
 
 private:
@@ -314,9 +425,9 @@ private:
 
 private:
 	std::vector<PinnedRegister> pinned_registers;
-	bool autorefresh;
-	float elapsed_since_last_refresh;
-	int autorefresh_hz;
+
+	struct umr_bitfield *hightlighted_field;
+
 	char filter[32] = {};
 	char field_filter[32] = {};
 };
