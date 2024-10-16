@@ -56,10 +56,10 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"PKT3_NOP", // 10
 	"UNK", // 11
 	"PKT3_CLEAR_STATE", // 12
-	"UNK", // 13
+	"PKT3_INDEX_BUFFER_SIZE", // 13
 	"UNK", // 14
 	"PKT3_DISPATCH_DIRECT", // 15
-	"UNK", // 16
+	"PKT3_DISPATCH_INDIRECT", // 16
 	"UNK", // 17
 	"UNK", // 18
 	"UNK", // 19
@@ -75,7 +75,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 23
 	"UNK", // 24
 	"UNK", // 25
-	"UNK", // 26
+	"PKT3_INDEX_BASE", // 26
 	"PKT3_DRAW_INDEX_2", // 27
 	"PKT3_CONTEXT_CONTROL", // 28
 	"UNK", // 29
@@ -93,7 +93,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 35
 	"UNK", // 36
 	"PKT3_WRITE_DATA", // 37
-	"UNK", // 38
+	"PKT3_DRAW_INDEX_INDIRECT_MULTI", // 38
 	"UNK", // 39
 	"UNK", // 3a
 	"UNK", // 3b
@@ -186,7 +186,7 @@ static const char *pm4_pkt3_opcode_names[] = {
 	"UNK", // 92
 	"UNK", // 93
 	"UNK", // 94
-	"UNK", // 95
+	"PKT3_HDP_FLUSH", // 95
 	"UNK", // 96
 	"UNK", // 97
 	"UNK", // 98
@@ -954,11 +954,22 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 		case 0x12: // CLEAR_STATE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "CMD", BITS(fetch_word(asic, stream, 0), 0, 4), NULL, 10, 32);
 			break;
+		case 0x13: // INDEX_BUFFER_SIZE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX_BUFFER_SIZE", fetch_word(asic, stream, 0), NULL, 10, 32);
+			break;
+		case 0x16: // DISPATCH_INDIRECT
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, 1), NULL, 16, 32);
+			break;
 		case 0x1d: // ATOMIC_GDS
 			// TODO: fill in
 			break;
 		case 0x1e: // ATOMIC_MEM
 			// TODO: fill in
+			break;
+		case 0x26: // INDEX_BASE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX_BASE_LO", BITS(fetch_word(asic, stream, 0), 1, 32) << 1, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "INDEX_BASE_HI", fetch_word(asic, stream, 1), NULL, 16, 32);
 			break;
 		case 0x37: // WRITE_DATA
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 30, 32), op_37_engines[BITS(fetch_word(asic, stream, 0), 30, 32)], 10, 32);
@@ -977,6 +988,21 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 					reg_addr += 1;
 				}
 			}
+			break;
+		case 0x38: // DRAW_INDEX_INDIRECT_MULTI
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VTX_LOC", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_INDX_LOC", BITS(fetch_word(asic, stream, 1), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INST_LOC", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INDEX_LOC", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "START_INDX_ENABLE", BITS(fetch_word(asic, stream, 3), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "COUNT_INDIRECT_ENABLE", BITS(fetch_word(asic, stream, 3), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INDEX_ENABLE", BITS(fetch_word(asic, stream, 3), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "COUNT", fetch_word(asic, stream, 4), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "COUNT_ADDR_LO", BITS(fetch_word(asic, stream, 5), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "COUNT_ADDR_HI", fetch_word(asic, stream, 6), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "STRIDE", fetch_word(asic, stream, 7), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 36, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 8), NULL, 16, 32);
 			break;
 		case 0x46: // EVENT_WRITE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
@@ -1103,6 +1129,9 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ATTRIBUTE_BASE_LO", BITS(fetch_word(asic, stream, 0), 4, 32) << 4, NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "ATTRIBUTE_BASE_HI", fetch_word(asic, stream, 1), NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "ATTRIBUTE_INDEX", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 10, 32);
+			break;
+		case 0x95: // HDP_FLUSH
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DUMMY", fetch_word(asic, stream, 0), NULL, 16, 32);
 			break;
 		case 0x9A: // DMA_DATA_FILL_MULTI
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE_SEL", BITS(fetch_word(asic, stream, 0), 0, 1), NULL, 10, 32);
@@ -1236,6 +1265,24 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 					reg_addr += 1;
 				}
 			}
+			break;
+		case 0x38: // DRAW_INDEX_INDIRECT_MULTI
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VTX_LOC", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_INDX_LOC", BITS(fetch_word(asic, stream, 1), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INST_LOC", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INDEX_LOC", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DISABLE_CPVGTDMA_SM", BITS(fetch_word(asic, stream, 3), 26, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "USE_VGPRS", BITS(fetch_word(asic, stream, 3), 27, 28), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "START_INDX_ENABLE", BITS(fetch_word(asic, stream, 3), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "THREAD_TRACE_MARKER_ENABLE", BITS(fetch_word(asic, stream, 3), 29, 30), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "COUNT_INDIRECT_ENABLE", BITS(fetch_word(asic, stream, 3), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INDEX_ENABLE", BITS(fetch_word(asic, stream, 3), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "COUNT", fetch_word(asic, stream, 4), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "COUNT_ADDR_LO", BITS(fetch_word(asic, stream, 5), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "COUNT_ADDR_HI", fetch_word(asic, stream, 6), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "STRIDE", fetch_word(asic, stream, 7), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 36, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 8), NULL, 16, 32);
 			break;
 		case 0x3C: // WAIT_REG_MEM
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 8, 9), BITS(fetch_word(asic, stream, 0), 8, 9) ? "PFP" : "ME", 10, 32);
@@ -1505,6 +1552,24 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 					reg_addr += 1;
 				}
 			}
+			break;
+		case 0x38: // DRAW_INDEX_INDIRECT_MULTI
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VTX_LOC", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_INDX_LOC", BITS(fetch_word(asic, stream, 1), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INST_LOC", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INDEX_LOC", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "TASK_SHADER_MODE", BITS(fetch_word(asic, stream, 3), 25, 26), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "USE_VGPRS", BITS(fetch_word(asic, stream, 3), 27, 28), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "START_INDX_ENABLE", BITS(fetch_word(asic, stream, 3), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "THREAD_TRACE_MARKER_ENABLE", BITS(fetch_word(asic, stream, 3), 29, 30), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "COUNT_INDIRECT_ENABLE", BITS(fetch_word(asic, stream, 3), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INDEX_ENABLE", BITS(fetch_word(asic, stream, 3), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "COUNT", fetch_word(asic, stream, 4), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "COUNT_ADDR_LO", BITS(fetch_word(asic, stream, 5), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "COUNT_ADDR_HI", fetch_word(asic, stream, 6), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "STRIDE", fetch_word(asic, stream, 7), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 36, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 8), NULL, 16, 32);
 			break;
 		case 0x3C: // WAIT_REG_MEM
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 8, 9), BITS(fetch_word(asic, stream, 0), 8, 9) ? "PFP" : "ME", 10, 32);
