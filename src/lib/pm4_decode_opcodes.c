@@ -35,264 +35,266 @@ static char *op_40_mem_sel[] = { "mem-mapped reg", "memory", "tc_l2", "gds", "pe
 static char *op_84_cntr_sel[] = { "invalid", "ce", "cs", "ce and cs" };
 static char *op_7a_index_str[] = { "default", "prim_type", "index_type", "num_instance", "multi_vgt_param", "reserved", "reserved", "reserved",
 								   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-
-static const char *pm4_pkt3_opcode_names[] = {
-	"UNK", // 00
-	"UNK", // 01
-	"UNK", // 02
-	"UNK", // 03
-	"UNK", // 04
-	"UNK", // 05
-	"UNK", // 06
-	"UNK", // 07
-	"UNK", // 08
-	"UNK", // 09
-	"UNK", // 0a
-	"UNK", // 0b
-	"UNK", // 0c
-	"UNK", // 0d
-	"UNK", // 0e
-	"UNK", // 0f
-	"PKT3_NOP", // 10
-	"UNK", // 11
-	"PKT3_CLEAR_STATE", // 12
-	"PKT3_INDEX_BUFFER_SIZE", // 13
-	"UNK", // 14
-	"PKT3_DISPATCH_DIRECT", // 15
-	"PKT3_DISPATCH_INDIRECT", // 16
-	"UNK", // 17
-	"UNK", // 18
-	"UNK", // 19
-	"UNK", // 1a
-	"UNK", // 1b
-	"UNK", // 1c
-	"PKT3_ATOMIC_GDS", // 1d
-	"PKT3_ATOMIC_MEM", // 1e
-	"UNK", // 1f
-	"UNK", // 20
-	"UNK", // 21
-	"PKT3_COND_EXEC", // 22
-	"UNK", // 23
-	"UNK", // 24
-	"UNK", // 25
-	"PKT3_INDEX_BASE", // 26
-	"PKT3_DRAW_INDEX_2", // 27
-	"PKT3_CONTEXT_CONTROL", // 28
-	"UNK", // 29
-	"UNK", // 2a
-	"UNK", // 2b
-	"UNK", // 2c
-	"PKT3_DRAW_INDEX_AUTO", // 2d
-	"UNK", // 2e
-	"PKT3_NUM_INSTANCES", // 2f
-	"UNK", // 30
-	"UNK", // 31
-	"UNK", // 32
-	"PKT3_INDIRECT_BUFFER_CONST", // 33
-	"UNK", // 34
-	"UNK", // 35
-	"UNK", // 36
-	"PKT3_WRITE_DATA", // 37
-	"PKT3_DRAW_INDEX_INDIRECT_MULTI", // 38
-	"UNK", // 39
-	"UNK", // 3a
-	"UNK", // 3b
-	"PKT3_WAIT_REG_MEM", // 3c
-	"UNK", // 3d
-	"UNK", // 3e
-	"PKT3_INDIRECT_BUFFER_CIK", // 3f
-	"PKT3_COPY_DATA", // 40
-	"UNK", // 41
-	"PKT3_PFP_SYNC_ME", // 42
-	"PKT3_SURFACE_SYNC", // 43
-	"UNK", // 44
-	"UNK", // 45
-	"PKT3_EVENT_WRITE", // 46
-	"PKT3_EVENT_WRITE_EOP", // 47
-	"UNK", // 48
-	"PKT3_RELEASE_MEM", // 49
-	"PKT3_PREAMBLE_CNTL", // 4a
-	"UNK", // 4b
-	"PKT3_DISPATCH_MESH_INDIRECT_MULTI", // 4c
-	"PKT3_DISPATCH_TASKMESH_GFX", // 4d
-	"UNK", // 4e
-	"UNK", // 4f
-	"PKT3_DMA_DATA", // 50
-	"PKT3_CONTEXT_REG_RMW", // 51
-	"UNK", // 52
-	"UNK", // 53
-	"UNK", // 54
-	"UNK", // 55
-	"UNK", // 56
-	"UNK", // 57
-	"PKT3_ACQUIRE_MEM", // 58
-	"UNK", // 59
-	"UNK", // 5a
-	"UNK", // 5b
-	"UNK", // 5c
-	"PKT3_PRIME_UTCL2", // 5d
-	"PKT3_LOAD_UCONFIG_REG", // 5e
-	"PKT3_LOAD_SH_REG", // 5f
-	"PKT3_LOAD_CONFIG_REG", // 60
-	"PKT3_LOAD_CONTEXT_REG", // 61
-	"UNK", // 62
-	"PKT3_LOAD_SH_REG_INDEX", // 63
-	"UNK", // 64
-	"UNK", // 65
-	"UNK", // 66
-	"UNK", // 67
-	"PKT3_SET_CONFIG_REG", // 68
-	"PKT3_SET_CONTEXT_REG", // 69
-	"UNK", // 6a
-	"UNK", // 6b
-	"UNK", // 6c
-	"UNK", // 6d
-	"UNK", // 6e
-	"UNK", // 6f
-	"UNK", // 70
-	"UNK", // 71
-	"UNK", // 72
-	"UNK", // 73
-	"UNK", // 74
-	"UNK", // 75
-	"PKT3_SET_SH_REG", // 76
-	"UNK", // 77
-	"UNK", // 78
-	"PKT3_SET_UCONFIG_REG", // 79
-	"PKT3_SET_UCONFIG_REG_INDEX", // 7a
-	"UNK", // 7b
-	"UNK", // 7c
-	"UNK", // 7d
-	"UNK", // 7e
-	"UNK", // 7f
-	"PKT3_LOAD_CONST_RAM", // 80
-	"PKT3_WRITE_CONST_RAM", // 81
-	"UNK", // 82
-	"PKT3_DUMP_CONST_RAM", // 83
-	"PKT3_INCREMENT_CE_COUNTER", // 84
-	"UNK", // 85
-	"PKT3_WAIT_ON_CE_COUNTER", // 86
-	"UNK", // 87
-	"UNK", // 88
-	"UNK", // 89
-	"UNK", // 8a
-	"PKT3_SWITCH_BUFFER", // 8b
-	"UNK", // 8c
-	"UNK", // 8d
-	"UNK", // 8e
-	"UNK", // 8f
-	"PKT3_FRAME_CONTROL", // 90
-	"PKT3_INDEX_ATTRIBUTES_INDIRECT", // 91
-	"UNK", // 92
-	"UNK", // 93
-	"UNK", // 94
-	"PKT3_HDP_FLUSH", // 95
-	"UNK", // 96
-	"UNK", // 97
-	"UNK", // 98
-	"UNK", // 99
-	"PKT3_DMA_DATA_FILL_MULTI", // 9a
-	"PKT3_SET_SH_REG_INDEX", // 9b
-	"UNK", // 9c
-	"UNK", // 9d
-	"UNK", // 9e
-	"PKT3_LOAD_CONTEXT_REG_INDEX", // 9f
-	"PKT3_SET_RESOURCES", // a0
-	"PKT3_MAP_PROCESS", // a1
-	"PKT3_MAP_QUEUES", // a2
-	"PKT3_UNMAP_QUEUES", // a3
-	"PKT3_QUERY_STATUS", // a4
-	"PKT3_MES_RUN_LIST", // a5
-	"UNK", // a6
-	"PKT3_DISPATCH_DIRECT_INTERLEAVED", // a7
-	"UNK", // a8
-	"PKT3_DISPATCH_TASK_STATE_INIT", // a9
-	"PKT3_DISPATCH_TASKMESH_DIRECT_ACE", // aa
-	"UNK", // ab
-	"UNK", // ac
-	"PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE", // ad
-	"UNK", // ae
-	"UNK", // af
-	"UNK", // b0
-	"UNK", // b1
-	"UNK", // b2
-	"UNK", // b3
-	"UNK", // b4
-	"UNK", // b5
-	"UNK", // b6
-	"UNK", // b7
-	"PKT3_SET_CONTEXT_REG_PAIRS", // b8
-	"PKT3_SET_CONTEXT_REG_PAIRS_PACKED", // b9
-	"PKT3_SET_SH_REG_PAIRS", // ba
-	"UNK", // bb
-	"PKT3_SET_SH_REG_PAIRS_PACKED", // bc
-	"PKT3_SET_SH_REG_PAIRS_PACKED_N", // bd
-	"PKT3_SET_UCONFIG_REG_PAIRS", // be
-	"UNK", // bf
-	"UNK", // c0
-	"UNK", // c1
-	"UNK", // c2
-	"UNK", // c3
-	"UNK", // c4
-	"UNK", // c5
-	"UNK", // c6
-	"UNK", // c7
-	"UNK", // c8
-	"UNK", // c9
-	"UNK", // ca
-	"UNK", // cb
-	"UNK", // cc
-	"UNK", // cd
-	"UNK", // ce
-	"UNK", // cf
-	"UNK", // d0
-	"UNK", // d1
-	"UNK", // d2
-	"UNK", // d3
-	"UNK", // d4
-	"UNK", // d5
-	"UNK", // d6
-	"UNK", // d7
-	"UNK", // d8
-	"UNK", // d9
-	"UNK", // da
-	"UNK", // db
-	"UNK", // dc
-	"UNK", // dd
-	"UNK", // de
-	"UNK", // df
-	"UNK", // e0
-	"UNK", // e1
-	"UNK", // e2
-	"UNK", // e3
-	"UNK", // e4
-	"UNK", // e5
-	"UNK", // e6
-	"UNK", // e7
-	"UNK", // e8
-	"UNK", // e9
-	"UNK", // ea
-	"UNK", // eb
-	"UNK", // ec
-	"UNK", // ed
-	"UNK", // ee
-	"UNK", // ef
-	"UNK", // f0
-	"UNK", // f1
-	"UNK", // f2
-	"UNK", // f3
-	"UNK", // f4
-	"UNK", // f5
-	"UNK", // f6
-	"UNK", // f7
-	"UNK", // f8
-	"UNK", // f9
-	"UNK", // fa
-	"UNK", // fb
-	"UNK", // fc
-	"UNK", // fd
-	"UNK", // fe
-	"UNK", // ff
+static const struct {
+	const char *name;
+	int maj, min;
+} pm4_pkt_names[] = {
+	{ "UNK", 0, 0 }, // 00
+	{ "UNK", 0, 0 }, // 01
+	{ "UNK", 0, 0 }, // 02
+	{ "UNK", 0, 0 }, // 03
+	{ "UNK", 0, 0 }, // 04
+	{ "UNK", 0, 0 }, // 05
+	{ "UNK", 0, 0 }, // 06
+	{ "UNK", 0, 0 }, // 07
+	{ "UNK", 0, 0 }, // 08
+	{ "UNK", 0, 0 }, // 09
+	{ "UNK", 0, 0 }, // 0a
+	{ "UNK", 0, 0 }, // 0b
+	{ "UNK", 0, 0 }, // 0c
+	{ "UNK", 0, 0 }, // 0d
+	{ "UNK", 0, 0 }, // 0e
+	{ "UNK", 0, 0 }, // 0f
+	{ "PKT3_NOP", 8, 0 }, // 10
+	{ "UNK", 0, 0 }, // 11
+	{ "PKT3_CLEAR_STATE", 8, 0 }, // 12
+	{ "PKT3_INDEX_BUFFER_SIZE", 9, 0 },// 13
+	{ "UNK", 0, 0 }, // 14
+	{ "PKT3_DISPATCH_DIRECT", 8, 0 }, // 15
+	{ "PKT3_DISPATCH_INDIRECT", 9, 0 }, // 16
+	{ "UNK", 0, 0 }, // 17
+	{ "UNK", 0, 0 }, // 18
+	{ "UNK", 0, 0 }, // 19
+	{ "UNK", 0, 0 }, // 1a
+	{ "UNK", 0, 0 }, // 1b
+	{ "UNK", 0, 0 }, // 1c
+	{ "PKT3_ATOMIC_GDS", 8, 0 }, // 1d
+	{ "PKT3_ATOMIC_MEM", 8, 0 }, // 1e
+	{ "UNK", 0, 0 }, // 1f
+	{ "UNK", 0, 0 }, // 20
+	{ "UNK", 0, 0 }, // 21
+	{ "PKT3_COND_EXEC", 8, 0 }, // 22
+	{ "UNK", 0, 0 }, // 23
+	{ "UNK", 0, 0 }, // 24
+	{ "UNK", 0, 0 }, // 25
+	{ "PKT3_INDEX_BASE", 9, 0 }, // 26
+	{ "PKT3_DRAW_INDEX_2", 8, 0 }, // 27
+	{ "PKT3_CONTEXT_CONTROL", 8, 0 }, // 28
+	{ "UNK", 0, 0 }, // 29
+	{ "UNK", 0, 0 }, // 2a
+	{ "UNK", 0, 0 }, // 2b
+	{ "UNK", 0, 0 }, // 2c
+	{ "PKT3_DRAW_INDEX_AUTO", 8, 0 }, // 2d
+	{ "UNK", 0, 0 }, // 2e
+	{ "PKT3_NUM_INSTANCES", 8, 0 }, // 2f
+	{ "UNK", 0, 0 }, // 30
+	{ "UNK", 0, 0 }, // 31
+	{ "UNK", 0, 0 }, // 32
+	{ "PKT3_INDIRECT_BUFFER_CONST", 8, 0 }, // 33
+	{ "UNK", 0, 0 }, // 34
+	{ "UNK", 0, 0 }, // 35
+	{ "UNK", 0, 0 }, // 36
+	{ "PKT3_WRITE_DATA", 8, 0 }, // 37
+	{ "PKT3_DRAW_INDEX_INDIRECT_MULTI", 9, 0 }, // 38
+	{ "UNK", 0, 0 }, // 39
+	{ "UNK", 0, 0 }, // 3a
+	{ "UNK", 0, 0 }, // 3b
+	{ "PKT3_WAIT_REG_MEM", 8, 0 }, // 3c
+	{ "UNK", 0, 0 }, // 3d
+	{ "UNK", 0, 0 }, // 3e
+	{ "PKT3_INDIRECT_BUFFER_CIK", 8, 0 }, // 3f
+	{ "PKT3_COPY_DATA", 8, 0 },// 40
+	{ "UNK", 0, 0 }, // 41
+	{ "PKT3_PFP_SYNC_ME", 8, 0 }, // 42
+	{ "PKT3_SURFACE_SYNC", 8, 0 }, // 43
+	{ "UNK", 0, 0 }, // 44
+	{ "UNK", 0, 0 }, // 45
+	{ "PKT3_EVENT_WRITE", 8, 0 }, // 46
+	{ "PKT3_EVENT_WRITE_EOP", 8, 0 }, // 47
+	{ "UNK", 0, 0 }, // 48
+	{ "PKT3_RELEASE_MEM", 8, 0 }, // 49
+	{ "PKT3_PREAMBLE_CNTL", 8, 0 }, // 4a
+	{ "UNK", 0, 0 }, // 4b
+	{ "PKT3_DISPATCH_MESH_INDIRECT_MULTI", 10, 0 }, // 4c
+	{ "PKT3_DISPATCH_TASKMESH_GFX", 10, 0 }, // 4d
+	{ "UNK", 0, 0 }, // 4e
+	{ "UNK", 0, 0 }, // 4f
+	{ "PKT3_DMA_DATA", 8, 0},  // 50
+	{ "PKT3_CONTEXT_REG_RMW", 9, 0 }, // 51
+	{ "UNK", 0, 0 }, // 52
+	{ "UNK", 0, 0 }, // 53
+	{ "UNK", 0, 0 }, // 54
+	{ "UNK", 0, 0 }, // 55
+	{ "UNK", 0, 0 }, // 56
+	{ "UNK", 0, 0 }, // 57
+	{ "PKT3_ACQUIRE_MEM", 8, 0 }, // 58
+	{ "UNK", 0, 0 }, // 59
+	{ "UNK", 0, 0 }, // 5a
+	{ "UNK", 0, 0 }, // 5b
+	{ "UNK", 0, 0 }, // 5c
+	{ "PKT3_PRIME_UTCL2", 9, 0 }, // 5d
+	{ "PKT3_LOAD_UCONFIG_REG", 8, 0 }, // 5e
+	{ "PKT3_LOAD_SH_REG", 8, 0 }, // 5f
+	{ "PKT3_LOAD_CONFIG_REG", 8, 0 }, // 60
+	{ "PKT3_LOAD_CONTEXT_REG", 8, 0 }, // 61
+	{ "UNK", 0, 0 }, // 62
+	{ "PKT3_LOAD_SH_REG_INDEX", 8, 0 }, // 63
+	{ "UNK", 0, 0 }, // 64
+	{ "UNK", 0, 0 }, // 65
+	{ "UNK", 0, 0 }, // 66
+	{ "UNK", 0, 0 }, // 67
+	{ "PKT3_SET_CONFIG_REG", 8, 0 }, // 68
+	{ "PKT3_SET_CONTEXT_REG", 8, 0 }, // 69
+	{ "UNK", 0, 0 }, // 6a
+	{ "UNK", 0, 0 }, // 6b
+	{ "UNK", 0, 0 }, // 6c
+	{ "UNK", 0, 0 }, // 6d
+	{ "UNK", 0, 0 }, // 6e
+	{ "UNK", 0, 0 }, // 6f
+	{ "UNK", 0, 0 }, // 70
+	{ "UNK", 0, 0 }, // 71
+	{ "UNK", 0, 0 }, // 72
+	{ "UNK", 0, 0 }, // 73
+	{ "UNK", 0, 0 }, // 74
+	{ "UNK", 0, 0 }, // 75
+	{ "PKT3_SET_SH_REG", 8, 0 }, // 76
+	{ "UNK", 0, 0 }, // 77
+	{ "UNK", 0, 0 }, // 78
+	{ "PKT3_SET_UCONFIG_REG", 8, 0 }, // 79
+	{ "PKT3_SET_UCONFIG_REG_INDEX", 8, 0 }, // 7a
+	{ "UNK", 0, 0 }, // 7b
+	{ "UNK", 0, 0 }, // 7c
+	{ "UNK", 0, 0 }, // 7d
+	{ "UNK", 0, 0 }, // 7e
+	{ "UNK", 0, 0 }, // 7f
+	{ "PKT3_LOAD_CONST_RAM", 8, 0 }, // 80
+	{ "PKT3_WRITE_CONST_RAM", 8, 0 }, // 81
+	{ "UNK", 0, 0 }, // 82
+	{ "PKT3_DUMP_CONST_RAM", 8, 0 }, // 83
+	{ "PKT3_INCREMENT_CE_COUNTER", 8, 0 }, // 84
+	{ "UNK", 0, 0 }, // 85
+	{ "PKT3_WAIT_ON_CE_COUNTER", 8, 0 }, // 86
+	{ "UNK", 0, 0 }, // 87
+	{ "UNK", 0, 0 }, // 88
+	{ "UNK", 0, 0 }, // 89
+	{ "UNK", 0, 0 }, // 8a
+	{ "PKT3_SWITCH_BUFFER", 8, 0 }, // 8b
+	{ "UNK", 0, 0 }, // 8c
+	{ "UNK", 0, 0 }, // 8d
+	{ "UNK", 0, 0 }, // 8e
+	{ "UNK", 0, 0 }, // 8f
+	{ "PKT3_FRAME_CONTROL", 8, 0 }, // 90
+	{ "PKT3_INDEX_ATTRIBUTES_INDIRECT", 8, 0 }, // 91
+	{ "UNK", 0, 0 }, // 92
+	{ "UNK", 0, 0 }, // 93
+	{ "UNK", 0, 0 }, // 94
+	{ "PKT3_HDP_FLUSH", 8, 0 }, // 95
+	{ "UNK", 0, 0 }, // 96
+	{ "UNK", 0, 0 }, // 97
+	{ "UNK", 0, 0 }, // 98
+	{ "UNK", 0, 0 }, // 99
+	{ "PKT3_DMA_DATA_FILL_MULTI", 8, 0 }, // 9a
+	{ "PKT3_SET_SH_REG_INDEX", 8, 0 }, // 9b
+	{ "UNK", 0, 0 }, // 9c
+	{ "UNK", 0, 0 }, // 9d
+	{ "UNK", 0, 0 }, // 9e
+	{ "PKT3_LOAD_CONTEXT_REG_INDEX", 8, 0 }, // 9f
+	{ "PKT3_SET_RESOURCES", 8, 0 }, // a0
+	{ "PKT3_MAP_PROCESS", 8, 0 }, // a1
+	{ "PKT3_MAP_QUEUES", 8, 0 }, // a2
+	{ "PKT3_UNMAP_QUEUES", 8, 0 }, // a3
+	{ "PKT3_QUERY_STATUS", 8, 0 }, // a4
+	{ "PKT3_MES_RUN_LIST", 8, 0 }, // a5
+	{ "UNK", 0, 0 }, // a6
+	{ "PKT3_DISPATCH_DIRECT_INTERLEAVED", 12, 0 }, // a7
+	{ "UNK", 0, 0 }, // a8
+	{ "PKT3_DISPATCH_TASK_STATE_INIT", 10, 0 }, // a9
+	{ "PKT3_DISPATCH_TASKMESH_DIRECT_ACE", 10, 0 }, // aa
+	{ "UNK", 0, 0 }, // ab
+	{ "UNK", 0, 0 }, // ac
+	{ "PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE", 10, 0 }, // ad
+	{ "UNK", 0, 0 }, // ae
+	{ "UNK", 0, 0 }, // af
+	{ "UNK", 0, 0 }, // b0
+	{ "UNK", 0, 0 }, // b1
+	{ "UNK", 0, 0 }, // b2
+	{ "UNK", 0, 0 }, // b3
+	{ "UNK", 0, 0 }, // b4
+	{ "UNK", 0, 0 }, // b5
+	{ "UNK", 0, 0 }, // b6
+	{ "UNK", 0, 0 }, // b7
+	{ "PKT3_SET_CONTEXT_REG_PAIRS", 12, 0 }, // b8
+	{ "PKT3_SET_CONTEXT_REG_PAIRS_PACKED", 11, 0 }, // b9
+	{ "PKT3_SET_SH_REG_PAIRS", 12, 0 }, // ba
+	{ "UNK", 0, 0 }, // bb
+	{ "PKT3_SET_SH_REG_PAIRS_PACKED", 11, 0 }, // bc
+	{ "PKT3_SET_SH_REG_PAIRS_PACKED_N", 11, 0 }, // bd
+	{ "PKT3_SET_UCONFIG_REG_PAIRS", 12, 0 }, // be
+	{ "UNK", 0, 0 }, // bf
+	{ "UNK", 0, 0 }, // c0
+	{ "UNK", 0, 0 }, // c1
+	{ "UNK", 0, 0 }, // c2
+	{ "UNK", 0, 0 }, // c3
+	{ "UNK", 0, 0 }, // c4
+	{ "UNK", 0, 0 }, // c5
+	{ "UNK", 0, 0 }, // c6
+	{ "UNK", 0, 0 }, // c7
+	{ "UNK", 0, 0 }, // c8
+	{ "UNK", 0, 0 }, // c9
+	{ "UNK", 0, 0 }, // ca
+	{ "UNK", 0, 0 }, // cb
+	{ "UNK", 0, 0 }, // cc
+	{ "UNK", 0, 0 }, // cd
+	{ "UNK", 0, 0 }, // ce
+	{ "UNK", 0, 0 }, // cf
+	{ "UNK", 0, 0 }, // d0
+	{ "UNK", 0, 0 }, // d1
+	{ "UNK", 0, 0 }, // d2
+	{ "UNK", 0, 0 }, // d3
+	{ "UNK", 0, 0 }, // d4
+	{ "UNK", 0, 0 }, // d5
+	{ "UNK", 0, 0 }, // d6
+	{ "UNK", 0, 0 }, // d7
+	{ "UNK", 0, 0 }, // d8
+	{ "UNK", 0, 0 }, // d9
+	{ "UNK", 0, 0 }, // da
+	{ "UNK", 0, 0 }, // db
+	{ "UNK", 0, 0 }, // dc
+	{ "UNK", 0, 0 }, // dd
+	{ "UNK", 0, 0 }, // de
+	{ "UNK", 0, 0 }, // df
+	{ "UNK", 0, 0 }, // e0
+	{ "UNK", 0, 0 }, // e1
+	{ "UNK", 0, 0 }, // e2
+	{ "UNK", 0, 0 }, // e3
+	{ "UNK", 0, 0 }, // e4
+	{ "UNK", 0, 0 }, // e5
+	{ "UNK", 0, 0 }, // e6
+	{ "UNK", 0, 0 }, // e7
+	{ "UNK", 0, 0 }, // e8
+	{ "UNK", 0, 0 }, // e9
+	{ "UNK", 0, 0 }, // ea
+	{ "UNK", 0, 0 }, // eb
+	{ "UNK", 0, 0 }, // ec
+	{ "UNK", 0, 0 }, // ed
+	{ "UNK", 0, 0 }, // ee
+	{ "UNK", 0, 0 }, // ef
+	{ "UNK", 0, 0 }, // f0
+	{ "UNK", 0, 0 }, // f1
+	{ "UNK", 0, 0 }, // f2
+	{ "UNK", 0, 0 }, // f3
+	{ "UNK", 0, 0 }, // f4
+	{ "UNK", 0, 0 }, // f5
+	{ "UNK", 0, 0 }, // f6
+	{ "UNK", 0, 0 }, // f7
+	{ "UNK", 0, 0 }, // f8
+	{ "UNK", 0, 0 }, // f9
+	{ "UNK", 0, 0 }, // fa
+	{ "UNK", 0, 0 }, // fb
+	{ "UNK", 0, 0 }, // fc
+	{ "UNK", 0, 0 }, // fd
+	{ "UNK", 0, 0 }, // fe
+	{ "UNK", 0, 0 }, // ff
 };
 
 static const struct {
@@ -370,7 +372,7 @@ static char *vgt_event_decode(unsigned tag)
 
 const char *umr_pm4_opcode_to_str(uint32_t header)
 {
-       return pm4_pkt3_opcode_names[(header >> 8) & 0xFF];
+       return pm4_pkt_names[(header >> 8) & 0xFF].name;
 }
 
 static uint32_t fetch_word(struct umr_asic *asic, struct umr_pm4_stream *stream, uint32_t off)
@@ -2124,6 +2126,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 	uint32_t nwords, ncodes;
 	struct umr_pm4_stream *s;
 	const char *opcode_name;
+	int maj, min;
 
 	s = stream;
 	nwords = 0;
@@ -2133,21 +2136,27 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 		s = s->next;
 	}
 
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, nwords, 4);
 	ncodes = opcodes;
 	while (stream && ncodes--) {
 		if (stream->pkttype == 0) {
 			opcode_name = "PKT0";
 		} else if (stream->pkttype == 3) {
-			switch (stream->opcode) {
-				case 0x33: // INDIRECT_BUFFER_CONST and COND_INDIRECT_BUFFER_CONST
-					opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER_CONST" : "PKT3_COND_INDIRECT_BUFFER_CONST";
-					break;
-				case 0x3F: // INDIRECT_BUFFER and COND_INDIRECT_BUFFER
-					opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER" : "PKT3_COND_INDIRECT_BUFFER";
-					break;
-				default:
-					opcode_name = pm4_pkt3_opcode_names[stream->opcode];
+			if (maj < pm4_pkt_names[stream->opcode].maj || min < pm4_pkt_names[stream->opcode].min) {
+				opcode_name = "UNK";
+			} else {
+				switch (stream->opcode) {
+					case 0x33: // INDIRECT_BUFFER_CONST and COND_INDIRECT_BUFFER_CONST
+						opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER_CONST" : "PKT3_COND_INDIRECT_BUFFER_CONST";
+						break;
+					case 0x3F: // INDIRECT_BUFFER and COND_INDIRECT_BUFFER
+						opcode_name = (stream->n_words == 3) ? "PKT3_INDIRECT_BUFFER" : "PKT3_COND_INDIRECT_BUFFER";
+						break;
+					default:
+						opcode_name = pm4_pkt_names[stream->opcode].name;
+				}
 			}
 		} else if (stream->pkttype == 0xff) {
 			// invalid header dword
@@ -2155,22 +2164,27 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->unhandled_dword(ui, ib_addr, ib_vmid, stream->header);
 		}
 
-		if ((stream->pkttype == 0 || stream->pkttype == 3) && strcmp(opcode_name, "UNK"))
-			ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, 0, stream->n_words, opcode_name, stream->header, stream->words);
+		if (!strcmp(opcode_name, "UNK")) {
+			if (ui->unhandled)
+				ui->unhandled(ui, asic, ib_addr, ib_vmid, stream, UMR_RING_PM4);
+		} else {
+			if (stream->pkttype == 0 || stream->pkttype == 3)
+				ui->start_opcode(ui, ib_addr, ib_vmid, stream->pkttype, stream->opcode, 0, stream->n_words, opcode_name, stream->header, stream->words);
 
-		if (stream->pkttype == 3)
-			decode_pkt3(asic, ui, stream, ib_addr, ib_vmid);
-		else if (stream->pkttype == 0)
-			decode_pkt0(asic, ui, stream, ib_addr, ib_vmid);
+			if (stream->pkttype == 3)
+				decode_pkt3(asic, ui, stream, ib_addr, ib_vmid);
+			else if (stream->pkttype == 0)
+				decode_pkt0(asic, ui, stream, ib_addr, ib_vmid);
 
-		if (stream->invalid)
-			break;
+			if (stream->invalid)
+				break;
 
-		if (stream->shader)
-			ui->add_shader(ui, asic, ib_addr, ib_vmid, stream->shader);
+			if (stream->shader)
+				ui->add_shader(ui, asic, ib_addr, ib_vmid, stream->shader);
 
-		if (follow && stream->ib)
-			umr_pm4_decode_stream_opcodes(asic, ui, stream->ib, stream->ib_source.addr, stream->ib_source.vmid, ib_addr, ib_vmid, ~0UL, follow);
+			if (follow && stream->ib)
+				umr_pm4_decode_stream_opcodes(asic, ui, stream->ib, stream->ib_source.addr, stream->ib_source.vmid, ib_addr, ib_vmid, ~0UL, follow);
+		}
 
 		ib_addr += 4 + stream->n_words * 4;
 		stream = stream->next;
