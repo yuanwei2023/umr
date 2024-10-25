@@ -1709,6 +1709,8 @@ static const struct umr_mqd_fields umr_mqd_graphics_gfx11[] = {
 		{ 489, "db_occlusion_count2_hi_17" },
 		{ 490, "db_occlusion_count3_low_17" },
 		{ 491, "db_occlusion_count3_hi_17" },
+		{ 510, "fenceaddress_lo" },
+		{ 511, "fenceaddress_hi" },
 		{ 0, NULL },
 };
 
