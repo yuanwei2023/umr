@@ -105,7 +105,14 @@ send_cmd:
 /**
  * umr_sq_cmd_singlestep - Attempt to single-step a single wave
  *
- * The wave is assumed to be halted.
+ * @asic: The ASIC to issue the single-step to
+ * @se: The SE selection
+ * @sh: The SH selection
+ * @wgp: The WGP selection
+ * @simd: The SIMD selection
+ * @wave: The WAVE selection
+ *
+ * The wave is assumed to be halted.  Returns -1 on error.
  */
 int umr_sq_cmd_singlestep(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t wgp, uint32_t simd, uint32_t wave)
 {

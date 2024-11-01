@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Advanced Micro Devices, Inc.
+ * Copyright 2024 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,18 +22,24 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
-#include "umr.h"
-#include <stdarg.h>
+#ifndef UMR_PACKET_MES_H_
+#define UMR_PACKET_MES_H_
 
-int umr_add_ip_block(struct umr_asic *asic, struct umr_ip_block *ip)
-{
-	void *tmp;
-	tmp = realloc(asic->blocks, (asic->no_blocks + 1) * sizeof(*ip));
-	if (!tmp) {
-		asic->err_msg("[ERROR]: Out of memory\n");
-		return -1;
-	}
-	asic->blocks = tmp;
-	asic->blocks[asic->no_blocks++] = ip;
-	return 0;
-}
+// MES library
+struct umr_mes_stream {
+	uint32_t *words,
+		 nwords,
+		 header,
+		 opcode,
+		 type;
+
+	int invalid;
+
+	struct umr_mes_stream *next;
+};
+
+struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
+struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
+void umr_free_mes_stream(struct umr_mes_stream *stream);
+
+#endif

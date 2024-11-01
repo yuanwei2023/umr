@@ -39,6 +39,15 @@ static uint32_t fetch_word(struct umr_asic *asic, struct umr_vpe_stream *stream,
 	}
 }
 
+/**
+ * umr_osssys_get_ip_ver - Get the IP major and minor revision of the OSSSYS block
+ *
+ * @asic: The ASIC to query
+ * @maj: Where to store the major version
+ * @min: Where to store the minor version
+ *
+ * Returns -1 if the block cannot be found, 0 otherwise.
+ */
 int umr_osssys_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 {
 	struct umr_ip_block *ip;
@@ -55,6 +64,21 @@ int umr_osssys_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 	return -1;
 }
 
+/**
+ * umr_vpe_decode_stream_opcodes - decode a stream of VPE packets
+ *
+ * @asic: The ASIC the VPE packets are bound for
+ * @ui: The user interface callback that will present the decoded packets to the user
+ * @stream: The pre-processed stream of VPE packets
+ * @ib_addr: The base VM address where the packets came from
+ * @ib_vmid: The VMID the IB is mapped into
+ * @from_addr: The address of the ring/IB that pointed to this VPE IB
+ * @from_vmid: The VMID of the ring/IB that pointed to this VPE IB
+ * @opcodes: The number of opcodes to decode
+ * @follow: Follow any chained IBs
+ *
+ * Returns the address of the first packet that hasn't been decoded.
+ */
 struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vpe_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {

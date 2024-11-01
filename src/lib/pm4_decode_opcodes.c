@@ -341,6 +341,15 @@ static const struct {
 	{ NULL, 0 },
 };
 
+/**
+ * umr_gfx_get_ip_ver - Get the version of the GC/GFX IP block
+ *
+ * @asic: The ASIC to query
+ * @maj: Where to store the major revision
+ * @min: Where to store the minor revision
+ *
+ * Returns -1 on error.
+ */
 int umr_gfx_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 {
 	struct umr_ip_block *ip;

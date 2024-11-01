@@ -2891,6 +2891,15 @@ static void decode_upto_oss7(struct umr_asic *asic, struct umr_stream_decode_ui 
 	decode_upto_nv(asic, ui, stream, ib_addr, ib_vmid, from_addr, from_vmid, follow, sc);
 }
 
+/**
+ * umr_sdma_get_ip_ver - Get the version of the SDMA IP block
+ *
+ * @asic: The ASIC to query
+ * @maj: Where to store the major version
+ * @min: Where to store the minor version
+ *
+ * Returns -1 if no SDMA (or OSS) blocks are found.
+ */
 int umr_sdma_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 {
 	struct umr_ip_block *ip;
@@ -2950,6 +2959,21 @@ int umr_sdma_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 	}
 }
 
+/**
+ * umr_sdma_decode_stream_opcodes - decode a stream of SDMA packets
+ *
+ * @asic: The ASIC the SDMA packets are bound for
+ * @ui: The user interface callback that will present the decoded packets to the user
+ * @stream: The pre-processed stream of SDMA packets
+ * @ib_addr: The base VM address where the packets came from
+ * @ib_vmid: The VMID the IB is mapped into
+ * @from_addr: The address of the ring/IB that pointed to this SDMA IB
+ * @from_vmid: The VMID of the ring/IB that pointed to this SDMA IB
+ * @opcodes: The number of opcodes to decode
+ * @follow: Follow any chained IBs
+ *
+ * Returns the address of the first packet that hasn't been decoded.
+ */
 struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_sdma_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {

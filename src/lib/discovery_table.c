@@ -22,7 +22,6 @@
  * Authors: Kevin Wang <kevinyang.wang@amd.com>
  *
  */
-
 #include "umr.h"
 #include "import/discovery.h"
 #include "import/soc15_hw_ip.h"

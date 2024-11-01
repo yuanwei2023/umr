@@ -24,6 +24,13 @@
  */
 #include <umr.h>
 
+/**
+ * The "packet" routines are meant to be a wrapper around all of the
+ * different packet functions supported (pm4, sdma, etc).  Ideally,
+ * applications should call the umr_packet_*() functions where possible
+ * instead of calling the lower level functions directly.
+ */
+
 
 /**
  * umr_packet_decode_buffer - Decode packets from a process mapped buffer
@@ -35,6 +42,7 @@
  * @nwords: How many words are in the @stream array
  * @rt: What type of packets are to be decoded?
  *
+ * Returns a pointer to a umr_packet_stream structure if successful.
  */
 struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
 						   uint32_t from_vmid, uint64_t from_addr,
@@ -103,6 +111,7 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
  * @stop: Where to stop reading from in the rings words
  * @rt: What type of packets are to be decoded?
  *
+ * Returns a pointer to a umr_packet_stream structure if successful.
  */
 struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
 						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt)
@@ -219,6 +228,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
  * @nwords: How many words are in the @stream array
  * @rt: What type of packets are to be decoded?
  *
+ * Returns a pointer to a umr_packet_stream structure if successful.
  */
 struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
 						      uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt)
@@ -288,6 +298,7 @@ void umr_packet_free(struct umr_packet_stream *stream)
  * @vmid: Which VMID space does the kernel belong to
  * @addr: An address inside the kernel program (doesn't have to be start of program)
  *
+ * Returns a poiner to a umr_shaders_pgm structure if the shader program is found.
  */
 struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream, unsigned vmid, uint64_t addr)
 {
@@ -324,6 +335,7 @@ struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream,
  * @follow: Should we follow IBs and BOs to further decode
  * @cont: Are we continuing disassembly or starting at the start of the stream?
  *
+ * Returns the pointer to the umr_packet_stream being processed.
  */
 struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream *stream, uint64_t ib_addr, uint32_t ib_vmid,
 							uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow, int cont)
@@ -382,6 +394,7 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
  * @follow: Should we follow IBs and BOs to further decode
  * @rt: What type of packets are to be decoded?
  *
+ * Returns -1 on error.
  */
 int umr_packet_disassemble_opcodes_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_vmid, int follow, enum umr_ring_type rt)
 {

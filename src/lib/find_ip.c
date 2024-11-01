@@ -24,6 +24,15 @@
  */
 #include "umr.h"
 
+/**
+ * umr_find_ip_block - Find an IP block given a name and optional instance
+ *
+ * @asic: The ASIC to search for the IP block
+ * @ipname: The IP name to partial match
+ * @instance: The instance of the IP block to match (or <0 for don't care)
+ *
+ * Returns NULL if not found.
+ */
 struct umr_ip_block *umr_find_ip_block(const struct umr_asic *asic, const char *ipname, int instance)
 {
 	int x;

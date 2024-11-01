@@ -2536,7 +2536,14 @@ static const struct {
 	{ 0, 0, NULL }
 };
 
-// size of MQD data in words
+/**
+ * umr_mqd_decode_size - size of MQD data in words
+ *
+ * @eng: The MQD engine we are querying
+ * @fam: The ASIC generation the engine belongs to
+ *
+ * Returns the number of words or 0 on error.
+ */
 uint32_t umr_mqd_decode_size(enum umr_mqd_engine_sel eng, enum chipfamily fam)
 {
 	const struct umr_mqd_fields *m;
@@ -2556,7 +2563,14 @@ uint32_t umr_mqd_decode_size(enum umr_mqd_engine_sel eng, enum chipfamily fam)
 	return 0;
 }
 
-// number of variables in MQD
+/**
+ * umr_mqd_deode_rows - number of variables in MQD
+ *
+ * @eng: The MQD engine we are querying
+ * @fam: The ASIC generation the engine belongs to
+ *
+ * Returns the number of rows (variables) or 0 on error.
+ */
 uint32_t umr_mqd_decode_rows(enum umr_mqd_engine_sel eng, enum chipfamily fam)
 {
 	const struct umr_mqd_fields *m;
@@ -2574,6 +2588,16 @@ uint32_t umr_mqd_decode_rows(enum umr_mqd_engine_sel eng, enum chipfamily fam)
 	return 0;
 }
 
+/**
+ * umr_mqd_decode_data - Decode an MQD packet into text
+ *
+ * @eng: The engine the data belongs to
+ * @fam: the ASIC generation the data belongs to
+ * @data: The MQD dwords to decode
+ * @match: Which fields to return (or * for all) will partial match.
+ *
+ * Returns NULL on error, otherwise a pointer to an array of char pointers that can be freed with free() each.
+ */
 char **umr_mqd_decode_data(enum umr_mqd_engine_sel eng, enum chipfamily fam, uint32_t *data, char *match)
 {
 	const struct umr_mqd_fields *m;

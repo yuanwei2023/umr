@@ -29,10 +29,10 @@
 
 /** umr_ih_decode_vectors - Decode a series of interrupt vectors
  *
- * asic: The device the vectors came from
- * ui: Callback structure to handle the decoded data
- * ih_data: The vector data
- * length: Length of vector data in bytes (must be multiple of vector size)
+ * @asic: The device the vectors came from
+ * @ui: Callback structure to handle the decoded data
+ * @ih_data: The vector data
+ * @length: Length of vector data in bytes (must be multiple of vector size)
  *
  * Returns the number of vectors processed.
  */

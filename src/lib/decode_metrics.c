@@ -1251,81 +1251,81 @@
 	__FIELD(throttle_residency_thm_soc),	\
 	__FIELD(time_filter_alphavalue)
 
-static struct field_info metrics_header[] = {
+static struct umr_metrics_field_info metrics_header[] = {
 #define METRICS_HEADER_INFO(MEMBER)	FIELD_INFO(struct umr_metrics_table_header, MEMBER)
 	METRICS_HEADER_LIST(METRICS_HEADER_INFO)
 };
 
-static struct field_info metrics_v1_0[] = {
+static struct umr_metrics_field_info metrics_v1_0[] = {
 #define METRICS_V1_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_0, MEMBER)
 	METRICS_INFO_V1_0_LIST(METRICS_V1_0_INFO)
 };
 
-static struct field_info metrics_v1_1[] = {
+static struct umr_metrics_field_info metrics_v1_1[] = {
 #define METRICS_V1_1_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_1, MEMBER)
 	METRICS_INFO_V1_1_LIST(METRICS_V1_1_INFO)
 };
 
-static struct field_info metrics_v1_2[] = {
+static struct umr_metrics_field_info metrics_v1_2[] = {
 #define METRICS_V1_2_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_2, MEMBER)
 	METRICS_INFO_V1_2_LIST(METRICS_V1_2_INFO)
 };
 
-static struct field_info metrics_v1_3[] = {
+static struct umr_metrics_field_info metrics_v1_3[] = {
 #define METRICS_V1_3_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_3, MEMBER)
 	METRICS_INFO_V1_3_LIST(METRICS_V1_3_INFO)
 };
 
-static struct field_info metrics_v1_4[] = {
+static struct umr_metrics_field_info metrics_v1_4[] = {
 #define METRICS_V1_4_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_4, MEMBER)
 	METRICS_INFO_V1_4_LIST(METRICS_V1_4_INFO)
 };
 
-static struct field_info metrics_v1_5[] = {
+static struct umr_metrics_field_info metrics_v1_5[] = {
 #define METRICS_V1_5_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_5, MEMBER)
 	METRICS_INFO_V1_5_LIST(METRICS_V1_5_INFO)
 };
 
-static struct field_info metrics_v1_6[] = {
+static struct umr_metrics_field_info metrics_v1_6[] = {
 #define METRICS_V1_6_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v1_6, MEMBER)
 	METRICS_INFO_V1_6_LIST(METRICS_V1_6_INFO)
 };
 
-static struct field_info metrics_v2_0[] = {
+static struct umr_metrics_field_info metrics_v2_0[] = {
 #define METRICS_V2_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_0, MEMBER)
 	METRICS_INFO_V2_0_LIST(METRICS_V2_0_INFO)
 };
 
-static struct field_info metrics_v2_1[] = {
+static struct umr_metrics_field_info metrics_v2_1[] = {
 #define METRICS_V2_1_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_1, MEMBER)
 	METRICS_INFO_V2_1_LIST(METRICS_V2_1_INFO)
 };
 
-static struct field_info metrics_v2_2[] = {
+static struct umr_metrics_field_info metrics_v2_2[] = {
 #define METRICS_V2_2_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_2, MEMBER)
 	METRICS_INFO_V2_2_LIST(METRICS_V2_2_INFO)
 };
 
-static struct field_info metrics_v2_3[] = {
+static struct umr_metrics_field_info metrics_v2_3[] = {
 #define METRICS_V2_3_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_3, MEMBER)
 	METRICS_INFO_V2_3_LIST(METRICS_V2_3_INFO)
 };
 
-static struct field_info metrics_v2_4[] = {
+static struct umr_metrics_field_info metrics_v2_4[] = {
 #define METRICS_V2_4_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v2_4, MEMBER)
 	METRICS_INFO_V2_4_LIST(METRICS_V2_4_INFO)
 };
 
-static struct field_info metrics_v3_0[] = {
+static struct umr_metrics_field_info metrics_v3_0[] = {
 #define METRICS_V3_0_INFO(MEMBER)	FIELD_INFO(struct umr_gpu_metrics_v3_0, MEMBER)
 	METRICS_INFO_V3_0_LIST(METRICS_V3_0_INFO)
 };
 
-static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *info,
+static void umr_dump_field_info(struct umr_asic *asic, const struct umr_metrics_field_info *info,
 				const uint32_t count, const char *prefix, const uint8_t *ref, struct umr_key_value *kv)
 {
 	uint32_t i;
-	const struct field_info *tmp;
+	const struct umr_metrics_field_info *tmp;
 
 	if (!prefix)
 		prefix = "";
@@ -1356,6 +1356,15 @@ static void umr_dump_field_info(struct umr_asic *asic, const struct field_info *
 	}
 }
 
+/**
+ * umr_dump_metrics - Dump GPU metrics to a KV array
+ *
+ * @asic: The ASIC the table comes from
+ * @table: The contents of the GPU metrics file
+ * @size: The size of the table
+ *
+ * Returns a pointer to umr_key_value structure if successful.
+ */
 struct umr_key_value *umr_dump_metrics(struct umr_asic *asic, const void *table, uint32_t size)
 {
 	struct umr_metrics_table_header *header =

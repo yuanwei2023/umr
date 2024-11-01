@@ -25,7 +25,7 @@
 #include "umr.h"
 #include <ctype.h>
 
-int istr_cmp(const char* a, const char* b)
+static int istr_cmp(const char* a, const char* b)
 {
 	unsigned char a_up;
 	unsigned char b_up;
@@ -43,7 +43,7 @@ int istr_cmp(const char* a, const char* b)
     return a_up - b_up;
 }
 
-int expression_matches(const char* str, const char* pattern)
+static int expression_matches(const char* str, const char* pattern)
 {
 	const char *cp = NULL, *mp = NULL;
 
@@ -77,6 +77,15 @@ int expression_matches(const char* str, const char* pattern)
 	return !*pattern;
 }
 
+/**
+ * umr_find_reg_wild_first - Initiate a wildcard iterative search
+ *
+ * @asic: The ASIC to search through
+ * @ip: The optional (NULL=don't care) IP block to limit the search to
+ * @reg: The partial register name to match
+ *
+ * Returns a pointer to a umr_find_reg_iter structure on success.
+ */
 struct umr_find_reg_iter* umr_find_reg_wild_first(struct umr_asic* asic, const char* ip, const char* reg)
 {
 	struct umr_find_reg_iter* iter;
@@ -95,6 +104,13 @@ struct umr_find_reg_iter* umr_find_reg_wild_first(struct umr_asic* asic, const c
 	return iter;
 }
 
+/**
+ * umr_find_reg_wild_next - Iterate an existing register search
+ *
+ * @iterp: A pointer to a pointer to a umr_find_reg_iter structure
+ *
+ * Returns a copy of a umr_find_get_iter_result structure.
+ */
 struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter **iterp)
 {
 	struct umr_find_reg_iter_result res;
@@ -138,22 +154,12 @@ struct umr_find_reg_iter_result umr_find_reg_wild_next(struct umr_find_reg_iter 
 }
 
 /**
- * umr_find_reg_data - Find a register by name
- *
- * Returns the umr_reg structure for a register with a specific name
- * in the first IP block that contains it.
- */
-struct umr_reg* umr_find_reg_data(struct umr_asic* asic, const char* regname)
-{
-	return umr_find_reg_data_by_ip(asic, NULL, regname);
-}
-
-/**
  * umr_find_reg_data_by_ip - Find a register by name for a given IP
  *
  * Returns the umr_reg structure for a register for a given IP block
- * with a specific name.  The IP block is optional (can be NULL) and
- * is only compared as a prefix (e.g., "gfx" will match "gfx90").
+ * with a specific name @regname.  The IP block @ip is optional (can be NULL) and
+ * is only compared as a prefix (e.g., "gfx" will match "gfx90").  The
+ * search is performed on the @asic specified.
  */
 struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, const char* regname)
 {
@@ -283,7 +289,7 @@ retry:
 uint32_t umr_find_reg(struct umr_asic* asic, const char* regname)
 {
 	struct umr_reg *reg;
-	reg = umr_find_reg_data(asic, regname);
+	reg = umr_find_reg_by_name(asic, regname, NULL);
 	if (reg)
 		return reg->addr;
 	else
@@ -297,7 +303,8 @@ uint32_t umr_find_reg(struct umr_asic* asic, const char* regname)
  * given address.  If @ip is not NULL it will also store the IP block
  * pointer for the register as well.
  */
-struct umr_reg* umr_find_reg_by_addr(struct umr_asic* asic, uint64_t addr, struct umr_ip_block** ip) {
+struct umr_reg* umr_find_reg_by_addr(struct umr_asic* asic, uint64_t addr, struct umr_ip_block** ip)
+{
 	int i, j;
 
 	if (ip)
@@ -340,7 +347,8 @@ struct umr_reg* umr_find_reg_by_addr(struct umr_asic* asic, uint64_t addr, struc
  * Returns a human readable name including IP and register name
  * to the caller based on the address specified.
  */
-char* umr_reg_name(struct umr_asic* asic, uint64_t addr) {
+char* umr_reg_name(struct umr_asic* asic, uint64_t addr)
+{
 	struct umr_reg* reg;
 	struct umr_ip_block* ip;
 	static char name[512];

@@ -26,10 +26,17 @@
 
 static int hive_cmp(const void *a, const void *b)
 {
-	const struct umr_hive_info *A = a, *B = b;
+	const struct umr_xgmi_hive_info *A = a, *B = b;
 	return (A->hive_position > B->hive_position);
 }
 
+/**
+ * umr_apply_callbacks - Apply the reg/mem callbacks to each ASIC node in an XGMI hive
+ *
+ * @asic: The ASIC the user connected to
+ * @mems: The memory callbacks
+ * @regs: The register callbacks
+ */
 void umr_apply_callbacks(struct umr_asic *asic,
 			 struct umr_memory_access_funcs *mems,
 			 struct umr_register_access_funcs *regs)

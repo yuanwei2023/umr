@@ -253,11 +253,16 @@ static int expect_word(const char **ptr, char *token)
 	return r;
 }
 
+/**
+ * umr_free_test_harness - Free a created test harness
+ *
+ * @th: The test harness to free
+ */
 void umr_free_test_harness(struct umr_test_harness *th)
 {
-	struct umr_ram_blocks *sram, *vram, *config, *discovery;
-	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
-	struct umr_sq_blocks *sq;
+	struct umr_test_harness_ram_blocks *sram, *vram, *config, *discovery;
+	struct umr_test_harness_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
+	struct umr_test_harness_sq_blocks *sq;
 	void *t;
 
 	if (!th)
@@ -357,12 +362,20 @@ void umr_free_test_harness(struct umr_test_harness *th)
 	free(th);
 }
 
+/**
+ * umr_create_test_harness - Create a UMR test harness from a script
+ *
+ * @script: The text script file contents that contains the harness data
+ *
+ * Returns a pointer to a umr_test_harness which can be attached to
+ * a UMR asic.
+ */
 struct umr_test_harness *umr_create_test_harness(const char *script)
 {
 	struct umr_test_harness *th;
-	struct umr_ram_blocks *sram, *vram, *config, *discovery;
-	struct umr_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
-	struct umr_sq_blocks *sq;
+	struct umr_test_harness_ram_blocks *sram, *vram, *config, *discovery;
+	struct umr_test_harness_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
+	struct umr_test_harness_sq_blocks *sq;
 	int r;
 
 	th = calloc(1, sizeof *th);
@@ -498,6 +511,13 @@ error:
 	return NULL;
 }
 
+/**
+ * umr_create_test_harness_file - Create a test harness from a file on disk
+ *
+ * @fname: The name of the file on disk
+ *
+ * Returns a parsed umr_test_harness structure.
+ */
 struct umr_test_harness *umr_create_test_harness_file(const char *fname)
 {
 	const char *script;
@@ -520,7 +540,7 @@ struct umr_test_harness *umr_create_test_harness_file(const char *fname)
 static int access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
 {
 	struct umr_test_harness *th = asic->mem_funcs.data;
-	struct umr_ram_blocks *rb = &th->sysram;
+	struct umr_test_harness_ram_blocks *rb = &th->sysram;
 
 	// try to find first block that covers the range
 	while (rb) {
@@ -541,7 +561,7 @@ static int access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, v
 static int access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t size, void *data, int write_en)
 {
 	struct umr_test_harness *th = asic->mem_funcs.data;
-	struct umr_ram_blocks *rb = &th->vram;
+	struct umr_test_harness_ram_blocks *rb = &th->vram;
 
 	// try to find first block that covers the range
 	while (rb) {
@@ -568,8 +588,8 @@ static uint64_t gpu_bus_to_cpu_address(struct umr_asic *asic, uint64_t dma_addr)
 static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
-	struct umr_sq_blocks *sq;
-	struct umr_mmio_blocks *mm;
+	struct umr_test_harness_sq_blocks *sq;
+	struct umr_test_harness_mmio_blocks *mm;
 	uint32_t v;
 	uint64_t qaddr;
 
@@ -638,7 +658,7 @@ static uint32_t read_reg(struct umr_asic *asic, uint64_t addr, enum regclass typ
 static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum regclass type)
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
-	struct umr_mmio_blocks *mm;
+	struct umr_test_harness_mmio_blocks *mm;
 	uint64_t qaddr;
 
 	// 'addr' is a byte address of the register but the database
@@ -697,7 +717,7 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 {
 	uint64_t addr, nr, x;
 	struct umr_test_harness *th = asic->reg_funcs.data;
-	struct umr_mmio_blocks *mm;
+	struct umr_test_harness_mmio_blocks *mm;
 
 	if (asic->family >= FAMILY_NV) {
 		addr =  (1ULL << 60) |
@@ -756,7 +776,7 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst)
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
-	struct umr_mmio_blocks *mm;
+	struct umr_test_harness_mmio_blocks *mm;
 	uint64_t addr, nr, x;
 	unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 registers
 
@@ -812,7 +832,7 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 static int wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
-	struct umr_mmio_blocks *mm;
+	struct umr_test_harness_mmio_blocks *mm;
 	uint64_t addr, x;
 	uint32_t buf[32];
 
@@ -845,6 +865,14 @@ static int wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned
 		return -1;
 }
 
+/**
+ * umr_test_harness_get_config_data - Copy the GC config data from the harness
+ *
+ * @asic: The ASIC the test harness is already applied to
+ * @dst: Where to copy the array out to
+ *
+ * Returns the number of bytes copied.
+ */
 int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst)
 {
 	int x;
@@ -856,7 +884,14 @@ int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst)
 	return x;
 }
 
-
+/**
+ * umr_test_harness_get_ring_data - Get the contents of a ring stored in the harness
+ *
+ * @asic: The ASIC the test harness is attached to
+ * @ringsize: Where to store the size of the ring data
+ *
+ * Returns a pointer to the allocated array containing the ring data.  Can be freed with free().
+ */
 void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize)
 {
 	uint32_t x, *rd;
@@ -870,6 +905,12 @@ void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize)
 	return rd;
 }
 
+/**
+ * umr_attach_test_harness - Attach a test harness to an existing ASIC structure including callbacks.
+ *
+ * @th: The test harness to attach.
+ * @asic: The ASIC to attach it to.  Also re-writes the callbacks for HW access.
+ */
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 {
 	asic->mem_funcs.access_linear_vram = access_linear_vram;

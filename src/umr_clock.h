@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Advanced Micro Devices, Inc.
+ * Copyright 2024 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,30 +22,26 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
-#include "umr.h"
+#ifndef UMR_CLOCK_H_
+#define UMR_CLOCK_H_
 
-/**
- * umr_free_asic - Free memory associated with an @asic device
- */
-void umr_free_asic_blocks(struct umr_asic *asic)
-{
-	int x, y, z;
-	for (x = 0; x < asic->no_blocks; x++) {
-		if (asic->blocks[x]) {
-			for (y = 0; y < asic->blocks[x]->no_regs; y++) {
-				free(asic->blocks[x]->regs[y].regname);
-				for (z = 0; z < asic->blocks[x]->regs[y].no_bits; z++) {
-					free(asic->blocks[x]->regs[y].bits[z].regname);
-				}
-				free(asic->blocks[x]->regs[y].bits);
-			}
-			free(asic->blocks[x]->ipname);
-			free(asic->blocks[x]->regs);
-		}
-		free(asic->blocks[x]);
-	}
-	free(asic->blocks);
-	free(asic->mmio_accel);
-	free(asic->asicname);
-	free(asic);
-}
+//clock
+struct umr_clock_source {
+	char clock_name[32];
+	uint32_t clock_Mhz[10];
+	int clock_level;
+	int current_clock;
+};
+
+struct umr_asic_clocks {
+	struct umr_asic *asic;
+	struct umr_clock_source clocks[UMR_CLOCK_MAX];
+};
+
+int umr_read_clock(struct umr_asic *asic, char* clockname, struct umr_clock_source* clock);
+int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value);
+void umr_set_clock_performance(struct umr_asic *asic, const char* operation);
+int umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);
+void umr_gfxoff_read(struct umr_asic *asic);
+
+#endif

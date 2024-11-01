@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Advanced Micro Devices, Inc.
+ * Copyright 2024 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,30 +22,24 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
-#include "umr.h"
+#ifndef UMR_VM_H_
+#define UMR_VM_H_
 
-/**
- * umr_free_asic - Free memory associated with an @asic device
- */
-void umr_free_asic_blocks(struct umr_asic *asic)
-{
-	int x, y, z;
-	for (x = 0; x < asic->no_blocks; x++) {
-		if (asic->blocks[x]) {
-			for (y = 0; y < asic->blocks[x]->no_regs; y++) {
-				free(asic->blocks[x]->regs[y].regname);
-				for (z = 0; z < asic->blocks[x]->regs[y].no_bits; z++) {
-					free(asic->blocks[x]->regs[y].bits[z].regname);
-				}
-				free(asic->blocks[x]->regs[y].bits);
-			}
-			free(asic->blocks[x]->ipname);
-			free(asic->blocks[x]->regs);
-		}
-		free(asic->blocks[x]);
-	}
-	free(asic->blocks);
-	free(asic->mmio_accel);
-	free(asic->asicname);
-	free(asic);
-}
+// memory access
+struct umr_vm_pagewalk {
+	int levels,
+		sys_or_vram;
+	uint32_t vmid;
+	uint64_t va, phys;
+	uint64_t pde[8], pte;
+};
+
+int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en);
+uint64_t umr_vm_dma_to_phys(struct umr_asic *asic, uint64_t dma_addr);
+int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en);
+int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en, struct umr_vm_pagewalk *vmdata);
+int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t size, void *data, int write_en);
+#define umr_read_vram(asic, partition, vmid, address, size, dst) umr_access_vram(asic, partition, vmid, address, size, dst, 0, NULL)
+#define umr_write_vram(asic, partition, vmid, address, size, src) umr_access_vram(asic, partition, vmid, address, size, src, 1, NULL)
+
+#endif

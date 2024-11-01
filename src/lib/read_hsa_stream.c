@@ -36,7 +36,15 @@ static const char *hsa_types[] = {
 #define STR_LOOKUP(str_lut, idx, default) \
 	((idx) < sizeof(str_lut) / sizeof(str_lut[0]) ? str_lut[(idx)] : (default))
 
-
+/**
+ * umr_hsa_decode_stream - Decode an array of 32-bit words into an HSA stream
+ *
+ * @asic: The ASIC the HSA stream is bound to
+ * @stream: The array of 32-bit words
+ * @nwords: The number of 32-bit words.
+ *
+ * Returns a pointer to a umr_hsa_stream structure, or NULL on error.
+ */
 struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_hsa_stream *ms, *oms, *prev_ms = NULL;
@@ -132,6 +140,21 @@ static uint32_t fetch_word(struct umr_asic *asic, struct umr_hsa_stream *stream,
 	}
 }
 
+/**
+ * umr_hsa_decode_stream_opcodes - decode a stream of HSA packets
+ *
+ * @asic: The ASIC the HSA packets are bound for
+ * @ui: The user interface callback that will present the decoded packets to the user
+ * @stream: The pre-processed stream of HSA packets
+ * @ib_addr: The base VM address where the packets came from
+ * @ib_vmid: The VMID the IB is mapped into
+ * @from_addr: The address of the ring/IB that pointed to this HSA IB
+ * @from_vmid: The VMID of the ring/IB that pointed to this HSA IB
+ * @opcodes: The number of opcodes to decode
+ * @follow: Follow any chained IBs
+ *
+ * Returns the address of the first packet that hasn't been decoded.
+ */
 struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_hsa_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes)
 {
 	const char* opcode_name;

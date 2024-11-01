@@ -184,6 +184,10 @@ int umr_vm_disasm(struct umr_asic *asic, FILE *output, int vm_partition, unsigne
  * looking for a quintuple of 0xBF9F0000 opcodes but will also
  * resort to using the last 's_endpgm' if the shader vm mappings
  * run out.
+ *
+ * @asic: The ASIC where the shader is attached to
+ * @vm_partition: Which partition to use when page walking
+ * @shader: The shader program to query.
  */
 uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition, struct umr_shaders_pgm *shader)
 {

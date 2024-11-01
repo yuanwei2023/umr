@@ -59,7 +59,6 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 		return NULL;
 	}
 
-
 	if (asic) {
 		asic->did = 0;
 		if (options->instance == -1) {

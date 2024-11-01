@@ -128,6 +128,21 @@ static uint32_t fetch_word(struct umr_asic *asic, struct umr_umsch_stream *strea
 	}
 }
 
+/**
+ * umr_umsch_decode_stream_opcodes - decode a stream of UMSCH packets
+ *
+ * @asic: The ASIC the UMSCH packets are bound for
+ * @ui: The user interface callback that will present the decoded packets to the user
+ * @stream: The pre-processed stream of UMSCH packets
+ * @ib_addr: The base VM address where the packets came from
+ * @ib_vmid: The VMID the IB is mapped into
+ * @from_addr: The address of the ring/IB that pointed to this UMSCH IB
+ * @from_vmid: The VMID of the ring/IB that pointed to this UMSCH IB
+ * @opcodes: The number of opcodes to decode
+ * @follow: Follow any chained IBs
+ *
+ * Returns the address of the first packet that hasn't been decoded.
+ */
 struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_umsch_stream *stream,
 						       uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow)
 {

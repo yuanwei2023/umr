@@ -136,7 +136,15 @@ static char *mes_v12_query_mes_subopcode[] = {
 
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
 
-
+/**
+ * umr_mes_decode_stream - Decode an array of 32-bit words into a MES stream
+ *
+ * @asic: The ASIC the MES stream is bound to
+ * @stream: The pointer to the array of 32-bit words
+ * @nwords: The number of 32-bit words
+ *
+ * Returns a pointer to a umr_mes_stream structure or NULL on error.
+ */
 struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
 {
 	struct umr_mes_stream *ms, *oms, *prev_ms = NULL;
@@ -223,7 +231,21 @@ static uint32_t fetch_word(struct umr_asic *asic, struct umr_mes_stream *stream,
 	}
 }
 
-
+/**
+ * umr_mes_decode_stream_opcodes - decode a stream of MES packets
+ *
+ * @asic: The ASIC the MES packets are bound for
+ * @ui: The user interface callback that will present the decoded packets to the user
+ * @stream: The pre-processed stream of MES packets
+ * @ib_addr: The base VM address where the packets came from
+ * @ib_vmid: The VMID the IB is mapped into
+ * @from_addr: The address of the ring/IB that pointed to this MES IB
+ * @from_vmid: The VMID of the ring/IB that pointed to this MES IB
+ * @opcodes: The number of opcodes to decode
+ * @follow: Follow any chained IBs
+ *
+ * Returns the address of the first packet that hasn't been decoded.
+ */
 struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes)
 {
 	char tmpfieldname[64];

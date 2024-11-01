@@ -873,7 +873,7 @@ int main(int argc, char **argv)
 							return EXIT_FAILURE;
 						}
 
-						r = umr_singlestep_wave(asic, wave_loc[0], wave_loc[1], wave_loc[2], wave_loc[3], wave_loc[4], &wd);
+						r = umr_singlestep_wave(asic, &wd);
 						if (r < 0) {
 							fprintf(stderr, "[ERROR]: Failed to single-step wave!\n");
 							return EXIT_FAILURE;

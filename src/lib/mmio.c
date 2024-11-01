@@ -294,7 +294,7 @@ int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint3
 	uint32_t data = 0;
 	int bank, r;
 
-	grbm_idx = umr_find_reg_data(asic, "mmGRBM_GFX_INDEX");
+	grbm_idx = umr_find_reg_by_name(asic, "mmGRBM_GFX_INDEX", NULL);
 	if (grbm_idx) {
 		if (instance == 0xFFFFFFFFUL) {
 			data |= umr_bitslice_compose_value(asic, grbm_idx, "INSTANCE_BROADCAST_WRITES", 1);
@@ -329,6 +329,12 @@ int umr_grbm_select_index(struct umr_asic *asic, uint32_t se, uint32_t sh, uint3
 	}
 }
 
+/**
+ * umr_srbm_select_index - Select a SRBM instance
+ *
+ * Selects via MMIO writes a specific SRBM instance by passing the
+ * kernel's control.
+ */
 int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uint32_t queue, uint32_t vmid)
 {
 	struct umr_reg *srbm_idx;
@@ -336,9 +342,9 @@ int umr_srbm_select_index(struct umr_asic *asic, uint32_t me, uint32_t pipe, uin
 	int bank, r;
 
 	if (asic->family >= FAMILY_AI)
-		srbm_idx = umr_find_reg_data(asic, "mmGRBM_GFX_CNTL");
+		srbm_idx = umr_find_reg_by_name(asic, "mmGRBM_GFX_CNTL", NULL);
 	else
-		srbm_idx = umr_find_reg_data(asic, "mmSRBM_GFX_CNTL");
+		srbm_idx = umr_find_reg_by_name(asic, "mmSRBM_GFX_CNTL", NULL);
 
 	if (srbm_idx) {
 		data |= umr_bitslice_compose_value(asic, srbm_idx, "PIPEID", pipe);

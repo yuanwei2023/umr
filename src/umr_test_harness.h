@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Advanced Micro Devices, Inc.
+ * Copyright 2024 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -22,30 +22,15 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
-#include "umr.h"
+#ifndef UMR_TEST_HARNESS_H_
+#define UMR_TEST_HARNESS_H_
 
-/**
- * umr_free_asic - Free memory associated with an @asic device
- */
-void umr_free_asic_blocks(struct umr_asic *asic)
-{
-	int x, y, z;
-	for (x = 0; x < asic->no_blocks; x++) {
-		if (asic->blocks[x]) {
-			for (y = 0; y < asic->blocks[x]->no_regs; y++) {
-				free(asic->blocks[x]->regs[y].regname);
-				for (z = 0; z < asic->blocks[x]->regs[y].no_bits; z++) {
-					free(asic->blocks[x]->regs[y].bits[z].regname);
-				}
-				free(asic->blocks[x]->regs[y].bits);
-			}
-			free(asic->blocks[x]->ipname);
-			free(asic->blocks[x]->regs);
-		}
-		free(asic->blocks[x]);
-	}
-	free(asic->blocks);
-	free(asic->mmio_accel);
-	free(asic->asicname);
-	free(asic);
-}
+// test harness support
+struct umr_test_harness *umr_create_test_harness_file(const char *fname);
+struct umr_test_harness *umr_create_test_harness(const char *script);
+void umr_free_test_harness(struct umr_test_harness *th);
+void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic);
+int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst);
+void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize);
+
+#endif

@@ -3275,7 +3275,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			goto error;
 		}
 
-		r = umr_singlestep_wave(asic, se, sh, wgp, simd_id, wave_id, &wd);
+		r = umr_singlestep_wave(asic, &wd);
 		if (r == -2) {
 			last_error = "failed to scan wave slot after single-stepping";
 			goto error;
@@ -3728,7 +3728,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			if (json_object_get_boolean(crtc, "active")) {
 				char reg_name[256];
 				sprintf(reg_name, "mmHUBPREQ%d_DCSURF_SURFACE_CONTROL", i);
-				struct umr_reg *r = umr_find_reg_data(asic, reg_name);
+				struct umr_reg *r = umr_find_reg_by_name(asic, reg_name, NULL);
 				if (r) {
 					uint64_t value = umr_read_reg_by_name(asic, reg_name);
 					int tmz = umr_bitslice_reg(asic, r, "PRIMARY_SURFACE_TMZ", value);

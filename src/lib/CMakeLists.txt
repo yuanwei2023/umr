@@ -5,7 +5,6 @@ add_subdirectory(lowlevel)
 add_subdirectory(rumr)
 
 add_library(umrcore
-  add_ip_block.c
   apply_bank_address.c
   apply_callbacks.c
   bitfield_print.c

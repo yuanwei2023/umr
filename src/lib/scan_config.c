@@ -154,6 +154,11 @@ void umr_scan_config_gca_data(struct umr_asic *asic)
 
 /**
  * umr_scan_config - Scan the debugfs configuration data
+ *
+ * @asic: The ASIC structure to populate with configuration data
+ * @xgmi_scan: Do we want to scan the XGMI hive database to see if this device fits in?
+ *
+ * Returns -1 on error.
  */
 int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 {

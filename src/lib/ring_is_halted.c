@@ -26,6 +26,11 @@
 
 /**
  * umr_ring_is_halted - Try to determine if a ring is actually halted
+ *
+ * @asic: The ASIC the ring is attached to.
+ * @ringname: The name of the ring we want to check if it's halted.
+ *
+ * Returns 1 if it's halted, 0 or otherwise.
  */
 int umr_ring_is_halted(struct umr_asic *asic, char *ringname)
 {
