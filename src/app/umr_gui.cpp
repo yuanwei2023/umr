@@ -479,6 +479,64 @@ float get_gui_scale() {
 	return gui_scale;
 }
 
+static int replay_up_to(const char *url, std::vector<AsicData*> &asics,
+								std::vector<std::string>& replay_commands,
+								int idx) {
+	char filename[PATH_MAX];
+	void *raw_data = NULL;
+	int msg_idx = 0, fd;
+
+	while (idx < 0 || msg_idx <= idx) {
+		uint32_t raw_data_size = 0;
+		JSON_Value *msg;
+
+		sprintf(filename, "%s/%d.json", url, msg_idx);
+
+		msg = json_parse_file(filename);
+		if (msg == NULL) {
+			/* We're done replaying everything. */
+			break;
+		} else {
+			JSON_Object *e = json_object(msg);
+
+			if (idx < 0) {
+				JSON_Object *req = json_object_get_object(e, "request");
+				replay_commands.push_back(json_object_get_string(req, "command"));
+			}
+
+			if (json_object_get_boolean(e, "has_raw_data")) {
+				sprintf(filename, "%s/%d.raw", url, msg_idx);
+
+				fd = open(filename, O_RDONLY);
+				if (fd >= 0) {
+					uint32_t s;
+					read(fd, &s, sizeof(raw_data_size));
+					raw_data_size = le32toh(s);
+					raw_data = malloc(raw_data_size);
+					read(fd, raw_data, raw_data_size);
+					close(fd);
+				}
+			}
+
+			process_response(&asics, e, raw_data, raw_data_size);
+
+			free(raw_data);
+			raw_data = NULL;
+			json_value_free(msg);
+		}
+
+		msg_idx++;
+	}
+
+	return msg_idx - 1;
+}
+
+void reset_before_replay(std::vector<AsicData*> &asics) {
+	for (auto ad: asics)
+		delete ad;
+	asics.clear();
+}
+
 static int run_gui(const char *url)
 {
 	pthread_mutexattr_t mat;
@@ -488,6 +546,7 @@ static int run_gui(const char *url)
 	pthread_cond_init(&cond, NULL);
 
 	bool replay = false;
+	int current_replay, max_replay;
 	if (url) {
 		struct stat statbuf;
 		int r = stat(url, &statbuf);
@@ -526,47 +585,9 @@ static int run_gui(const char *url)
 	std::vector<AsicData*> asics;
 
 	pthread_t t_id;
+	std::vector<std::string> replay_commands;
 	if (replay) {
-		char filename[PATH_MAX];
-		void *raw_data = NULL;
-		int msg_idx = 0, fd;
-
-		while (true) {
-			uint32_t raw_data_size = 0;
-			JSON_Value *msg;
-
-			sprintf(filename, "%s/%d.json", url, msg_idx);
-
-			msg = json_parse_file(filename);
-			if (msg == NULL) {
-				/* We're done replaying everything. */
-				break;
-			} else {
-				JSON_Object *e = json_object(msg);
-
-				if (json_object_get_boolean(e, "has_raw_data")) {
-					sprintf(filename, "%s/%d.raw", url, msg_idx);
-
-					fd = open(filename, O_RDONLY);
-					if (fd >= 0) {
-						uint32_t s;
-						read(fd, &s, sizeof(raw_data_size));
-						raw_data_size = le32toh(s);
-						raw_data = malloc(raw_data_size);
-						read(fd, raw_data, raw_data_size);
-						close(fd);
-					}
-				}
-
-				process_response(&asics, e, raw_data, raw_data_size);
-
-				free(raw_data);
-				raw_data = NULL;
-				json_value_free(msg);
-			}
-
-			msg_idx++;
-		}
+		current_replay = replay_up_to(url, asics, replay_commands, -1);
 	} else {
 		pthread_create(&t_id, NULL, communication_thread, &asics);
 	}
@@ -758,6 +779,51 @@ static int run_gui(const char *url)
 
 		pthread_mutex_lock(&mtx);
 
+		if (replay) {
+			const int n_replay = (int)replay_commands.size() - 1;
+
+			ImGui::SameLine();
+			ImGui::Text("Replaying: %s", url);
+			ImGui::SameLine();
+			ImGui::Text("Up to:");
+			ImGui::SameLine();
+			ImGui::BeginDisabled(current_replay == 0);
+			ImGui::SameLine();
+			if (ImGui::ArrowButton("left", ImGuiDir_Left)) {
+					/* Destroy everything, and replay again. */
+					reset_before_replay(asics);
+					current_replay--;
+					replay_up_to(url, asics, replay_commands, current_replay);
+			}
+			ImGui::EndDisabled();
+			ImGui::BeginDisabled(current_replay >= n_replay);
+			ImGui::SameLine();
+			if (ImGui::ArrowButton("rt", ImGuiDir_Right)) {
+					/* Destroy everything, and replay again. */
+					reset_before_replay(asics);
+					current_replay++;
+					replay_up_to(url, asics, replay_commands, current_replay);
+			}
+			ImGui::EndDisabled();
+			ImGui::SameLine();
+			char label[256];
+			sprintf(label, "%d/%d (%s)", current_replay, n_replay, replay_commands[current_replay].c_str());
+			float w = ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 10;
+			ImGui::SetNextItemWidth(w);
+			if (ImGui::BeginCombo("", label)) {
+				for (int i = 0; i <= n_replay; i++) {
+					sprintf(label, "%d/%d (%s)", i, n_replay, replay_commands[i].c_str());
+					if (ImGui::Selectable(label, i == current_replay) && current_replay != i) {
+						/* Destroy everything, and replay again. */
+						reset_before_replay(asics);
+						current_replay = i;
+						replay_up_to(url, asics, replay_commands, current_replay);
+					}
+				}
+				ImGui::EndCombo();
+			}
+		}
+
 		ImGui::SetNextItemWidth(avail.x / 16);
 		if (ImGui::SliderFloat("scale", &gui_scale, 1, 2, "%.1f")) {
 			if (gui_scale < 1)
@@ -768,6 +834,7 @@ static int run_gui(const char *url)
 			rebuild_scaled_font = true;
 		}
 		ImGui::SameLine();
+
 		ImGui::BeginTabBar("asics", ImGuiTabBarFlags_FittingPolicyScroll);
 
 		if (asics.empty()) {
@@ -856,13 +923,7 @@ static int run_gui(const char *url)
 		ImGui::EndTabBar();
 
 		if (replay) {
-			char txt[1024];
-			snprintf(txt, sizeof(txt), "(replaying: #b58900%s)", url);
-			float w = ImGui::CalcTextSize(txt).x;
-			avail.x += 2 * ImGui::GetStyle().WindowPadding.x;
-			ImVec2 c(avail.x - w, topleft.y);
-			ImGui::SetCursorScreenPos(c);
-			ImGui::TextUnformatted(txt);
+			/* */
 		} else if (!pending_request.empty()) {
 			avail.x += 2 * ImGui::GetStyle().WindowPadding.x;
 			ImVec2 c(avail.x - 10, topleft.y);
