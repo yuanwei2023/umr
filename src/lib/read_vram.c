@@ -304,7 +304,7 @@ next_page:
 	return 0;
 
 invalid_page:
-	asic->mem_funcs.vm_message("[ERROR]: No valid mapping for %u@%" PRIx64 "\n", vmid, address);
+	asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx32 "@%" PRIx64 "\n", vmid, address);
 	return -1;
 }
 
@@ -1534,7 +1534,7 @@ next_page:
 	return 0;
 
 invalid_page:
-	asic->mem_funcs.vm_message("[ERROR]: No valid mapping for %u@%" PRIx64 "\n", vmid, address);
+	asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx32 "@%" PRIx64 "\n", vmid, address);
 	return -1;
 }
 

@@ -134,7 +134,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, st
 					tvmid = vmid;
 				buf = calloc(1, size);
 				if (umr_read_vram(asic, vm_partition, tvmid, addr, size, buf) < 0) {
-					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)tvmid, addr);
+					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", tvmid, addr);
 				} else {
 					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, buf, size / 4);
 					ps->ib_source.addr = addr;
@@ -303,7 +303,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 				void *buf;
 				buf = calloc(1, uvd_ib.size);
 				if (umr_read_vram(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
-					asic->err_msg("[ERROR]: Could not read IB at %u:0x%" PRIx64 "\n", (unsigned)uvd_ib.vmid, uvd_ib.addr);
+					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
 				} else {
 					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, buf, uvd_ib.size / 4);
 					ps->ib_source.addr = uvd_ib.addr;

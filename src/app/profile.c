@@ -183,7 +183,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 				if (!shader_text) {
 					void *data = calloc(1, shader->size);
 					if (umr_read_vram(asic, asic->options.vm_partition, shader->vmid, shader->addr, shader->size, data) < 0) {
-						fprintf(stderr, "[ERROR]: Could not read shader text at address %u:0x%llx\n", (unsigned)shader->vmid, (unsigned long long)shader->addr);
+						fprintf(stderr, "[ERROR]: Could not read shader text at address 0x%"PRIx32":0x%llx\n", shader->vmid, (unsigned long long)shader->addr);
 						free(data);
 					} else {
 						texts->next = calloc(1, sizeof *texts);
@@ -309,7 +309,7 @@ throw_back:
 			if (!texts)
 				continue;
 
-			printf("\n\nShader %u@0x%llx (%lu bytes, type: %s): total hits: %lu\n",
+			printf("\n\nShader 0x%"PRIx32"@0x%llx (%lu bytes, type: %s): total hits: %lu\n",
 				shaders[x].hits[0].data.vmid,
 				(unsigned long long)shaders[x].hits[0].data.base_addr,
 				(unsigned long)shaders[x].hits[0].data.shader_size,
