@@ -415,8 +415,11 @@ static void *communication_thread(void *_job) {
 			unsigned raw_data_size = 0;
 			JSON_Value* req = pending_request[i];
 			pthread_mutex_unlock(&mtx);
+			bool is_ping = strcmp(json_object_get_string(json_object(req), "command"), "ping") == 0;
 			JSON_Value *in = query(lnk, req, &raw_data, &raw_data_size,
-								   save_to_disk ? session_folder : NULL, msg_count++);
+										  (save_to_disk && !is_ping) ? session_folder : NULL, msg_count);
+			if (!is_ping)
+				msg_count++;
 
 			pthread_mutex_lock(&mtx);
 
