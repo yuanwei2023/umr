@@ -14,6 +14,7 @@ if(UMR_GUI)
   include_directories("gui/imgui")
   set (GUI_SOURCE ${GUI_SOURCE}
                   umr_gui.cpp
+                  gui/kernel_trace_event.cpp
                   gui/imgui/imgui.cpp gui/imgui/imgui_draw.cpp gui/imgui/imgui_impl_opengl3.cpp
                   gui/imgui/imgui_tables.cpp
                   gui/imgui/imgui_impl_sdl.cpp gui/imgui/imgui_widgets.cpp
