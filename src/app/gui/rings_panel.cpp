@@ -168,7 +168,7 @@ public:
 		if (ImGui::BeginCombo("", json_array_get_string(rings, current_item) + strlen("amdgpu_ring_"))) {
 			for (size_t i = 0; i < json_array_get_count(rings); i++) {
 				const char *ring_name = get_ring_name(rings, i);
-				ImGui::BeginDisabled(strstr(ring_name, "vcn") || strstr(ring_name, "jpeg"));
+				ImGui::BeginDisabled(strstr(ring_name, "jpeg"));
 				if (ImGui::Selectable(ring_name, i == current_item)) {
 					current_item = i;
 				}
@@ -204,6 +204,7 @@ public:
 		if (last_answer) {
 			JSON_Array *ibs = json_object_get_array(last_answer, "ibs");
 			JSON_Array *shaders = json_object_get_array(last_answer, "shaders");
+			JSON_Array *vcns = json_object_get_array(last_answer, "vcns");
 			JSON_Object *ring = json_object(json_object_get_value(last_answer, "ring"));
 			enum umr_ring_type type = (enum umr_ring_type)json_object_get_number(last_answer, "ring_type");
 
@@ -281,6 +282,57 @@ public:
 						ImGui::TableSetColumnIndex(2);
 						ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
 						free(opcode_strs[j]);
+					}
+					ImGui::EndTable();
+					free(opcode_strs);
+					delete[] copy;
+					ImGui::EndChild();
+					ImGui::EndTabItem();
+				}
+				ImGui::PopID();
+			}
+
+			for (int i = 0; i < json_array_get_count(vcns); i++) {
+				JSON_Object *vcn = json_object(json_array_get_value(vcns, i));
+				uint64_t base = (uint64_t) json_object_get_number(vcn, "address");
+				uint64_t vmid = (uint64_t) json_object_get_number(vcn, "vmid");
+				uint32_t type = (uint64_t) json_object_get_number(vcn, "type");
+				char tmp[128];
+				sprintf(tmp, "IB 0x%" PRIx64"@0x%" PRIx64, vmid, base);
+				ImGui::PushID(i);
+				if (ImGui::BeginTabItem(tmp)) {
+					JSON_Array *op = json_object_get_array(vcn, "opcodes");
+					uint32_t *copy = new uint32_t[json_array_get_count(op)];
+					for (size_t j = 0; j < json_array_get_count(op); j++)
+						copy[j] = (uint32_t)json_array_get_number(op, j);
+
+					char **opcode_strs = NULL;
+
+					umr_vcn_decode(asic, copy, json_array_get_count(op) * 4, base, type, &opcode_strs);
+
+					sprintf(tmp, "0x%" PRIx64, base);
+
+					ImGui::BeginChild(tmp);
+					ImGui::BeginTable("vcn", 3, ImGuiTableFlags_Borders);
+					ImGui::TableSetupColumn(tmp, ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize(" 0x0000000000 ").x);
+					ImGui::TableSetupColumn("Raw Value", ImGuiTableColumnFlags_WidthFixed, ImGui::CalcTextSize("0x00000000  ").x);
+					ImGui::TableSetupColumn("Decoded IB");
+					ImGui::TableHeadersRow();
+					for (size_t j = 0; j < json_array_get_count(op); j++) {
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::Text("+ 0x%lx", j * 4);
+						if (ImGui::IsItemHovered()) {
+							ImGui::BeginTooltip();
+							ImGui::Text("0x%" PRIx64, base + j * 4);
+							ImGui::EndTooltip();
+						}
+						ImGui::TableSetColumnIndex(1);
+						ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
+						ImGui::TableSetColumnIndex(2);
+						ImGui::Text("%s", opcode_strs && opcode_strs[j] ?opcode_strs[j]:"...");
+						if (opcode_strs && opcode_strs[j])
+							free(opcode_strs[j]);
 					}
 					ImGui::EndTable();
 					free(opcode_strs);

@@ -1855,6 +1855,25 @@ static JSON_Value *shader_pgm_to_json(struct umr_asic *asic, uint32_t vmid, uint
 	return json_object_get_wrapping_value(res);
 }
 
+static JSON_Value *vcn_pgm_to_json(struct umr_asic *asic, uint32_t type, uint32_t vmid, uint64_t addr, uint32_t size) {
+	JSON_Object *res = NULL;
+	uint32_t *opcodes = calloc(size / 4, sizeof(uint32_t));
+	res = json_object(json_value_init_object());
+	json_object_set_number(res, "address", addr);
+	json_object_set_number(res, "vmid", vmid);
+	json_object_set_number(res, "type", type);
+	if (umr_read_vram(asic, asic->options.vm_partition, vmid, addr, size, (void*)opcodes) == 0) {
+		JSON_Array *op = json_array(json_value_init_array());
+		for (unsigned i = 0; i < size / 4; i++)
+			json_array_append_number(op, opcodes[i]);
+		json_object_set_value(res, "opcodes", json_array_get_wrapping_value(op));
+	} else {
+		printf("Reading vram failed (%d@%" PRIx64" size: %d)\n", vmid, addr, size);
+	}
+	free(opcodes);
+	return json_object_get_wrapping_value(res);
+}
+
 /* Ring stream decoding */
 struct ib_raw_opcodes {
 	uint32_t *v;
@@ -1864,6 +1883,7 @@ struct ib_raw_opcodes {
 
 struct ring_decoding_data {
 	JSON_Array *shaders;
+	JSON_Array *vcns;
 	JSON_Array *ibs;
 	JSON_Value *ring;
 	JSON_Array *open_ibs;
@@ -1966,6 +1986,17 @@ static void ring_add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *as
 	JSON_Value *sh = shader_pgm_to_json(asic, shader->vmid, shader->addr, shader->size);
 	if (sh)
 		json_array_append_value(data->shaders, sh);
+}
+
+static void ring_add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, struct umr_vcn_cmd_message *vcn) {
+	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
+
+	JSON_Value *sh = vcn_pgm_to_json(asic, vcn->type, vcn->vmid, vcn->addr, vcn->size);
+	if (sh)
+		json_array_append_value(data->vcns, sh);
+
+	if (vcn->next)
+		ring_add_vcn(ui, asic, ib_addr, vcn->next);
 }
 
 static void ring_add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {
@@ -3285,6 +3316,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		data.ibs = json_array(json_value_init_array());
 		data.open_ibs = json_array(json_value_init_array());
 		data.shaders = json_array(json_value_init_array());
+		data.vcns = json_array(json_value_init_array());
 		data.raw_opcodes = NULL;
 		data.concatenated.count = 0;
 		data.concatenated.opcodes = NULL;
@@ -3313,6 +3345,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			rt = UMR_RING_SDMA;
 		} else if (!memcmp(ring_name, "mes", 3)) {
 			rt = UMR_RING_MES;
+		} else if (!memcmp(ring_name, "vcn_enc", 7) ||
+			!memcmp(ring_name, "vcn_unified_", 12)) {
+			rt = UMR_RING_VCN_ENC;
+		} else if (!memcmp(ring_name, "vcn_dec", 7)) {
+			rt = UMR_RING_VCN_DEC;
 		} else {
 			rt = UMR_RING_PM4;
 		}
@@ -3325,6 +3362,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		ui.start_opcode = ring_start_opcode;
 		ui.add_field = ring_add_field;
 		ui.add_shader = ring_add_shader;
+		ui.add_vcn = ring_add_vcn;
 		ui.add_data = ring_add_data;
 		ui.unhandled = ring_unhandled;
 		ui.unhandled_size = NULL;
@@ -3347,6 +3385,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		if (str) {
 			umr_packet_disassemble_stream(str, 0, 0, 0, 0, ~0UL, 1, 0);
 			json_object_set_value(json_object(answer), "shaders", json_array_get_wrapping_value(data.shaders));
+			json_object_set_value(json_object(answer), "vcns", json_array_get_wrapping_value(data.vcns));
 			json_object_set_value(json_object(answer), "ring", data.ring);
 			json_object_set_value(json_object(answer), "ibs", json_array_get_wrapping_value(data.ibs));
 			json_object_set_number(json_object(answer), "ring_type", rt);
