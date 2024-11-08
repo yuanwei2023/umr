@@ -334,9 +334,14 @@ static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
 			metadata.op = AMDGPU_GEM_METADATA_OP_GET_METADATA;
 
 			r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_METADATA, &metadata, sizeof(metadata));
-			if (r ||
-				metadata.data.data_size_bytes == 0 ||
-				(metadata.data.data[0] & 0xffff) < 2)
+			if (r)
+				continue;
+
+			uint32_t md_version = metadata.data.data[0] & 0xffff;
+			uint32_t md_flags = metadata.data.data[0] >> 16;
+			if (!metadata.data.data_size_bytes ||
+				 md_version <= 1 ||
+				 (md_version > 2 && !(md_flags & 1u)))
 				continue;
 
 			read_size_from_md(asic, metadata.data.data, &res[2 * j], &res[2 * j + 1]);
@@ -432,6 +437,25 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 		EGL_LINUX_DMA_BUF_EXT,
 		(EGLClientBuffer)NULL,
 		attrs);
+
+	if (image == EGL_NO_IMAGE) {
+		/* The 'modifier' might be incorrect: we get this information from the kernel,
+		 * but if the userspace application doesn't use modifier, amdgpu will infer the
+		 * modifier matching the layout being used.
+		 * So if the eglCreateImage call failed, try again without the modifier.
+		 */
+		if (modifier != DRM_FORMAT_MOD_INVALID) {
+			/* Remove the modifier attribs. */
+			for (int a = 12; a < nattrib; a++)
+				attrs[a] = EGL_NONE;
+			image = eglCreateImage(display,
+				NULL,
+				EGL_LINUX_DMA_BUF_EXT,
+				(EGLClientBuffer)NULL,
+				attrs);
+		}
+	}
+
 	if (image == EGL_NO_IMAGE)
 		return "EGL failure (unhandled format?)";
 	PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DProc = (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress("glEGLImageTargetTexture2DOES");
@@ -539,7 +563,11 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 		return "Failed to GEM metadata";
 	}
 
-	if (!metadata.data.data_size_bytes || (metadata.data.data[0] & 0xffff) != 2) {
+	uint32_t md_version = metadata.data.data[0] & 0xffff;
+	uint32_t md_flags = metadata.data.data[0] >> 16;
+	if (!metadata.data.data_size_bytes ||
+		 (md_version <= 1 ||
+		  (md_version > 2 && !(md_flags & 1u)))) {
 		close(dmabuf_fd);
 		close(gpu_fd);
 		close(pid_fd);
