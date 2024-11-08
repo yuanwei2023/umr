@@ -455,8 +455,16 @@ private:
 				const auto& fd = app.per_fd[j];
 				draw_rect_at_cursor(s, s, col, app.highlight,
 									palette[(app.pid + 1 + j) % ARRAY_SIZE(palette)]);
-				if (!fd.name.empty())
-					ImGui::TextUnformatted(fd.name.c_str());
+				if (!fd.name.empty()) {
+					char cmp[256];
+					const char *fd_name = fd.name.c_str();
+					snprintf(cmp, sizeof(cmp), "%s/", snapshot->apps[i].name.c_str());
+					size_t l = strlen(snapshot->apps[i].name.c_str());
+					/* If the fd_name starts with "app_name/" skip it. */
+					if (strncmp(fd_name, cmp, l + 1) == 0)
+						fd_name += l + 1;
+					ImGui::TextUnformatted(fd_name);
+				}
 				ImGui::SameLine();
 
 				const char *sz = format_bo_size(fd.total);
