@@ -50,10 +50,8 @@ public:
 	}
 
 	struct umr_asic *asic;
-protected:
-	JSON_Object *info;
 
-	const char* format_duration(double dt) const {
+	static const char* format_duration(double dt) {
 		static char txt[32];
 		if (dt > 1)
 			sprintf(txt, "%.3f sec", dt);
@@ -63,6 +61,9 @@ protected:
 			sprintf(txt, "%.3f us", dt * 1000000);
 		return txt;
 	}
+
+protected:
+	JSON_Object *info;
 };
 
 static inline const char *color_to_hex_str(const ImColor& color) {
