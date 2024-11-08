@@ -548,12 +548,14 @@ static int run_gui(const char *url)
 					sprintf(filename, "%s/%d.raw", url, msg_idx);
 
 					fd = open(filename, O_RDONLY);
-					uint32_t s;
-					read(fd, &s, sizeof(raw_data_size));
-					raw_data_size = le32toh(s);
-					raw_data = malloc(raw_data_size);
-					read(fd, raw_data, raw_data_size);
-					close(fd);
+					if (fd >= 0) {
+						uint32_t s;
+						read(fd, &s, sizeof(raw_data_size));
+						raw_data_size = le32toh(s);
+						raw_data = malloc(raw_data_size);
+						read(fd, raw_data, raw_data_size);
+						close(fd);
+					}
 				}
 
 				process_response(&asics, e, raw_data, raw_data_size);

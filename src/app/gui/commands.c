@@ -2385,7 +2385,8 @@ struct activity_capture_data {
 struct activity_capture_data *__sensor_data = NULL;
 
 static void* read_trace_buffer_thread(void *in);
-static bool events_tracing_helper(bool on, bool verbose) {
+static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
+											 JSON_Object *request) {
 	write_str_to_file(SYSFS_PATH_TRACING "trace_clock", "mono");
 
 	write_str_to_file(SYSFS_PATH_TRACING "buffer_size_kb", "10 * 1024 * 1024");
@@ -2395,21 +2396,49 @@ static bool events_tracing_helper(bool on, bool verbose) {
 		return false;
 
 	bool error = false;
+	bool enable_tracing;
 
-	if (on) {
-		/* Only enable the events we care about. */
-
+	if (mode == 1) {
 		/* gpu_scheduler events. */
 		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_wait_dep/enable", "1");
 		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job/enable", "1");
 		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_run_job/enable", "1");
 		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_process_job/enable", "1");
+		enable_tracing = true;
+	} else if (mode == 2) {
+		char filter[512];
+
+		if (asic == NULL)
+			return false;
+
+		error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/enable", "1");
+		/* Disable previous filter + trigger. */
+		write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", "!stacktrace");
+		write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", "0");
+
+		if (json_object_has_value(request, "reg_offset")) {
+			sprintf(filter, "did == 0x%x && reg == 0x%x", asic->did, (uint32_t) json_object_get_number(request, "reg_offset"));
+			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", filter);
+
+			sprintf(filter, "stacktrace if reg == 0x%x", (uint32_t) json_object_get_number(request, "reg_offset"));
+			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", filter);
+		} else {
+			sprintf(filter, "did == 0x%x", asic->did);
+
+			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", filter);
+			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", "stacktrace");
+		}
+
+		enable_tracing = true;
+	} else {
+		enable_tracing = false;
 	}
+
 	/* Clear buffer */
 	if (!write_str_to_file(SYSFS_PATH_TRACING "trace", "a"))
 		return false;
 
-	if (on) {
+	if (enable_tracing) {
 		struct activity_capture_data *data = calloc(1, sizeof(struct activity_capture_data));
 		data->run = true;
 		data->verbose = verbose;
@@ -2435,7 +2464,7 @@ static bool events_tracing_helper(bool on, bool verbose) {
 		__sensor_data = NULL;
 	}
 
-	if (!write_str_to_file(SYSFS_PATH_TRACING "tracing_on", on ? "1" : "0"))
+	if (!write_str_to_file(SYSFS_PATH_TRACING "tracing_on", enable_tracing ? "1" : "0"))
 		return false;
 
 	return true;
@@ -2508,8 +2537,9 @@ static int8_t *ensure_capacity(int8_t *buffer, int *capacity, int used, int extr
 	return buffer;
 }
 
-static bool parse_one_event(struct activity_capture_data *data, char *buffer, int len, int8_t **out,
-							int *raw_data_used, int *raw_data_capacity) {
+static bool parse_one_event(struct activity_capture_data *data, char *buffer,
+									 int len, int8_t **out,
+									 int *raw_data_used, int *raw_data_capacity) {
 	char *task_name_start, *task_name_end;
 	char *pid_end;
 	char *cursor, *eol;
@@ -2608,6 +2638,8 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer, in
 			event_type = 2; /* DrmRunJob */
 			assert(strncmp(cursor, "run_job", strlen("run_job")) == 0);
 		}
+	} else if (strncmp(cursor, "amdgpu_device_wreg", strlen("amdgpu_device_wreg")) == 0) {
+		event_type = 6; /* AmdgpuDeviceWreg */
 	} else {
 		return false;
 	}
@@ -2688,6 +2720,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer, in
 	used += 1;
 
 	*raw_data_used = used;
+
 	return true;
 }
 
@@ -2704,7 +2737,6 @@ static void* read_trace_buffer_thread(void *in) {
 	/* Read trace buffer, one line at a time */
 	int left = 0;
 	bool in_stacktrace = false;
-	int previous_event_idx = -1;
 	while (data->run) {
 		if (left)
 			memmove(buffer, &buffer[ARRAY_SIZE(buffer) - left], left);
@@ -2712,11 +2744,15 @@ static void* read_trace_buffer_thread(void *in) {
 		int n = fread(&buffer[left], 1, ARRAY_SIZE(buffer) - left, data->tracing_pipe_fd);
 
 		if (n == 0) {
-			struct timespec req;
-			req.tv_sec = 0;
-			req.tv_nsec = 10000;
-			nanosleep(&req, NULL);
-			continue;
+			if (in_stacktrace) {
+				in_stacktrace = false;
+			} else {
+				struct timespec req;
+				req.tv_sec = 0;
+				req.tv_nsec = 10000;
+				nanosleep(&req, NULL);
+				continue;
+			}
 		} else if (n < 0) {
 			printf("Error %s\n", strerror(errno));
 			break;
@@ -2761,10 +2797,8 @@ static void* read_trace_buffer_thread(void *in) {
 					}
 				} else {
 					bool ignore = memmem(&buffer[line_start], len, "<stack trace>", strlen("<stack trace>"));
-					int orig_store_used = store_used;
-					if (!ignore && parse_one_event(data, &buffer[line_start], len, &out, &store_used, &store_capacity)) {
-						previous_event_idx = orig_store_used;
-					}
+					if (!ignore)
+						parse_one_event(data, &buffer[line_start], len, &out, &store_used, &store_capacity);
 				}
 
 				line_start = i + 1;
@@ -3678,8 +3712,10 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 		json_object_set_number(json_object(answer), "dm_visual_confirm", read_sysfs_uint64(path));
 	} else if (strcmp(command, "tracing") == 0) {
-		events_tracing_helper(json_object_get_boolean(request, "enable"),
-									 json_object_get_boolean(request, "verbose"));
+		events_tracing_helper(json_object_get_number(request, "mode"),
+									 json_object_get_boolean(request, "verbose"),
+									 asic,
+									 request);
 		answer = json_value_init_object();
 	} else if (strcmp(command, "read-trace-buffer") == 0) {
 		answer = json_value_init_object();
@@ -3814,7 +3850,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 	JSON_Value *out = json_value_init_object();
 	json_object_set_value(json_object(out), "answer", answer);
 	json_object_set_value(json_object(out), "request", json_object_get_wrapping_value(request));
-	json_object_set_boolean(json_object(out), "has_raw_data", *raw_data != NULL);
+	json_object_set_boolean(json_object(out), "has_raw_data", *raw_data != NULL && *raw_data_size);
 	return out;
 
 error:
