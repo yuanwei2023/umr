@@ -3302,7 +3302,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		wptr = ring_data[1] % ringsize;
 		drv_wptr = ring_data[2] % ringsize;
 
-		int start = 0, stop = ringsize - 1;
+		int start = 0, stop = ringsize;
 		if (json_object_get_boolean(request, "rptr_wptr")) {
 			start = rptr;
 			stop = wptr;
@@ -3332,7 +3332,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		uint32_t *lineardata = calloc(ringsize, sizeof(uint32_t));
 		unsigned lineardatasize = 0;
-		while (start != stop) {
+		while (start != stop && lineardatasize < ringsize) {
 			lineardata[lineardatasize++] = ring_data[3 + start];
 			start = (start + 1) % ringsize;
 		}

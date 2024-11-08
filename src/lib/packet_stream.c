@@ -140,7 +140,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 	ringdata = asic->ring_func.read_ring_data(asic, ringname, &ringsize);
 
 	if ((*stop != -1) && (uint32_t)(*stop * 4) >= ringsize)
-		*stop = (ringsize / 4) - 1;
+		*stop = (ringsize / 4);
 
 	if (ringdata) {
 		ringsize /= 4;
@@ -178,16 +178,17 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 		// and then linearize it so that the stream
 		// decoder can do it's thing
 		if (!only_active || *start != *stop) { // rptr != wptr
+			int o_start = *start;
 			uint32_t *lineardata, linearsize;
 
 			// copy ring data into linear array
 			lineardata = calloc(ringsize, sizeof(*lineardata));
 			linearsize = 0;
-			while (*start != *stop) {
+			while (*start != *stop && linearsize < ringsize) {
 				lineardata[linearsize++] = ringdata[3 + *start];  // first 3 words are rptr/wptr/dwptr
 				*start = (*start + 1) % ringsize;
 			}
-
+			*start = o_start;
 			ps = umr_packet_decode_buffer(asic, ui, 0, 0, lineardata, linearsize, rt);
 			free(lineardata);
 		}
