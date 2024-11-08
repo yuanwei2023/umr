@@ -198,6 +198,31 @@ static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, u
 	--(data->sp);
 }
 
+static void add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, struct umr_vcn_cmd_message *vcn)
+{
+	struct ui_data *data = ui->data;
+	FILE * pOut;
+	struct umr_vcn_cmd_message *p;
+
+	next_level(ui);
+	pOut = data->stack[data->sp].f;
+	while (vcn) {
+		p = vcn;
+		if (vcn->type == 0)
+			umr_parse_vcn_dec(asic, ib_addr, vcn, pOut);
+		else
+			umr_parse_vcn_enc(asic, vcn, pOut);
+		if (vcn->buf)
+			free(vcn->buf);
+		vcn = vcn->next;
+		if (vcn)
+			ib_addr = vcn->addr;
+		free(p);
+	}
+	fclose(data->stack[data->sp].f);
+	--(data->sp);
+}
+
 static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype)
 {
 	struct ui_data *data = ui->data;
@@ -279,7 +304,7 @@ static void done(struct umr_stream_decode_ui *ui)
 	--(data->sp);
 }
 
-static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, NULL, start_opcode, add_field, add_shader, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
+static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, NULL, start_opcode, add_field, add_shader, add_vcn, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
 
 static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *nwords)
 {
@@ -376,6 +401,8 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 		case UMR_RING_UMSCH:
 		case UMR_RING_GUESS:
 		case UMR_RING_HSA:
+		case UMR_RING_VCN_ENC:
+		case UMR_RING_VCN_DEC:
 			if (ringname)
 				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt);
 			else if (words)
@@ -397,7 +424,9 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_VPE:
 			case UMR_RING_UMSCH:
 			case UMR_RING_HSA:
-				umr_packet_disassemble_stream(str, ringname ? (uint64_t)start : addr, vmid, 0, 0, ~0UL, 1, 0);
+			case UMR_RING_VCN_ENC:
+			case UMR_RING_VCN_DEC:
+				umr_packet_disassemble_stream(str, ringname ? (uint64_t)(start * 4) : addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
 			case UMR_RING_GUESS:
 			case UMR_RING_UNK:
@@ -423,6 +452,8 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_VPE:
 			case UMR_RING_UMSCH:
 			case UMR_RING_HSA:
+			case UMR_RING_VCN_ENC:
+			case UMR_RING_VCN_DEC:
 				umr_packet_free(str);
 				break;
 			case UMR_RING_GUESS:

@@ -70,6 +70,12 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 		case UMR_RING_HSA:
 			p = str->stream.hsa = umr_hsa_decode_stream(asic, stream, nwords);
 			break;
+		case UMR_RING_VCN_ENC:
+			p = str->stream.enc = umr_vcn_enc_decode_stream(asic, stream, nwords);
+			break;
+		case UMR_RING_VCN_DEC:
+			p = str->stream.pm4 = umr_vcn_dec_decode_stream(asic, from_vmid, stream, nwords);
+			break;
 		case UMR_RING_UNK:
 		default:
 			free(str);
@@ -109,12 +115,15 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 		// only decode PM4 packets on certain rings
 		if (!memcmp(ringname, "gfx", 3) ||
 			!memcmp(ringname, "uvd", 3) ||
-			!memcmp(ringname, "vcn_dec", 7) ||
-			!memcmp(ringname, "vcn_enc", 7) ||
 			!memcmp(ringname, "mes_kiq", 7) ||
 			!memcmp(ringname, "kiq", 3) ||
 			!memcmp(ringname, "comp", 4)) {
 			rt = UMR_RING_PM4;
+		} else if (!memcmp(ringname, "vcn_enc", 7) ||
+			!memcmp(ringname, "vcn_unified_", 12)) {
+			rt = UMR_RING_VCN_ENC;
+		} else if (!memcmp(ringname, "vcn_dec", 7)) {
+			rt = UMR_RING_VCN_DEC;
 		} else if (!memcmp(ringname, "sdma", 4) ||
 			   !memcmp(ringname, "page", 4)) {
 			rt = UMR_RING_SDMA;
@@ -243,6 +252,7 @@ void umr_packet_free(struct umr_packet_stream *stream)
 		switch (stream->type) {
 			case UMR_RING_PM4:
 			case UMR_RING_PM4_LITE:
+			case UMR_RING_VCN_DEC:
 				umr_free_pm4_stream(stream->stream.pm4);
 				break;
 			case UMR_RING_SDMA:
@@ -259,6 +269,9 @@ void umr_packet_free(struct umr_packet_stream *stream)
 				break;
 			case UMR_RING_HSA:
 				umr_free_hsa_stream(stream->stream.hsa);
+				break;
+			case UMR_RING_VCN_ENC:
+				umr_free_vcn_enc_stream(stream->stream.enc);
 				break;
 			case UMR_RING_UNK:
 			default:
@@ -288,6 +301,8 @@ struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream,
 		case UMR_RING_VPE:
 		case UMR_RING_UMSCH:
 		case UMR_RING_HSA:
+		case UMR_RING_VCN_ENC:
+		case UMR_RING_VCN_DEC:
 			stream->asic->err_msg("[BUG]: Cannot find shader in UMSCH, VPE, MES, HSA, or SDMA types of streams\n");
 			return NULL;
 
@@ -339,6 +354,14 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
 			break;
 		case UMR_RING_HSA:
 			stream->cont = umr_hsa_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.hsa, ib_addr, ib_vmid, opcodes);
+			break;
+		case UMR_RING_VCN_ENC:
+			stream->cont = umr_vcn_enc_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.enc, ib_addr, ib_vmid,
+							     from_addr, from_vmid, opcodes, follow);
+			break;
+		case UMR_RING_VCN_DEC:
+			stream->cont = umr_vcn_dec_decode_stream_opcodes(stream->asic, stream->ui, cont ? stream->cont : stream->stream.pm4, ib_addr, ib_vmid,
+							     from_addr, from_vmid, opcodes, follow);
 			break;
 		case UMR_RING_UNK:
 		default:

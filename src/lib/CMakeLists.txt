@@ -40,6 +40,10 @@ add_library(umrcore
   shader_disasm.c
   sq_cmd_halt_waves.c
   testing_harness.c
+  vcn_dec_parser.c
+  vcn_enc_opcodes.c
+  read_vcn_enc_stream.c
+  read_vcn_dec_stream.c
   version.c
   vpe_decode_opcodes.c
   $<TARGET_OBJECTS:database>

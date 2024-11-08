@@ -646,6 +646,47 @@ struct umr_shaders_pgm {
 	} src;
 };
 
+/* Multimedia VCN CMD_MSG_BUFFER Messages
+ * We are not interested in other messages */
+struct umr_vcn_cmd_message {
+	// VMID
+	uint32_t vmid;
+
+	// size in bytes for ENC IB, not used for DEC IB
+	uint32_t size;
+
+	// encode or decode (0 == DEC, 1 == ENC)
+	uint32_t type;
+
+	// message buffer address in VM space
+	uint64_t addr;
+
+	// addr offset in the IB block
+	uint64_t from;
+
+	// command for this message, useful for DEC IB
+	uint32_t cmd;
+
+	// message buffer read from addr above, used for ENC
+	uint32_t *buf;
+
+	struct umr_vcn_cmd_message *next; // in case there are more
+};
+
+struct umr_vcn_enc_stream {
+	uint32_t
+		opcode,
+		nwords,
+		*words;
+	struct umr_vcn_cmd_message *vcn;	// VCN command message if any
+	int invalid;
+	struct umr_vcn_enc_stream *next;
+};
+void umr_free_vcn_enc_stream(struct umr_vcn_enc_stream *stream);
+struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
+struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords);
+int umr_vcn_decode(struct umr_asic *asic, uint32_t *p_curr, uint32_t size_in_byte, uint64_t ib_addr, uint32_t vcn_type, char ***opcode_strs);
+
 struct umr_pm4_data_block {
 	uint32_t vmid, extra;
 	uint64_t addr;
@@ -1802,6 +1843,8 @@ enum umr_ring_type {
 	UMR_RING_VPE,
 	UMR_RING_UMSCH,
 	UMR_RING_HSA,
+	UMR_RING_VCN_ENC,
+	UMR_RING_VCN_DEC,
 
 	UMR_RING_GUESS,
 	UMR_RING_UNK=0xFF, // if unknown
@@ -1851,6 +1894,11 @@ struct umr_stream_decode_ui {
 	 */
 	void (*add_shader)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader);
 
+	/** add_vcn -- Add a reference to a VCN message buffer in the IB stream
+	 * vcn: The pointer to the current VCN message
+	 */
+	void (*add_vcn)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, struct umr_vcn_cmd_message *vcn);
+
 	/** add_data -- Add a reference to a data buffer found in the IB stream
 	 * ib_addr/ib_vmid:  Address of where reference comes from
 	 * asic:  The ASIC the IB stream and shader are bound to
@@ -1896,6 +1944,13 @@ struct umr_stream_decode_ui {
 	void *data;
 };
 
+struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vcn_enc_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from, uint64_t from_vmid, unsigned long opcodes, int follow);
+struct umr_pm4_stream *umr_vcn_dec_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from, uint64_t from_vmid, unsigned long opcodes, int follow);
+void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut, struct umr_ip_block *ip, uint32_t *gui_inbuf, uint32_t gui_size, char ***out_buf);
+void umr_parse_vcn_dec(struct umr_asic *asic, uint64_t addr, struct umr_vcn_cmd_message *vcn, FILE *pOut);
+void umr_parse_vcn_enc(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut);
+void umr_print_dec_ib_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint64_t from, FILE * pOut, struct umr_ip_block *ip, uint32_t *in_buf, uint32_t size, char ***pBuf);
+
 // packet decoding library
 struct umr_packet_stream {
 	struct umr_asic *asic;
@@ -1908,6 +1963,7 @@ struct umr_packet_stream {
 		struct umr_vpe_stream *vpe;
 		struct umr_umsch_stream *umsch;
 		struct umr_hsa_stream *hsa;
+		struct umr_vcn_enc_stream *enc;
 	} stream;
 
 	void *cont;
@@ -1948,6 +2004,8 @@ struct umr_pm4_stream {
 	} ib_source;					// where did an IB if any come from?
 
 	struct umr_shaders_pgm *shader; // shader program if any
+
+	struct umr_vcn_cmd_message *vcn; // VCN command message if any
 
 	int invalid;
 };
