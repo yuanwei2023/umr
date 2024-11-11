@@ -732,7 +732,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					}
 					break;
 				} else if (mes_ver_maj == 11) {
-					uint32_t misc_opcode, j;
+					uint32_t misc_opcode;
 					misc_opcode = fetch_word(asic, stream, i);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
 					if (pack8 && !(i&1)) ++i;
