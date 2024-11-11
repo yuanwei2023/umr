@@ -62,11 +62,39 @@ static char *mes_v11_misc_api_opcodes[] = {
 	"SET_SHADER_DEBUGGER",
 	"NOTIFY_WORK_ON_UNMAPPED_QUEUE",
 	"NOTIFY_TO_UNMAP_PROCESSES",
+	"CHANGE_CONFIG",
+	"LAUNCH_CLEANER_SHADER",
+};
+
+static char *mes_v12_misc_api_opcodes[] = {
+	"WRITE_REG",
+	"INV_GART",
+	"QUERY_STATUS",
+	"READ_REG",
+	"WAIT_REG_MEM",
+	"SET_SHADER_DEBUGGER",
+	"NOTIFY_WORK_ON_UNMAPPED_QUEUE",
+	"NOTIFY_TO_UNMAP_PROCESSES",
+	"QUERY_HUNG_ENGINE_ID",
+	"CHANGE_CONFIG",
+	"LAUNCH_CLEANER_SHADER",
 };
 
 static char *mes_v11_wrm_operation[] = {
 	"WAIT_REG_MEM",
 	"WR_WAIT_WR_REG",
+};
+
+static char *mes_v11_change_option[] = {
+	"LIMIT_SINGLE_PROCESS",
+	"ENABLE_HWS_LOGGING_BUFFER",
+	"CHANGE_TDR_CONFIG",
+};
+
+static char *mes_v12_change_option[] = {
+	"LIMIT_SINGLE_PROCESS",
+	"ENABLE_HWS_LOGGING_BUFFER",
+	"CHANGE_TDR_CONFIG",
 };
 
 static char *mes_v11_set_debug_opcodes[] = {
@@ -307,7 +335,16 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "disable_add_queue_wptr_mc_addr", (fetch_word(asic, stream, i) >> 8) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_event_int_logging", (fetch_word(asic, stream, i) >> 9) & 1, NULL, 10, 32);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_reg_active_poll", (fetch_word(asic, stream, i) >> 10) & 1, NULL, 10, 32);
-					if (mes_ver_maj == 12) {
+					if (mes_ver_maj == 11) {
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_disable_queue_in_legacy_uq_preemption", (fetch_word(asic, stream, i) >> 11) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "send_write_data", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_override", (fetch_word(asic, stream, i) >> 13) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_rs64mem_for_proc_gang_ctx", (fetch_word(asic, stream, i) >> 14) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_add_queue_unmap_flag_addr", (fetch_word(asic, stream, i) >> 15) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_sch_stb_log", (fetch_word(asic, stream, i) >> 16) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "limit_single_process", (fetch_word(asic, stream, i) >> 17) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_strix_tmz_wa_enabled", (fetch_word(asic, stream, i) >> 18) & 1, NULL, 10, 32);
+					} else 	if (mes_ver_maj == 12) {
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_disable_queue_in_legacy_uq_preemption", (fetch_word(asic, stream, i) >> 11) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "send_write_data", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_override", (fetch_word(asic, stream, i) >> 13) & 1, NULL, 10, 32);
@@ -326,7 +363,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_info", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "event_intr_history_gpu_mc_ptr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				}
-				if (mes_ver_maj == 12) {
+				if (mes_ver_maj >= 11) {
 					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_tdr_timeout_in_sec", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
@@ -694,7 +731,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							break;
 					}
 					break;
-				} else if (mes_ver_maj >= 11) {
+				} else if (mes_ver_maj == 11) {
 					uint32_t misc_opcode, j;
 					misc_opcode = fetch_word(asic, stream, i);
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
@@ -703,36 +740,31 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					j = i;
 					switch (misc_opcode) {
-						case 0: // WRITE_REG
+						case 0: // MESAPI_MISC__WRITE_REG
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							break;
-						case 1: // INV_GART
+						case 1: // MESAPI_MISC__INV_GART
 							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_size", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							break;
-						case 2: // QUERY_STATUS
+						case 2: // MESAPI_MISC__QUERY_STATUS
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "context_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							break;
-						case 3: // READ_REG
+						case 3: // MESAPI_MISC__READ_REG
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "buffer_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-							if (mes_ver_maj == 12) {
-								ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "read64Bits", (fetch_word(asic, stream, i)) & 1, NULL, 16, 32);
-								++i;
-								ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "all", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
-							}
 							break;
-						case 4: // WAIT_REG_MEM
+						case 4: // MESAPI_MISC__WAIT_REG_MEM
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "op", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_wrm_operation, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reference", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset1", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset2", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
 							break;
-						case 5: // SET_SHADER_DEBUGGER
+						case 5: // MESAPI_MISC__SET_SHADER_DEBUGGER
 							if (pack8 && !(i&1)) ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_memop", fetch_word(asic, stream, i) & 1, NULL, 16, 32);
@@ -744,6 +776,86 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[2]", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[3]", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 6: // MESAPI_MISC__NOTIFY_WORK_ON_UNMAPPED_QUEUE
+							break;
+						case 7: // MESAPI_MISC__NOTIFY_WORK_TO_UNMAP_PROCESSES
+							break;
+						case 8: // MESAPI_MISC__CHANGE_CONFIG
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_change_option, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "limit_single_process", fetch_word(asic, stream, i) & 1, NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_hws_logging_buffer", (fetch_word(asic, stream, i) & 2) >> 1, NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tdr_level", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tdr_delay", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 9: // MESAPI_MISC__LAUNCH_CLEANER_SHADER
+							break;
+					}
+				} else if (mes_ver_maj == 12) {
+					uint32_t misc_opcode, j;
+					misc_opcode = fetch_word(asic, stream, i);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v12_misc_api_opcodes, misc_opcode, "UNKNOWN"), 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					j = i;
+					switch (misc_opcode) {
+						case 0: // MESAPI_MISC__WRITE_REG
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 1: // MESAPI_MISC__INV_GART
+							if (pack8 && !(i&1)) ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_size", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							break;
+						case 2: // MESAPI_MISC__QUERY_STATUS
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "context_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 3: // MESAPI_MISC__READ_REG
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							if (pack8 && !(i&1)) ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "buffer_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "read64Bits", (fetch_word(asic, stream, i)) & 1, NULL, 16, 32);
+							++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "all", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 4: // MESAPI_MISC__WAIT_REG_MEM
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "op", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_wrm_operation, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reference", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset1", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset2", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
+							break;
+						case 5: // MESAPI_MISC__SET_SHADER_DEBUGGER
+							if (pack8 && !(i&1)) ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_memop", fetch_word(asic, stream, i) & 1, NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "single_alu_op", (fetch_word(asic, stream, i) & 2) >> 1, NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "process_ctx_flush", (fetch_word(asic, stream, i) >> 31) & 1, NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "spi_gdbg_per_vmid_cntl", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[0]", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[1]", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[2]", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tcp_watch_cntl[3]", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "trap_en", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 6: // MESAPI_MISC__NOTIFY_WORK_ON_UNMAPPED_QUEUE
+							break;
+						case 7: // MESAPI_MISC__NOTIFY_WORK_TO_UNMAP_PROCESSES
+							break;
+						case 8: // MESAPI_MISC__QUERY_HUNG_ENGIGNE_ID
+							break;
+						case 9: // MESAPI_MISC__CHANGE_CONFIG
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "opcode", fetch_word(asic, stream, i), STR_LOOKUP(mes_v12_change_option, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "limit_single_process", fetch_word(asic, stream, i) & 1, NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_hws_logging_buffer", (fetch_word(asic, stream, i) & 2) >> 1, NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tdr_level", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "tdr_delay", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							break;
+						case 10: // MESAPI_MISC__LAUNCH_CLEANER_SHADER
+							break;
+						case 11: // MESAPI_MISC__SETUP_MES_DBGEXT
 							break;
 					}
 					// if >= 12 set i to j + MISC_DATA_MAX_SIZE_IN_DWORDS
