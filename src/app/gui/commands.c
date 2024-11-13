@@ -1115,7 +1115,8 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 		sprintf(fd_info, "%s/%s", fd_info_path, entry->d_name);
 
 		int64_t n = time_ns();
-		const char *c = read_file(fd_info);
+		const char *orig_content = read_file(fd_info);
+		const char *c = orig_content;
 
 		if ((c = strstr(c, "drm-driver:\tamdgpu")) == NULL)
 			continue;
@@ -1126,14 +1127,36 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 
 		if (json_object_has_value(json_object(container), client_id))
 			continue;
+
 		client_id = strdup(client_id);
 
-		/* Filter based on device name. */
+		/* Filter based on device name (if available). */
+		bool discard = true;
 		const char *dev_id_v = lookup_field(&c, "drm-pdev", ':');
-		if (strcmp(dev_id_v, dev_id)) {
+		if (dev_id_v) {
+			discard = strcmp(dev_id_v, dev_id) != 0;
+		} else {
+			/* Older kernel didn't have this field so filter by "ino" instead. */
+			const char *ino = NULL;
+			if ((ino = lookup_field(&orig_content, "ino", ':'))) {
+				struct stat buf;
+				unsigned ino_n = strtol(ino, NULL, 10);
+				char render_path[PATH_MAX];
+				const char *nodes[] = { "render", "card" };
+				for (size_t i = 0; i < ARRAY_SIZE(nodes) && discard; i++) {
+					sprintf(render_path, "/dev/dri/by-path/pci-%s-%s", dev_id, nodes[i]);
+
+					if (stat(render_path, &buf) == 0 && buf.st_ino == ino_n) {
+						discard = false;
+					}
+				}
+			}
+		}
+		if (discard) {
 			free(client_id);
 			continue;
 		}
+
 		const char *ptr = c;
 
 		const char *client_name = lookup_field(&c, "drm-client-name", ':');
