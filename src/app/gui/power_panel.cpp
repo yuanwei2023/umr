@@ -144,8 +144,8 @@ public:
 		if (runtimepm_last_answer) {
 			auto *rpm = runtimepm_last_answer;
 			bool rpm_enabled;
-
-			if (strcmp(json_object_get_string(rpm, "runtime_enabled"), "forbidden") == 0) {
+			const char *rpm_mode = json_object_get_string(rpm, "runtime_enabled");
+			if (!rpm_mode || strcmp(rpm_mode, "forbidden") == 0) {
 				ImGui::Text("Runtime Power Management: disabled (always on)");
 				rpm_enabled = false;
 			} else {

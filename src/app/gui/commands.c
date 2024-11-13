@@ -3561,8 +3561,11 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		for (size_t i = 0; i < ARRAY_SIZE(str_attr); i++) {
 			const char *s = read_file(SYSFS_PATH_DRM "card%d/device/power/%s",
 											  asic->instance, str_attr[i]);
-			json_object_set_string_with_len(
-				json_object(answer), str_attr[i], s, strlen(s) - 1);
+			size_t len = strlen(s);
+			if (len > 0) {
+				json_object_set_string_with_len(
+					json_object(answer), str_attr[i], s, strlen(s) - 1);
+			}
 		}
 	} else if (strcmp(command, "wakeup") == 0) {
 		char path[PATH_MAX];
