@@ -57,7 +57,7 @@ static ImColor get_value_color(int index, uint32_t value, uint32_t original, boo
 }
 
 struct RegisterEvent : public Event {
-	RegisterEvent(EventType::Enum t, double timestamp) : Event(t, timestamp), value(0xffffffff), reg(NULL) { }
+	RegisterEvent(EventBase b) : Event(b), value(0xffffffff), reg(NULL) { }
 
 	RegisterEvent& operator=(const RegisterEvent& evt) {
 		_copy(evt);
@@ -67,7 +67,7 @@ struct RegisterEvent : public Event {
 		return *this;
 	}
 
-	RegisterEvent(const RegisterEvent& evt) : Event(evt.type, evt.timestamp) {
+	RegisterEvent(const RegisterEvent& evt) : Event(evt.type, evt.timestamp, evt.pid) {
 		*this = evt;
 	}
 
@@ -113,7 +113,7 @@ static void parse_raw_event_buffer(struct umr_asic *asic,
 			continue;
 		}
 
-		RegisterEvent event(bp.type, bp.timestamp);
+		RegisterEvent event(bp);
 
 		/* Parse the fields. */
 		consumed += Event::parse_event_fields(input + consumed, &event);
@@ -426,6 +426,7 @@ public:
 				if (!tooltip && ImGui::IsMouseHoveringRect(ImVec2(x, top_y), ImVec2(x + bar_width, top_y + bar_height))) {
 					ImGui::BeginTooltip();
 					ImGui::Text("Timestamp: %f", evt.timestamp);
+					ImGui::Text("PID: %d", evt.pid);
 					ImGui::Separator();
 					ImGui::PushStyleColor(ImGuiCol_Text, ImU32(palette[6]));
 					ImGui::TextUnformatted(name);

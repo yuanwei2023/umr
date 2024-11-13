@@ -80,8 +80,12 @@ struct EventBase {
 };
 
 struct Event {
-	Event(EventType::Enum t, double ts) : type(t), timestamp(ts), stacktrace(NULL) {
-		type = t;
+	Event(EventType::Enum t, double ts, int p) : type(t), timestamp(ts), stacktrace(NULL) {
+		pid = p;
+	}
+
+	Event(const EventBase& b) : type(b.type), timestamp(b.timestamp), stacktrace(NULL) {
+		pid = b.pid;
 	}
 
 	virtual ~Event() {
@@ -91,6 +95,7 @@ struct Event {
 	virtual void _copy(const Event& evt) {
 		type = evt.type;
 		timestamp = evt.timestamp;
+		pid = evt.pid;
 		if(evt.stacktrace)
 			stacktrace = strdup(evt.stacktrace);
 		else
@@ -110,6 +115,7 @@ struct Event {
 	EventType::Enum type;
 	double timestamp;
 	char *stacktrace;
+	int pid;
 
 	static int parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
 									  JSON_Array *names, EventBase* out);

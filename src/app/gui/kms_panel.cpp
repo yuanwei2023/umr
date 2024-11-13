@@ -268,7 +268,15 @@ public:
 					ImGui::Text("modifier: 0x%s", json_object_get_string(fb, "modifier"));
 					if (json_object_has_value(fb, "modifier_str") && ImGui::IsItemHovered()) {
 						ImGui::BeginTooltip();
-						ImGui::Text("Description: %s", json_object_get_string(fb, "modifier_str"));
+						ImGui::Text("Description: ");
+						const char *str = json_object_get_string(fb, "modifier_str");
+						ImGui::Indent();
+						do {
+							const char *next = strchr(str + 1, ',');
+							ImGui::TextUnformatted(str, next);
+							str = next ? next + 1 : NULL;
+						} while (str);
+						ImGui::Unindent();
 						ImGui::EndTooltip();
 					}
 					ImGui::Text("size: %dx%d",
