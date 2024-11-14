@@ -1039,7 +1039,7 @@ struct umr_metrics_field_info {
 #define FIELD_INFO(TYPE, MEMBER)	\
 { #MEMBER, sizeof_field(TYPE, MEMBER), offsetof(TYPE, MEMBER) }
 
-#define UMR_MAX_KEYS 100
+#define UMR_MAX_KEYS 1024
 
 struct umr_key_value {
 	int used;
