@@ -527,6 +527,117 @@ struct umr_gpu_metrics_v1_6 {
 	uint32_t			pcie_lc_perf_other_end_recovery;
 };
 
+struct umr_amdgpu_xcp_metrics_v1_1 {
+        /* Utilization Instantaneous (%) */
+        uint32_t gfx_busy_inst[8];
+        uint16_t jpeg_busy[32];
+        uint16_t vcn_busy[4];
+        /* Utilization Accumulated (%) */
+        uint64_t gfx_busy_acc[8];
+        /* Total App Clock Counter Accumulated */
+        uint64_t gfx_below_host_limit_acc[8];
+};
+
+struct umr_gpu_metrics_v1_7 {
+	struct umr_metrics_table_header common_header;
+
+	/* Temperature (Celsius) */
+	uint16_t                        temperature_hotspot;
+	uint16_t                        temperature_mem;
+	uint16_t                        temperature_vrsoc;
+
+	/* Power (Watts) */
+	uint16_t                        curr_socket_power;
+
+	/* Utilization (%) */
+	uint16_t                        average_gfx_activity;
+	uint16_t                        average_umc_activity; // memory controller
+
+	/* VRAM max bandwidthi (in GB/sec) at max memory clock */
+	uint64_t                        mem_max_bandwidth;
+
+	/* Energy (15.259uJ (2^-16) units) */
+	uint64_t                        energy_accumulator;
+
+	/* Driver attached timestamp (in ns) */
+	uint64_t                        system_clock_counter;
+
+	/* Accumulation cycle counter */
+	uint32_t                        accumulation_counter;
+
+	/* Accumulated throttler residencies */
+	uint32_t                        prochot_residency_acc;
+	uint32_t                        ppt_residency_acc;
+	uint32_t                        socket_thm_residency_acc;
+	uint32_t                        vr_thm_residency_acc;
+	uint32_t                        hbm_thm_residency_acc;
+
+	/* Clock Lock Status. Each bit corresponds to clock instance */
+	uint32_t                        gfxclk_lock_status;
+
+	/* Link width (number of lanes) and speed (in 0.1 GT/s) */
+	uint16_t                        pcie_link_width;
+	uint16_t                        pcie_link_speed;
+
+	/* XGMI bus width and bitrate (in Gbps) */
+	uint16_t                        xgmi_link_width;
+	uint16_t                        xgmi_link_speed;
+
+	/* Utilization Accumulated (%) */
+	uint32_t                        gfx_activity_acc;
+	uint32_t                        mem_activity_acc;
+
+	/*PCIE accumulated bandwidth (GB/sec) */
+	uint64_t                        pcie_bandwidth_acc;
+
+	/*PCIE instantaneous bandwidth (GB/sec) */
+	uint64_t                        pcie_bandwidth_inst;
+
+	/* PCIE L0 to recovery state transition accumulated count */
+	uint64_t                        pcie_l0_to_recov_count_acc;
+
+	/* PCIE replay accumulated count */
+	uint64_t                        pcie_replay_count_acc;
+
+	/* PCIE replay rollover accumulated count */
+	uint64_t                        pcie_replay_rover_count_acc;
+
+	/* PCIE NAK sent  accumulated count */
+	uint32_t                        pcie_nak_sent_count_acc;
+
+	/* PCIE NAK received accumulated count */
+	uint32_t                        pcie_nak_rcvd_count_acc;
+
+	/* XGMI accumulated data transfer size(KiloBytes) */
+	uint64_t                        xgmi_read_data_acc[8];
+	uint64_t                        xgmi_write_data_acc[8];
+
+	/* XGMI link status(active/inactive) */
+	uint16_t                        xgmi_link_status[8];
+
+	uint16_t                        padding;
+
+	/* PMFW attached timestamp (10ns resolution) */
+	uint64_t                        firmware_timestamp;
+
+	/* Current clocks (Mhz) */
+	uint16_t                        current_gfxclk[8];
+	uint16_t                        current_socclk[4];
+	uint16_t                        current_vclk0[4];
+	uint16_t                        current_dclk0[4];
+	uint16_t                        current_uclk;
+
+	/* Number of current partition */
+	uint16_t                        num_partition;
+
+	/* XCP metrics stats */
+	struct umr_amdgpu_xcp_metrics_v1_1  xcp_stats[9];
+
+	/* PCIE other end recovery counter */
+	uint32_t                        pcie_lc_perf_other_end_recovery;
+};
+
+
 struct umr_gpu_metrics_v2_0 {
 	struct umr_metrics_table_header	common_header;
 
@@ -906,6 +1017,7 @@ union umr_gpu_metrics {
 	struct umr_gpu_metrics_v1_4 v1_4;
 	struct umr_gpu_metrics_v1_5 v1_5;
 	struct umr_gpu_metrics_v1_6 v1_6;
+	struct umr_gpu_metrics_v1_7 v1_7;
 	struct umr_gpu_metrics_v2_0 v2;
 	struct umr_gpu_metrics_v2_1 v2_1;
 	struct umr_gpu_metrics_v2_2 v2_2;
