@@ -132,7 +132,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 {
 	char driver[512], name[256], fname[256];
 	FILE *f;
-	unsigned did;
+	unsigned did = 0;
 	struct umr_asic *asic = NULL;
 	long trydid = options->forcedid;
 	int busmatch = 0, parsed_did, need_config_scan = 0;

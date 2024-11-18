@@ -702,7 +702,6 @@ static void print_ib_slice_header(struct umr_asic *asic, uint32_t tvmid, uint64_
 	for (i = 0; i < 16; i++)
 		add_field_3(asic, tvmid, addr, &offset, "bitstream_template", i+1, p->bitstream_template[i], 16, pOut, pBuf);
 	for (i = 0; i < 16; i++) {
-		msg = "unknown";
 		for (j = 0; j < ARRAY_SIZE(instructions); j++)
 			if (p->instructions[i].instruction == instructions[j].instruction) {
 				msg = instructions[j].msg;

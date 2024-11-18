@@ -363,7 +363,6 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream_opcodes(struct umr_asic *asic, 
 		nwords += 1 + s->n_words;
 		s = s->next;
 	}
-	s = stream;
 
 	ip = umr_vcn_get_ip_ver(asic);
 

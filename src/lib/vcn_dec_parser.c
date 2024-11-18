@@ -487,7 +487,7 @@ void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_m
 
 	if (pOut)
 		fprintf(pOut, "\nDecoding VCN message at 0x%" PRIx32 "@0x%" PRIx64 " from 0x%" PRIx32 "@0x%" PRIx64 " of %" PRIu32 " words",
-			vcn->vmid, vcn->addr, 0, vcn->from, nwords);
+			vmid, vcn_addr, 0, vcn ? vcn->from : 0, nwords);
 	while (p_curr < p_end) {
 		ib_size = *p_curr++;
 		ib_type = *p_curr++;

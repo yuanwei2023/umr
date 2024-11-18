@@ -760,7 +760,6 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-					j = i;
 					switch (misc_opcode) {
 						case 0: // MESAPI_MISC__WRITE_REG
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
@@ -880,14 +879,11 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						case 11: // MESAPI_MISC__SETUP_MES_DBGEXT
 							break;
 					}
-					// if >= 12 set i to j + MISC_DATA_MAX_SIZE_IN_DWORDS
-					if (mes_ver_maj == 12) {
-						i = j + params.MISC_DATA_MAX_SIZE_IN_DWORDS;
-						if (pack8 && !(i&1)) ++i;
-						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
-						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_fence", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
-					}
+					i = j + params.MISC_DATA_MAX_SIZE_IN_DWORDS;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "timestamp", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "doorbell_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "os_fence", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 				}
 				break;
 			case 15: // MESAPI__UPDATE_ROOT_PAGE_TABLE
