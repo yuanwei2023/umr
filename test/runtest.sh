@@ -66,6 +66,20 @@ if [ $? -ne 0 ]; then
 fi
 echo PASSED.
 
+#run install test
+echo
+echo
+echo Running install test...
+git clean -dxf
+mkdir install_tmp
+cmake . -DCMAKE_INSTALL_PREFIX=`pwd`/install_tmp/ -DUMR_INSTALL_DEV=ON
+make -j install
+if [ $? -ne 0 ]; then
+	echo "FAILED."
+	exit 1;
+fi
+echo PASSED.
+
 exit 0
 
 
