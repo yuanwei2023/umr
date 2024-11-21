@@ -60,10 +60,6 @@ separated strings.  Options should be specified before --update or --force comma
 .B empty_log
      Empties the MMIO log after reading it.
 
-.B follow
-     Causes the --logscan command to repeatedly produce output without
-     exiting.
-
 .B no_follow_ib
      Instruct the --ring-stream command to not attempt to follow IBs pointed to by the packets
      in the ring.
@@ -270,8 +266,8 @@ Dump CPC register data.
 Dump SDMA register data.
 .IP "--logscan, -ls"
 Read and display contents of the MMIO register log.  Usually specified
-with '-O bits,follow,empty_log' to enable continual dumping of the trace
-log.
+with '-O bits,empty_log' to enable continual dumping of bit fields and
+emptying of the trace log after.
 
 .SH Power and Clock
 .IP "--power, -p"

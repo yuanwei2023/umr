@@ -217,8 +217,6 @@ static void parse_options(char *str)
 			options.bitfields = 1;
 		} else if (!strcmp(option, "empty_log")) {
 			options.empty_log = 1;
-		} else if (!strcmp(option, "follow")) {
-			options.follow = 1;
 		} else if (!strcmp(option, "use_pci")) {
 			options.use_pci = 1;
 		} else if (!strcmp(option, "use_colour") || !strcmp(option, "use_color")) {
@@ -336,7 +334,7 @@ static void do_help(void)
 
 	printf(
 	"\n\t--logscan, -ls\n\t\tRead and display contents of the MMIO register log (usually specified with"
-		"\n\t\t'-O bits,follow,empty_log' to continually dump the trace log.)\n"
+		"\n\t\t'-O bits,empty_log' to continually dump bitfields and empty the trace after.)\n"
 	"\n*** Device Utilization ***\n"
 	"\n\t--top, -t\n\t\tSummarize GPU utilization.  Can select a SE block with --bank.  Can use"
 		"\n\t\toptions 'use_colour' to colourize output and 'use_pci' to improve efficiency.\n"
@@ -990,32 +988,38 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--logscan") || !strcmp(argv[i], "-ls")) {
-					if (options.follow) {
-						int r;
+					int r, new = 0;
 
-						argflags[i] = 1;
+					argflags[i] = 1;
 
-						signal(SIGINT, sigint);
-						r = system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_wreg/enable");
-						r |= system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_rreg/enable");
+					signal(SIGINT, sigint);
+					r = system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_wreg/enable");
+					r |= system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_rreg/enable");
+					if (r) {
+						r = system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_device_wreg/enable");
+						r |= system("echo 1 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_device_rreg/enable");
 						if (r) {
 							fprintf(stderr, "[ERROR]: Could not enable mm tracers\n");
 							return EXIT_FAILURE;
 						}
-						req.tv_sec = 0;
-						req.tv_nsec = 1000000000/10; // 100ms
-						while (!quit) {
-							nanosleep(&req, NULL);
-							umr_scan_log(asic);
-						}
+						new = 1;
+					}
+					req.tv_sec = 0;
+					req.tv_nsec = 1000000000/10; // 100ms
+					while (!quit) {
+						nanosleep(&req, NULL);
+						umr_scan_log(asic, new);
+					}
+					if (new) {
+						r = system("echo 0 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_device_wreg/enable");
+						r |= system("echo 0 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_device_rreg/enable");
+					} else {
 						r = system("echo 0 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_wreg/enable");
 						r |= system("echo 0 > /sys/kernel/debug/tracing/events/amdgpu/amdgpu_mm_rreg/enable");
-						if (r) {
-							fprintf(stderr, "[ERROR]: Could not diable mm tracers\n");
-							return EXIT_FAILURE;
-						}
-					} else {
-						umr_scan_log(asic);
+					}
+					if (r) {
+						fprintf(stderr, "[ERROR]: Could not diable mm tracers\n");
+						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--top") || !strcmp(argv[i], "-t")) {
 					uint32_t value;

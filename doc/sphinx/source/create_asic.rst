@@ -26,7 +26,6 @@ as follows:
 			bitfields,
 			bitfields_full,
 			empty_log,
-			follow,
 			use_bank,
 			many,
 			use_pci,

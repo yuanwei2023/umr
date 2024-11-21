@@ -46,7 +46,7 @@ void umr_ib_read_file(struct umr_asic *asic, char *filename, int pm);
 void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, int end, uint32_t vmid, uint64_t addr, uint32_t *words, uint32_t nwords, enum umr_ring_type rt);
 
 void umr_lookup(struct umr_asic *asic, char *address, char *value);
-void umr_scan_log(struct umr_asic *asic);
+void umr_scan_log(struct umr_asic *asic, int use_new);
 void umr_top(struct umr_asic *asic);
 
 void umr_print_config(struct umr_asic *asic);
