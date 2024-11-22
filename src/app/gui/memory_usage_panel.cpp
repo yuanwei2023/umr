@@ -268,10 +268,10 @@ private:
 	}
 
 	struct mem_data {
-		mem_data(uint32_t size = 0, uint8_t mt = 255, bool v = false) :
+		mem_data(uint64_t size = 0, uint8_t mt = 255, bool v = false) :
 				 bo_size(size), app_index(0), memory_type(mt),
 				 cpu_access(false), pinned(false), visible(v) {}
-		uint32_t bo_size;
+		uint64_t bo_size;
 		uint32_t app_index;
 		uint32_t fd_index;
 		uint8_t memory_type;
