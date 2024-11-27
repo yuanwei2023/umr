@@ -191,6 +191,20 @@ struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const
 	return umr_find_reg_data_by_ip_by_instance_with_ip(asic, ip, inst, regname, NULL);
 }
 
+/**
+ * @brief Finds register data by IP, instance, and register name.
+ *
+ * This function searches for a specific register within an IP block of a given ASIC instance.
+ * It uses the IP address, instance number, and register name to locate the corresponding register data.
+ *
+ * @param asic Pointer to the ASIC structure containing the IP blocks.
+ * @param ip The IP address (as a string) of the IP block to search within.
+ * @param inst The instance number of the IP block.
+ * @param regname The name of the register to find.
+ * @param ipp A pointer to a struct umr_ip_block pointer, which will be set to point to the found IP block if successful.
+ *
+ * @return A pointer to the found register data (struct umr_reg*), or NULL if no matching register is found.
+ */
 struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp)
 {
 	int i, k;
