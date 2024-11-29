@@ -535,8 +535,8 @@ static const struct umr_mqd_fields  umr_mqd_graphics_gfx12[] = {
 	{ 507, "reserved_507" },
 	{ 508, "reserved_508" },
 	{ 509, "reserved_509" },
-	{ 510, "reserved_510" },
-	{ 511, "reserved_511" },
+	{ 510, "fence_address_lo" },
+	{ 511, "fence_address_hi" },
 };
 
 static const struct umr_mqd_fields  umr_mqd_sdma_gfx12[] = {
@@ -1709,8 +1709,8 @@ static const struct umr_mqd_fields umr_mqd_graphics_gfx11[] = {
 		{ 489, "db_occlusion_count2_hi_17" },
 		{ 490, "db_occlusion_count3_low_17" },
 		{ 491, "db_occlusion_count3_hi_17" },
-		{ 510, "fenceaddress_lo" },
-		{ 511, "fenceaddress_hi" },
+		{ 510, "fence_address_lo" },
+		{ 511, "fence_address_hi" },
 		{ 0, NULL },
 };
 
