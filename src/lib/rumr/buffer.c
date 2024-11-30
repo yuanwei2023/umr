@@ -26,6 +26,13 @@
 
 #define MAX(x, y) (((x) >= (y)) ? (x) : (y))
 
+/**
+ * @brief Initializes a new rumr_buffer structure.
+ *
+ * This function allocates memory for a new buffer and sets its initial size.
+ *
+ * @return A pointer to the newly created rumr_buffer, or NULL if allocation fails.
+ */
 struct rumr_buffer *rumr_buffer_init(void)
 {
 	struct rumr_buffer *buf;
@@ -43,6 +50,15 @@ struct rumr_buffer *rumr_buffer_init(void)
 	return buf;
 }
 
+/**
+ * @brief Adds data to the end of the buffer.
+ *
+ * If there is not enough space in the buffer, it will be resized.
+ *
+ * @param buf Pointer to the rumr_buffer structure.
+ * @param data Pointer to the data to add.
+ * @param size Size of the data to add.
+ */
 void rumr_buffer_add_data(struct rumr_buffer *buf, void *data, uint32_t size)
 {
 	if (buf->failed)
@@ -61,17 +77,37 @@ void rumr_buffer_add_data(struct rumr_buffer *buf, void *data, uint32_t size)
 	buf->woffset += size;
 }
 
+/**
+ * @brief Adds another buffer's contents to the end of this buffer.
+ *
+ * @param buf Pointer to the destination rumr_buffer structure.
+ * @param srcbuf Pointer to the source rumr_buffer structure whose data will be added.
+ */
 void rumr_buffer_add_buffer(struct rumr_buffer *buf, struct rumr_buffer *srcbuf)
 {
 	rumr_buffer_add_data(buf, srcbuf->data, srcbuf->woffset);
 }
 
-
+/**
+ * @brief Adds a 32-bit unsigned integer to the end of the buffer.
+ *
+ * @param buf Pointer to the rumr_buffer structure.
+ * @param val The 32-bit unsigned integer to add.
+ */
 void rumr_buffer_add_uint32(struct rumr_buffer *buf, uint32_t val)
 {
 	rumr_buffer_add_data(buf, &val, 4);
 }
 
+/**
+ * @brief Reads data from the buffer starting at the current read offset.
+ *
+ * If there is not enough data in the buffer, the remaining space will be filled with zeros.
+ *
+ * @param buf Pointer to the rumr_buffer structure.
+ * @param data Pointer to the destination where the data will be copied.
+ * @param size Size of the data to read.
+ */
 void rumr_buffer_read_data(struct rumr_buffer *buf, void *data, uint32_t size)
 {
 	if ((buf->roffset + size) <= buf->woffset) {
@@ -83,6 +119,12 @@ void rumr_buffer_read_data(struct rumr_buffer *buf, void *data, uint32_t size)
 	}
 }
 
+/**
+ * @brief Reads a 32-bit unsigned integer from the buffer starting at the current read offset.
+ *
+ * @param buf Pointer to the rumr_buffer structure.
+ * @return The 32-bit unsigned integer read from the buffer.
+ */
 uint32_t rumr_buffer_read_uint32(struct rumr_buffer *buf)
 {
 	uint32_t tmp;
@@ -90,6 +132,11 @@ uint32_t rumr_buffer_read_uint32(struct rumr_buffer *buf)
 	return tmp;
 }
 
+/**
+ * @brief Frees the memory allocated for a rumr_buffer structure.
+ *
+ * @param buf Pointer to the rumr_buffer structure to free.
+ */
 void rumr_buffer_free(struct rumr_buffer *buf)
 {
 	if (buf) {
@@ -98,6 +145,15 @@ void rumr_buffer_free(struct rumr_buffer *buf)
 	}
 }
 
+/**
+ * @brief Loads data from a file into a new rumr_buffer structure.
+ *
+ * The file is opened using the provided database path and filename.
+ *
+ * @param fname Name of the file to load.
+ * @param database_path Path to the directory containing the file.
+ * @return A pointer to the newly created rumr_buffer with the file's data, or NULL if loading fails.
+ */
 struct rumr_buffer *rumr_buffer_load_file(const char *fname, char *database_path)
 {
 	struct rumr_buffer *buf;

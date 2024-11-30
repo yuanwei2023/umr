@@ -26,6 +26,21 @@
 #include <sys/types.h>
 #include <dirent.h>
 
+/**
+ * @brief Enumerates AMD GPU devices and populates a list of ASIC structures.
+ *
+ * This function scans the PCI bus for AMD GPU devices under the `/sys/bus/pci/drivers/amdgpu` path,
+ * creates an ASIC structure for each device found, and stores them in a dynamically allocated array.
+ * The number of discovered ASICs is returned via the `no_asics` parameter.
+ *
+ * @param errout A function pointer to handle error output messages.
+ * @param database_path Path to the UMR database used for ASIC discovery.
+ * @param global_options Pointer to a structure containing global options that affect the discovery process.
+ * @param asics Output parameter: a pointer to an array of pointers to `umr_asic` structures, which will be allocated by this function.
+ * @param no_asics Output parameter: a pointer to an integer where the number of discovered ASICs will be stored.
+ *
+ * @return 0 on success, -1 on failure (e.g., if the directory cannot be opened).
+ */
 int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics)
 {
 	struct umr_options options;

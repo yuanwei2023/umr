@@ -24,6 +24,21 @@
 
 #include "umr.h"
 
+/**
+ * @brief Finds an IP in the database that matches the specified criteria.
+ *
+ * This function searches through a linked list of database scan items to find an item that matches
+ * the given IP name, major version, minor version, and revision. It also optionally filters by a desired path.
+ *
+ * @param db Pointer to the head of the database scan item list.
+ * @param ipname The name of the IP to search for.
+ * @param maj The major version number of the IP.
+ * @param min The minor version number of the IP.
+ * @param rev The revision number of the IP.
+ * @param desired_path Optional path to filter the search. If NULL, no path filtering is applied.
+ *
+ * @return A pointer to the best matching `umr_database_scan_item` if found, otherwise NULL.
+ */
 struct umr_database_scan_item *umr_database_find_ip(
 	struct umr_database_scan_item *db,
 	char *ipname, int maj, int min, int rev,

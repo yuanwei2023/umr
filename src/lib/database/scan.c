@@ -76,6 +76,22 @@ static int umr_do_scan(struct umr_database_scan_item *it, char *path)
 	return 0;
 }
 
+/**
+ * @brief Scans directories for register files and populates a database scan item list.
+ *
+ * This function scans specified directories for files with the ".reg" extension,
+ * which are expected to contain register definitions. It starts by scanning the provided
+ * path, then checks the environment variable `UMR_DATABASE_PATH`, followed by any
+ * predefined directory (if defined), and finally a default source directory.
+ *
+ * For each valid ".reg" file found, it creates an entry in a linked list of type
+ * `umr_database_scan_item` containing details such as the file path, name, IP name,
+ * major, minor, and revision numbers.
+ *
+ * @param path The initial directory path to start scanning. If NULL or empty, the function
+ *             will attempt to use other sources specified by environment variables and defaults.
+ * @return A pointer to the head of the linked list containing scan items, or NULL if an error occurs.
+ */
 struct umr_database_scan_item *umr_database_scan(char *path)
 {
 	int r;

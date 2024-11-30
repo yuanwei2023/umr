@@ -42,6 +42,27 @@ enum AMDGPU_DEBUGFS_GPRWAVE_CMDS {
 };
 #define AMDGPU_DEBUGFS_GPRWAVE_IOC_SET_STATE _IOWR(0x20, AMDGPU_DEBUGFS_GPRWAVE_CMD_SET_STATE, struct amdgpu_debugfs_gprwave_iocdata)
 
+/**
+ * @brief Reads GPR or wave data from a specified GPU resource.
+ *
+ * This function reads General Purpose Registers (GPR) or wave data from a specified GPU resource
+ * identified by the provided parameters. It uses an ioctl call to set up the necessary state and then
+ * performs a read operation on the file descriptor associated with the GPR/wave debugfs entry.
+ *
+ * @param asic Pointer to the UMR ASIC structure representing the GPU.
+ * @param v_or_s Indicates whether to read VGPRs (1) or SGPRs (0).
+ * @param thread The thread ID within the wavefront.
+ * @param se Shader Engine ID.
+ * @param sh Shader Array ID.
+ * @param cu Compute Unit ID.
+ * @param wave Wave ID.
+ * @param simd SIMD ID.
+ * @param offset Offset in bytes from which to start reading data.
+ * @param size Number of bytes to read.
+ * @param dst Pointer to the buffer where the read data will be stored.
+ *
+ * @return Returns 0 on success, or a negative error code on failure.
+ */
 int umr_linux_read_gpr_gprwave_raw(struct umr_asic *asic, int v_or_s,
 				   uint32_t thread, uint32_t se, uint32_t sh, uint32_t cu, uint32_t wave, uint32_t simd,
 				   uint32_t offset, uint32_t size, uint32_t *dst)
@@ -176,9 +197,17 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 }
 
 /**
- * umr_read_sgprs - Read SGPR registers for a specific wave
- */
-int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst)
+ * @brief Reads SGPR registers for a specific wave.
+ *
+ * This function reads the SGPRs for a specified wave on the GPU.
+ * It utilizes the GPR/wave debugfs interface to perform the read operation.
+ *
+ * @param asic Pointer to the UMR ASIC structure representing the GPU.
+ * @param wd Pointer to the UMR wave data structure containing information about the wavefront.
+ * @param dst Pointer to the buffer where the read SGPR data will be stored.
+ *
+ * @return Returns 0 on success, or a negative error code if the kernel is too old or an error occurs during the read operation.
+ */int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst)
 {
 	if (asic->fd.gprwave >= 0) {
 		return read_gpr_gprwave(asic, 0, 0, wd, dst);
@@ -188,6 +217,21 @@ int umr_read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *ds
 	}
 }
 
+/**
+ * @brief Reads VGPR registers for a specific wave and thread.
+ *
+ * This function reads the Vector General Purpose Registers (VGPRs) for a specified wave and thread on the GPU.
+ * It utilizes the GPR/wave debugfs interface to perform the read operation. Reading VGPRs is not supported
+ * on pre-GFX9 devices.
+ *
+ * @param asic Pointer to the UMR ASIC structure representing the GPU.
+ * @param wd Pointer to the UMR wave data structure containing information about the wavefront.
+ * @param thread The thread ID within the wavefront for which VGPRs are to be read.
+ * @param dst Pointer to the buffer where the read VGPR data will be stored.
+ *
+ * @return Returns 0 on success, -1 if reading VGPRs is not supported on the device, or a negative error code
+ *         if the kernel is too old or an error occurs during the read operation.
+ */
 int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thread, uint32_t *dst)
 {
 	// reading VGPR is not supported on pre GFX9 devices
@@ -202,6 +246,23 @@ int umr_read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thr
 	}
 }
 
+/**
+ * @brief Reads raw wave status data from a specified GPU resource.
+ *
+ * This function reads the raw wave status data from a specified GPU resource identified by the provided parameters.
+ * It uses an ioctl call to set up the necessary state and then performs a read operation on the file descriptor
+ * associated with the GPR/wave debugfs entry.
+ *
+ * @param asic Pointer to the UMR ASIC structure representing the GPU.
+ * @param se Shader Engine ID.
+ * @param sh Shader Array ID.
+ * @param cu Compute Unit ID.
+ * @param simd SIMD ID.
+ * @param wave Wave ID.
+ * @param buf Pointer to the buffer where the read wave status data will be stored.
+ *
+ * @return Returns the number of bytes read on success, or a negative error code if an error occurs during the operation.
+ */
 int umr_get_wave_status_raw(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, uint32_t *buf)
 {
 	int r = 0;
@@ -250,6 +311,22 @@ int umr_get_wave_status_raw(struct umr_asic *asic, unsigned se, unsigned sh, uns
 	return r;
 }
 
+/**
+ * @brief Reads and parses wave status data from a specified GPU resource.
+ *
+ * This function reads the raw wave status data from a specified GPU resource using `umr_get_wave_status_raw()`
+ * and then parses it into a structured format using `umr_parse_wave_data_gfx()`.
+ *
+ * @param asic Pointer to the UMR ASIC structure representing the GPU.
+ * @param se Shader Engine ID.
+ * @param sh Shader Array ID.
+ * @param cu Compute Unit ID.
+ * @param simd SIMD ID.
+ * @param wave Wave ID.
+ * @param ws Pointer to the UMR wave status structure where the parsed wave data will be stored.
+ *
+ * @return Returns 0 on success, or a negative error code if an error occurs during the read or parsing operation.
+ */
 int umr_get_wave_status(struct umr_asic *asic, unsigned se, unsigned sh, unsigned cu, unsigned simd, unsigned wave, struct umr_wave_status *ws)
 {
 	int r;

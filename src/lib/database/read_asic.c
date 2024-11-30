@@ -33,6 +33,20 @@ ipcmnname, ipsocname, instance, regfile
 ...
 
 */
+/**
+ * @brief Reads ASIC information from a database file.
+ *
+ * This function reads and parses an ASIC description file to initialize an
+ * \ref umr_asic structure. The file contains details about the ASIC, including
+ * common name, SOC15 filename, family ID, number of blocks, VGPR granularity,
+ * and whether it is an APU. It also lists IP blocks associated with the ASIC.
+ *
+ * @param options Pointer to a \ref umr_options structure containing configuration options.
+ * @param filename The name of the database file to read from.
+ * @param errout Callback function for error output.
+ *
+ * @return A pointer to the initialized \ref umr_asic structure on success, or NULL on failure.
+ */
 struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename, umr_err_output errout)
 {
 	char linebuf[256], cmnname[256], soc15fname[256], ipcmnname[256], ipsocname[256], regfile[256];

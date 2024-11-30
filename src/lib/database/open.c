@@ -25,9 +25,20 @@
 #include "umr.h"
 
 /**
-	umr_database_open -- try to open a file from various paths
-**/
-
+ * @brief Opens a database file from various possible locations.
+ *
+ * This function attempts to open a specified database file using different methods:
+ * 1. Directly from the provided filename.
+ * 2. From a specified path combined with the filename.
+ * 3. Using an environment variable path (`UMR_DATABASE_PATH`).
+ * 4. Using a predefined directory (`UMR_DB_DIR`), if defined.
+ * 5. Using the CMake source directory combined with `/database/`.
+ *
+ * @param path     The base path where the database file might be located (can be NULL).
+ * @param filename The name of the database file to open.
+ * @param binary   Flag indicating whether to open the file in binary mode (`1` for binary, `0` for text).
+ * @return A pointer to the opened FILE structure if successful, or NULL if all attempts fail.
+ */
 FILE *umr_database_open(char *path, char *filename, int binary)
 {
 	FILE *f;

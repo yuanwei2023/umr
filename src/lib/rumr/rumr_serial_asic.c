@@ -25,11 +25,15 @@
 #include <umr_rumr.h>
 #include <stdint.h>
 
-/** serialize_asic : Create a buffer containing the ASIC model data
+/**
+ * @brief Serialize an ASIC model into a buffer.
  *
- * Note the order is very important obviously.  For non-amdgpu.ko platforms
- * the trickiest bit will be the CONFIG data which you DO actually need
- * bits and pieces of.
+ * This function creates a buffer containing the serialized data of the ASIC model.
+ * The order of data serialization is crucial, especially for non-amdgpu.ko platforms,
+ * where certain parts of the CONFIG data are required.
+ *
+ * @param asic Pointer to the ASIC structure to be serialized.
+ * @return A pointer to the rumr_buffer containing the serialized ASIC data, or NULL on failure.
  */
 struct rumr_buffer *rumr_serialize_asic(struct umr_asic *asic)
 {
@@ -121,6 +125,14 @@ struct rumr_buffer *rumr_serialize_asic(struct umr_asic *asic)
 	return buf;
 }
 
+/**
+ * @brief Parse a serialized ASIC buffer into an ASIC model.
+ *
+ * This function reads the serialized data from a buffer and reconstructs the ASIC model.
+ *
+ * @param buf Pointer to the rumr_buffer containing the serialized ASIC data.
+ * @return A pointer to the reconstructed umr_asic structure, or NULL on failure.
+ */
 struct umr_asic *rumr_parse_serialized_asic(struct rumr_buffer *buf)
 {
 	struct umr_asic *asic;
@@ -219,6 +231,15 @@ struct umr_asic *rumr_parse_serialized_asic(struct rumr_buffer *buf)
 	return asic;
 }
 
+/**
+ * @brief Save a serialized ASIC buffer to a file.
+ *
+ * This function writes the serialized ASIC data from a buffer to a file named after the ASIC's DID.
+ *
+ * @param asic Pointer to the ASIC structure whose data is serialized and saved.
+ * @param buf Pointer to the rumr_buffer containing the serialized ASIC data.
+ * @return 0 on success, non-zero on failure.
+ */
 int rumr_save_serialized_asic(struct umr_asic *asic, struct rumr_buffer *buf)
 {
 	char fname[32];
@@ -231,6 +252,15 @@ int rumr_save_serialized_asic(struct umr_asic *asic, struct rumr_buffer *buf)
 	return 0;
 }
 
+/**
+ * @brief Load a serialized ASIC buffer from a file.
+ *
+ * This function reads the serialized ASIC data from a specified file and returns it in a buffer.
+ *
+ * @param fname The name of the file containing the serialized ASIC data.
+ * @param database_path Path to the database directory (not used in this implementation).
+ * @return A pointer to the rumr_buffer containing the loaded serialized ASIC data, or NULL on failure.
+ */
 struct rumr_buffer *rumr_load_serialized_asic(const char *fname, char *database_path)
 {
 	return rumr_buffer_load_file(fname, database_path);

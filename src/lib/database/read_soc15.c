@@ -24,6 +24,19 @@
 
 #include "umr.h"
 
+/**
+ * @brief Reads the SOC15 database from a specified file.
+ *
+ * This function opens and reads the SOC15 offset data from a given file located in a specified path.
+ * It parses the file to populate a linked list of `umr_soc15_database` structures, each representing
+ * an IP block with its associated offsets.
+ *
+ * @param path The directory path where the database file is located.
+ * @param filename The name of the SOC15 offset file to read.
+ * @param errout A function pointer for error output handling.
+ * @return A pointer to the head of a linked list of `umr_soc15_database` structures on success,
+ *         or NULL if an error occurs (e.g., file not found, memory allocation failure).
+ */
 struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, umr_err_output errout)
 {
 	struct umr_soc15_database *s, *os;

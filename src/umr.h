@@ -174,7 +174,7 @@ struct umr_ip_block {
 	struct umr_reg *regs;
 	struct {
           int die, maj, min, rev, instance, logical_inst;
-        } discoverable;
+    } discoverable;
 };
 
 struct umr_find_reg_iter_result {

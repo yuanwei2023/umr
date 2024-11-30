@@ -467,6 +467,15 @@ static void *read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *rin
 	return ret;
 }
 
+/**
+ * @brief Discover the ASIC connected to the RUMR client.
+ *
+ * This function sends a discovery opcode to the server to gather information about the connected ASIC.
+ * It initializes the ASIC model in the client state using the data received from the server.
+ *
+ * @param state Pointer to the RUMR client state structure.
+ * @return int Returns 0 on success, -1 on failure.
+ */
 int rumr_client_discover(struct rumr_client_state *state)
 {
 	struct rumr_buffer *buf;
@@ -482,6 +491,19 @@ int rumr_client_discover(struct rumr_client_state *state)
 	return state->asic ? 0 : -1;
 }
 
+/**
+ * @brief Establish a connection to the RUMR server and discover the ASIC.
+ *
+ * This function initializes the communication with the RUMR server using the provided communication functions
+ * and address. It establishes a connection, discovers the ASIC connected to the server, and binds various callback
+ * functions for memory access, register operations, wave data retrieval, ring data reading, shader disassembly,
+ * and GPR read operations.
+ *
+ * @param state Pointer to the RUMR client state structure.
+ * @param cf    Pointer to the communication function structure that defines how to connect and communicate with the server.
+ * @param addr  The address of the server to connect to.
+ * @return int Returns 0 on success, a negative error code on failure.
+ */
 int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs *cf, char *addr)
 {
 	int r;
@@ -553,6 +575,14 @@ int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs 
 	return 0;
 }
 
+/**
+ * @brief Close the connection to the RUMR server and free resources.
+ *
+ * This function sends a goodbye opcode to the server to indicate that the client is disconnecting.
+ * It also frees any resources associated with the ASIC model stored in the client state.
+ *
+ * @param state Pointer to the RUMR client state structure.
+ */
 void rumr_client_close(struct rumr_client_state *state)
 {
 	send_opcode(state, RUMR_OP_GOODBYE, 0);
