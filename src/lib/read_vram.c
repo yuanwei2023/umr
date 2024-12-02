@@ -781,7 +781,34 @@ static void print_pte(struct umr_asic *asic,
 }
 
 /**
- * umr_access_vram_ai - Access GPU mapped memory for GFX9+ platforms
+ * @brief Access GPU mapped memory for GFX9+ platforms
+ *
+ * This function is responsible for accessing GPU-mapped memory on AMD GPUs with GFX9 and later architectures.
+ * It handles virtual to physical address translation using page tables, which may span multiple levels depending on the configuration.
+ *
+ * @param asic Pointer to the UMR ASIC structure representing the GPU.
+ * @param partition The VM partition to be used (refers to different INST of VM register blocks).
+ * @param vmid The VMID that the address belongs to. Bits 8:15 indicate which hub the memory belongs to:
+ *             - UMR_LINEAR_HUB: The memory is a physical address in VRAM.
+ *             - UMR_GFX_HUB: The memory is a virtual address controlled by the GFX hub.
+ *             - UMR_MM_HUB: The memory is a virtual address controlled by the MM hub.
+ *             Bits 0:7 indicate which VM to access (if any).
+ * @param address The address of the memory to access, must be word aligned.
+ * @param size The number of bytes to read or write.
+ * @param dst Pointer to the buffer to read from/write to.
+ * @param write_en Set to 0 to read, non-zero to write.
+ * @param vmdata Optional pointer to a structure for capturing page walk data.
+ *
+ * @return Returns 0 on success, -1 on error.
+ *
+ * @details
+ * The function performs the following steps:
+ * 1. Reads various VM context registers to determine the configuration of the page tables.
+ * 2. Decodes the virtual address using the page table hierarchy (PDBs and PTBs) based on the PAGE_TABLE_DEPTH and PAGE_TABLE_BLOCK_SIZE settings.
+ * 3. Handles different cases for PDEs and PTEs, including when a PDE acts as a PTE (further bit set).
+ * 4. Translates the virtual address to a physical address using the decoded page table entries.
+ * 5. Reads from or writes to the computed physical address in VRAM or system memory based on the PTE settings.
+ * 6. Captures detailed information about the page walk process if `vmdata` is provided, which can be useful for debugging and analysis.
  */
 static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				  uint32_t vmid, uint64_t address, uint32_t size,

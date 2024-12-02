@@ -130,6 +130,15 @@ static uint64_t read_int_drm(int cardno, char *fname)
 	return 0;
 }
 
+/**
+ * @brief Parse GCA (Graphics Core Architecture) configuration data.
+ *
+ * This function parses the Graphics Core Architecture (GCA) configuration data stored in the `asic` structure.
+ * It determines the version of the configuration data and calls the appropriate parsing function (`parse_rev0`, `parse_rev1`, etc.)
+ * to populate the `asic->config.gfx` fields with the relevant information.
+ *
+ * @param asic Pointer to the `umr_asic` structure containing the GCA configuration data to be parsed.
+ */
 void umr_scan_config_gca_data(struct umr_asic *asic)
 {
 	int r = 0;
@@ -153,12 +162,16 @@ void umr_scan_config_gca_data(struct umr_asic *asic)
 }
 
 /**
- * umr_scan_config - Scan the debugfs configuration data
+ * @brief Scan the debugfs configuration data for an ASIC.
  *
- * @asic: The ASIC structure to populate with configuration data
- * @xgmi_scan: Do we want to scan the XGMI hive database to see if this device fits in?
+ * This function reads various configuration details from the debugfs files of a given ASIC,
+ * including memory sizes, XGMI information, VBIOS version, firmware information, and GCA (Graphics Core Architecture) configuration data.
+ * It populates the provided `asic` structure with this information.
  *
- * Returns -1 on error.
+ * @param asic Pointer to the `umr_asic` structure that will be populated with configuration data.
+ * @param xgmi_scan Flag indicating whether to scan the XGMI hive database to see if this device fits in.
+ *
+ * @return Returns 0 on success, or -1 on error.
  */
 int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 {
@@ -199,6 +212,9 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 			case 11:
 				asic->family = FAMILY_GFX11;
 				asic->config.gfx.family = 145;
+				break;
+			case 12:
+				asic->family = FAMILY_GFX12;
 				break;
 		}
 
