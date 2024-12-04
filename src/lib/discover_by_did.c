@@ -67,11 +67,15 @@ static int find_first_did(long did, long start_instance)
  *
  * @options: Options to bind to device
  * @did: The PCI Device ID to search for
+ * @errout: Function pointer to output error messages
+ * @tryipdiscovery: Pointer to an integer indicating whether IP discovery should be tried
  *
- * This will search the DID table for a specified ASIC that matches
- * the given @did and then search the DRI entries for the first
- * instance that matches.  Optionally @options->instance can be set
+ * This function searches the DID table for a specified ASIC that matches
+ * the given @did and then searches the DRI entries for the first
+ * instance that matches. Optionally, @options->instance can be set
  * to indicate which device you want to look for.
+ *
+ * @return A pointer to the discovered ASIC structure or NULL if no matching ASIC is found.
  */
 struct umr_asic *umr_discover_asic_by_did(struct umr_options *options, long did, umr_err_output errout, int *tryipdiscovery)
 {
