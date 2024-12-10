@@ -203,20 +203,19 @@ static void add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint
 	struct ui_data *data = ui->data;
 	FILE * pOut;
 	struct umr_vcn_cmd_message *p;
+	(void) ib_addr;
 
 	next_level(ui);
 	pOut = data->stack[data->sp].f;
 	while (vcn) {
 		p = vcn;
 		if (vcn->type == 0)
-			umr_parse_vcn_dec(asic, ib_addr, vcn, pOut);
+			umr_parse_vcn_dec(asic, vcn, pOut);
 		else
 			umr_parse_vcn_enc(asic, vcn, pOut);
 		if (vcn->buf)
 			free(vcn->buf);
 		vcn = vcn->next;
-		if (vcn)
-			ib_addr = vcn->addr;
 		free(p);
 	}
 	fclose(data->stack[data->sp].f);

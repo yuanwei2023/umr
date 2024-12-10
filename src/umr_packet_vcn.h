@@ -42,8 +42,8 @@ int umr_vcn_decode(struct umr_asic *asic, uint32_t *p_curr, uint32_t size_in_byt
 struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vcn_enc_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from, uint64_t from_vmid, unsigned long opcodes, int follow);
 struct umr_pm4_stream *umr_vcn_dec_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from, uint64_t from_vmid, unsigned long opcodes, int follow);
 void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut, struct umr_ip_block *ip, uint32_t *gui_inbuf, uint32_t gui_size, char ***out_buf);
-void umr_parse_vcn_dec(struct umr_asic *asic, uint64_t addr, struct umr_vcn_cmd_message *vcn, FILE *pOut);                                                                       
-void umr_parse_vcn_enc(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut);                                                                                      
-void umr_print_dec_ib_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint64_t from, FILE * pOut, struct umr_ip_block *ip, uint32_t *in_buf, uint32_t size, char ***pBuf);
+void umr_parse_vcn_dec(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut);
+void umr_parse_vcn_enc(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut);
+void umr_print_dec_ib_msg(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE * pOut, struct umr_ip_block *ip, uint32_t *in_buf, uint32_t size, char ***pBuf);
 
 #endif

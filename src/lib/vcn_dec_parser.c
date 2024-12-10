@@ -351,12 +351,11 @@ static void dump_ib(uint32_t *buf, uint32_t size, FILE *fp)
 /* umr_parse_vcn_dec - Parse VCN decode IB message
  *
  * @asic: The ASIC model the packet decoding corresponds to
- * @addr: VM address of the IB message
  * @vcn: VCN command message to be parsed
  * @pOut: The output file stream
  *
  */
-void umr_parse_vcn_dec(struct umr_asic *asic, uint64_t addr, struct umr_vcn_cmd_message *vcn, FILE *pOut)
+void umr_parse_vcn_dec(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE *pOut)
 {
 	struct umr_ip_block *ip;
 
@@ -375,7 +374,7 @@ void umr_parse_vcn_dec(struct umr_asic *asic, uint64_t addr, struct umr_vcn_cmd_
 	if (vcn->type == 0) { /* dec ring case */
 		switch (vcn->cmd) {
 			case RDECODE_CMD_MSG_BUFFER:
-				umr_print_dec_ib_msg(asic, vcn->vmid, addr, vcn->from, pOut, ip, NULL, 0, NULL);
+				umr_print_dec_ib_msg(asic, vcn, pOut, ip, NULL, 0, NULL);
 				break;
 			case RDECODE_CMD_DPB_BUFFER:
 				PRINT("RDECODE_CMD_DPB_BUFFER");
@@ -543,9 +542,7 @@ void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_m
  *    - in_buf, in_size, pBuf must be valid
  *
  * @asic: The ASIC model the packet decoding corresponds to
- * @tvmid: VMID for this IB
- * @addr: VM address of this IB
- * @from: The address where we get this VCN IB
+ * @vcn: VCN command message
  * @pOut: The output file stream
  * @ip: IP block info
  * @in_buf: Pointer to the IB message from GUI
@@ -553,33 +550,40 @@ void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_m
  * @pBuf: Output buffers for decoded IB message in in_buf
  *
  */
-void umr_print_dec_ib_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint64_t from, FILE * pOut,
+void umr_print_dec_ib_msg(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn, FILE * pOut,
 		          struct umr_ip_block *ip, uint32_t *in_buf, uint32_t in_size, char ***pBuf)
 {
 	uint32_t size = sizeof(rvcn_dec_message_header_t);
 	rvcn_dec_message_header_t *mh;
 	int partition = asic->options.vm_partition;
 	rvcn_dec_message_index_t *pi = NULL;
-	rvcn_dec_message_header_t *nmh;
+	uint32_t tvmid = vcn? vcn->vmid : 0; // not used for GUI use case
+	uint64_t addr = vcn? vcn->addr : 0;  // not used for GUI use case
+	uint64_t from = vcn? vcn->from : 0;  // not used for GUI use case
 	uint8_t *p_ctxt = NULL;
 	int message_vp9 = 0;
 	uint32_t i = 0;
 	(void) in_size;
 
 	if (pOut) {
-		mh = calloc(1, size);
-		if (!mh) {
+		if (!vcn || !vcn->size) {
+			asic->err_msg("\n[ERROR]: invalid VCN message\n");
+			return;
+		}
+		p_ctxt = malloc(vcn->size);
+		if (!p_ctxt) {
 			asic->err_msg("\n[ERROR]: Running out memory\n");
 			return;
 		}
-
-		if (umr_read_vram(asic, partition, tvmid, addr, size, mh) < 0) {
-			asic->err_msg("\n[ERROR]: Could not read IB Message at 0x%" PRIx32 ":0x%" PRIx64 "\n", tvmid, addr);
-			free(mh);
+		if (umr_read_vram(asic, partition, tvmid, addr, vcn->size, p_ctxt) < 0) {
+			asic->err_msg("\n[ERROR]: Could not read IB Message at 0x%" PRIx32 "@0x%" PRIx64 "\n", tvmid, addr);
+			free(p_ctxt);
 			return;
 		}
+		mh = (rvcn_dec_message_header_t *) p_ctxt;
 	} else {
 		mh = (rvcn_dec_message_header_t *) in_buf;
+		p_ctxt = (uint8_t *)in_buf;
 	}
 
 	if (pOut)
@@ -591,37 +595,20 @@ void umr_print_dec_ib_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 			if (mh->num_buffers == 0) { /* DESTROY message */
 				print_header_msg(asic, tvmid, addr, 0, size, mh, pOut, pBuf);
 				break;
-			}
-			if (pOut) {
-				p_ctxt = malloc(mh->total_size);
-				if (!p_ctxt)
-					break;
-				if (umr_read_vram(asic, partition, tvmid, addr, mh->total_size, p_ctxt) < 0) {
-					asic->err_msg("\n[ERROR]: Could not read IB Message at 0x%" PRIx32 "@0x%" PRIx64 "\n", tvmid, addr);
-					break;
-				}
 			} else {
-				p_ctxt = (uint8_t *)in_buf;
+				size += (mh->num_buffers - 1) * sizeof(rvcn_dec_message_index_t);
 			}
+			print_header_msg(asic, tvmid, addr, 0, size, mh, pOut, pBuf);
 
-			nmh = (rvcn_dec_message_header_t *) p_ctxt;
-			if (nmh->num_buffers == 0) { /* DESTROY message */
-				print_header_msg(asic, tvmid, addr, 0, size, mh, pOut, pBuf);
-				break;
-			} else {
-				size += (nmh->num_buffers - 1) * sizeof(rvcn_dec_message_index_t);
-			}
-			print_header_msg(asic, tvmid, addr, 0, size, nmh, pOut, pBuf);
-
-			pi = &nmh->index[0];
+			pi = &mh->index[0];
 
 			if (size != pi->offset) {
 				/* buffer may not be updated due to race condition */
-				fprintf(pOut ? pOut : stderr, "\n[WARN]: Decode IB Message(num_buffers=%d) has incorrect message offset: should be [0x%x] instead of [0x%x]", nmh->num_buffers, size, pi->offset);
+				fprintf(pOut ? pOut : stderr, "\n[WARN]: Decode IB Message(num_buffers=%d) has incorrect message offset: should be [0x%x] instead of [0x%x]", mh->num_buffers, size, pi->offset);
 				if (size < pi->offset) /* for debugging only */
 					dump_ib((uint32_t *)(p_ctxt + size), (pi->offset - size) / 4, pOut);
 			}
-			for (i = 0; i < nmh->num_buffers; i++, pi++) {
+			for (i = 0; i < mh->num_buffers; i++, pi++) {
 				switch (pi->message_id) {
 				case RDECODE_MESSAGE_CREATE:
 					STRUCT_WARNING(rvcn_dec_message_create_t);
@@ -699,11 +686,8 @@ void umr_print_dec_ib_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 	if (pOut)
 		fprintf(pOut, "\nDone Decoding VCN message at 0x%" PRIx32 "@0x%" PRIx64 "\n", tvmid, addr);
 
-	if (pOut) {
-		free(mh);
-		if (p_ctxt)
-			free(p_ctxt);
-	}
+	if (pOut)
+		free(p_ctxt);
 }
 
 static void print_hevc_message(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint32_t offset,

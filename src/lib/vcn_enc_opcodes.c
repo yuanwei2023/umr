@@ -2476,7 +2476,7 @@ int umr_vcn_decode(struct umr_asic *asic, uint32_t *p_curr, uint32_t size_in_byt
 	}
 
 	if (vcn_type == 0) {
-		umr_print_dec_ib_msg(asic, -1, ib_addr, 0, NULL, ip, p_curr, size_in_byte, opcode_strs);
+		umr_print_dec_ib_msg(asic, NULL, NULL, ip, p_curr, size_in_byte, opcode_strs);
 		return 0;
 	}
 
