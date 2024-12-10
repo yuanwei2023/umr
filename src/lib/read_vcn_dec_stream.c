@@ -275,17 +275,26 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t
 					if (dec_ib.n == (1 | 2)) {
 						dec_ib.cmd = fetch_word(asic, ps, 0) >> 1;
 						if (dec_ib.cmd == 0) {
+							uint32_t size = sizeof(rvcn_dec_message_header_t);
+							rvcn_dec_message_header_t *mh = calloc(1, size);
 							vcn = calloc(1, sizeof(struct umr_vcn_cmd_message));
-							if (!ops->vcn)
-								ops->vcn = vcn;
-							else
-								vcn_head->next = vcn;
 							vcn->vmid = vmid;
 							vcn->addr = dec_ib.addr;
 							vcn->cmd = dec_ib.cmd;
 							vcn->type = 0;
 							vcn->from = (stream - ostream  - 1) * 4;  /* back 1 dwords to mmUVD_GPCOM_VCPU_DATA1 */
-							vcn_head = vcn;
+							if (umr_read_vram(asic, asic->options.vm_partition, vcn->vmid, vcn->addr, size, mh) < 0) {
+								asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", vcn->vmid, vcn->addr);
+								free(vcn);
+							} else {
+								vcn->size = mh->total_size < mh->header_size ? mh->header_size : mh->total_size;
+								if (!ops->vcn)
+									ops->vcn = vcn;
+								else
+									vcn_head->next = vcn;
+								vcn_head = vcn;
+							}
+							free(mh);
 						}
 					}
 					/* reset for next IB message if any */
