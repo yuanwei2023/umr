@@ -22,6 +22,7 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+#include <dirent.h>
 #include "umrapp.h"
 
 #define p(x) printf("\t" #x " == %lu\n" , (unsigned long)asic->config. x)
@@ -203,4 +204,20 @@ void umr_print_config(struct umr_asic *asic)
 		if (asic->config.gfx.pg_flags & pg_masks[x].mask)
 			printf("\t\t%s\n", pg_masks[x].name);
 	printf("\n");
+	/* Discover the rings */
+	{
+		char fname[256];
+		struct dirent *dir;
+		sprintf(fname, "/sys/kernel/debug/dri/%d/", asic->instance);
+		DIR *d = opendir(fname);
+		if (d) {
+			printf("\tRings:\n");
+			while ((dir = readdir(d))) {
+				if (strncmp(dir->d_name, "amdgpu_ring_", strlen("amdgpu_ring_")) == 0) {
+					printf("\t\t%s\n", dir->d_name + strlen("amdgpu_ring_"));
+				}
+			}
+			closedir(d);
+		}
+	}
 }
