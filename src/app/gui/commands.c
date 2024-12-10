@@ -2015,7 +2015,7 @@ static void ring_add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *as
 		json_array_append_value(data->shaders, sh);
 }
 
-static void ring_add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, struct umr_vcn_cmd_message *vcn) {
+static void ring_add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, struct umr_vcn_cmd_message *vcn) {
 	struct ring_decoding_data *data = (struct ring_decoding_data*) ui->data;
 
 	JSON_Value *sh = vcn_pgm_to_json(asic, vcn->type, vcn->vmid, vcn->addr, vcn->size);
@@ -2023,7 +2023,7 @@ static void ring_add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic,
 		json_array_append_value(data->vcns, sh);
 
 	if (vcn->next)
-		ring_add_vcn(ui, asic, ib_addr, vcn->next);
+		ring_add_vcn(ui, asic, vcn->next);
 }
 
 static void ring_add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, uint64_t buf_addr, uint32_t buf_vmid, enum UMR_DATABLOCK_ENUM type, uint64_t etype) {

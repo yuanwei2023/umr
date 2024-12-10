@@ -118,7 +118,7 @@ struct umr_stream_decode_ui {
 	/** add_vcn -- Add a reference to a VCN message buffer in the IB stream                                                                                                   
 	 * vcn: The pointer to the current VCN message                                                                                                                            
 	 */                                                                                                                                                                       
-	void (*add_vcn)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, struct umr_vcn_cmd_message *vcn);                                               
+	void (*add_vcn)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, struct umr_vcn_cmd_message *vcn);
 
 	/** add_data -- Add a reference to a data buffer found in the IB stream
 	 * ib_addr/ib_vmid:  Address of where reference comes from

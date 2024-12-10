@@ -340,7 +340,7 @@ struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream_opcodes(struct umr_asic *as
 
 		if (follow && stream->vcn && ui->add_vcn) {
 			stream->vcn->from += oib_addr;
-			ui->add_vcn(ui, asic, oib_addr, stream->vcn);
+			ui->add_vcn(ui, asic, stream->vcn);
 		}
 
 		ib_addr += (1 + stream->nwords) * 4;

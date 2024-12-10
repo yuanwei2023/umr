@@ -405,7 +405,7 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream_opcodes(struct umr_asic *asic, 
 
 		if (follow && stream->vcn && ui->add_vcn) {
 			stream->vcn->from += oib_addr;
-			ui->add_vcn(ui, asic, stream->vcn->addr, stream->vcn);
+			ui->add_vcn(ui, asic, stream->vcn);
 		}
 
 		ib_addr += 4 + stream->n_words * 4;

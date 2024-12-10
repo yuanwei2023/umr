@@ -198,12 +198,11 @@ static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, u
 	--(data->sp);
 }
 
-static void add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, struct umr_vcn_cmd_message *vcn)
+static void add_vcn(struct umr_stream_decode_ui *ui, struct umr_asic *asic, struct umr_vcn_cmd_message *vcn)
 {
 	struct ui_data *data = ui->data;
 	FILE * pOut;
 	struct umr_vcn_cmd_message *p;
-	(void) ib_addr;
 
 	next_level(ui);
 	pOut = data->stack[data->sp].f;
