@@ -362,7 +362,9 @@ static void do_help(void)
 		"\n\t\tDecode page mappings at a specified address (in hex) from the VMID specified."
 		"\n\t\tThe VMID can be specified in hexadecimal (with leading '0x') or in decimal."
 		"\n\t\tImplies '-O verbose' for the duration of the command so does not require it"
-		"\n\t\tto be manually specified.\n"
+		"\n\t\tto be manually specified.\n");
+
+	printf(
 	"\n\t--vm-read, -vr [<vmid>@]<address> <size>"
 		"\n\t\tRead 'size' bytes (in hex) from a given address (in hex) to stdout. Optionally"
 		"\n\t\tspecify the VMID (in decimal or in hex with a '0x' prefix) treating the address"
@@ -387,12 +389,13 @@ static void do_help(void)
 		"\n\t\tDump an IB packet at an address with an optional VMID.  The length is specified"
 		"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
 		"\n\t\tCan specify '3' for SDMA packets, '2' for MES packets, '1' for VPE packets, '5' for UMSCH packets,"
-		"\n\t\tand '6' for HSA packets.\n"
+		"\n\t\t'6' for HSA packets, '7' for VCN decode, and '8' for VCN encode.\n"
 	"\n\t--dump-ib-file, -df filename [pm]"
 		"\n\t\tDump an IB stored in a file as a series of hexadecimal DWORDS one per line.  If the filename"
 		"\n\t\tends in .bin the file is treated as binary, if the filename ends in .ring it treats it as a"
 		"\n\t\tring copy and skips the first 12 bytes.  Can optionally specify '3' for SDMA packets, '2' for"
-	"\n\t\tMES packets, '1' for VPE packets, '5' for UMSCH packets, and '6' for HSA packets.  The default is PM4.\n");
+		"\n\t\tMES packets, '1' for VPE packets, '5' for UMSCH packets, '6' for HSA packets, '7' for VCN decode, and '8' for"
+		"\n\t\tVCN encode.  The default is PM4.\n");
 
 	printf(
 	"\n\t--header-dump, -hd [HEADER_DUMP_reg]"
@@ -928,7 +931,6 @@ int main(int argc, char **argv)
 						uint32_t vmid, len;
 						int pm;
 						char str[128];
-						char prefix[] = { ' ', '1', '2', '3', '4', '5', '6' };
 
 						argflags[i] = 1;
 						argflags[i+1] = 1;
@@ -950,7 +952,7 @@ int main(int argc, char **argv)
 							pm = 4;
 							i += 2;
 						}
-						sprintf(str, "%c/0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, prefix[pm], vmid, address, len);
+						sprintf(str, "%c/0x%"PRIx32"@0x%"PRIx64".0x%"PRIu32, '0' + pm, vmid, address, len);
 						umr_read_ring_stream(asic, str);
 					} else {
 						fprintf(stderr, "[ERROR]: --dump-ib requires three parameters\n");
@@ -961,7 +963,6 @@ int main(int argc, char **argv)
 						int pm, follow;
 						char *name = argv[i+1];
 						char str[128];
-						char prefix[] = { ' ', '1', '2', '3', '4', '5', '6' };
 
 						argflags[i] = 1;
 						argflags[i+1] = 1;
@@ -974,7 +975,7 @@ int main(int argc, char **argv)
 							i += 1;
 						}
 
-						sprintf(str, "%c/%s", prefix[pm], name);
+						sprintf(str, "%c/%s", '0' + pm, name);
 						follow = asic->options.no_follow_ib;
 						asic->options.no_follow_ib = 1;
 						asic->options.no_follow_shader = 1;

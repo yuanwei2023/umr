@@ -467,37 +467,21 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 {
 	char ringname[32], from[32], to[32], fname[128];
-	int  enable_decoder, start, end;
+	int  enable_decoder, start, end, ring_or_file = 0;
 	uint32_t vmid = 0, nwords, *words = NULL;
 	uint64_t addr = 0;
+	int rts[] = {
+		UMR_RING_GUESS, UMR_RING_VPE, UMR_RING_MES, UMR_RING_SDMA,
+		UMR_RING_PM4, UMR_RING_UMSCH, UMR_RING_HSA, UMR_RING_VCN_DEC,
+		UMR_RING_VCN_ENC };
 
 	start = end = 0;
 	nwords = 0;
 	fname[0] = 0;
-	if (sscanf(ringpath, "6/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
-		enable_decoder = 6;
-	} else if (sscanf(ringpath, "5/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
-		enable_decoder = 5;
-	} else if (sscanf(ringpath, "4/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
-		enable_decoder = 4;
-	} else if (sscanf(ringpath, "3/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
-		enable_decoder = 3;
-	} else if (sscanf(ringpath, "2/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
-		enable_decoder = 2;
-	} else if (sscanf(ringpath, "1/%"SCNx32"@0x%"SCNx64".%"SCNx32, &vmid, &addr, &nwords) == 3) {
-		enable_decoder = 1;
-	} else if (sscanf(ringpath, "6/%s", fname) == 1) {
-		enable_decoder = 6;
-	} else if (sscanf(ringpath, "5/%s", fname) == 1) {
-		enable_decoder = 5;
-	} else if (sscanf(ringpath, "4/%s", fname) == 1) {
-		enable_decoder = 4;
-	} else if (sscanf(ringpath, "3/%s", fname) == 1) {
-		enable_decoder = 3;
-	} else if (sscanf(ringpath, "2/%s", fname) == 1) {
-		enable_decoder = 2;
-	} else if (sscanf(ringpath, "1/%s", fname) == 1) {
-		enable_decoder = 1;
+	if (sscanf(ringpath, "%d/%"SCNx32"@0x%"SCNx64".%"SCNx32, &enable_decoder, &vmid, &addr, &nwords) == 4) {
+		ring_or_file = 1; // ring
+	} else if (sscanf(ringpath, "%d/%s", &enable_decoder, fname) == 2) {
+		ring_or_file = 0; // file
 	} else {
 		memset(ringname, 0, sizeof ringname);
 		memset(from, 0, sizeof from);
@@ -545,28 +529,15 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		}
 	}
 
-	if (fname[0]) {
+	if (!ring_or_file && fname[0]) {
 		vmid = addr = 0;
 		words = read_ib_file(asic, fname, &nwords);
 	}
 
-	/* pm4 streams */
-	if (enable_decoder == 4) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_PM4);
-	} else if (enable_decoder == 3) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_SDMA);
-	} else if (enable_decoder == 2) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_MES);
-	} else if (enable_decoder == 1) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_VPE);
-	} else if (enable_decoder == 5) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_UMSCH);
-	} else if (enable_decoder == 6) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_HSA);
-	} else if (enable_decoder == 0) {
-		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, UMR_RING_GUESS);
-	} else {
+	if (enable_decoder < 0 || enable_decoder >= (int)(sizeof(rts)/sizeof(rts[0]))) {
 		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
+	} else {
+		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, rts[enable_decoder]);
 	}
 	free(words);
 }
