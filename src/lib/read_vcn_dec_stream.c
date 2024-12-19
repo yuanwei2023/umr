@@ -214,7 +214,7 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t
 		ps->opcode = ps->pkt0off = *stream & 0xFFFF;
 
 		// check if this is a valid PACKET0
-		if (!is_valid_PACKET0(ps, ip->discoverable.maj, ip->discoverable.min)){
+		if (ip->discoverable.maj != 1 && !is_valid_PACKET0(ps, ip->discoverable.maj, ip->discoverable.min)){
 			asic->err_msg("[ERROR]: unknown packet[0x%08x] at offset[0x%04x]\n", ps->header, o_nwords - nwords);
 			ps->n_words = 0;
 			ps->pkt0off = 0;
