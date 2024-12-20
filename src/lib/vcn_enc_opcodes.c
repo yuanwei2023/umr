@@ -1209,7 +1209,7 @@ static void print_ib_video_bitstream_buffer(struct umr_asic *asic, uint32_t tvmi
 	rvcn_enc_video_bitstream_buffer_t *p = p_curr;
 	uint32_t o_offset = offset;
 
-	add_field_1(asic, tvmid, addr, &offset, "mode (0: linear, 1: circular)", p->mode, 10, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, "mode(0: linear, 1: circular)", p->mode, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "video_bitstream_buffer_address_hi", p->video_bitstream_buffer_address_hi, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "video_bitstream_buffer_address_lo", p->video_bitstream_buffer_address_lo, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "video_bitstream_buffer_size", p->video_bitstream_buffer_size, 10, pOut, pBuf);
@@ -1396,7 +1396,7 @@ static void print_ib_hevc_slice_control(struct umr_asic *asic, uint32_t tvmid, u
 	uint32_t o_offset = offset;
 
 	if (p->slice_control_mode) {
-		add_field_1(asic, tvmid, addr, &offset, "slice_control_modei: bits", p->slice_control_mode, 10, pOut, pBuf);
+		add_field_1(asic, tvmid, addr, &offset, "slice_control_mode: bits", p->slice_control_mode, 10, pOut, pBuf);
 		add_field_1(asic, tvmid, addr, &offset, "num_bits_per_slice", p->fixed_bits_per_slice.num_bits_per_slice, 10, pOut, pBuf);
 		add_field_1(asic, tvmid, addr, &offset, "num_bits_per_slice_segment", p->fixed_bits_per_slice.num_bits_per_slice_segment, 10, pOut, pBuf);
 	} else {

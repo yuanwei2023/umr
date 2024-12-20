@@ -42,6 +42,20 @@
 #define CFORMAT_16b "\n[%s0x%"PRIx32"%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx32"%s]\t[%s%12s0x%04"PRIx16"%s]\t|---> "
 #define CFORMAT_32b "\n[%s0x%"PRIx32"%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx32"%s]\t[%s%8s0x%08"PRIx32"%s]\t|---> "
 
+#define STR_HEVC_MESSAGE          "<<HEVC/H265 MESSAGE>> "
+#define STR_HEADER_MESSAGE        "<<HEADER MESSAGE>> "
+#define STR_CREATE_MESSAGE        "<<CREATE MESSAGE>> "
+#define STR_DECODE_MESSAGE        "<<DECODE MESSAGE>> "
+#define STR_VP9_MESSAGE           "<<VP9 MESSAGE>> "
+#define STR_VC1_MESSAGE           "<<VC1 MESSAGE>> "
+#define STR_MPEG2_VLD_MESSAGE     "<<MPEG2 VLD MESSAGE>> "
+#define STR_MPEG4_ASP_VLD_MESSAGE "<<MPEG4 ASP VLD MESSAGE>> "
+#define STR_AV1_MESSAGE           "<<AV1 MESSAGE>> "
+#define STR_AVC_MESSAGE           "<<AVC/H264 MESSAGE>> "
+#define STR_HEVC_DRL_MESSAGE      "<<HEVC DIRECT REFERENCE LIST MESSAGE>> "
+#define STR_DPB_T1_MESSAGE        "<<DYNAMIC_DPB_T1 MESSAGE>> "
+#define STR_DPB_T2_MESSAGE        "<<DYNAMIC_DPB_T2 MESSAGE>> "
+
 static void print_hevc_message(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint32_t offset, uint32_t size, rvcn_dec_message_hevc_t *msg, FILE *pOut, char ***pBuf);
 static void print_header_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint32_t offset, uint32_t size, rvcn_dec_message_header_t *mh, FILE *pOut, char ***pBuf);
 static void print_create_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, uint32_t offset, uint32_t size, rvcn_dec_message_create_t *pm, FILE *pOut, char ***pBuf);
@@ -697,7 +711,7 @@ static void print_hevc_message(struct umr_asic *asic, uint32_t tvmid, uint64_t a
 	unsigned int i, j;
 
 	add_header(tvmid, addr, o_offset, size/4, "HEVC/H265 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "SPS_INFO_FLAGS", msg->sps_info_flags, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_HEVC_MESSAGE "SPS_INFO_FLAGS", msg->sps_info_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "PPS_INFO_FLAGS", msg->pps_info_flags, 32, 16, pOut, pBuf);
 
 	add_field_1(asic, tvmid, addr, &offset, "CHROMA_FORMAT", msg->chroma_format, 8, 16, pOut, pBuf);
@@ -778,6 +792,7 @@ static void print_hevc_message(struct umr_asic *asic, uint32_t tvmid, uint64_t a
 	add_field_1(asic, tvmid, addr, &offset, "ST_RPS_BITS", msg->st_rps_bits, 32, 10, pOut, pBuf);
 	for (i = 0; i < 16; i++)
 		add_field_3(asic, tvmid, addr, &offset, "RESERVED", i+1, msg->reserved_1[i], 8, 16, pOut, pBuf);
+
 	add_tail(tvmid, addr, o_offset, "HEVC/H265 MESSAGE",  pOut, pBuf);
 	COMPARE_ERROR((offset - o_offset), size);
 }
@@ -790,7 +805,7 @@ static void print_header_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t add
 	uint32_t i;
 
 	add_header(tvmid, addr, 0, size/4, "HEADER MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "HEADER_SIZE", mh->header_size, 32, 10, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_HEADER_MESSAGE "HEADER_SIZE", mh->header_size, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "TOTAL_SIZE", mh->total_size, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "NUM_BUFFERS", mh->num_buffers, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "MSG_TYPE: 0 CREATE, 1 DECODE, 2 DESTROY", mh->msg_type, 32, 0, pOut, pBuf);
@@ -817,7 +832,7 @@ static void print_create_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t add
 	uint32_t o_offset = offset;
 
 	add_header(tvmid, addr, o_offset, size/4, "CREATE MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "STREAM_TYPE", pm->stream_type, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_CREATE_MESSAGE "STREAM_TYPE", pm->stream_type, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "SESSION_FLAGS", pm->session_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "WIDTH_IN_SAMPLES", pm->width_in_samples, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "HEIGHT_IN_SAMPLE", pm->height_in_samples, 32, 10, pOut, pBuf);
@@ -832,7 +847,7 @@ static void print_decode_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t add
 	int32_t i;
 
 	add_header(tvmid, addr, o_offset, size/4, "DECODE MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "STREAM_TYPE", pm->stream_type, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_DECODE_MESSAGE "STREAM_TYPE", pm->stream_type, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "DECODE_FLAGS", pm->decode_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "WIDTH_IN_SAMPLES", pm->width_in_samples, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "HEIGHT_IN_SAMPLE", pm->height_in_samples, 32, 10, pOut, pBuf);
@@ -889,7 +904,7 @@ static void print_vp9_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 	int32_t i, j, k;
 
 	add_header(tvmid, addr, o_offset, size/4, "VP9 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "VP9 MESSAGE: FRAME_HEADER_FLAGS", pm->frame_header_flags, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_VP9_MESSAGE "FRAME_HEADER_FLAGS", pm->frame_header_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "FRAME_CONTEXT_IDX", pm->frame_context_idx, 8, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "RESET_FRAME_CONTEXT", pm->reset_frame_context, 8, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "CURR_PIC_IDX", pm->curr_pic_idx, 8, 10, pOut, pBuf);
@@ -942,7 +957,7 @@ static void print_vc1_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 	uint32_t o_offset = offset;
 
 	add_header(tvmid, addr, o_offset, size/4, "VC1 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "profile", pm->profile, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_VC1_MESSAGE "profile", pm->profile, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "level", pm->level, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "sps_info_flags", pm->sps_info_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "pps_info_flags", pm->pps_info_flags, 32, 16, pOut, pBuf);
@@ -986,7 +1001,7 @@ static void print_mpeg2_vld_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t 
 	int32_t i;
 
 	add_header(tvmid, addr, o_offset, size/4, "MPEG2 VLD MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "decoded_pic_idx", pm->decoded_pic_idx, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_MPEG2_VLD_MESSAGE "decoded_pic_idx", pm->decoded_pic_idx, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "forward_ref_pic_idx", pm->forward_ref_pic_idx, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "backward_ref_pic_idx", pm->backward_ref_pic_idx, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "load_intra_quantiser_matrix", pm->load_intra_quantiser_matrix, 8, 16, pOut, pBuf);
@@ -1026,7 +1041,7 @@ static void print_mpeg4_asp_vld_msg(struct umr_asic *asic, uint32_t tvmid, uint6
 	int32_t i;
 
 	add_header(tvmid, addr, o_offset, size/4, "MPEG4 ASP VLD MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "decoded_pic_idx", pm->decoded_pic_idx, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_MPEG4_ASP_VLD_MESSAGE "decoded_pic_idx", pm->decoded_pic_idx, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "forward_ref_pic_idx", pm->forward_ref_pic_idx, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "backward_ref_pic_idx", pm->backward_ref_pic_idx, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "variant_type", pm->variant_type, 32, 10, pOut, pBuf);
@@ -1211,7 +1226,7 @@ static void print_av1_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 	int32_t i = 0, j = 0;
 
 	add_header(tvmid, addr, o_offset, size/4, "AV1 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "frame_header_flags", pm->frame_header_flags, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_AV1_MESSAGE "frame_header_flags", pm->frame_header_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "current_frame_id", pm->current_frame_id, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "frame_offset", pm->frame_offset, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "profile", pm->profile, 8, 16, pOut, pBuf);
@@ -1331,7 +1346,7 @@ static void print_avc_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 	(void) size;
 
 	add_header(tvmid, addr, o_offset, size/4, "AVC/H264 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "profile", pm->profile, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_AVC_MESSAGE "profile", pm->profile, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "level", pm->level, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "sps_info_flags", pm->sps_info_flags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "pps_info_flags", pm->pps_info_flags, 32, 16, pOut, pBuf);
@@ -1415,7 +1430,7 @@ static void print_hevc_direct_ref_list_msg(struct umr_asic *asic, uint32_t tvmid
 	unsigned int i, j, k;
 
 	add_header(tvmid, addr, o_offset, size/4, "HEVC DIRECT REFERENCE LIST MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "num_direct_reflist", pm->num_direct_reflist, 32, 10, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_HEVC_DRL_MESSAGE "num_direct_reflist", pm->num_direct_reflist, 32, 10, pOut, pBuf);
 
 	for (i = 0; i < num_direct_reflist; i++) {
 		for (j = 0; j < 2; j++)
@@ -1438,7 +1453,7 @@ static void print_dynamic_dpb_t1_msg(struct umr_asic *asic, uint32_t tvmid, uint
 	int32_t i;
 
 	add_header(tvmid, addr, o_offset, size/4, "DYNAMIC_DPB_T1 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "DPB_CONFIG_FLAGS", pm->dpbConfigFlags, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_DPB_T1_MESSAGE "DPB_CONFIG_FLAGS", pm->dpbConfigFlags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "dpbLumaPitch", pm->dpbLumaPitch, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "dpbLumaAlignedHeight", pm->dpbLumaAlignedHeight, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "dpbLumaAlignedSize", pm->dpbLumaAlignedSize, 32, 16, pOut, pBuf);
@@ -1467,7 +1482,7 @@ static void print_dynamic_dpb_msg(struct umr_asic *asic, uint32_t tvmid, uint64_
 	(void) size;
 
 	add_header(tvmid, addr, o_offset, size/4, "DYNAMIC_DPB_T2 MESSAGE",  pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "DPB_CONFIG_FLAGS", pm->dpbConfigFlags, 32, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, STR_DPB_T2_MESSAGE "DPB_CONFIG_FLAGS", pm->dpbConfigFlags, 32, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "dpbLumaPitch", pm->dpbLumaPitch, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "dpbLumaAlignedHeight", pm->dpbLumaAlignedHeight, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "dpbLumaAlignedSize", pm->dpbLumaAlignedSize, 32, 16, pOut, pBuf);
