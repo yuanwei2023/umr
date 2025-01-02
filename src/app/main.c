@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Advanced Micro Devices, Inc.
+ * Copyright (c) 2025 Advanced Micro Devices, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -275,7 +275,7 @@ enum {
 
 static void do_help(void)
 {
-	printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2024, AMD Inc.\n"
+	printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2025, AMD Inc.\n"
 	"\n*** Device Selection ***\n"
 	"\n\t--database-path, -dbp <path>"
 		"\n\t\tSpecify a database path for register, ip, and asic model data.\n"
@@ -1439,7 +1439,7 @@ stopprocessingcommands:
 	free(argflags);
 
 	if (argc == 1) {
-		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2024, AMD Inc.\n\n"
+		printf("User Mode Register debugger v%s for AMDGPU devices (build: %s [%s], date: %s), Copyright (c) 2025, AMD Inc.\n\n"
 			   "Use '--help' for a list of commands and options.\n",
 			    UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
 	}
