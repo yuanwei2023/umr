@@ -246,6 +246,7 @@
 0x7424 beige_goby.asic
 0x743F beige_goby.asic
 0x7440 navi31
+0x7448 navi31
 0x744C navi31
 0x747E navi32
 0x7480 navi33
