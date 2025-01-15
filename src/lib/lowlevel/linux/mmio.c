@@ -257,10 +257,12 @@ static int mmio2_apply_bank(struct umr_asic *asic)
 	return ioctl(asic->fd.mmio2, AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE, &id);
 }
 
-/**
- * umr_read_reg - Read a register
+/** @brief Reads a register by address, applying bank selection if necessary.
  *
- * Reads an SMC or MMIO register by address.
+ * @param asic Pointer to the umr_asic structure containing ASIC information.
+ * @param addr The address of the register to read.
+ * @param type The type of register (REG_SMN, REG_PCIE, REG_MMIO, REG_SMC).
+ * @return The value of the register.
  */
 uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 {
@@ -348,10 +350,13 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 	return value;
 }
 
-/**
- * umr_write_reg - Write a register
+/** @brief Writes a register by address, applying bank selection if necessary.
  *
- * Write to an SMC or MMIO register by address.
+ * @param asic Pointer to the umr_asic structure containing ASIC information.
+ * @param addr The address of the register to write to.
+ * @param value The value to write to the register.
+ * @param type The type of register (REG_SMN, REG_PCIE, REG_MMIO, REG_SMC).
+ * @return 0 on success, -1 on failure.
  */
 int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum regclass type)
 {
