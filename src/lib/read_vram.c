@@ -968,12 +968,18 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		page_table_depth      = umr_bitslice_reg_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_DEPTH", tmp);
 		page_table_block_size = umr_bitslice_reg_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
 
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-		page_table_base_addr  = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 << 0;
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-		page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
+	if (vmdata && vmdata->registers.page_table_base_addr) {
+		page_table_base_addr = vmdata->registers.page_table_base_addr;
+		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = page_table_base_addr & 0xFFFFFFFFULL;
+		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = page_table_base_addr >> 32ULL;
+	} else {
+		sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32", regprefix, vmid);
+			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			page_table_base_addr  = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 << 0;
+		sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32", regprefix, vmid);
+			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
+	}
 
 	// for some firmwares when in GFXOFF power off state the registers
 	// read back as all F's
