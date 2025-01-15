@@ -1596,7 +1596,10 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 	int maj, min;
 
 	if (vmdata) {
+		struct umr_vm_pagewalk tmp;
+		tmp.registers = vmdata->registers;
 		memset(vmdata, 0, sizeof *vmdata);
+		vmdata->registers = tmp.registers;
 	}
 
 	umr_gfx_get_ip_ver(asic, &maj, &min);
