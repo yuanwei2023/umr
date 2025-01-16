@@ -393,7 +393,7 @@ int istr_cmp(const char* a, const char* b)
 
 static int reg_sort(const void *a, const void *b)
 {
-	const struct regs **A = a, **B = b;
+	const struct regs **A = (const struct regs**)a, **B = (const struct regs**)b;
 	return istr_cmp((*A)->name, (*B)->name);
 }
 
