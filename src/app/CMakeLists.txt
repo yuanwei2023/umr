@@ -65,6 +65,7 @@ endif()
 target_link_libraries(umr ${REQUIRED_EXTERNAL_LIBS})
 
 install(TARGETS umr DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS umrapp DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(UMR_GUI)
 	execute_process(COMMAND ln -sf umr umrgui

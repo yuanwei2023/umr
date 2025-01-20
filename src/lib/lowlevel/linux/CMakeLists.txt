@@ -15,3 +15,5 @@ add_library(umrlow
 )
 
 target_link_libraries(umrlow ${REQUIRED_EXTERNAL_LIBS})
+
+install(TARGETS umrlow DESTINATION ${CMAKE_INSTALL_LIBDIR})
