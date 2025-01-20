@@ -90,7 +90,7 @@ static void print_mpeg2_idct_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t
 	{ uint32_t n = ((type *) (p_ctxt + pi->offset))->num_direct_reflist; \
 	  n = n == 0? 1: n; \
 	  if ((n * 30 + 3 )/4 * 4 + 4 != pi->size) { \
-		fprintf(pOut?pOut: stderr, "\nFIXME: %s incorrect strucure (%s) size [%ld] bytes should be [%d] bytes for %d num_direct_reflist\n",\
+		fprintf(pOut?pOut: stderr, "\nFIXME: %s incorrect strucure (%s) size [%zd] bytes should be [%d] bytes for %d num_direct_reflist\n",\
 			       __func__, #type, sizeof(type), pi->size, ((type *) (p_ctxt + pi->offset))->num_direct_reflist);\
 		dump_ib((uint32_t *)(p_ctxt + pi->offset), pi->size/4, pOut);\
 	  } \
@@ -98,7 +98,7 @@ static void print_mpeg2_idct_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t
 
 #define STRUCT_WARNING(type) \
 	if (sizeof (type) != pi->size) { \
-		fprintf(pOut?pOut: stderr, "\nFIXME: %s incorrect strucure (%s) size [%ld] bytes should be [%d] bytes\n",\
+		fprintf(pOut?pOut: stderr, "\nFIXME: %s incorrect strucure (%s) size [%zd] bytes should be [%d] bytes\n",\
 			       __func__, #type, sizeof(type), pi->size);\
 		dump_ib((uint32_t *)(p_ctxt + pi->offset), pi->size/4, pOut);\
 	}
@@ -535,8 +535,8 @@ void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_m
 				if (ib_type == 0xFFFFFFFF || ib_size == 0xFFFFFFFF) {
 					dump_ib(p_curr, p_end - p_curr, pOut);
 					if (pOut)
-						fprintf(pOut, "\n[ERROR] Invalid data received [%ld] bytes not handled for VCN v%d_%d_%d",
-							(p_end - p_curr) * 4, ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
+						fprintf(pOut, "\n[ERROR] Invalid data received [%"PRIu32"] bytes not handled for VCN v%d_%d_%d",
+							(uint32_t)((p_end - p_curr) * 4), ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
 				}
 				offset += ib_size - 8;
 				break;

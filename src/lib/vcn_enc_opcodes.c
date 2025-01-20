@@ -43,7 +43,7 @@
 
 #define STRUCT_WARNING(type) \
 	if (sizeof (type) != ib_size - 8) { \
-		fprintf(pOut?pOut:stderr, "\nFIXME: %s incorrect strucure(%s) size [%ld] should be [%d] bytes\n",\
+		fprintf(pOut?pOut:stderr, "\nFIXME: %s incorrect strucure(%s) size [%zd] should be [%d] bytes\n",\
 			       __func__, #type, sizeof(type), ib_size - 8);\
 	}
 
@@ -2423,8 +2423,8 @@ static void vcn_enc_decode_ib_v1(struct umr_asic *asic, struct umr_vcn_cmd_messa
 						ib_type, ib_size, ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
 					if (ib_type == 0xFFFFFFFF || ib_size == 0xFFFFFFFF) {
 						dump_ib(asic, vcn, p_curr, p_end - p_curr, pOut);
-						fprintf(pOut, "[ERROR] Invalid data received [%ld] bytes not handled for VCN v%d_%d_%d\n",
-							(p_end - p_curr) * 4, ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
+						fprintf(pOut, "[ERROR] Invalid data received [%"PRIu32"] bytes not handled for VCN v%d_%d_%d\n",
+							(uint32_t)((p_end - p_curr) * 4), ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
 					}
 				}
 				break;
