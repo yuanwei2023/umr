@@ -163,8 +163,8 @@ endif()
 find_library(RT_LIBS rt)
 
 set(REQUIRED_EXTERNAL_LIBS
-  ${CURSES_LIBRARIES}
-  ${PCIACCESS_LIBRARIES}
+  ${NCURSES_LDFLAGS}
+  ${PC_PCIACCESS_LDFLAGS}
   Threads::Threads
   ${LLVM_LIBS}
   ${RT_LIBS}

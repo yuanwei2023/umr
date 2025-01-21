@@ -62,7 +62,6 @@ if(UMR_GUI)
     target_link_libraries(umr dl)
 endif()
 
-target_link_libraries(umr ${NCURSES_LDFLAGS})
 target_link_libraries(umr ${REQUIRED_EXTERNAL_LIBS})
 
 install(TARGETS umr DESTINATION ${CMAKE_INSTALL_BINDIR})
