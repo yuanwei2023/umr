@@ -6,7 +6,6 @@ include_directories(inc)
 if(UMR_GUI OR UMR_SERVER)
   include_directories("gui/parson")
   set (GUI_SOURCE gui/commands.c)
-  set (UMRAPP_DRM_LIBS "PkgConfig::DRM")
 endif()
 
 if(UMR_GUI)

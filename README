@@ -81,6 +81,26 @@ environment.  e.g.,
 
     $ cmake -DUMR_NO_SERVER=ON ...
 
+NOTE:  You can build a static UMR executable by adding UMR_STATIC_EXECUTABLE
+to your environment:
+
+    $ cmake -DUMR_STATIC_EXECUTABLE=ON ...
+
+This makes it easier to distribute UMR to test machines. However, static
+executable builds have some limitations:
+
+* GUI is not supported
+* BO import is not supported
+* Hostname lookup when specifying addresses on the command-line may not work
+* NanoMsg only builds a shared library by default. If you want GUI server
+  support, you may have to build and install your own static NanoMsg library
+  from source and set the PKG_CONFIG_PATH environment variable appropriately.
+
+You may also see linker warnings:
+
+* A warning related to the getaddrinfo limitation.
+* Warnings related to libLLVMSupport.a; those are harmless.
+
 Running umr
 ------------
 
