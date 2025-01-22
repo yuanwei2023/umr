@@ -426,6 +426,9 @@ static void do_help(void)
 	"\n*** Test Vector Generation ***\n"
 		"\n\t--test-log, -tl <filename>\n\t\tLog all MMIO/memory reads to a file\n"
 		"\n\t--test-harness, -th <filename>\n\t\tUse a test harness file instead of reading from hardware\n"
+	"\n*** RUMR Commands ***\n"
+		"\n\t--rumr-client <server>\n\t\tRun as a RUMR client connecting to 'server', e.g. tcp://127.0.0.1:9000\n"
+		"\n\t--rumr-server <server>\n\t\tRun as a RUMR server binding to 'server', e.g. tcp://127.0.0.1:9000\n"
 	"\n*** KFD Support ***\n"
 		"\n\t--runlist, -rls <node>\n\t\tDump any runlists for a given KFD node specified\n");
 	#if UMR_SERVER
