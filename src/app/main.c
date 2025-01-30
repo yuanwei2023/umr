@@ -430,7 +430,9 @@ static void do_help(void)
 		"\n\t--rumr-client <server>\n\t\tRun as a RUMR client connecting to 'server', e.g. tcp://127.0.0.1:9000\n"
 		"\n\t--rumr-server <server>\n\t\tRun as a RUMR server binding to 'server', e.g. tcp://127.0.0.1:9000\n"
 	"\n*** KFD Support ***\n"
-		"\n\t--runlist, -rls <node>\n\t\tDump any runlists for a given KFD node specified\n");
+		"\n\t--runlist, -rls <node>\n\t\tDump any runlists for a given KFD node specified\n"
+		"\n\t--dump-mqd vmid@virtualaddr engsel\n\t\tDump an MQD from a given VMID and virtual address for a given engine and asic family."
+		"\n\t\tEngines are 0=compute, 2=sdma0, 3=sdma1, 4=gfx, 5=mes.\n");
 	#if UMR_SERVER
 	printf(
 	"\n*** GUI server ***\n");
@@ -748,7 +750,36 @@ int main(int argc, char **argv)
 					goto stopprocessingcommands;
 				}
 			} else if (pass == PASS_COMMANDS) {
-				if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
+				if (!strcmp(argv[i], "--dump-mqd")) {
+					uint32_t mqdbuf[512], engsel, vmid;
+					uint64_t va;
+					if (i + 2 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						argflags[i+2] = 1;
+						sscanf(argv[i+1], "%"PRIx32"@%"PRIx64, &vmid, &va);
+						sscanf(argv[i+2], "%"PRIu32, &engsel);
+						// read buffer
+						if (umr_read_vram(asic, asic->options.vm_partition, vmid, va, 512*4, &mqdbuf) < 0) {
+							asic->err_msg("[ERROR]: Could not read MQD buffer\n");
+						} else {
+							char **mqd_txt;
+							mqd_txt = umr_mqd_decode_data(engsel, asic->family, mqdbuf, "*");
+							if (mqd_txt) {
+								int x;
+								for (x = 0; mqd_txt[x]; x++) {
+									asic->std_msg("%s\n", mqd_txt[x]);
+									free(mqd_txt[x]);
+								}
+								free(mqd_txt);
+							}
+						}
+						i += 2;
+					} else {
+						fprintf(stderr, "[ERROR]: --dump-mqd requires two parameters\n");
+						return EXIT_FAILURE;
+					}
+				} else if (!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
 					argflags[i] = 1;
 					umr_apply_callbacks(asic, &asic->mem_funcs, &asic->reg_funcs);
 					umr_print_config(asic);
