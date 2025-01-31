@@ -45,6 +45,8 @@ struct rumr_buffer *rumr_serialize_asic(struct umr_asic *asic)
 	if (!buf)
 		return NULL;
 
+	#pragma GCC diagnostic ignored "-Wmisleading-indentation"
+
 	// ASICNAME
 		memset(tmpbuf, 0, sizeof tmpbuf);
 		strcpy(tmpbuf, asic->asicname);

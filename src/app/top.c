@@ -1127,7 +1127,6 @@ void umr_top(struct umr_asic *asic)
 	struct timespec req;
 	uint32_t rep;
 	time_t tt;
-	uint64_t ts;
 	char hostname[64] = { 0 };
 	char fname[64], *e;
 	pthread_t sensor_thread;
@@ -1193,7 +1192,6 @@ void umr_top(struct umr_asic *asic)
 	req.tv_sec = 0;
 	req.tv_nsec = 1000000000/rep; // 10ms
 
-	ts = 0;
 	while (!top_options.quit) {
 		for (i = 0; stat_counters[i].name[0]; i++)
 			memset(stat_counters[i].counts, 0, sizeof(stat_counters[i].counts[0])*32);
@@ -1215,7 +1213,6 @@ void umr_top(struct umr_asic *asic)
 				}
 			}
 			nanosleep(&req, NULL);
-			ts += (req.tv_nsec / 1000000);
 		}
 		move(0, 0);
 		clear();

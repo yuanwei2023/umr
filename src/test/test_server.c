@@ -9,7 +9,7 @@ extern JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const
 extern JSON_Object *parse_kms_state_sysfs_file(const char *content);
 extern JSON_Object *parse_pp_features_sysfs_file(const char *content);
 
-enum TEST_RESULT test_parse_sysfs_clock_file()
+static enum TEST_RESULT test_parse_sysfs_clock_file(__attribute__((unused)) struct umr_asic* asic)
 {
     char *content =
         "0: 500Mhz \n"
@@ -23,7 +23,7 @@ enum TEST_RESULT test_parse_sysfs_clock_file()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_fence_info()
+static enum TEST_RESULT test_parse_fence_info(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *before =
         "--- ring 0 (gfx_0.0.0) ---\n"
@@ -71,7 +71,7 @@ enum TEST_RESULT test_parse_fence_info()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_vm_info()
+static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *content =
         "pid:0\tProcess: ----------\n"
@@ -120,7 +120,7 @@ enum TEST_RESULT test_parse_vm_info()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_gem_info()
+static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *content =
         "pid    44961 command Xwayland:\n"
@@ -150,7 +150,7 @@ enum TEST_RESULT test_parse_gem_info()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_sysfs_framebuffer()
+static enum TEST_RESULT test_parse_sysfs_framebuffer(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *content =
         "framebuffer[135]:\n"
@@ -217,7 +217,7 @@ enum TEST_RESULT test_parse_sysfs_framebuffer()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_sysfs_state()
+static enum TEST_RESULT test_parse_sysfs_state(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *content =
         "plane[65]: plane-5\n"
@@ -279,7 +279,7 @@ enum TEST_RESULT test_parse_sysfs_state()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_sysfs_pp_features()
+static enum TEST_RESULT test_parse_sysfs_pp_features(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *content =
         "features high: 0x00003763 low: 0xa37f7dff\n"
@@ -385,7 +385,7 @@ enum TEST_RESULT test_parse_sysfs_pp_features()
     return TEST_SUCCESS;
 }
 
-enum TEST_RESULT test_parse_sysfs_pp_features2()
+static enum TEST_RESULT test_parse_sysfs_pp_features2(__attribute__((unused)) struct umr_asic* asic)
 {
     const char *content =
         "Current ppfeatures: 0x0000000019f0e3cf\n"

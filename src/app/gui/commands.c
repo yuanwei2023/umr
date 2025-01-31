@@ -2044,7 +2044,7 @@ struct umr_asic *asics[16] = {0};
 char *ip_discovery_dumps[16] = {0};
 int *ring_kernel_pid[16] = {0};
 
-void init_asics() {
+void init_asics(void) {
 	struct umr_options opt;
 	char database_path[256] = { 0 };
 	int asic_count = 0;
@@ -2491,6 +2491,9 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 	} else {
 		enable_tracing = false;
 	}
+
+	if (error)
+		return false;
 
 	/* Clear buffer */
 	if (!write_str_to_file(SYSFS_PATH_TRACING "trace", "a"))

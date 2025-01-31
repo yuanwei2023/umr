@@ -144,7 +144,7 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 	// Try to map to instance if we have a specific pci device
 	if (options->pci.domain || options->pci.bus ||
 	    options->pci.slot || options->pci.func) {
-		int parsed_did, inst;
+		int parsed_did, inst = -1;
 		unsigned long did;
 
 		snprintf(options->pci.name, sizeof(options->pci.name), "%04x:%02x:%02x.%x",

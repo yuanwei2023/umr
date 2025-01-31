@@ -28,7 +28,7 @@
 #include "parson.h"
 
 extern JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size);
-extern void init_asics();
+extern void init_asics(void);
 extern struct umr_asic *asics[16];
 
 void run_server_loop(const char *url, struct umr_asic * asic)

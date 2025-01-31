@@ -736,6 +736,8 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID") << 36) |
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID") << 44);
 		nr = umr_wave_data_num_of_sgprs(asic, wd);
+	} else {
+		return -1;
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
@@ -804,6 +806,8 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID") << 44) |
 				((uint64_t)thread << 52);
 		nr = (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
+	} else {
+		return -1;
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
