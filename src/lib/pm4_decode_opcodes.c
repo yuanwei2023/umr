@@ -71,7 +71,7 @@ static const struct {
 	{ "PKT3_ATOMIC_GDS", 8, 0 }, // 1d
 	{ "PKT3_ATOMIC_MEM", 8, 0 }, // 1e
 	{ "UNK", 0, 0 }, // 1f
-	{ "UNK", 0, 0 }, // 20
+	{ "PKT3_SET_PREDICATION", 9, 0 }, // 20
 	{ "UNK", 0, 0 }, // 21
 	{ "PKT3_COND_EXEC", 8, 0 }, // 22
 	{ "UNK", 0, 0 }, // 23
@@ -977,6 +977,14 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 			break;
 		case 0x1e: // ATOMIC_MEM
 			// TODO: fill in
+			break;
+		case 0x20: // SET_PREDICATION
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "PRED_BOOL", BITS(fetch_word(asic, stream, 0), 8, 9), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "HINT", BITS(fetch_word(asic, stream, 0), 12, 13), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "PRED_OP", BITS(fetch_word(asic, stream, 0), 16, 19), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTINUE_BIT", BITS(fetch_word(asic, stream, 0), 31, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_ADDR_LO", BITS(fetch_word(asic, stream, 1), 4, 32) << 4, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
 			break;
 		case 0x26: // INDEX_BASE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX_BASE_LO", BITS(fetch_word(asic, stream, 0), 1, 32) << 1, NULL, 16, 32);
