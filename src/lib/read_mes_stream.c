@@ -941,7 +941,11 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_info_ctx_mc_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_info_ctx_size", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_kiq_unmap_timeout", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (mes_ver_maj == 12)
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mes_kiq_unmap_timeout", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+				if (pack8 && !(i&1)) ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reserved1", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "cleaner_shader_fence_mc_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				break;
 		}
 
