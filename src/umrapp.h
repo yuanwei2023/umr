@@ -72,3 +72,5 @@ void umr_print_cpc(struct umr_asic *asic);
 void umr_print_sdma(struct umr_asic *asic);
 void umr_dump_runlists(struct umr_asic *asic, int node);
 int umr_kfd_topo_get_pci_busaddr(int node, char *busaddr);
+
+void umr_handle_scriptware(umr_err_output errout, char *database_path, char **argv, int argc);

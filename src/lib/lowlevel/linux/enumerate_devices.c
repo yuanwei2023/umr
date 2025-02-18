@@ -72,7 +72,21 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 			// we found a PCI bus address
 			(*asics)[x] = umr_discover_asic(&options, errout);
 			if ((*asics)[x]) {
+				char devicepath[512];
+				FILE *f;
+
 				umr_scan_config((*asics)[x], 1);
+
+				// grab the DID
+				sprintf(devicepath, "/sys/bus/pci/drivers/amdgpu/%s/device", de->d_name);
+				f = fopen(devicepath, "r");
+				if (f) {
+					fscanf(f, "%x", &((*asics)[x]->did));
+					fclose(f);
+				} else {
+					errout("[ERROR]: Could not open 'device' file for enumeration path=<%s>\n", devicepath);
+				}
+
 				++x;
 
 				if (global_options && global_options->test_log && global_options->test_log_fd) {

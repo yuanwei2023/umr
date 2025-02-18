@@ -432,7 +432,10 @@ static void do_help(void)
 	"\n*** KFD Support ***\n"
 		"\n\t--runlist, -rls <node>\n\t\tDump any runlists for a given KFD node specified\n"
 		"\n\t--dump-mqd vmid@virtualaddr engsel\n\t\tDump an MQD from a given VMID and virtual address for a given engine and asic family."
-		"\n\t\tEngines are 0=compute, 2=sdma0, 3=sdma1, 4=gfx, 5=mes.\n");
+		"\n\t\tEngines are 0=compute, 2=sdma0, 3=sdma1, 4=gfx, 5=mes.\n"
+	"\n*** Scriptware Support ***\n"
+		"\n\t--script [commands]\n\t\tRun a script helper command.  Run without parameters to see list of commands.\n"
+	);
 	#if UMR_SERVER
 	printf(
 	"\n*** GUI server ***\n");
@@ -628,7 +631,24 @@ int main(int argc, char **argv)
 					do_help();
 				}
 			} else if (pass == PASS_ASIC_MODEL) {
-				if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
+				if (!strcmp(argv[i], "--script")) {
+					int argi, argj;
+					argflags[i] = 1;
+
+					// grab all arguments 
+					argi = ++i;
+					argj = argi;
+					for (argj = argi; argj < argc; argj++) {
+						if (argv[argj][0] == '-') {
+							--argj;
+							break;
+						}
+						argflags[argj] = 1;
+						++i;
+					}
+					umr_handle_scriptware(err_printf, options.database_path, &argv[argi], argj - argi);
+					goto stopprocessingcommands;
+				} else if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
 					if (i + 1 < argc) {
 						char *s;
 						argflags[i] = 1;
