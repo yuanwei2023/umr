@@ -646,7 +646,7 @@ int main(int argc, char **argv)
 						argflags[argj] = 1;
 						++i;
 					}
-					umr_handle_scriptware(err_printf, options.database_path, &argv[argi], argj - argi);
+					umr_handle_scriptware(std_printf, options.database_path, &argv[argi], argj - argi);
 					goto stopprocessingcommands;
 				} else if (!strcmp(argv[i], "--gpu") || !strcmp(argv[i], "-g")) {
 					if (i + 1 < argc) {
