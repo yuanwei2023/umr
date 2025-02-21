@@ -3,6 +3,13 @@
 #figure out where scripts are installed and source functions
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+#We need halt_if_hws_hang=1 for the logs to be valid
+if [ "$(cat /sys/module/amdgpu/parameters/halt_if_hws_hang)" -ne 1 ]; then
+        echo "halt_if_hws_hang must be set to 1. Exiting"
+        echo "Please run: echo 1 > /sys/module/amdgpu/parameters/halt_if_hws_hang"
+        exit 1
+fi
+
 #relaunch ourself as root
 if [ `whoami` != root ]; then
 	sudo ${dir}/dump_all_cpc_info.sh
