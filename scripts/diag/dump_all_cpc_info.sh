@@ -18,7 +18,7 @@ fi
 
 #relaunch ourself as root
 if [ `whoami` != root ]; then
-	sudo ${dir}/dump_all_cpc_info.sh $@
+	sudo ${dir}/dump_all_cpc_info.sh "$@"
 	exit 0
 fi
 
