@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+DUMP_ALL=0
+
 #figure out where scripts are installed and source functions
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -10,9 +12,13 @@ if [ "$(cat /sys/module/amdgpu/parameters/halt_if_hws_hang)" -ne 1 ]; then
         exit 1
 fi
 
+if [ "$1" == "all" ]; then
+    DUMP_ALL=1
+fi
+
 #relaunch ourself as root
 if [ `whoami` != root ]; then
-	sudo ${dir}/dump_all_cpc_info.sh
+	sudo ${dir}/dump_all_cpc_info.sh $@
 	exit 0
 fi
 
@@ -33,13 +39,16 @@ source ${dir}/diag_functions.sh
 dump_cpc
 dump_waves
 
-prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
-kfddbg="/sys/kernel/debug/kfd"
-cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
-cat "${kfddbg}/mqds" 2>&1 >"${prefix}_mqds.txt"
+#These aren't needed for most debug cases
+if [ "$DUMP_ALL" -eq 1 ]; then
+	prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
+	kfddbg="/sys/kernel/debug/kfd"
+	cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
+	cat "${kfddbg}/mqds" 2>&1 >"${prefix}_mqds.txt"
 
-dump_cpc_scratch_mems
-dump_cp_regs
+	dump_cpc_scratch_mems
+	dump_cp_regs
+fi
 
 #collect results
 tar -czvf ${where}/${prefix}_logs.tgz *.txt
