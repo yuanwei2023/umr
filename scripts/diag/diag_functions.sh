@@ -118,6 +118,38 @@ dump_cp_regs() {
 	done
 }
 
+#dump_headers [did]
+#did must start with 0x
+dump_headers() {
+    # Determine GPU list based on vendor
+    p=`echo $1 | cut -b1-2`
+    if [ "$p" == "0x" ]; then
+	gpulist=`umr --script pci-instances $1`
+	shift
+    else
+	gpulist=`umr --script instances`
+    fi
+
+    # Iterate through the GPU list
+    gpu=0
+    for g in ${gpulist}; do
+        # Iterate through XCC values
+	for xcc in `umr --script xcds ${g}`; do
+	    for pipe in {0..3}; do
+		for queue in {0..7}; do
+			# Generate filename
+			filename="$(hostname)_$(date +"%Y-%m-%d_%H_%M")_umr_mec_header_gpu${gpu}_xcc${xcc}_pipe{$pipe}_queue{$queue}.txt"
+			echo "Generating $filename"
+
+			# Execute command and redirect output
+			umr -i "${g}" -vmp "${xcc}" -sb 1 "$pipe" "$queue" -r *.*.regCP_MEC_ME1_HEADER_DUMP >"${filename}" 2>&1
+                done
+	    done
+	done
+        gpu=$((gpu + 1))
+    done
+}
+
 #dump_cp_regs [did]
 #did must start with 0x
 dump_cpc_scratch_mems() {

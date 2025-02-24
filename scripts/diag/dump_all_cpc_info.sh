@@ -48,6 +48,7 @@ if [ "$DUMP_ALL" -eq 1 ]; then
 
 	dump_cpc_scratch_mems
 	dump_cp_regs
+	dump_headers
 fi
 
 #collect results
