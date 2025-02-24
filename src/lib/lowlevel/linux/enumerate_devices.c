@@ -41,7 +41,7 @@
  *
  * @return 0 on success, -1 on failure (e.g., if the directory cannot be opened).
  */
-int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics)
+int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics, int xgmi_scan)
 {
 	struct umr_options options;
 	int x;
@@ -75,7 +75,7 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 				char devicepath[512];
 				FILE *f;
 
-				umr_scan_config((*asics)[x], 1);
+				umr_scan_config((*asics)[x], xgmi_scan);
 
 				// grab the DID
 				sprintf(devicepath, "/sys/bus/pci/drivers/amdgpu/%s/device", de->d_name);

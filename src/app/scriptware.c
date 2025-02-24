@@ -43,7 +43,7 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
     struct umr_asic **devices;
     int x, y, no_asics;
 
-    if (umr_enumerate_device_list(errout, database_path, NULL, &devices, &no_asics)) {
+    if (umr_enumerate_device_list(errout, database_path, NULL, &devices, &no_asics, 0)) {
         errout("[ERROR]: Could not enumerate AMDGPU devices on this host.\n");
         return;
     }

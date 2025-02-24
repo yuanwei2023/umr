@@ -684,7 +684,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 void umr_run_gui(const char *url);
 #endif
 
-int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics);
+int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics, int xgmi_scan);
 void umr_enumerate_device_list_free(struct umr_asic **asics);
 
 #endif

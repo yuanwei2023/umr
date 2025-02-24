@@ -2063,7 +2063,7 @@ void init_asics(void) {
 	else
 		opt.test_log = 1;
 
-	if (umr_enumerate_device_list(printf, database_path, &opt, &enum_asics, &asic_count) < 0) {
+	if (umr_enumerate_device_list(printf, database_path, &opt, &enum_asics, &asic_count, 1) < 0) {
 		exit(0);
 	}
 
