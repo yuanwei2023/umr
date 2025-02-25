@@ -40,6 +40,9 @@ dump_waves() {
 	fi
 
 	filename="${prefix}_umr_waves_gpu${gpu}_xcc${xcc}.txt"
+	if [ "$xcc" = -1 ]; then
+		filename="${prefix}_umr_waves_gpu${gpu}.txt"
+	fi
 	echo "Generating $filename"
 	umr -i "${g}" -vmp "${xcc}" -O bits,halt_waves -wa ${ring} 2>&1 >"${filename}"
 }
@@ -53,6 +56,9 @@ dump_cpc() {
 
 	# Generate filename
 	filename="${prefix}_umr_cpc_gpu${gpu}_xcc${xcc}.txt"
+	if [ "$xcc" = -1 ]; then
+		filename="${prefix}_umr_cpc_gpu${gpu}.txt"
+	fi
 	echo "Generating $filename"
 
 	# Execute command and redirect output
@@ -68,6 +74,9 @@ dump_cp_regs() {
 	local gfxname=`umr --script gfxname ${g}`
 
 	filename="${prefix}_umr_cp_regs_gpu${gpu}_xcc${xcc}.txt"
+	if [ "$xcc" = -1 ]; then
+		filename="${prefix}_umr_cp_regs_gpu${gpu}.txt"
+	fi
 	echo "Generating $filename"
 	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPC_UTCL1_STATUS" 2>&1 >>"${filename}"
 	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPF_UTCL1_STATUS" 2>&1 >>"${filename}"
@@ -117,15 +126,23 @@ dump_headers() {
 	local g="$1"
 	local xcc="$2"
 	local gpu="$3"
+	local gfxname=`umr --script gfxname ${g}`
 
 	filename="${prefix}_umr_cpc_gpu${gpu}_xcc${xcc}.txt"
 	# Generate filename
-	echo "Generating $filename"
+	if [ "$xcc" = -1 ]; then
+		filename="${prefix}_umr_cpc_gpu${gpu}.txt"
+	fi
+	echo "Dumping MEC headers"
 	for pipe in {0..3}; do
 		echo "Pipe ${pipe} headers" >> "${filename}"
 		# Execute command and redirect output
 		for count in {0..7}; do
-			umr -i "${g}" -vmp "${xcc}" -sb 1 "$pipe" 0 -r *.*.CP_MEC_ME1_HEADER_DUMP 2>&1 >> "${filename}"
+			if [ "$xcc" = -1 ]; then
+				umr -i "${g}" -sb 1 "$pipe" 0 -r *.${gfxname}.CP_MEC_ME1_HEADER_DUMP 2>&1 >> "${filename}"
+			else
+				umr -i "${g}" -vmp "${xcc}" -sb 1 "$pipe" 0 -r *.${gfxname}{${xcc}}.CP_MEC_ME1_HEADER_DUMP 2>&1 >> "${filename}"
+			fi
 		done
 	done
 }
@@ -139,6 +156,9 @@ dump_cpc_scratch_mems() {
 	local dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 	filename="${prefix}_cpc_scratch_gpu${gpu}_xcc${xcc}.bin"
+	if [ "$xcc" = -1 ]; then
+		filename="${prefix}_cpc_scratch_gpu${gpu}.bin"
+	fi
 	echo "Generating $filename"
 	"${dir}"/cpc_scratch -p "${gpu}" -x "${xcc}" -o "${filename}" 2>>"${filename}"
 }
