@@ -1,7 +1,5 @@
 #!/usr/bin/bash
 
-DUMP_ALL=0
-
 #figure out where scripts are installed and source functions
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -10,10 +8,6 @@ if [ "$(cat /sys/module/amdgpu/parameters/halt_if_hws_hang)" -ne 1 ]; then
         echo "halt_if_hws_hang must be set to 1. Exiting"
         echo "Please run: echo 1 > /sys/module/amdgpu/parameters/halt_if_hws_hang"
         exit 1
-fi
-
-if [ "$1" == "all" ]; then
-    DUMP_ALL=1
 fi
 
 #relaunch ourself as root
@@ -34,20 +28,22 @@ make -j umr
 export PATH=`pwd`/src/app:${PATH}
 cd ${dir}
 
+prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
+kfddbg="/sys/kernel/debug/kfd"
+cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
+cat "${kfddbg}/mqds" 2>&1 >"${prefix}_mqds.txt"
+
 # start dumping data
 source ${dir}/diag_functions.sh
 dump_cpc
 dump_waves
 
 #These aren't needed for most debug cases
-if [ "$DUMP_ALL" -eq 1 ]; then
-	prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
-	kfddbg="/sys/kernel/debug/kfd"
-	cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
-	cat "${kfddbg}/mqds" 2>&1 >"${prefix}_mqds.txt"
-
+if [ "$1" == "all" ]; then
 	dump_cpc_scratch_mems
 	dump_cp_regs
+	dump_headers
+elif [ "$1" == "mec" ]; then
 	dump_headers
 fi
 

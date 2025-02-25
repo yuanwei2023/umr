@@ -18,8 +18,12 @@ dump_waves() {
 
 	gpu=0
 	for g in ${gpulist}; do
-		for xcc in `umr --script xcds ${g}`; do
-			filename="$(hostname)_$(date +"%Y-%m-%d_%H_%M")_umr_waves_gpu${gpu}_xcc${xcc}.txt"
+		xccs="$(umr --script xcds ${g})"
+		if [ -z "$xccs" ]; then
+			xccs=-1
+		fi
+		for xcc in ${xccs}; do
+			filename="${prefix}_umr_waves_gpu${gpu}_xcc${xcc}.txt"
 			echo "Generating $filename"
 			umr -i "${g}" -vmp "${xcc}" -O bits,halt_waves -wa ${ring} 2>&1 >"${filename}"
 		done
@@ -39,20 +43,24 @@ dump_cpc() {
 		gpulist=`umr --script instances`
 	fi
 
-    # Iterate through the GPU list
-    gpu=0
-    for g in ${gpulist}; do
-        # Iterate through XCC values
-		for xcc in `umr --script xcds ${g}`; do
-            # Generate filename
-            filename="$(hostname)_$(date +"%Y-%m-%d_%H_%M")_umr_cpc_gpu${gpu}_xcc${xcc}.txt"
-            echo "Generating $filename"
+	# Iterate through the GPU list
+	gpu=0
+	for g in ${gpulist}; do
+		# Iterate through XCC values
+		xccs="$(umr --script xcds ${g})"
+		if [ -z "$xccs" ]; then
+			xccs=-1
+		fi
+		for xcc in ${xccs}; do
+			# Generate filename
+			filename="${prefix}_umr_cpc_gpu${gpu}_xcc${xcc}.txt"
+			echo "Generating $filename"
 
-            # Execute command and redirect output
-            umr -i "${g}" -vmp "${xcc}" -cpc >"${filename}" 2>&1
-        done
-        gpu=$((gpu + 1))
-    done
+			# Execute command and redirect output
+			umr -i "${g}" -vmp "${xcc}" -cpc >"${filename}" 2>&1
+		done
+		gpu=$((gpu + 1))
+	done
 }
 
 #dump_cp_regs [did]
@@ -70,8 +78,12 @@ dump_cp_regs() {
 	gpu=0
 	for g in ${gpulist}; do
 		gfxname=`umr --script gfxname ${g}`
-		for xcc in `umr --script xcds ${g}`; do
-			filename="$(hostname)_$(date +"%Y-%m-%d_%H_%M")_umr_cp_regs_gpu${gpu}_xcc${xcc}.txt"
+		xccs="$(umr --script xcds ${g})"
+		if [ -z "$xccs" ]; then
+			xccs=-1
+		fi
+		for xcc in ${xccs}; do
+			filename="${prefix}_umr_cp_regs_gpu${gpu}_xcc${xcc}.txt"
 			echo "Generating $filename"
 			umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPC_UTCL1_STATUS" 2>&1 >>"${filename}"
 			umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPF_UTCL1_STATUS" 2>&1 >>"${filename}"
@@ -121,33 +133,37 @@ dump_cp_regs() {
 #dump_headers [did]
 #did must start with 0x
 dump_headers() {
-    # Determine GPU list based on vendor
-    p=`echo $1 | cut -b1-2`
-    if [ "$p" == "0x" ]; then
-	gpulist=`umr --script pci-instances $1`
-	shift
-    else
-	gpulist=`umr --script instances`
-    fi
+	# Determine GPU list based on vendor
+	p=`echo $1 | cut -b1-2`
+	if [ "$p" == "0x" ]; then
+		gpulist=`umr --script pci-instances $1`
+		shift
+	else
+		gpulist=`umr --script instances`
+	fi
 
-    # Iterate through the GPU list
-    gpu=0
-    for g in ${gpulist}; do
-        # Iterate through XCC values
-	for xcc in `umr --script xcds ${g}`; do
-	    for pipe in {0..3}; do
-		for queue in {0..7}; do
+	# Iterate through the GPU list
+	gpu=0
+	for g in ${gpulist}; do
+		# Iterate through XCC values
+		xccs="$(umr --script xcds ${g})"
+		if [ -z "$xccs" ]; then
+			xccs=-1
+		fi
+		for xcc in ${xccs}; do
+			filename="${prefix}_umr_cpc_gpu${gpu}_xcc${xcc}.txt"
 			# Generate filename
-			filename="$(hostname)_$(date +"%Y-%m-%d_%H_%M")_umr_mec_header_gpu${gpu}_xcc${xcc}_pipe{$pipe}_queue{$queue}.txt"
 			echo "Generating $filename"
-
-			# Execute command and redirect output
-			umr -i "${g}" -vmp "${xcc}" -sb 1 "$pipe" "$queue" -r *.*.regCP_MEC_ME1_HEADER_DUMP >"${filename}" 2>&1
-                done
-	    done
+			for pipe in {0..3}; do
+				echo "Pipe ${pipe} headers" >> "${filename}"
+				# Execute command and redirect output
+				for count in {0..7}; do
+					umr -i "${g}" -vmp "${xcc}" -sb 1 "$pipe" 0 -r *.*.CP_MEC_ME1_HEADER_DUMP 2>&1 >> "${filename}"
+				done
+			done
+		done
+		gpu=$((gpu + 1))
 	done
-        gpu=$((gpu + 1))
-    done
 }
 
 #dump_cp_regs [did]
@@ -166,8 +182,12 @@ dump_cpc_scratch_mems() {
 
 	gpu=0
 	for g in $gpulist; do
-		for xcc in `umr --script xcds ${g}`; do
-			filename="$(hostname)_$(date +"%Y-%m-%d_%H_%M")_cpc_scratch_gpu${gpu}_xcc${xcc}.bin"
+		xccs="$(umr --script xcds ${g})"
+		if [ -z "$xccs" ]; then
+			xccs=-1
+		fi
+		for xcc in ${xccs}; do
+			filename="${prefix}_cpc_scratch_gpu${gpu}_xcc${xcc}.bin"
 			echo "Generating $filename"
 			"${dir}"/cpc_scratch -p "${gpu}" -x "${xcc}" -o "${filename}" 2>>"${filename}"
 		done
