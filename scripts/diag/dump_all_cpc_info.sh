@@ -35,16 +35,16 @@ cat "${kfddbg}/mqds" 2>&1 >"${prefix}_mqds.txt"
 
 # start dumping data
 source ${dir}/diag_functions.sh
-dump_cpc
-dump_waves
+iter_over_gpu_xcc dump_cpc
+iter_over_gpu_xcc dump_waves
 
 #These aren't needed for most debug cases
 if [ "$1" == "all" ]; then
-	dump_cpc_scratch_mems
-	dump_cp_regs
-	dump_headers
+	iter_over_gpu_xcc dump_cpc_scratch_mems
+	iter_over_gpu_xcc dump_cp_regs
+	iter_over_gpu_xcc dump_headers
 elif [ "$1" == "mec" ]; then
-	dump_headers
+	iter_over_gpu_xcc dump_headers
 fi
 
 #collect results
