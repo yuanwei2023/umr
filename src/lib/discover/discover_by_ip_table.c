@@ -388,10 +388,10 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 				errout("[VERBOSE]: Using %s/%s (%d.%d.%d) for %s (%d.%d.%d)\n",
 					nit->path, nit->fname, nit->maj, nit->min, nit->rev,
 					det->ipname, det->maj, det->min, det->rev);
-                        if (!det->harvest)
-                                asic->blocks[used_blocks++] =
-                                    read_ip_block(asic, det, nit);
-                }
+			if (!det->harvest)
+					asic->blocks[used_blocks++] =
+						read_ip_block(asic, det, nit);
+		}
 		det = det->next;
 	}
 	asic->no_blocks = used_blocks - 1;
