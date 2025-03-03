@@ -47,6 +47,9 @@ elif [ "$1" == "mec" ]; then
 	iter_over_gpu_xcc dump_headers
 fi
 
+echo "Generating ${prefix}_dmesg.txt"
+journalctl -b > "${prefix}_dmesg.txt"
+
 #collect results
 tar -czvf ${where}/${prefix}_logs.tgz *.txt
 
