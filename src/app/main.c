@@ -215,6 +215,8 @@ static void parse_options(char *str)
 			++str;
 		if (!strcmp(option, "bits")) {
 			options.bitfields = 1;
+		} else if (!strcmp(option, "skip_gprs")) {
+			options.skip_gprs = 1;
 		} else if (!strcmp(option, "empty_log")) {
 			options.empty_log = 1;
 		} else if (!strcmp(option, "use_pci")) {
@@ -282,7 +284,7 @@ static void do_help(void)
 	"\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
 		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib,"
 		"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
-		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, full_shader, no_fold_vm_decode, force_asic_file\n"
+		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, full_shader, skip_gprs, no_fold_vm_decode, force_asic_file\n"
 	"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 		"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 	"\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"
