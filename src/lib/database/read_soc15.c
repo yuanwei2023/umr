@@ -23,6 +23,30 @@
  */
 
 #include "umr.h"
+#include <ctype.h>
+
+static int parse_segments(char *linebuf, uint64_t *segs)
+{
+	int n = 0;
+
+	// skip white space
+	while (*linebuf && (*linebuf == '\t' || *linebuf == ' ')) ++linebuf;
+
+	// start reading in 64-bit segment offsets
+	while (n < UMR_SOC15_MAX_SEG && *linebuf && (*linebuf != '\n')) {
+		if (sscanf(linebuf, "0x%"PRIx64, &segs[n]) != 1) {
+			return n;
+		}
+		++n;
+
+		// skip over number
+		while (*linebuf && (*linebuf == 'x' || isxdigit(*linebuf))) ++linebuf;
+
+		// skip white space
+		while (*linebuf && (*linebuf == '\t' || *linebuf == ' ')) ++linebuf;
+	}
+	return n;
+}
 
 /**
  * @brief Reads the SOC15 database from a specified file.
@@ -42,7 +66,7 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 	struct umr_soc15_database *s, *os;
 	FILE *f;
 	char linebuf[1024];
-	int x;
+	int x, segs;
 
 	f = umr_database_open(path, filename, 0);
 	if (!f) {
@@ -62,40 +86,28 @@ struct umr_soc15_database *umr_database_read_soc15(char *path, char *filename, u
 retry8:
 		linebuf[strlen(linebuf)-1] = 0; // chomp
 		strcpy(s->ipname, linebuf);
-		for (x = 0; x < 32; x++) {
+		for (x = 0; x < UMR_SOC15_MAX_INST; x++) {
 			fgets(linebuf, sizeof(linebuf), f);
-			if (sscanf(linebuf, "\t"
-				"0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64
-				" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64
-				" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64
-				" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64" 0x%"PRIx64,
-					&s->off[x][0], &s->off[x][1], &s->off[x][2], &s->off[x][3],
-					&s->off[x][4], &s->off[x][5], &s->off[x][6], &s->off[x][7],
-					&s->off[x][8], &s->off[x][9], &s->off[x][10], &s->off[x][11],
-					&s->off[x][12], &s->off[x][13], &s->off[x][14], &s->off[x][15],
-					&s->off[x][16], &s->off[x][17], &s->off[x][18], &s->off[x][19],
-					&s->off[x][20], &s->off[x][21], &s->off[x][22], &s->off[x][23],
-					&s->off[x][24], &s->off[x][25], &s->off[x][26], &s->off[x][27],
-					&s->off[x][28], &s->off[x][29], &s->off[x][30], &s->off[x][31]) < 8) {
-						if (x == 8) {
-							// originally there were only 8 instances
-							// now we support upto 32, so if we die on the 8'th line
-							// it's probably just the next IP block
-							s->next = calloc(1, sizeof *s);
-							if (!s->next) {
-								while (os) {
-									s = os->next;
-									free(os);
-									os = s;
-								}
-								fclose(f);
-								return NULL;
-							}
-							s = s->next;
-							goto retry8;
-						} else {
-							errout("[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
+			if ((segs = parse_segments(linebuf, &s->off[x][0])) < 8) {
+				if (segs == 0) {
+					// originally there were only 8 instances, then 32, now we support upto UMR_SOC15_MAX_SEG
+					// if we die on the 8'th or 32'nd line it's probably just the next IP block
+					// for future proofing we just assume it's the next IP block if we read zero entries
+					s->next = calloc(1, sizeof *s);
+					if (!s->next) {
+						while (os) {
+							s = os->next;
+							free(os);
+							os = s;
 						}
+						fclose(f);
+						return NULL;
+					}
+					s = s->next;
+					goto retry8;
+				} else {
+					errout("[ERROR]: Invalid SOC15 offset line [%s]\n", linebuf);
+				}
 			}
 		}
 		s->next = calloc(1, sizeof *s);

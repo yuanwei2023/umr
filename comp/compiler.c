@@ -315,7 +315,7 @@ uint32_t update_regs(struct regs *r)
 
 struct soc15 {
 	char name[MAXLEN];
-	uint64_t off[32][32]; // inst, seg
+	uint64_t off[256][256]; // inst, seg
 	struct soc15 *next;
 };
 

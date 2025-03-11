@@ -43,9 +43,12 @@ struct umr_database_scan_item {
 	struct umr_database_scan_item *next;
 };
 
+#define UMR_SOC15_MAX_INST 256
+#define UMR_SOC15_MAX_SEG 256
+
 struct umr_soc15_database {
 	char ipname[64];
-	uint64_t off[32][32];
+	uint64_t off[UMR_SOC15_MAX_INST][UMR_SOC15_MAX_SEG];
 	struct umr_soc15_database *next;
 };
 
