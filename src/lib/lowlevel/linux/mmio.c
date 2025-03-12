@@ -225,7 +225,7 @@ static int mmio2_apply_bank(struct umr_asic *asic)
 			id_v2.srbm.vmid  = asic->options.bank.srbm.vmid;
 			id_v2.use_srbm = 1;
 		}
-		id_v2.xcc_id = asic->options.vm_partition;
+		id_v2.xcc_id = asic->options.vm_partition == -1 ? 0 : asic->options.vm_partition;
 		r = ioctl(asic->fd.mmio2, AMDGPU_DEBUGFS_REGS2_IOC_SET_STATE_V2, &id_v2);
 		if (!r)
 			return r;
