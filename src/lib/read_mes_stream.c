@@ -295,7 +295,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 	ui->start_ib(ui, ib_addr, ib_vmid, 0, 0, 0, 0);
 	while (stream && opcodes-- && stream->nwords) {
 		opcode_name = STR_LOOKUP(mes_v10_opcodes, stream->opcode, "MES_UNK");
-		ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords, opcode_name, stream->header, stream->words);
+		ui->start_opcode(ui, ib_addr, ib_vmid, stream->type, stream->opcode, 0, stream->nwords, opcode_name, stream->header, stream->words);
 
 		i = 0;
 		ib_addr += 4; // skip over header
