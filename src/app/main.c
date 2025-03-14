@@ -84,6 +84,8 @@ static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
 
 static struct umr_asic *get_asic(void)
 {
+	struct umr_options topt;
+
 	if (th && th->discovery.contents) {
 		asic = umr_discover_asic_by_discovery_table("emulated", &options, std_printf);
 		umr_attach_test_harness(th, asic);
@@ -95,13 +97,15 @@ static struct umr_asic *get_asic(void)
 	}
 
 	options.quiet = 1;
+	topt = options;
 retry:
+	options = topt;
 	if (options.verbose) {
 		fprintf(stderr, "[VERBOSE]: Trying to connect to DRI instance %d...\n", options.instance);
 	}
 	asic = umr_discover_asic(&options, err_printf);
 	if (!asic && !options.forced_instance && options.instance < 128) {
-		options.instance++;
+		topt.instance++;
 		goto retry;
 	}
 
