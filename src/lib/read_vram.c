@@ -1653,7 +1653,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 				segment_size = umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmGCMC_VM_XGMI_LFB_SIZE") << 24ULL;
 			} else {
 				// fallback to just rounding up vram size
-				segment_size = 0;
+				segment_size = asic->config.xgmi.nodes[0].asic->config.vram_size;
 			}
 
 			// copy callbacks so that sysram/vram accesses
@@ -1663,7 +1663,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 
 			for (n = 0; asic->config.xgmi.nodes[n].asic; n++) {
 				// if remaining address is within this nodes VRAM size use it
-				if (addr < asic->config.xgmi.nodes[n].asic->config.vram_size) {
+				if (addr < segment_size) {
 					asic = asic->config.xgmi.nodes[n].asic;
 					address = addr;
 					if ((address + size) > asic->config.xgmi.nodes[n].asic->config.vram_size) {
