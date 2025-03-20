@@ -236,7 +236,33 @@ static struct umr_vcn_cmd_message *retrieve_decode_buffer(struct umr_asic *asic,
 					free(nvcn);
 					return NULL;
 				} else {
-					nvcn->size = mh->total_size < mh->header_size ? mh->header_size : mh->total_size;
+					/* calculate the total_size in case it is wrong from the header */
+					uint32_t total_size = mh->header_size;
+					rvcn_dec_message_index_t *p0 = &mh->index[0]; /* first message */
+					total_size += p0->size; /* add the first message size */
+					/* read in all messages if num_buffers is 2+ */
+					if (mh->num_buffers > 1) {
+						uint32_t size_ex = (mh->num_buffers - 1) * sizeof(rvcn_dec_message_index_t);
+						rvcn_dec_message_index_t *pi = calloc(1, size_ex); /* all other messages exept the first one */
+						total_size += size_ex;
+						if (umr_read_vram(asic, asic->options.vm_partition, nvcn->vmid, nvcn->addr + mh->header_size, size_ex, pi) < 0) {
+							asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", nvcn->vmid, nvcn->addr);
+							free(pi);
+							free(mh);
+							free(nvcn);
+							return NULL;
+						} else {
+							uint32_t i;
+							for (i = 0; i < mh->num_buffers - 1; i++) {
+								total_size += pi[i].size;
+							}
+							free(pi);
+						}
+					}
+					nvcn->size = total_size;
+					if (mh->total_size != total_size )
+						asic->err_msg("[WARN]: Invalid IB size reported [%d], should be [%d] at 0x%"PRIx32":0x%" PRIx64 "\n", mh->total_size, total_size, nvcn->vmid, nvcn->addr);
+
 					free(mh);
 				}
 				return nvcn;

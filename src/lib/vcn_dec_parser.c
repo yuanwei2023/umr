@@ -602,7 +602,7 @@ void umr_print_dec_ib_msg(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn
 
 	if (pOut)
 		fprintf(pOut, "\nDecoding VCN message at 0x%" PRIx32 "@0x%" PRIx64 " from 0x%" PRIx32 "@0x%" PRIx64 " of %" PRIu32 " words",
-			tvmid, addr, tvmid, from, mh->total_size / 4);
+			tvmid, addr, tvmid, from, vcn->size / 4);
 
 	if (mh->header_size == sizeof(rvcn_dec_message_header_t)) {
 		do {
