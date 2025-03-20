@@ -25,10 +25,35 @@ void umr_print_cpc(struct umr_asic *asic)
 	 * 	- 4 queues/pipe (pre-GFX10, 8 queues/pipe)
 	 */
 	uint32_t rs64_en, mes_en;
-	uint32_t max_me_num = asic->family >= FAMILY_GFX11 ? 4 : 3;
-	uint32_t queues_per_pipe = asic->family >= FAMILY_NV ? 4 : 8;
+	uint32_t max_me_num, queues_per_pipe, pipes_per_mec;
+	int maj, min;
+
 	rs64_en = mes_en = asic->family >= FAMILY_GFX11;
 	asic->options.use_bank = 2;
+
+	umr_gfx_get_ip_ver(asic, &maj, &min);
+	switch (maj) {
+		case 10:
+			max_me_num = 3;
+			pipes_per_mec = 4;
+			queues_per_pipe = 4;
+			break;
+		case 11:
+			max_me_num = 4;
+			pipes_per_mec = 4;
+			queues_per_pipe = 4;
+			break;
+		case 12:
+			max_me_num = 4;
+			pipes_per_mec = 2;
+			queues_per_pipe = 4;
+			break;
+		default:
+			max_me_num = 3;
+			pipes_per_mec = 4;
+			queues_per_pipe = 8;
+			break;
+	}
 
 	for (uint32_t me = 1; me < max_me_num; ++ me) {
 		if (mes_en && me == 2)
