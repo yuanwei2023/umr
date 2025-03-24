@@ -70,10 +70,10 @@ void umr_print_cpc(struct umr_asic *asic)
 		char iptr_name_mec_rs64[] = "mmCP_MEC_RS64_INSTR_PNTR";
 		char iptr_name_mes[] = "mmCP_MES_INSTR_PNTR";
 
-		for (uint32_t pipe = 0; pipe < (me == 1 ? 4 : 2); ++ pipe) {
+		for (uint32_t pipe = 0; pipe < (me == 1 ? pipes_per_mec : 2); ++pipe) {
 			asic->options.bank.srbm.pipe = pipe;
 
-			for (uint32_t queue = 0; queue < (me == 3 ? 1 : queues_per_pipe); ++ queue) {
+			for (uint32_t queue = 0; queue < (me == 3 ? 1 : queues_per_pipe); ++queue) {
 				asic->options.bank.srbm.me = me;
 				asic->options.bank.srbm.pipe = pipe;
 				asic->options.bank.srbm.queue = queue;
