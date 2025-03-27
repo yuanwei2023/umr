@@ -132,11 +132,20 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
 		}
 	} else {
+#if 0
 		se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
 		sh = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID");
 		cu = ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) | umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"));
 		wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
 		simd = 0;
+#else
+		se = wd->se;
+		sh = wd->sh;
+		cu = (wd->cu << 2) | wd->simd;
+		simd = 0;
+		wave = wd->wave;
+#endif
+
 		if (v_or_s == 0) {
 			size = 4 * 124; // regular SGPRs, VCC, and TTMPs
 		} else {
