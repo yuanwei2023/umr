@@ -613,10 +613,12 @@ int main(int argc, char **argv)
 						options.bank.srbm.me = atoi(argv[i+1]);
 						options.bank.srbm.pipe = atoi(argv[i+2]);
 						options.bank.srbm.queue = atoi(argv[i+3]);
-						if (i + 4 < argc && sscanf(argv[i+4], "%u", &options.bank.srbm.vmid) == 1)
+						if (i + 4 < argc && sscanf(argv[i+4], "%u", &options.bank.srbm.vmid) == 1) {
+							argflags[i+4] = 1;
 							++i;
-						else
+						} else {
 							options.bank.srbm.vmid = 0;  // default
+						}
 						options.use_bank = 2;
 						i += 3;
 					} else {
