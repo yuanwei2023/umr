@@ -118,6 +118,15 @@ int umr_shader_disasm(struct umr_asic *asic,
 					cpuname = "gfx1103";
 					break;
 			}
+		} else if (gfx->discoverable.maj == 12) {
+			switch (gfx->discoverable.rev) {
+				case 0:
+					cpuname = "gfx1200";
+					break;
+				case 1:
+					cpuname = "gfx1201";
+					break;
+			}
 		}
 	}
 
