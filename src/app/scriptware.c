@@ -34,6 +34,8 @@ static void helptext(umr_err_output errout)
     errout("\tinstances\n\t\tList all AMDGPU instances in space delimited format\n\n");
     errout("\tpci-instances <did>\n\t\tList all AMDGPU instances matching a given PCI DID in space delimited format\n\n");
     errout("\tpci-did <instance>\n\t\tOutput the PCI device ID (did) of the AMDGPU device with a given instance\n\n");
+    errout("\tpci-bus <instance>\n\t\tOutput the PCI device bus address of the AMDGPU device with a given instance\n\n");
+    errout("\tpci-bus-to-instance <busno>\n\t\tOutput the DRI instance matching a PCI device bus address\n\n");
     errout("\txcds <instance>\n\t\tList all GC partitions for a given device\n\n");
     errout("\tgfxname <instance>\n\t\tOutputs the base name for the GC IP block of a given GPU instance\n\n");
 }
@@ -80,6 +82,34 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
                 for (y = 0; y < no_asics; y++) {
                     if (devices[y]->instance == inst) {
                         errout("0x%x ", devices[y]->did);
+                    }
+                }
+                errout("\n");
+                ++x;
+            } else {
+                errout("[ERROR]: 'pci-did' --script command requires one parameter.\n");
+            }
+        } else if (!strcmp(argv[x], "pci-bus-to-instance")) {
+            if (x + 1 < argc) {
+                int y;
+                for (y = 0; y < no_asics; y++) {
+                    if (!strcmp(devices[y]->options.pci.name, argv[x+1])) {
+                        errout("%d ", devices[y]->instance);
+                        break;
+                    }
+                }
+                errout("\n");
+                ++x;
+            } else {
+                errout("[ERROR]: 'pci-did' --script command requires one parameter.\n");
+            }
+        } else if (!strcmp(argv[x], "pci-bus")) {
+            if (x + 1 < argc) {
+                int inst;
+                sscanf(argv[x+1], "%d", &inst);
+                for (y = 0; y < no_asics; y++) {
+                    if (devices[y]->instance == inst) {
+                        errout(devices[y]->options.pci.name);
                     }
                 }
                 errout("\n");
