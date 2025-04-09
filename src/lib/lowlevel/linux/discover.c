@@ -53,6 +53,7 @@ static int find_pci_instance(const char* pci_string)
 {
 	DIR *dir;
 	struct dirent *dir_entry;
+	int saved = -1;
 
 	dir = opendir("/sys/kernel/debug/dri");
 	if (dir == NULL) {
@@ -61,7 +62,7 @@ static int find_pci_instance(const char* pci_string)
 	}
 
 	while ((dir_entry = readdir(dir)) != NULL) {
-		char device[256], name[300];
+		char device[512], name[512];
 		int parsed_device;
 		FILE *f;
 
@@ -76,6 +77,7 @@ static int find_pci_instance(const char* pci_string)
 		f = fopen(name, "r");
 		if (!f)
 			continue;
+		fclose(f);
 
 		// now try to match PCI bus address
 		snprintf(name, sizeof(name), "/sys/kernel/debug/dri/%s/name",
@@ -96,12 +98,20 @@ static int find_pci_instance(const char* pci_string)
 		if (strstr(device, "dev="))
 			memmove(device, device + 4, strlen(device) - 3);
 		if (strcmp(pci_string, device) == 0) {
-			closedir(dir);
-			return atoi(dir_entry->d_name);
+			// save the instance in case this is pre-ipdiscovery hardware
+			saved = atoi(dir_entry->d_name);
+
+			// test if IP discovery exists for this
+			snprintf(name, sizeof(name), "/sys/class/drm/card%s/device/ip_discovery/die/0/num_ips", dir_entry->d_name);
+			f = fopen(name, "r");
+			if (!f)
+				continue;
+			fclose(f);
+			break;
 		}
 	}
 	closedir(dir);
-	return -1;
+	return saved;
 }
 
 

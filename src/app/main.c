@@ -104,7 +104,7 @@ retry:
 		fprintf(stderr, "[VERBOSE]: Trying to connect to DRI instance %d...\n", options.instance);
 	}
 	asic = umr_discover_asic(&options, err_printf);
-	if (!asic && !options.forced_instance && options.instance < 128) {
+	if (!asic && !options.forced_instance && options.instance < 256) {
 		topt.instance++;
 		goto retry;
 	}

@@ -100,12 +100,17 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			// base_addr list
 			snprintf(fname, (sizeof fname) - 1, "%s/base_addr", linebuf);
 			f = fopen(fname, "r");
+			if (f) {
 				x = 0;
 				while (fgets(databuf, sizeof databuf, f)) {
 					if (sscanf(databuf, "%"SCNx64, &(*det)->segments[x]) != 1)
 						break;
 					++x;
 				}
+			} else {
+				fprintf(stderr, "[ERROR]: Can't open [%s]\n", fname);
+				exit(-1);
+			}
 			fclose(f);
 			// major
 			snprintf(fname, (sizeof fname) - 1, "%s/major", linebuf);
