@@ -1444,6 +1444,9 @@ int main(int argc, char **argv)
 				} else if (!strcmp(argv[i], "--dump-discovery-table") || !strcmp(argv[i], "-ddt")) {
 					argflags[i] = 1;
 					umr_dump_discovery_table_info(asic, NULL);
+				} else if (!strcmp(argv[i], "--print-cpg") || !strcmp(argv[i], "-cpg")) {
+					argflags[i] = 1;
+					umr_print_cpg(asic);
 				} else if (!strcmp(argv[i], "--print-cpc") || !strcmp(argv[i], "-cpc")) {
 					argflags[i] = 1;
 					umr_print_cpc(asic);

@@ -48,6 +48,7 @@ add_library(umrapp
   ring_stream_read.c
   vbios.c
   discovery.c
+  print_cpg.c
   print_cpc.c
   print_sdma.c
   runlist.c

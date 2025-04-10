@@ -53,6 +53,7 @@ void umr_print_config(struct umr_asic *asic);
 void umr_print_waves(struct umr_asic *asic);
 void umr_profiler(struct umr_asic *asic, int samples, int shader_target);
 void umr_profiler(struct umr_asic *asic, int samples, int delay);
+void umr_print_cpg(struct umr_asic *asic);
 void umr_print_cpc(struct umr_asic *asic);
 void umr_print_sdma(struct umr_asic *asic);
 void umr_power(struct umr_asic *asic);
@@ -68,6 +69,7 @@ void run_server_loop(const char *url, struct umr_asic * asic);
 void umr_enumerate_devices(umr_err_output errout, const char *database_path);
 
 int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream);
+void umr_print_cpg(struct umr_asic *asic);
 void umr_print_cpc(struct umr_asic *asic);
 void umr_print_sdma(struct umr_asic *asic);
 void umr_dump_runlists(struct umr_asic *asic, int node);
