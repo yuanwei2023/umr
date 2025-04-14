@@ -263,7 +263,7 @@ static void decode_enc_ring(struct umr_asic *asic, struct umr_stream_decode_ui *
 	case VCN_ENC_CMD_TRAP:
 		break;
 	default:
-		asic->err_msg("[ERROR]: unkonwn opcode [0x%0x] \n", stream->opcode);
+		asic->err_msg("[ERROR]: unknown opcode [0x%0x] \n", stream->opcode);
 		break;
 	}
 }
@@ -329,7 +329,7 @@ struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream_opcodes(struct umr_asic *as
 				opcode_name = "VCN_ENC_CMD_REG_WRITE";
 				break;
 			default:
-				opcode_name = "Unkonwn";
+				opcode_name = "Unknown";
 				break;
 		}
 		ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, 0, stream->nwords, opcode_name, stream->opcode, stream->words);
@@ -834,8 +834,8 @@ static void print_ib_encode_input_format(struct umr_asic *asic, uint32_t tvmid, 
 	const char *packing_format[] = { "NV12", "P010", "AYUV", "Y410", "A8R8G8B8", "A2R10G10B10", "A16B16G16R16F", "A8B8G8R8", "A2B10G10R10" };
 	uint32_t t = RVCN_GET_TRANSFER_FUNCTION(p->input_color_volume);
 	uint32_t g = RVCN_GET_GAMUT(p->input_color_volume);
-	const char *mt = t < 3? trans_func[t] : "unkown trans_func";
-	const char *mg = g < 4? gamut[g] : "unkown gamut";
+	const char *mt = t < 3? trans_func[t] : "unknown trans_func";
+	const char *mg = g < 4? gamut[g] : "unknown gamut";
 	uint32_t o_offset = offset;
 
 	add_field_2(asic, tvmid, addr, &offset, "input_color_volume", mt, mg, p->input_color_volume, 0, pOut, pBuf);
@@ -862,8 +862,8 @@ static void print_ib_encode_output_format(struct umr_asic *asic, uint32_t tvmid,
 	const char *chroma_location[] = { "interstitial", "co site" };
 	uint32_t t = RVCN_GET_TRANSFER_FUNCTION(p->output_color_volume);
 	uint32_t g = RVCN_GET_GAMUT(p->output_color_volume);
-	const char *mt = t < 3? trans_func[t] : "unkown trans_func";
-	const char *mg = g < 4? gamut[g] : "unkown gamut";
+	const char *mt = t < 3? trans_func[t] : "unknown trans_func";
+	const char *mg = g < 4? gamut[g] : "unknown gamut";
 	uint32_t o_offset = offset;
 
 	add_field_2(asic, tvmid, addr, &offset, "output_color_volume", mt, mg, p->output_color_volume, 0, pOut, pBuf);
@@ -888,8 +888,8 @@ static void print_v5_0_ib_encode_output_format(struct umr_asic *asic, uint32_t t
 
 	uint32_t t = RVCN_GET_TRANSFER_FUNCTION(p->output_color_volume);
 	uint32_t g = RVCN_GET_GAMUT(p->output_color_volume);
-	const char *mt = t < 3? trans_func[t] : "unkown trans_func";
-	const char *mg = g < 4? gamut[g] : "unkown gamut";
+	const char *mt = t < 3? trans_func[t] : "unknown trans_func";
+	const char *mg = g < 4? gamut[g] : "unknown gamut";
 	uint32_t o_offset = offset;
 
 	add_field_2(asic, tvmid, addr, &offset, "output_color_volume", mt, mg, p->output_color_volume, 0, pOut, pBuf);

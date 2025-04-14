@@ -69,7 +69,7 @@ static void find_nwords(struct umr_asic *asic, struct umr_vcn_enc_stream *s)
 		s->nwords = 2;
 		break;
 	default:
-		asic->err_msg("[ERROR]: unkonwn opcode [0x%0x] \n", s->opcode);
+		asic->err_msg("[ERROR]: unknown opcode [0x%0x] \n", s->opcode);
 		s->nwords = 0;
 		break;
 	}
