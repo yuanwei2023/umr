@@ -278,7 +278,7 @@ static const struct {
 	{ "UNK", 0, 0 }, // ec
 	{ "UNK", 0, 0 }, // ed
 	{ "UNK", 0, 0 }, // ee
-	{ "UNK", 0, 0 }, // ef
+	{ "PKT3_UPDATE_DB_SUMMARIZER_TIMEOUTS", 12, 0 }, // ef
 	{ "UNK", 0, 0 }, // f0
 	{ "UNK", 0, 0 }, // f1
 	{ "UNK", 0, 0 }, // f2
@@ -2095,6 +2095,9 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 					ui->add_field(ui, ib_addr + 8 + 8 * m, ib_vmid, "REG_DATA", fetch_word(asic, stream, n+1), NULL, 16, 32);
 				}
 			}
+			break;
+		case 0xEF: // UPDATE_DB_SUMMARIZER_TIMEOUTS
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "REG_VALUE", fetch_word(asic, stream, 0), NULL, 16, 32);
 			break;
 		default:
 			decode_pkt3_gfx11(asic, ui, stream, ib_addr, ib_vmid);
