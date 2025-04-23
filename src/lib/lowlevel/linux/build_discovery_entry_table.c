@@ -92,9 +92,9 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 	ipdir = opendir(linebuf);
 	if (!ipdir)
 		return;
-        ip_start = *det;
-        while ((de = readdir(ipdir))) {
-                if (isdigit(de->d_name[0])) {
+	ip_start = *det;
+	while ((de = readdir(ipdir))) {
+		if (isdigit(de->d_name[0])) {
 			snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s/%s", diepath, ipname, de->d_name); // path to instance of ip block on given die
 			(*det)->die = die_num;
 			// base_addr list
@@ -136,24 +136,24 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 				fgets(databuf, sizeof databuf, f);
 				sscanf(databuf, "%d", &(*det)->instance);
 			fclose(f);
-                        // harvest
-                        snprintf(fname, (sizeof fname) - 1, "%s/harvest",
-                                 linebuf);
-                        f = fopen(fname, "r");
-                        if (f) {
-                                        fgets(databuf, sizeof databuf, f);
-                                        sscanf(databuf, "%" SCNx8,
-                                               &(*det)->harvest);
-                                        if ((*det)->harvest == 0)
-                                                inst_mask |=
-                                                    (1 << (*det)->instance);
+			// harvest
+			snprintf(fname, (sizeof fname) - 1, "%s/harvest",
+					linebuf);
+			f = fopen(fname, "r");
+			if (f) {
+				fgets(databuf, sizeof databuf, f);
+				sscanf(databuf, "%" SCNx8,
+					&(*det)->harvest);
+				if ((*det)->harvest == 0)
+						inst_mask |=
+							(1 << (*det)->instance);
 
-                                        fclose(f);
-                        } else {
-                                        inst_mask |= (1 << (*det)->instance);
-                        }
-                        // convert name to lowercase
-                        strcpy((*det)->ipname, ipname);
+				fclose(f);
+			} else {
+				inst_mask |= (1 << (*det)->instance);
+			}
+			// convert name to lowercase
+			strcpy((*det)->ipname, ipname);
 			for (x = 0; (*det)->ipname[x]; x++)
 				(*det)->ipname[x] = tolower((*det)->ipname[x]);
 			// add next
@@ -165,10 +165,9 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			*det = (*det)->next;
 			++(*nblocks);
 		}
-        }
-        closedir(ipdir);
-
-        set_ip_logical_inst(ip_start, *det, inst_mask);
+	}
+	closedir(ipdir);
+	set_ip_logical_inst(ip_start, *det, inst_mask);
 }
 
 /* Dir structure
