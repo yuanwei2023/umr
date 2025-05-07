@@ -183,7 +183,7 @@ static int read_gpr_gprwave(struct umr_asic *asic, int v_or_s, uint32_t thread, 
 	}
 
 	// TODO: hoist trap to _raw
-	if (v_or_s == 0) {
+	if (v_or_s == 0 && size < (4*0x6C)) {
 		// read trap if any
 		if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
 			r = umr_linux_read_gpr_gprwave_raw(asic, v_or_s, thread, se, sh, cu, wave, simd, 4 * 0x6C, size, &dst[0x6C]);

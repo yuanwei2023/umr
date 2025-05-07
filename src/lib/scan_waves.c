@@ -134,7 +134,7 @@ static int read_gpr_mmio(struct umr_asic *asic, int v_or_s, uint32_t thread, str
 		fprintf(asic->options.test_log_fd, "}\n");
 	}
 
-	if (v_or_s == 0) {
+	if (v_or_s == 0 && size < (4*0x6C)) {
 		// read trap if any
 		if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
 			r = read_gpr_mmio_raw(asic, v_or_s, thread, se, sh, cu, wave, simd, 4 * 0x6C, size, &dst[0x6C]);
