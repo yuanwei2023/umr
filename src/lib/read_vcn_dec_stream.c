@@ -104,9 +104,14 @@ static char *get_reg_name(struct umr_pm4_stream *s, uint32_t major, uint32_t min
 			return "mmUVD_GPCOM_VCPU_DATA0";
 		case 0x505:
 			return "mmUVD_GPCOM_VCPU_DATA1";
+		case 0x54c:
+			return "mmUVD_GPCOM_VCPU_DATA2";
+		case 0x506:
+			return "mmUVD_ENGINE_CNTL";
 		case 0x1fd:
 			return "mmUVD_CONTEXT_ID";
 		case 0x53f:
+		case 0x81ff:
 			return "mmUVD_NO_OP";
 		case 0x54a:
 			return "mmUVD_GP_SCRATCH8";
@@ -131,9 +136,12 @@ static char *get_reg_name(struct umr_pm4_stream *s, uint32_t major, uint32_t min
 		return "mmUVD_GPCOM_VCPU_DATA0";
 	case 0x11:
 		return "mmUVD_GPCOM_VCPU_DATA1";
+	case 0x68:
+		return "mmUVD_GPCOM_VCPU_DATA2";
 	case 0x27:
 		return "mmUVD_CONTEXT_ID";
 	case 0x29:
+	case 0x81ff:
 		return "mmUVD_NO_OP";
 	case 0x66:
 		return "mmUVD_GP_SCRATCH8";
@@ -147,6 +155,8 @@ static char *get_reg_name(struct umr_pm4_stream *s, uint32_t major, uint32_t min
 		return "mmUVD_LMI_RBC_IB_64BIT_BAR_HIGH";
 	case 0x25c:
 		return "mmUVD_RBC_IB_SIZE";
+	case 0x26d:
+		return "mmUVD_ENGINE_CNTL";
 	default:
 		return "UNK";
 	}
