@@ -90,9 +90,12 @@ static char * get_msg_cmd_name(uint32_t cmd)
 	}
 }
 
+/*
+ * Renoir - VCN 2.2
+ */
 static char *get_reg_name(struct umr_pm4_stream *s, uint32_t major, uint32_t minor)
 {
-	if(major == 2 && minor == 0) { // vcn 2.0 only
+	if(major == 2 && (minor == 0 || minor == 2)) { // vcn 2.0, 2.2
 		switch (s->pkt0off){
 		case 0x503:
 			return "mmUVD_GPCOM_VCPU_CMD";
