@@ -12,3 +12,4 @@ build/
 # GUI artifacts
 src/app/umrgui
 imgui.ini
+.aider*
