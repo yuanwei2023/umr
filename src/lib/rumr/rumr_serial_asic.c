@@ -223,6 +223,8 @@ struct umr_asic *rumr_parse_serialized_asic(struct rumr_buffer *buf)
 						asic->blocks[ip]->regs[reg].bits[bit].start = rumr_buffer_read_uint32(buf);
 					// stop
 						asic->blocks[ip]->regs[reg].bits[bit].stop = rumr_buffer_read_uint32(buf);
+					// bitfield print
+						asic->blocks[ip]->regs[reg].bits[bit].bitfield_print = umr_bitfield_default;
 				}
 			}
 	}
