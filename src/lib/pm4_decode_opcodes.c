@@ -226,8 +226,8 @@ static const struct {
 	{ "PKT3_SET_CONTEXT_REG_PAIRS", 12, 0 }, // b8
 	{ "PKT3_SET_CONTEXT_REG_PAIRS_PACKED", 11, 0 }, // b9
 	{ "PKT3_SET_SH_REG_PAIRS", 12, 0 }, // ba
-	{ "UNK", 0, 0 }, // bb
-	{ "PKT3_SET_SH_REG_PAIRS_PACKED", 11, 0 }, // bc
+	{ "PKT3_SET_SH_REG_PAIRS_PACKED", 11, 0 }, // bb
+	{ "PKT3_SET_SH_REG_PAIRS_PACKED", 12, 0 }, // bc
 	{ "PKT3_SET_SH_REG_PAIRS_PACKED_N", 11, 0 }, // bd
 	{ "PKT3_SET_UCONFIG_REG_PAIRS", 12, 0 }, // be
 	{ "UNK", 0, 0 }, // bf
@@ -1777,6 +1777,7 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 			}
 			break;
 		case 0xB9: // SET_CONTEXT_REG_PAIRS_PACKED
+		case 0xBB:
 		case 0xBC:
 		case 0xBD: // SET_SH_REG_PAIRS_PACKED(_N)
 			{
@@ -1784,6 +1785,7 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 
 				switch (stream->opcode) {
 					case 0xB9: offset = 0xA000; break;
+					case 0xBB:
 					case 0xBC:
 					case 0xBD: offset = 0x2C00; break;
 				}
