@@ -32,6 +32,8 @@ struct umr_vm_pagewalk {
 	uint32_t vmid;
 	uint64_t va, phys;
 	uint64_t pde[8], pte;
+	pde_fields_t pde_fields[8];
+	pte_fields_t pte_fields;
 	struct {
 		uint64_t page_table_base_addr;
 	} registers;

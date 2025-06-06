@@ -1235,7 +1235,8 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 					// capture page walk data if requested
 					if (vmdata) {
-						vmdata->pde[vmdata->levels++] = pde_entry;
+						vmdata->pde[vmdata->levels] = pde_entry;
+						vmdata->pde_fields[vmdata->levels++] = pde_fields;
 					}
 				} else {
 					// This PDE has the P(te) bit set and should be treated as a PTE
@@ -1429,6 +1430,7 @@ pde_is_pte:
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
 			if (vmdata) {
 				vmdata->pte = pte_entry;
+				vmdata->pte_fields = pte_fields;
 			}
 		} else {
 			// page_table_depth == 0 which is also typically only reserved for VMID0
