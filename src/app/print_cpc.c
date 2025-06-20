@@ -4,15 +4,7 @@
 
 static uint32_t read_banked_reg(struct umr_asic *asic, char *name)
 {
-	struct umr_reg *reg;
-	uint64_t bank_addr;
-	reg = umr_find_reg_data_by_ip_by_instance(asic, NULL, asic->options.vm_partition, name);
-	if (!reg) {
-		asic->err_msg("[ERROR]: Cannot find CPC registers on ASIC.\n");
-		return 0xDEADBEEF;
-	}
-	bank_addr = umr_apply_bank_selection_address(asic);
-	return asic->reg_funcs.read_reg(asic, bank_addr | (reg->addr * 4), REG_MMIO);
+	return umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, name);
 }
 
 void umr_print_cpc(struct umr_asic *asic)
@@ -27,8 +19,11 @@ void umr_print_cpc(struct umr_asic *asic)
 	uint32_t rs64_en, mes_en;
 	uint32_t max_me_num, queues_per_pipe, pipes_per_mec;
 	int maj, min;
+	struct umr_options opts;
 
 	rs64_en = mes_en = asic->family >= FAMILY_GFX11;
+	opts = asic->options;
+
 	asic->options.use_bank = 2;
 
 	umr_gfx_get_ip_ver(asic, &maj, &min);
@@ -140,5 +135,5 @@ void umr_print_cpc(struct umr_asic *asic)
 			}
 		}
 	}
-	asic->options.use_bank = 0;
+	asic->options = opts;
 }
