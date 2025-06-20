@@ -56,7 +56,7 @@ static const struct {
 	{ "UNK", 0, 0 }, // 0e
 	{ "UNK", 0, 0 }, // 0f
 	{ "PKT3_NOP", 8, 0 }, // 10
-	{ "UNK", 0, 0 }, // 11
+	{ "PKT3_SET_BASE", 9, 0 }, // 11
 	{ "PKT3_CLEAR_STATE", 8, 0 }, // 12
 	{ "PKT3_INDEX_BUFFER_SIZE", 9, 0 },// 13
 	{ "UNK", 0, 0 }, // 14
@@ -76,7 +76,7 @@ static const struct {
 	{ "PKT3_COND_EXEC", 8, 0 }, // 22
 	{ "UNK", 0, 0 }, // 23
 	{ "UNK", 0, 0 }, // 24
-	{ "UNK", 0, 0 }, // 25
+	{ "PKT3_DRAW_INDEX_INDIRECT", 9, 0 }, // 25
 	{ "PKT3_INDEX_BASE", 9, 0 }, // 26
 	{ "PKT3_DRAW_INDEX_2", 8, 0 }, // 27
 	{ "PKT3_CONTEXT_CONTROL", 8, 0 }, // 28
@@ -962,6 +962,19 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {
 	switch (stream->opcode) {
+		case 0x11: // SET_BASE
+			{
+				uint32_t base_index = BITS(fetch_word(asic, stream, 0), 0, 4);
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_INDEX", base_index, NULL, 10, 32);
+				if (base_index == 2) {
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESS_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+				} else if (base_index == 3) {
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "CS1_INDEX", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "CS2_INDEX", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+				}
+			}
+			break;
 		case 0x12: // CLEAR_STATE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "CMD", BITS(fetch_word(asic, stream, 0), 0, 4), NULL, 10, 32);
 			break;
@@ -985,6 +998,14 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "CONTINUE_BIT", BITS(fetch_word(asic, stream, 0), 31, 32), NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_ADDR_LO", BITS(fetch_word(asic, stream, 1), 4, 32) << 4, NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_ADDR_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			break;
+		case 0x25: // DRAW_INDEX_INDIRECT
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VTX_LOC", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_INDX_LOC", BITS(fetch_word(asic, stream, 1), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INST_LOC", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INDX_ENABLE", BITS(fetch_word(asic, stream, 2), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 3), NULL, 16, 32);
 			break;
 		case 0x26: // INDEX_BASE
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX_BASE_LO", BITS(fetch_word(asic, stream, 0), 1, 32) << 1, NULL, 16, 32);
@@ -1267,6 +1288,15 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 		case 0x1e: // ATOMIC_MEM
 			// TODO: fill in
 			break;
+		case 0x25: // DRAW_INDEX_INDIRECT
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "DATA_OFFSET", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "BASE_VTX_LOC", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "START_INDX_LOC", BITS(fetch_word(asic, stream, 1), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INST_LOC", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "DISABLE_CPVGTDMA_SM", BITS(fetch_word(asic, stream, 2), 26, 27), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "START_INDX_ENABLE", BITS(fetch_word(asic, stream, 2), 28, 29), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 3), NULL, 16, 32);
+			break;
 		case 0x37: // WRITE_DATA
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "ENGINE", BITS(fetch_word(asic, stream, 0), 30, 32), op_37_engines[BITS(fetch_word(asic, stream, 0), 30, 32)], 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_POLICY", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
@@ -1543,6 +1573,11 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {
 	switch (stream->opcode) {
+		case 0x11: // SET_BASE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "BASE_INDEX", BITS(fetch_word(asic, stream, 0), 0, 4), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "ADDRESS_HI", fetch_word(asic, stream, 2), NULL, 16, 32);
+			break;
 		case 0x1d: // ATOMIC_GDS
 			// TODO: fill in
 			break;
@@ -1814,6 +1849,10 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 			break;
 		case 0x1e: // ATOMIC_MEM
 			// TODO: fill in
+			break;
+		case 0x25: // DRAW_INDEX_INDIRECT
+			// note: the field in bit 26 was seemingly reverted for GFX12 so this is effectively the gfx9 decoding now
+			decode_pkt3_gfx9(asic, ui, stream, ib_addr, ib_vmid);
 			break;
 		case 0x33: // INDIRECT_BUFFER_CONST
 		case 0x3F: // INDIRECT_BUFFER_CIK
