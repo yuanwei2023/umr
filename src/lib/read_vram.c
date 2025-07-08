@@ -291,7 +291,7 @@ next_page:
 					return -1;
 				}
 			} else {
-				if (umr_access_vram(asic, -1, UMR_LINEAR_HUB, start_addr, chunk_size, pdst, write_en, vmdata) < 0) {
+				if (umr_access_vram(asic, -1, UMR_LINEAR_HUB, start_addr, chunk_size, pdst, write_en, NULL) < 0) {
 					fprintf(stderr, "[ERROR]: Cannot access VRAM\n");
 					return -1;
 				}
@@ -1068,15 +1068,15 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		// addresses in VMID0 need special handling w.r.t. PAGE_TABLE_START_ADDR
 		switch (sam) {
 			case 0: // physical access
-				return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en, vmdata) : 0;
+				return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en, NULL) : 0;
 			case 1: // always VM access
 				break;
 			case 2: // inside system aperture is mapped, otherwise unmapped
 				if (!(address >= system_aperture_low && address < system_aperture_high)) {
 					if (address >= fb_bottom && address < fb_top) {
-						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en, vmdata) : 0;
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en, NULL) : 0;
 					} else {
-						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en, vmdata) : 0;
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en, NULL) : 0;
 					}
 				}
 				break;
@@ -1085,9 +1085,9 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 					if (asic->options.verbose)
 						asic->std_msg("[VERBOSE]: Address is inside SAM\n[VERBOSE]: address: 0x%"PRIx64 ", system_apperture_low: 0x%"PRIx64 ", system_aperture_high: 0x%"PRIx64 ", fb_bottom: 0x%"PRIx64  ", fb_top: 0x%"PRIx64 "\n", address, system_aperture_low, system_aperture_high, fb_bottom, fb_top);
 					if (address >= fb_bottom && address < fb_top) {
-						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en, vmdata) : 0;
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address - fb_bottom, size, dst, write_en, NULL) : 0;
 					} else {
-						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en, vmdata) : 0;
+						return (dst) ? umr_access_vram(asic, partition, UMR_LINEAR_HUB, address, size, dst, write_en, NULL) : 0;
 					}
 				}
 				break;
@@ -1467,11 +1467,12 @@ pde_is_pte:
 				}
 			}
 
+			pte_fields = decode_pte_entry(asic, pte_entry);
+
 			if (vmdata) {
 				vmdata->pte = pte_entry;
+				vmdata->pte_fields = pte_fields;
 			}
-
-			pte_fields = decode_pte_entry(asic, pte_entry);
 
 			if (asic->options.verbose)
 				print_pte(asic, NULL, 0, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
@@ -1541,7 +1542,7 @@ next_page:
 							return -1;
 						}
 					} else {
-						if (umr_access_vram(asic, partition, UMR_LINEAR_HUB, new_addr, chunk_size, pdst, write_en, vmdata) < 0) {
+						if (umr_access_vram(asic, partition, UMR_LINEAR_HUB, new_addr, chunk_size, pdst, write_en, NULL) < 0) {
 							fprintf(stderr, "[ERROR]: Cannot access VRAM\n");
 							return -1;
 						}
@@ -1558,6 +1559,10 @@ next_page:
 		}
 		size -= chunk_size;
 		address += chunk_size;
+		// only capture PDE/PTE of the first page we decode
+		// note this assumes there are no registers to read from vmdata once we enter
+		// this do/while loop.
+		vmdata = NULL;
 	} while (size);
 
 	if (asic->options.verbose)
