@@ -1,0 +1,1 @@
+-RS vcn_unified_0 --test-harness test/kat/vcn4_session_init.txt

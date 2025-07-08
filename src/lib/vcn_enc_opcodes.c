@@ -475,7 +475,9 @@ static void print_ib_session_init(struct umr_asic *asic, uint32_t tvmid, uint64_
 	add_field_1(asic, tvmid, addr, &offset, "display_remote", p->display_remote, 10, pOut, pBuf);
 
 	if ((vcn_ip_version & VCN_IP_VERSION(4, 0, 0)) == VCN_IP_VERSION(4, 0, 0)) {
-		add_field_1(asic, tvmid, addr, &offset, "padding", *(int_field + (offset - o_offset) / 4), 0, pOut, pBuf);
+		add_field_1(asic, tvmid, addr, &offset, "WA_flags", *(int_field + (offset - o_offset) / 4), 10, pOut, pBuf);
+		if ((offset - o_offset) < ib_size - 8)
+			add_field_1(asic, tvmid, addr, &offset, "padding", *(int_field + (offset - o_offset) / 4), 0, pOut, pBuf);
 	} else {
 		STRUCT_WARNING(rvcn_enc_session_init_t);
 	}
