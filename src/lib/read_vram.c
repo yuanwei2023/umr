@@ -110,6 +110,7 @@ static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
 	char buf[64];
 	unsigned char *pdst = dst;
 
+	(void)vmdata;
 	memset(&registers, 0, sizeof registers);
 	memset(&pde_copy, 0xff, sizeof pde_copy);
 
