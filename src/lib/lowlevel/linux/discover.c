@@ -22,6 +22,7 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+#include <unistd.h>
 #include <dirent.h>
 #include <sys/types.h>
 
@@ -57,8 +58,12 @@ static int find_pci_instance(const char* pci_string)
 
 	dir = opendir("/sys/kernel/debug/dri");
 	if (dir == NULL) {
-		perror("Couldn't open DRI under debugfs");
-		return -1;
+		if (geteuid() != 0)
+			fprintf(stderr, "[ERROR]: Could not open debugfs DRI tree because UMR was not invoked as root.\n");
+		else
+			fprintf(stderr, "[ERROR]: Could not open debugfs DRI tree because DRI directory doesn't exist likely because debugfs was not enabled.\n");
+		perror("[ERROR]: Couldn't open DRI under debugfs");
+		exit(-1);
 	}
 
 	while ((dir_entry = readdir(dir)) != NULL) {

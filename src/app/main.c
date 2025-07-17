@@ -111,6 +111,12 @@ retry:
 
 	if (!asic) {
 		fprintf(stderr, "[ERROR]: ASIC not found or compatible (instance=%d, did=%08lx)\n", options.instance, (unsigned long)options.forcedid);
+		if (options.forcedid == -1) {
+			if (geteuid() != 0)
+				fprintf(stderr, "[ERROR]: UMR was not invoked as root.\n");
+			else
+				fprintf(stderr, "[ERROR]: UMR could not detect any AMDGPU devices possibly because the driver isn't loaded or debugfs is not enabled.\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 
