@@ -56,10 +56,10 @@ void umr_print_cpc(struct umr_asic *asic)
 
 		asic->options.bank.srbm.me = me;
 
-		char iptr_name_mec_f32[] = "mmCP_MECx_INSTR_PNTR";
+		char iptr_name_mec_f32[64] = "mmCP_MECx_INSTR_PNTR";
 		iptr_name_mec_f32[8] = '0' + me;
 
-		char istat_name[] = "mmCP_MEx_INT_STAT_DEBUG";
+		char istat_name[64] = "mmCP_MEx_INT_STAT_DEBUG";
 		istat_name[7] = '0' + me;
 
 		char iptr_name_mec_rs64[] = "mmCP_MEC_RS64_INSTR_PNTR";
@@ -80,7 +80,7 @@ void umr_print_cpc(struct umr_asic *asic)
 					uint32_t pq_base_hi = read_banked_reg(asic, "mmCP_HQD_PQ_BASE_HI");
 					uint64_t pq_base = ((((uint64_t)pq_base_hi) << 0x20) | pq_base_lo) << 0x8;
 					uint32_t pq_rptr = read_banked_reg(asic, "mmCP_HQD_PQ_RPTR");
-					uint32_t pq_wptr;
+					uint64_t pq_wptr;
 					if (asic->family < FAMILY_AI) {
 						pq_wptr = read_banked_reg(asic, "mmCP_HQD_PQ_WPTR");
 					} else {
@@ -112,7 +112,7 @@ void umr_print_cpc(struct umr_asic *asic)
 					uint32_t stack_size = read_banked_reg(asic, "mmCP_HQD_CNTL_STACK_SIZE");
 
 					printf("Pipe %u  Queue %u  VMID %u\n", pipe, queue, vmid);
-					printf("  PQ BASE 0x%" PRIx64 "  RPTR 0x%x  WPTR 0x%x  RPTR_ADDR 0x%" PRIx64 "  CNTL 0x%x\n",
+					printf("  PQ BASE 0x%" PRIx64 "  RPTR 0x%x  WPTR 0x%" PRIx64 "  RPTR_ADDR 0x%" PRIx64 "  CNTL 0x%x\n",
 					pq_base, pq_rptr, pq_wptr, pq_rptr_addr, pq_cntl);
 					printf("  EOP BASE 0x%" PRIx64 "  RPTR 0x%x  WPTR 0x%x  WPTR_MEM 0x%x\n",
 					eop_base, eop_rptr, eop_wptr, eop_wptr_mem);
