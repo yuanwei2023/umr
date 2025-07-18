@@ -2,6 +2,7 @@
 #include "umr_rumr.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 /** TCP implementation
  * So far fairly basic.  Only supports IPv4 and
@@ -39,21 +40,42 @@ static int tcp_connect(struct rumr_comm_funcs *cf, char *server)
 	struct tcp_state *ts;
 
 	ts = cf->data = calloc(1, sizeof *ts);
-	ts->sock = -1;
+	ts->con_sock = -1;
 
 	ts = cf->data;
 	sin = addr_to_sin4(server);
 	if (sin.sin_family == 0) {
-		cf->log_msg("[ERROR]: Could not translate IP address\n");
-		return -1;
+		// Try domain name resolution
+		char hostname[256];
+		uint16_t port;
+		struct hostent *he;
+
+		if (sscanf(server, "%255[^:]:%"SCNu16, hostname, &port) == 2) {
+			he = gethostbyname(hostname);
+			if (!he || he->h_addrtype != AF_INET) {
+				cf->log_msg("[ERROR]: Could not resolve hostname\n");
+				free(ts);
+				cf->data = NULL;
+				return -1;
+			}
+			memset(&sin, 0, sizeof sin);
+			sin.sin_family = AF_INET;
+			sin.sin_port = htons(port);
+			memcpy(&sin.sin_addr, he->h_addr, he->h_length);
+		} else {
+			cf->log_msg("[ERROR]: Could not parse server address\n");
+			free(ts);
+			cf->data = NULL;
+			return -1;
+		}
 	}
 
 	// create new socket
 	ts->con_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (ts->con_sock < 0) {
 		cf->log_msg("[ERROR]: Could not create socket\n");
-		free(ts);
 		cf->data = NULL;
+		free(ts);
 		return -1;
 	}
 
@@ -61,8 +83,8 @@ static int tcp_connect(struct rumr_comm_funcs *cf, char *server)
 	if (connect(ts->con_sock, (const struct sockaddr *)&sin, sizeof sin) < 0) {
 		cf->log_msg("[ERROR]: Could not connect to server\n");
 		close(ts->con_sock);
-		free(ts);
 		cf->data = NULL;
+		free(ts);
 		return -1;
 	}
 
