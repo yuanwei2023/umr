@@ -1285,7 +1285,9 @@ JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
 
 			char *command = read_file_a("/proc/%d/comm", pid);
 			if (command) {
-				json_object_set_string_with_len(json_object(p), "app", command, strlen(command) - 1);
+				size_t len = strlen(command);
+				if (len > 1)
+					json_object_set_string_with_len(json_object(p), "app", command, len - 1);
 				free(command);
 			}
 
