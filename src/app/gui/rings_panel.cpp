@@ -397,7 +397,8 @@ private:
 		struct umr_packet_stream *str = umr_packet_decode_buffer(
 			asic, &ui, 0, base,
 			&buffer[start], ndwords,
-			type);
+			type,
+			NULL);
 
 		if (str)
 			umr_packet_disassemble_stream(str, base, 0, 0, 0, ~0UL, 0, 0);

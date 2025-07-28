@@ -107,53 +107,55 @@ comma separator.
 
 The options available are:
 
-+-------------------+-------------------------------------------------------------------------+
-| **Option**        | **Description**                                                         |
-+-------------------+-------------------------------------------------------------------------+
-| quiet             | Disable various informative outputs that are not required for           |
-|                   | functionality.                                                          |
-+-------------------+-------------------------------------------------------------------------+
-| read_smc          | Enable scanning of SMC registers when issuing a --scan command          |
-+-------------------+-------------------------------------------------------------------------+
-| bits              | Enables the display of bitfields when registers are presented           |
-+-------------------+-------------------------------------------------------------------------+
-| bitsfull          | When printing bits use the full path to the bitfield                    |
-+-------------------+-------------------------------------------------------------------------+
-| empty_log         | Empty MMIO tracer after reading it                                      |
-+-------------------+-------------------------------------------------------------------------+
-| no_follow_ib      | Instructs the --ring-stream  command to not follow IBs pointed to by    |
-|                   | the ring                                                                |
-+-------------------+-------------------------------------------------------------------------+
-| use_pci           | Enables direct PCI access bypassing the kernels debugfs entries.        |
-+-------------------+-------------------------------------------------------------------------+
-| use_colour        | Enables colourful output in various commands.  Also accepts use_color   |
-+-------------------+-------------------------------------------------------------------------+
-| no_kernel         | Attempts to avoid kernel access methods.  Implies *use_pci*.            |
-+-------------------+-------------------------------------------------------------------------+
-| verbose           | Enables verbose output, for instance in VM decoding                     |
-+-------------------+-------------------------------------------------------------------------+
-| halt_waves        | Halt active waves while reading wave status data                        |
-+-------------------+-------------------------------------------------------------------------+
-| wave64            | Scan for 64 or 32 threads per wave                                      |
-+-------------------+-------------------------------------------------------------------------+
-| disasm_early_term | Terminate disassembly early for UMDs that don't use 0xBF9F0000 marker   |
-+-------------------+-------------------------------------------------------------------------+
-| no_disasm         | Disable LLVM disassembly.  Used on systems with outdated llvm-dev       |
-+-------------------+-------------------------------------------------------------------------+
-| disasm_anyways    | Enable disassembly in --waves even if rings are not halted.             |
-+-------------------+-------------------------------------------------------------------------+
-| no_fold_vm_decode | Disable folding of PDEs when VM decoding multiple pages of memory.      |
-|                   | By default, when subsequent pages are decoded if PDEs match previous    |
-|                   | pages they are omitted to cut down on the verbosity of the output.      |
-|                   | This option disables this and will print the full chain of PDEs for     |
-|                   | every page decoded.                                                     |
-+-------------------+-------------------------------------------------------------------------+
-| force_asic_file   | Force the use of static .asic files instead of trying IP discovery      |
-+-------------------+-------------------------------------------------------------------------+
-| export_model      | Export a mostly complete .soc15/.asic model from IP discovered data     |
-+-------------------+-------------------------------------------------------------------------+
-| full_shader       | Always print the full shader in --waves and --ring-stream  output       |
-+-------------------+-------------------------------------------------------------------------+
++-------------------------+-------------------------------------------------------------------------+
+| **Option**              | **Description**                                                         |
++-------------------------+-------------------------------------------------------------------------+
+| quiet                   | Disable various informative outputs that are not required for           |
+|                         | functionality.                                                          |
++-------------------------+-------------------------------------------------------------------------+
+| read_smc                | Enable scanning of SMC registers when issuing a --scan command          |
++-------------------------+-------------------------------------------------------------------------+
+| bits                    | Enables the display of bitfields when registers are presented           |
++-------------------------+-------------------------------------------------------------------------+
+| bitsfull                | When printing bits use the full path to the bitfield                    |
++-------------------------+-------------------------------------------------------------------------+
+| empty_log               | Empty MMIO tracer after reading it                                      |
++-------------------------+-------------------------------------------------------------------------+
+| no_follow_ib            | Instructs the --ring-stream  command to not follow IBs pointed to by    |
+|                         | the ring                                                                |
++-------------------------+-------------------------------------------------------------------------+
+| use_pci                 | Enables direct PCI access bypassing the kernels debugfs entries.        |
++-------------------------+-------------------------------------------------------------------------+
+| use_colour              | Enables colourful output in various commands.  Also accepts use_color   |
++-------------------------+-------------------------------------------------------------------------+
+| no_kernel               | Attempts to avoid kernel access methods.  Implies *use_pci*.            |
++-------------------------+-------------------------------------------------------------------------+
+| verbose                 | Enables verbose output, for instance in VM decoding                     |
++-------------------------+-------------------------------------------------------------------------+
+| halt_waves              | Halt active waves while reading wave status data                        |
++-------------------------+-------------------------------------------------------------------------+
+| wave64                  | Scan for 64 or 32 threads per wave                                      |
++-------------------------+-------------------------------------------------------------------------+
+| disasm_early_term       | Terminate disassembly early for UMDs that don't use 0xBF9F0000 marker   |
++-------------------------+-------------------------------------------------------------------------+
+| no_disasm               | Disable LLVM disassembly.  Used on systems with outdated llvm-dev       |
++-------------------------+-------------------------------------------------------------------------+
+| disasm_anyways          | Enable disassembly in --waves even if rings are not halted.             |
++-------------------------+-------------------------------------------------------------------------+
+| no_fold_vm_decode       | Disable folding of PDEs when VM decoding multiple pages of memory.      |
+|                         | By default, when subsequent pages are decoded if PDEs match previous    |
+|                         | pages they are omitted to cut down on the verbosity of the output.      |
+|                         | This option disables this and will print the full chain of PDEs for     |
+|                         | every page decoded.                                                     |
++-------------------------+-------------------------------------------------------------------------+
+| force_asic_file         | Force the use of static .asic files instead of trying IP discovery      |
++-------------------------+-------------------------------------------------------------------------+
+| export_model            | Export a mostly complete .soc15/.asic model from IP discovered data     |
++-------------------------+-------------------------------------------------------------------------+
+| full_shader             | Always print the full shader in --waves and --ring-stream  output       |
++-------------------------+-------------------------------------------------------------------------+
+| filter_shader_registers | Filter shader registers presented when running --ring-stream            |
++-------------------------+-------------------------------------------------------------------------+
 
 ------------------
 Device Information

@@ -181,12 +181,50 @@ static void add_field(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_
 static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, struct umr_shaders_pgm *shader)
 {
 	struct ui_data *data = ui->data;
+	struct umr_shader_reg_pair *regs = shader->regs;
 	char **str;
 	int x;
-
+	char *types[] = {
+		"PS",
+		"VS",
+		"COMPUTE",
+		"HS",
+		"GS",
+		"ES",
+		"LS",
+		"OPAQUE",
+	};
 	next_level(ui);
-	fprintf(data->stack[data->sp].f, "Shader from 0x%"PRIx32"@[0x%"PRIx64" + 0x%"PRIx64"] at 0x%"PRIx32"@0x%"PRIx64", type %d, size %lu\n", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, shader->vmid, shader->addr, shader->type, (unsigned long)shader->size);
+	fprintf(data->stack[data->sp].f, "Shader from 0x%"PRIx32"@[0x%"PRIx64" + 0x%"PRIx64"] at 0x%"PRIx32"@0x%"PRIx64", type %s (%d), size %lu\n", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, shader->vmid, shader->addr, types[shader->type], shader->type, (unsigned long)shader->size);
+	if (regs) {
+		char _type[64];
+		if (shader->type != UMR_SHADER_COMPUTE)
+			sprintf(_type, "_%s", types[shader->type]);
+		else
+			sprintf(_type, "%s", types[shader->type]);
+		fprintf(data->stack[data->sp].f, "Shader registers (%sfiltered):\n", asic->options.filter_shader_registers ? "" : "un");
+		while (regs) {
+			if (!asic->options.filter_shader_registers || strstr(regs->regname, _type)) {
+				fprintf(data->stack[data->sp].f, "\t%s(%"PRIu32"@0x%"PRIx64") == 0x%"PRIx32"\n", regs->regname, regs->vmid, regs->addr, regs->value);
+				if (asic->options.bitfields) {
+					struct umr_reg *reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(regs->regname, ".") + 1);
+					if (reg && reg->no_bits > 1) {
+						int k;
+						for (k = 0; k < reg->no_bits; k++) {
+							uint32_t v;
+							v = (1UL << (reg->bits[k].stop + 1 - reg->bits[k].start)) - 1;
+							v &= (regs->value >> reg->bits[k].start);
+							fprintf(data->stack[data->sp].f, "\t\t%s[%u:%u] == 0x%"PRIx32"\n",
+								reg->bits[k].regname, reg->bits[k].start, reg->bits[k].stop, v);
+						}
+					}
+				}
+			}
+			regs = regs->next;
+		}
+	}
 	umr_vm_disasm_to_str(asic, asic->options.vm_partition, shader->vmid, shader->addr, 0, shader->size, 0, &str);
+	fprintf(data->stack[data->sp].f, "\nShader program:\n");
 	x = 0;
 	while (str[x]) {
 		fprintf(data->stack[data->sp].f, "%s\n", str[x]);
@@ -402,11 +440,11 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 		case UMR_RING_VCN_ENC:
 		case UMR_RING_VCN_DEC:
 			if (ringname)
-				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt);
+				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt, NULL);
 			else if (words)
-				str = umr_packet_decode_buffer(asic, &ui, vmid, addr, words, nwords, rt);
+				str = umr_packet_decode_buffer(asic, &ui, vmid, addr, words, nwords, rt, NULL);
 			else
-				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt);
+				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt, NULL);
 			break;
 		case UMR_RING_UNK:
 			asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");

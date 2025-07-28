@@ -1,1 +1,0 @@
--f .navi10 --test-harness test/kat/rs_kat_navi10_test2.txt -RS gfx_0_0_0[.]

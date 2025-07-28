@@ -1,0 +1,1 @@
+--test-harness test/kat/rs_navi48_test1.txt -RS gfx_0.0.0[.] -O bits

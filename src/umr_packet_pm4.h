@@ -32,10 +32,14 @@ struct umr_pm4_stream {
 			 opcode,
 			 header,				// header DWORD of packet
 			 n_words,				// number of words ignoring header
-			 *words;				// words following header word
+			 *words,				// words following header word
+			 ib_offset;             // the offset from the start of the IB where this packet starts
 
-	struct umr_pm4_stream *next,	// adjacent PM4 packet if any
-			      *ib;				// IB this packet might point to
+	struct umr_pm4_stream
+		*prev,   // the previous packet
+		*next,	 // adjacent PM4 packet if any
+		*ib,     // IB this packet might point to
+		*parent; // the parent stream if any.
 
 	struct {
 		uint64_t addr;
@@ -48,12 +52,17 @@ struct umr_pm4_stream {
 	int invalid;
 };
 
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords);
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t from_addr, uint32_t *stream, uint32_t nwords, struct umr_shader_reg_pair **reg_head);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
 struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
 const char *umr_pm4_opcode_to_str(uint32_t header);
 
 struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
+
+void umr_free_shader_reg_pairs(struct umr_shader_reg_pair *regs);
+void umr_shader_add_reg_pair(struct umr_shader_reg_pair **head, const char *regname, uint32_t value, uint32_t ib_vmid, uint64_t ib_addr);
+struct umr_shader_reg_pair *umr_shader_find_regpair(struct umr_shader_reg_pair *head, const char *regname);
+struct umr_shader_reg_pair *umr_shader_find_partial_regpair(struct umr_shader_reg_pair *head, const char *regname);
 
 // PM4-lite
 struct umr_pm4_stream *umr_pm4_lite_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords);

@@ -2888,7 +2888,7 @@ static void waves_to_json(struct umr_asic *asic, JSON_Object *out) {
 
 	/* Scan ring for disassembly. */
 	struct umr_packet_stream *stream = umr_packet_decode_ring(
-		asic, NULL, asic->options.ring_name, 0, &start, &stop, UMR_RING_GUESS);
+		asic, NULL, asic->options.ring_name, 0, &start, &stop, UMR_RING_GUESS, NULL);
 
 	/* Get wave data. */
 	wd = umr_scan_wave_data(asic);
@@ -3405,7 +3405,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		struct umr_packet_stream *str = NULL;
 
 		if (lineardatasize)
-			str = umr_packet_decode_buffer(asic, &ui, 0, 0, lineardata, lineardatasize, rt);
+			str = umr_packet_decode_buffer(asic, &ui, 0, 0, lineardata, lineardatasize, rt, NULL);
 
 		free(lineardata);
 

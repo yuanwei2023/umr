@@ -23,14 +23,18 @@ the following structure if successful:
 
 	struct umr_pm4_stream {
 		uint32_t pkttype,				// packet type (0==simple write, 3 == packet)
-				 pkt0off,				// base address for PKT0 writes
-				 opcode,
-				 header,				// header DWORD of packet
-				 n_words,				// number of words ignoring header
-				 *words;				// words following header word
+				pkt0off,				// base address for PKT0 writes
+				opcode,
+				header,				// header DWORD of packet
+				n_words,				// number of words ignoring header
+				*words,				// words following header word
+				ib_offset;             // the offset from the start of the IB where this packet starts
 
-		struct umr_pm4_stream *next,	// adjacent PM4 packet if any
-					  *ib;				// IB this packet might point to
+		struct umr_pm4_stream
+			*prev,   // the previous packet
+			*next,	 // adjacent PM4 packet if any
+			*ib,     // IB this packet might point to
+			*parent; // the parent stream if any.
 
 		struct {
 			uint64_t addr;
@@ -38,6 +42,7 @@ the following structure if successful:
 		} ib_source;					// where did an IB if any come from?
 
 		struct umr_shaders_pgm *shader; // shader program if any
+		struct umr_vcn_cmd_message *vcn; // VCN command message if any
 
 		int invalid;
 	};
@@ -82,13 +87,21 @@ will not free these copies.
 
 ::
 
+	struct umr_shader_reg_pair {
+		char regname[512];
+		uint32_t value;
+		struct umr_shader_reg_pair *next;
+		uint32_t vmid;
+		uint64_t addr;
+		int used;
+	};
+
+	// contains information about a compute/gfx shader program
 	struct umr_shaders_pgm {
 		// VMID and length in bytes
 		uint32_t
 			vmid,
-			size,
-			rsrc1,
-			rsrc2;
+			size;
 
 		// shader type (0==PS, 1==VS, 2==COMPUTE)
 		int
@@ -97,6 +110,7 @@ will not free these copies.
 		// address in VM space for this shader
 		uint64_t addr;
 
+		struct umr_shader_reg_pair *regs;
 		struct umr_shaders_pgm *next;
 
 		struct {

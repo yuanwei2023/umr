@@ -1,1 +1,0 @@
---test-harness test/kat/rs_kat_phoenix_test1.txt -RS gfx_0.0.0[.] -O bits

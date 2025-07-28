@@ -309,7 +309,8 @@ struct umr_options {
 	    export_model,
 	    vgpr_granularity,
 	    use_v1_regs_debugfs,
-	    trap_unsorted_db;
+	    trap_unsorted_db,
+		filter_shader_registers;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
@@ -625,14 +626,24 @@ struct umr_asic {
 
 typedef	int (*umr_err_output)(const char *, ...);
 
+// register name/value pairs used to track shader programming
+struct umr_shader_reg_pair {
+    char regname[512];
+    uint32_t value;
+    struct umr_shader_reg_pair *next;
+	uint32_t vmid;
+	uint64_t addr;
+	int used;
+};
+
+struct umr_pm4_stream;
+
 // contains information about a compute/gfx shader program
 struct umr_shaders_pgm {
 	// VMID and length in bytes
 	uint32_t
 		vmid,
-		size,
-		rsrc1,
-		rsrc2;
+		size;
 
 	// shader type (0==PS, 1==VS, 2==COMPUTE)
 	int
@@ -641,7 +652,14 @@ struct umr_shaders_pgm {
 	// address in VM space for this shader
 	uint64_t addr;
 
+	// the register names/values leading up to this shader being issued
+	struct umr_shader_reg_pair *regs;
+
+	// a packet can issue multiple shaders
 	struct umr_shaders_pgm *next;
+
+	// the packet that issued this shader
+	struct umr_pm4_stream *pm4_packet;
 
 	struct {
 		uint64_t ib_base, ib_offset;

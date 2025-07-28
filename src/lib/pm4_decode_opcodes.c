@@ -769,7 +769,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				}
 			}
 			break;
-		case 0x79: // SET_UCONTEXT_REG
+		case 0x79: // SET_UCONFIG_REG
 			{
 				uint64_t addr = BITS(fetch_word(asic, stream, 0), 0, 16) + 0xC000;
 				uint32_t n;
@@ -2240,8 +2240,13 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 			if (stream->invalid)
 				break;
 
-			if (stream->shader)
-				ui->add_shader(ui, asic, ib_addr, ib_vmid, stream->shader);
+			if (stream->shader) {
+				struct umr_shaders_pgm *pgm = stream->shader;
+				while (pgm) {
+					ui->add_shader(ui, asic, ib_addr, ib_vmid, pgm);
+					pgm = pgm->next;
+				}
+			}
 
 			if (follow && stream->ib)
 				umr_pm4_decode_stream_opcodes(asic, ui, stream->ib, stream->ib_source.addr, stream->ib_source.vmid, ib_addr, ib_vmid, ~0UL, follow);

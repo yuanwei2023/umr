@@ -189,15 +189,15 @@ struct umr_packet_stream {
 // decode an array of dwords into a packet stream
 struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
 						   uint32_t from_vmid, uint64_t from_addr,
-						   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
+						   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 // decode a ring file (debugfs) into a packet stream
 struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt);
+						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data);
 
 // decode a GPU mapped buffer into a packet stream
 struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						      uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+						      uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 // free a (umr) packet stream from memory
 void umr_packet_free(struct umr_packet_stream *stream);
@@ -210,7 +210,7 @@ struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream
 							uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow, int cont);
 
 // disassemble a GPU mapped VM buffer
-int umr_packet_disassemble_opcodes_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_vmid, int follow, enum umr_ring_type rt);
+int umr_packet_disassemble_opcodes_vm(struct umr_asic *asic, struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t ib_vmid, uint32_t nwords, uint64_t from_addr, uint64_t from_vmid, int follow, enum umr_ring_type rt, void *queue_data);
 
 // determine if a ring is halted for at least 500 ms
 int umr_ring_is_halted(struct umr_asic *asic, char *ringname);

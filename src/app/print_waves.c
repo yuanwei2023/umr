@@ -87,9 +87,9 @@ void umr_print_waves(struct umr_asic *asic)
 		// scan a ring but don't trigger the halt/resume
 		// since it would have already been done
 		if (use_ring) {
-			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, &start, &stop, UMR_RING_GUESS);
+			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, &start, &stop, UMR_RING_GUESS, NULL);
 		} else {
-			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4);
+			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4, NULL);
 		}
 	} else {
 		ring_halted = 0;
