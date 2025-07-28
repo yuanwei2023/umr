@@ -103,6 +103,23 @@ static bool compute_job_rect(const DrawableArea& drawable_area,
 							 double start, double end, ImVec2& bl, ImVec2& tr);
 static double get_job_duration(DrmSchedJob *job, enum JobDurationMode::Enum mode);
 
+static const char *kernel_id_job_names[] = {
+	"vm_update",
+	"vm_update_pdes",
+	"vm_update_range",
+	"vm_pt_clear",
+	"ttm_map_buffer",
+	"ttm_access_memory_sdma",
+	"ttm_copy_buffer",
+	"clear_on_release",
+	"move_blit",
+	"ttm_clear_buffer",
+	"cleaner_shader",
+	"flush_gpu_tlb",
+	"kfd_gart_map",
+	"vcn_ring_test",
+};
+
 /* Struct representing a DmaFence. */
 struct DmaFence {
 	bool operator==(const DmaFence& f) const {
@@ -583,7 +600,7 @@ Timeline *Timeline::find_timeline_for_event(Timelines& timelines, const EventBas
 			 * During display, the timelines will be aggregated by kmd_id, but we still want to be able
 			 * to show the details properly.
 			 */
-			if (t->u.kmd.context == context && t->tgid == bp.tgid)
+			if (t->u.kmd.context == context && t->u.kmd.kmd_id == client_id && t->tgid == bp.tgid)
 				return t;
 		} else {
 			/* For userspace, we match by client_id since it's unique per-process. */
@@ -1487,13 +1504,13 @@ public:
 				bool group_with_previous = false;
 				/* Regroup timelines:
 				 *   - userspace timelines are grouped by process (tgid)
-				 *   - kernel timeline are grouped by context
+				 *   - kernel timeline are grouped by (fake) client id (kid)
 				 */
 				if (previous_tl && tl->type == previous_tl->type) {
 					if (tl->type == TimelineType::Userspace)
 						group_with_previous = tl->tgid == previous_tl->tgid;
 					else
-						group_with_previous = tl->u.kmd.context == previous_tl->u.kmd.context;
+						group_with_previous = tl->u.kmd.kmd_id == previous_tl->u.kmd.kmd_id;
 				}
 
 				if (!group_with_previous) {
@@ -1506,7 +1523,15 @@ public:
 					tl->color = block_palette[(6 * (proc_idx % 6) + 5 - (task_idx % 6)) % ARRAY_SIZE(block_palette)];
 
 					if (tl->type == TimelineType::Kernel) {
-						sprintf(label, "ctx:%ld", tl->u.kmd.context);
+						if (tl->u.kmd.kmd_id == 0) {
+							strcpy(label, "unknown");
+						} else {
+							uint64_t id = UINT64_MAX - tl->u.kmd.kmd_id;
+							if (id < ARRAY_SIZE(kernel_id_job_names))
+								strcpy(label, kernel_id_job_names[id]);
+							else
+								sprintf(label, "reason: 0x%lx", id);
+						}
 					} else if (show_tgid_pid)
 						sprintf(label, "%s (%d)", tl->u.sw.process_name, tl->tgid);
 					else
@@ -2198,7 +2223,8 @@ private:
 				*job->submit_timeline->u.kmd.umd_color : job->submit_timeline->color;
 			ImGui::Text("#888888Timelines: #888888submit: #%x%s / #%x%s (%d)",
 				COLOR_TO_HEX(job->submit_timeline->color),
-				"kernel",
+				job->submit_timeline->u.kmd.kmd_id == 0 ?
+					"unknown" : kernel_id_job_names[UINT64_MAX - job->submit_timeline->u.kmd.kmd_id],
 				COLOR_TO_HEX(color2),
 				job->submit_timeline->u.sw.task_name,
 				job->submit_timeline->tgid);
@@ -2269,7 +2295,9 @@ private:
 				ImGui::Text("#888888ClientID: %ld", id);
 				break;
 			case TimelineType::Kernel:
-				ImGui::Text("#888888Source: #%x%s", COLOR_TO_HEX(job->submit_timeline->color), "kernel");
+				id = UINT64_MAX - id;
+				if (id < ARRAY_SIZE(kernel_id_job_names))
+					ImGui::Text("#888888Source: #%x%s", COLOR_TO_HEX(job->submit_timeline->color), kernel_id_job_names[id]);
 				break;
 			default:
 				break;
