@@ -2330,7 +2330,8 @@ static void read_clock_min_max(struct umr_asic *asic, const char *clk_name, int 
 		min, max);
 }
 
-static bool write_str_to_file(const char *path, const char *str) {
+static bool
+write_str_to_file(const char *path, const char *str) {
 	FILE *f = fopen(path, "w");
 	if (f == NULL) {
 		fprintf(stderr, "Failed to open '%s'\n", path);
@@ -2378,12 +2379,12 @@ static int string_array_push(struct string_array *arr, char *str, int len)
 {
 	if (arr->len_off.used == arr->len_off.capacity) {
 		arr->len_off.capacity *= 2;
-		arr->len_off.ptr = realloc(arr->len_off.ptr, arr->len_off.capacity * 2 * sizeof(*arr->len_off.ptr));
+		arr->len_off.ptr = realloc(arr->len_off.ptr, arr->len_off.capacity * sizeof(*arr->len_off.ptr));
 	}
 	if ((arr->strings.used + len) >= arr->strings.capacity) {
 		while ((arr->strings.used + len) >= arr->strings.capacity)
 			arr->strings.capacity *= 2;
-		arr->strings.ptr = realloc(arr->strings.ptr, arr->strings.capacity * 2 * sizeof(*arr->strings.ptr));
+		arr->strings.ptr = realloc(arr->strings.ptr, arr->strings.capacity * sizeof(*arr->strings.ptr));
 	}
 
 	int i = arr->len_off.used;
@@ -2664,7 +2665,14 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 
 		data->mapping[data->mapping_count].pid = pid;
 		tgid = data->mapping[data->mapping_count].tgid = get_tgid_for_tid(pid);
-		get_pid_name(tgid, data->mapping[data->mapping_count].process_name);
+		if (get_pid_name(tgid, data->mapping[data->mapping_count].process_name) < 0) {
+			/* Maybe the process exited early. */
+			int len = task_name_end - task_name_start;
+			if (len > 31)
+				len = 31;
+			strncpy(data->mapping[data->mapping_count].process_name, task_name_start, 32);
+			data->mapping[data->mapping_count].process_name[len] = '\0';
+		}
 
 		process_name = data->mapping[data->mapping_count].process_name;
 
@@ -2693,52 +2701,27 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 
 	/* Map event name to enum */
 	int event_type = 0; /* Unknown. */
-	if (strncmp(cursor, "drm_", 4) == 0) {
-		cursor += strlen("drm_");
-		if (strncmp(cursor, "sched_", strlen("sched_")) == 0) {
-			cursor += strlen("sched_");
-			if (strncmp(cursor, "job_wait_dep", strlen("job_wait_dep")) == 0)
-				event_type = 4; /* DrmSchedJobWaitDep */
-			else if (strncmp(cursor, "job", strlen("job")) == 0)
-				event_type = 1; /* DrmSchedJob */
-			else if (strncmp(cursor, "process_job", strlen("process_job")) == 0)
-				event_type = 3; /* DrmSchedProcessJob */
-			else
-				assert(false);
-		} else {
-			event_type = 2; /* DrmRunJob */
-			assert(strncmp(cursor, "run_job", strlen("run_job")) == 0);
-		}
+	if (strncmp(cursor, "drm_sched_job_", strlen("drm_sched_job_")) == 0) {
+		cursor += strlen("drm_sched_job_");
+		if (strncmp(cursor, "queue", strlen("queue")) == 0)
+			event_type = 1; /* DrmSchedJobQueue */
+		else if (strncmp(cursor, "run", strlen("run")) == 0)
+			event_type = 2; /* DrmSchedJobRun */
+		else if (strncmp(cursor, "done", strlen("done")) == 0)
+			event_type = 3; /* DrmSchedJobDone */
+		else if (strncmp(cursor, "unschedulable", strlen("unschedulable")) == 0)
+			event_type = 4; /* DrmSchedJobUnschedulable */
+		else if (strncmp(cursor, "add_dep", strlen("add_dep")) == 0)
+			event_type = 5; /* DrmSchedJobAddDep */
+		else
+			assert(false);
 	} else if (strncmp(cursor, "amdgpu_device_wreg", strlen("amdgpu_device_wreg")) == 0) {
-		event_type = 6; /* AmdgpuDeviceWreg */
+		event_type = 7; /* AmdgpuDeviceWreg */
 	} else {
 		return false;
 	}
 	cursor = strchr(cursor, ':') + 1;
 	while (cursor && *cursor == ' ') cursor++;
-
-	char *extra_data = NULL;
-	bool is_run_job = event_type == 2;
-	if (is_run_job && memmem(cursor, eol - cursor, "dev=", strlen("dev=")) == NULL) {
-		/* Kernel didn't tell us which GPU the job was sent to. Try to figure out ourselves. */
-		if (ring_kernel_pid[0] == NULL || pid == 0) {
-			extra_data = asics[0]->options.pci.name;
-		} else if (pid > 0) {
-			int instance = -1;
-			for (int i = 0; asics[i] && instance < 0; i++) {
-				int *pids = ring_kernel_pid[i];
-				while (*pids) {
-					if (*pids == pid) {
-						instance = i;
-						break;
-					}
-					pids++;
-				}
-			}
-			if (instance >= 0)
-				extra_data = asics[instance]->options.pci.name;
-		}
-	}
 
 	/* Push this to client. */
 	int s = eol ? (eol - cursor) : (int)strlen(cursor);
@@ -2747,12 +2730,13 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 		return false;
 
 	/* Replace task name and process name by an id. */
+	assert(task_name_end > task_name_start);
 	int process_name_id = string_array_lookup_or_push(&data->tasks, process_name, strlen(process_name));
 	int task_name_id = string_array_lookup_or_push(&data->tasks, task_name_start, task_name_end - task_name_start);
 
 	int total_size = sizeof(process_name_id) + sizeof(task_name_id) + sizeof(pid) + sizeof(tgid) +
 						  sizeof(ts) + sizeof(event_type) +
-						  1 + s + (extra_data ? (strlen(",dev=") + strlen(extra_data)) : 0);
+						  1 + s;
 
 	int used = *raw_data_used;
 
@@ -2781,12 +2765,6 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 	memcpy(&(*out)[used], cursor, s);
 	used += s;
 
-	if (extra_data) {
-		memcpy(&(*out)[used], ",dev=", strlen(",dev="));
-		used += strlen(",dev=");
-		memcpy(&(*out)[used], extra_data, strlen(extra_data));
-		used += strlen(extra_data);
-	}
 	(*out)[used] = '\0';
 	used += 1;
 
@@ -2806,14 +2784,18 @@ static void* read_trace_buffer_thread(void *in) {
 	out = realloc(out, store_capacity);
 
 	/* Read trace buffer, one line at a time */
-	int left = 0;
+	struct {
+		int start, count;
+	} remaining = { 0, 0 };
 	bool in_stacktrace = false;
+
 	while (data->run) {
-		if (left)
-			memmove(buffer, &buffer[ARRAY_SIZE(buffer) - left], left);
+		if (remaining.count)
+			memmove(buffer, &buffer[remaining.start], remaining.count);
 
-		int n = fread(&buffer[left], 1, ARRAY_SIZE(buffer) - left, data->tracing_pipe_fd);
+		int n = fread(&buffer[remaining.count], 1, ARRAY_SIZE(buffer) - remaining.count, data->tracing_pipe_fd);
 
+		/* No new bytes read. */
 		if (n == 0) {
 			if (in_stacktrace) {
 				in_stacktrace = false;
@@ -2829,8 +2811,9 @@ static void* read_trace_buffer_thread(void *in) {
 			break;
 		}
 
-		n += left;
-		left = n;
+		n += remaining.count;
+		remaining.start = 0;
+		remaining.count = n;
 
 		/* Split at lines boundaries. */
 		int line_start = 0;
@@ -2838,11 +2821,12 @@ static void* read_trace_buffer_thread(void *in) {
 			if (buffer[i] == '\n') {
 				int len = i - line_start;
 
-				if (i < n - 1)
-					left = n - (i + 1);
-				else
-					left = 0;
-				assert(left < n);
+				if (i < n - 1) {
+					remaining.start = i + 1;
+					remaining.count = n - remaining.start;
+				} else {
+					remaining.count = 0;
+				}
 
 				in_stacktrace = false;
 
@@ -3814,7 +3798,10 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				for (int i = 0; i < __sensor_data->tasks.len_off.used; i++) {
 					int off = __sensor_data->tasks.len_off.ptr[i].offset;
 					int len = __sensor_data->tasks.len_off.ptr[i].len;
-					json_array_append_string_with_len(names, &__sensor_data->tasks.strings.ptr[off], len);
+					if (json_array_append_string_with_len(names, &__sensor_data->tasks.strings.ptr[off], len) != JSONSuccess) {
+						/* Oops... append a dummy string to not break indices */
+						json_array_append_string(names, "unknown");
+					}
 				}
 				json_object_set_value(json_object(answer), "names", json_array_get_wrapping_value(names));
 

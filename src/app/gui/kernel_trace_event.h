@@ -34,20 +34,22 @@ namespace EventType
 	enum Enum
 	{
 		Unknown = 0,
-		DrmSchedJob,
-		DrmRunJob,
-		DrmSchedProcessJob,
-		DrmSchedJobWaitDep,
+		DrmSchedJobQueue,
+		DrmSchedJobRun,
+		DrmSchedJobDone,
+		DrmSchedJobUnschedulable,
+		DrmSchedJobAddDep,
 		AmdgpuSchedRunJob,
 		AmdgpuDeviceWreg,
 	};
 
 	inline const char *to_str(enum Enum t) {
 		switch (t) {
-			case Enum::DrmSchedJob: return "drm_sched_job";
-			case Enum::DrmRunJob: return "drm_run_job";
-			case Enum::DrmSchedProcessJob: return "drm_sched_process_job";
-			case Enum::DrmSchedJobWaitDep: return "drm_sched_job_wait_dep";
+			case Enum::DrmSchedJobQueue: return "drm_sched_job_queue";
+			case Enum::DrmSchedJobRun: return "drm_sched_job_run";
+			case Enum::DrmSchedJobDone: return "drm_sched_job_done";
+			case Enum::DrmSchedJobUnschedulable: return "drm_sched_job_unschedulable";
+			case Enum::DrmSchedJobAddDep: return "drm_sched_job_add_dep";
 			case Enum::AmdgpuSchedRunJob: return "amdgpu_sched_run_job";
 			case Enum::AmdgpuDeviceWreg: return "amdgpu_device_wreg";
 			default: return "unknown";
@@ -67,7 +69,7 @@ inline bool str_is(const char *str, const char *ref, int n = -1) {
 	return strncmp(str, ref, n) == 0;
 }
 
-#define PARSE_INT(full, n, base)  else if (str_is(name, n, name_len)) full = strtoll(value, NULL, base)
+#define PARSE_INT(full, n, base)  else if (str_is(name, n, name_len)) full = strtoull(value, NULL, base)
 
 struct EventBase {
 	double timestamp;
@@ -80,7 +82,7 @@ struct EventBase {
 };
 
 struct Event {
-	Event(EventType::Enum t, double ts, int p) : type(t), timestamp(ts), stacktrace(NULL) {
+	Event(EventType::Enum t, double ts, int p = 0) : type(t), timestamp(ts), stacktrace(NULL) {
 		pid = p;
 	}
 
