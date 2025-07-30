@@ -142,9 +142,11 @@ public:
 		ImGui::SameLine();
 		ImGui::Checkbox("Resume waves", &resume);
 		ImGui::SameLine();
+		ImGui::Checkbox("Capture GPRs", &capture_gprs);
+		ImGui::SameLine();
 		ImGui::BeginDisabled(!can_send_request);
 		if (ImGui::Button("Query")) {
-			send_waves_command(resume, turn_off_gfxoff);
+			send_waves_command(resume, turn_off_gfxoff, capture_gprs);
 		}
 		ImGui::EndDisabled();
 
@@ -428,11 +430,12 @@ public:
 	}
 
 private:
-	void send_waves_command(bool resume_waves, bool disable_gfxoff) {
+	void send_waves_command(bool resume_waves, bool disable_gfxoff, bool capture_gprs) {
 		JSON_Value *req = json_value_init_object();
 		json_object_set_string(json_object(req), "command", "waves");
 		json_object_set_boolean(json_object(req), "resume_waves", resume_waves);
 		json_object_set_boolean(json_object(req), "disable_gfxoff", disable_gfxoff);
+		json_object_set_boolean(json_object(req), "capture_gprs", capture_gprs);
 		json_object_set_string(json_object(req), "ring", asic->family >= FAMILY_NV ? "gfx_0.0.0" : "gfx");
 		send_request(req);
 	}
@@ -465,4 +468,5 @@ private:
 	std::string active_shader_wave;
 	bool resume = true;
 	bool turn_off_gfxoff = true;
+	bool capture_gprs = true;
 };

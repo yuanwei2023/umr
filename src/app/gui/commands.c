@@ -2258,7 +2258,7 @@ static JSON_Value *wave_to_json(struct umr_asic *asic, struct umr_wave_data *wd,
 	}
 	json_object_set_value(json_object(wave), "threads", threads);
 
-	if (umr_wave_data_get_flag_halt(asic, wd) || umr_wave_data_get_flag_fatal_halt(asic, wd)) {
+	if (!asic->options.skip_gprs && (umr_wave_data_get_flag_halt(asic, wd) || umr_wave_data_get_flag_fatal_halt(asic, wd))) {
 		int sgpr_count = umr_wave_data_num_of_sgprs(asic, wd);
 		JSON_Value *sgpr = json_value_init_array();
 		for (int x = 0; x < sgpr_count; x++)
@@ -3255,6 +3255,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 	else if (strcmp(command, "waves") == 0) {
 		int resume_waves = json_object_get_boolean(request, "resume_waves");
 		int disable_gfxoff = json_object_get_boolean(request, "disable_gfxoff");
+		int capture_gprs = json_object_get_boolean(request, "capture_gprs");
 		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
 
 		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
@@ -3262,8 +3263,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
-		asic->options.skip_gprs = 0;
 		asic->options.verbose = 0;
+		asic->options.skip_gprs = !capture_gprs;
 
 		int ring_is_halted = umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100) == 0;
 
