@@ -2441,6 +2441,7 @@ struct activity_capture_data {
 
 	bool run;
 	bool verbose;
+	bool client_names;
 };
 
 struct activity_capture_data *__sensor_data = NULL;
@@ -2519,6 +2520,7 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 		data->mapping = calloc(8, sizeof(struct activity_capture_data));
 		data->mapping_count = 0;
 		data->mapping_capacity = 8;
+		data->client_names = mode == 1;
 		string_array_init(&data->tasks);
 
 		__sensor_data = data;
@@ -3805,10 +3807,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				}
 				json_object_set_value(json_object(answer), "names", json_array_get_wrapping_value(names));
 
-				JSON_Array* drm_clients = json_array(json_value_init_array());
-				for (int i = 0; asics[i]; i++)
-					parse_drm_clients(asics[i], drm_clients);
-				json_object_set_value(json_object(answer), "drm_clients", json_array_get_wrapping_value(drm_clients));
+				if (__sensor_data->client_names) {
+					JSON_Array* drm_clients = json_array(json_value_init_array());
+					for (int i = 0; asics[i]; i++)
+						parse_drm_clients(asics[i], drm_clients);
+					json_object_set_value(json_object(answer), "drm_clients", json_array_get_wrapping_value(drm_clients));
+				}
 
 				__sensor_data->event_buffer = NULL;
 				__sensor_data->event_buffer_size = 0;

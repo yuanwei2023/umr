@@ -94,6 +94,7 @@ static pthread_mutex_t mtx;
 #include "gui/waves_panel.cpp"
 #include "gui/kms_panel.cpp"
 #include "gui/buffer_object_panel.cpp"
+#include "gui/activity_panel.cpp"
 
 struct Link {
 	int sock;
@@ -323,7 +324,8 @@ static int64_t time_ns(void)
 
 static float ping_value = -1;
 
-static void process_response(std::vector<AsicData*> *asics, JSON_Object *response, void *raw_data, unsigned raw_data_size) {
+static void process_response(std::vector<AsicData*> *asics, ActivityPanel *activity_panel,
+									  JSON_Object *response, void *raw_data, unsigned raw_data_size) {
 	JSON_Object *request = json_object(json_object_get_value(response, "request"));
 	const char *cmd = json_object_get_string(request, "command");
 	JSON_Value *error = json_object_get_value(response, "error");
@@ -370,11 +372,18 @@ static void process_response(std::vector<AsicData*> *asics, JSON_Object *respons
 				if (panel->asic == data->asic)
 					panel->process_server_message(response, raw_data, raw_data_size);
 			}
+		} else {
+			activity_panel->process_server_message(response, raw_data, raw_data_size);
 		}
 	}
 
 	force_redraw();
 }
+
+struct communication_th_args {
+	std::vector<AsicData*> *asics;
+	ActivityPanel *activity_panel;
+};
 
 static void *communication_thread(void *_job) {
 	int id = 0;
@@ -392,7 +401,7 @@ static void *communication_thread(void *_job) {
 		printf("Failed to create the replay folder (error: %d)\n", errno);
 	}
 
-	std::vector<AsicData*> *asics = (std::vector<AsicData*> *)_job;
+	communication_th_args *args = static_cast<communication_th_args *>(_job);
 	int64_t last_ping = time_ns();
 
 	int msg_count = 0;
@@ -427,13 +436,16 @@ static void *communication_thread(void *_job) {
 
 			pthread_mutex_lock(&mtx);
 
-			process_response(asics, json_object(in), raw_data, raw_data_size);
+			process_response(args->asics, args->activity_panel, json_object(in), raw_data, raw_data_size);
 
 			json_value_free(in);
 		}
 		pending_request.clear();
 		pthread_mutex_unlock(&mtx);
 	}
+
+	delete args;
+
 	return 0;
 }
 
@@ -484,7 +496,7 @@ float get_gui_scale() {
 }
 
 static int replay_up_to(const char *url, std::vector<AsicData*> &asics,
-								std::vector<std::string>& replay_commands,
+								ActivityPanel *activity_panel, std::vector<std::string>& replay_commands,
 								int idx) {
 	char filename[PATH_MAX];
 	void *raw_data = NULL;
@@ -522,7 +534,7 @@ static int replay_up_to(const char *url, std::vector<AsicData*> &asics,
 				}
 			}
 
-			process_response(&asics, e, raw_data, raw_data_size);
+			process_response(&asics, activity_panel, e, raw_data, raw_data_size);
 
 			free(raw_data);
 			raw_data = NULL;
@@ -535,10 +547,13 @@ static int replay_up_to(const char *url, std::vector<AsicData*> &asics,
 	return msg_idx - 1;
 }
 
-void reset_before_replay(std::vector<AsicData*> &asics) {
+void reset_before_replay(std::vector<AsicData*> &asics,
+								 ActivityPanel **activity_panel) {
 	for (auto ad: asics)
 		delete ad;
 	asics.clear();
+	delete (*activity_panel);
+	*activity_panel = new ActivityPanel(NULL);
 }
 
 static int run_gui(const char *url)
@@ -587,13 +602,18 @@ static int run_gui(const char *url)
 	}
 
 	std::vector<AsicData*> asics;
+	/* This panel is a global panel (nothing asic specific). */
+	ActivityPanel *activity_panel = new ActivityPanel(NULL);
 
 	pthread_t t_id;
 	std::vector<std::string> replay_commands;
 	if (replay) {
-		current_replay = replay_up_to(url, asics, replay_commands, -1);
+		current_replay = replay_up_to(url, asics, activity_panel, replay_commands, -1);
 	} else {
-		pthread_create(&t_id, NULL, communication_thread, &asics);
+		communication_th_args *args = new communication_th_args();
+		args->asics = &asics;
+		args->activity_panel = activity_panel;
+		pthread_create(&t_id, NULL, communication_thread, args);
 	}
 
 	ImVec4 clear_color = ImColor(0, 43, 54, 255).Value;
@@ -795,18 +815,18 @@ static int run_gui(const char *url)
 			ImGui::SameLine();
 			if (ImGui::ArrowButton("left", ImGuiDir_Left)) {
 					/* Destroy everything, and replay again. */
-					reset_before_replay(asics);
+					reset_before_replay(asics, &activity_panel);
 					current_replay--;
-					replay_up_to(url, asics, replay_commands, current_replay);
+					replay_up_to(url, asics, activity_panel, replay_commands, current_replay);
 			}
 			ImGui::EndDisabled();
 			ImGui::BeginDisabled(current_replay >= n_replay);
 			ImGui::SameLine();
 			if (ImGui::ArrowButton("rt", ImGuiDir_Right)) {
 					/* Destroy everything, and replay again. */
-					reset_before_replay(asics);
+					reset_before_replay(asics, &activity_panel);
 					current_replay++;
-					replay_up_to(url, asics, replay_commands, current_replay);
+					replay_up_to(url, asics, activity_panel, replay_commands, current_replay);
 			}
 			ImGui::EndDisabled();
 			ImGui::SameLine();
@@ -821,9 +841,9 @@ static int run_gui(const char *url)
 						sprintf(label, "%d/%d (%s)", i, n_replay, replay_commands[i].c_str());
 						if (ImGui::Selectable(label, i == current_replay) && current_replay != i) {
 							/* Destroy everything, and replay again. */
-							reset_before_replay(asics);
+							reset_before_replay(asics, &activity_panel);
 							current_replay = i;
-							replay_up_to(url, asics, replay_commands, current_replay);
+							replay_up_to(url, asics, activity_panel, replay_commands, current_replay);
 						}
 					}
 					ImGui::EndCombo();
@@ -926,6 +946,11 @@ static int run_gui(const char *url)
 			ImGui::EndTabBar();
 			ImGui::EndTabItem();
 		}
+		if (ImGui::BeginTabItem("Activity", NULL)) {
+			if (activity_panel->display(dt, avail, can_send_request))
+				need_auto_refresh = -1;
+			ImGui::EndTabItem();
+		}
 		ImGui::EndTabBar();
 
 		if (replay) {
@@ -977,6 +1002,7 @@ static int run_gui(const char *url)
 
 	for (int i = 0; i < asics.size(); i++)
 		delete asics[i];
+	delete activity_panel;
 
 	if (config_filename) {
 		FILE *f = fopen(config_filename, "w");
