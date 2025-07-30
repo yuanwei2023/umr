@@ -234,6 +234,10 @@ struct AsicData {
 			asic = umr_discover_asic_by_did(&options, did, printf, &tryipdiscovery);
 		}
 
+		if (strlen(asic->options.pci.name) == 0)
+			strncpy(asic->options.pci.name, json_object_get_string(answer, "pci_name"),
+					  sizeof(asic->options.pci.name));
+
 		if (!asic) {
 			fprintf(stderr, "Failed to create asic, aborting.\n");
 			abort();
@@ -610,9 +614,9 @@ static int run_gui(const char *url)
 
 	char title[512];
 	if (lnk.use_sock)
-		sprintf(title, "umr (%s)", url);
+		sprintf(title, "umr (%s) EXPERIMENTAL ", url);
 	else
-		strcpy(title, "umr");
+		strcpy(title, "umr EXPERIMENTAL");
 	SDL_Window *window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED,
 													  SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
@@ -806,21 +810,24 @@ static int run_gui(const char *url)
 			}
 			ImGui::EndDisabled();
 			ImGui::SameLine();
-			char label[256];
-			sprintf(label, "%d/%d (%s)", current_replay, n_replay, replay_commands[current_replay].c_str());
-			float w = ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 10;
-			ImGui::SetNextItemWidth(w);
-			if (ImGui::BeginCombo("", label)) {
-				for (int i = 0; i <= n_replay; i++) {
-					sprintf(label, "%d/%d (%s)", i, n_replay, replay_commands[i].c_str());
-					if (ImGui::Selectable(label, i == current_replay) && current_replay != i) {
-						/* Destroy everything, and replay again. */
-						reset_before_replay(asics);
-						current_replay = i;
-						replay_up_to(url, asics, replay_commands, current_replay);
+
+			if (current_replay >= 0) {
+				char label[256];
+				sprintf(label, "%d/%d (%s)", current_replay, n_replay, replay_commands[current_replay].c_str());
+				float w = ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 10;
+				ImGui::SetNextItemWidth(w);
+				if (ImGui::BeginCombo("", label)) {
+					for (int i = 0; i <= n_replay; i++) {
+						sprintf(label, "%d/%d (%s)", i, n_replay, replay_commands[i].c_str());
+						if (ImGui::Selectable(label, i == current_replay) && current_replay != i) {
+							/* Destroy everything, and replay again. */
+							reset_before_replay(asics);
+							current_replay = i;
+							replay_up_to(url, asics, replay_commands, current_replay);
+						}
 					}
+					ImGui::EndCombo();
 				}
-				ImGui::EndCombo();
 			}
 		}
 
@@ -847,15 +854,14 @@ static int run_gui(const char *url)
 			}
 		}
 
+		const bool can_send_request = pending_request.empty();
 		for (int i = 0; i < asics.size(); i++) {
 			AsicData &data = *asics[i];
 
 			char asic[64];
-			sprintf(asic, "%s (instance: %d)", data.asic->asicname, data.asic->instance);
+			sprintf(asic, "%s (%s)", data.asic->asicname, data.asic->options.pci.name);
 			if (!ImGui::BeginTabItem(asic, NULL))
 				continue;
-
-			bool can_send_request = pending_request.empty();
 
 			ImGui::BeginTabBar("tabs", ImGuiTabBarFlags_None);
 
