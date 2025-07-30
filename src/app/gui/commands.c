@@ -2460,10 +2460,11 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 
 	if (mode == 1) {
 		/* gpu_scheduler events. */
-		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_wait_dep/enable", "1");
-		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job/enable", "1");
-		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_run_job/enable", "1");
-		error |= write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_process_job/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_add_dep/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_unschedulable/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_queue/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_run/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_done/enable", "1");
 		enable_tracing = true;
 	} else if (mode == 2) {
 		char filter[512];
@@ -2471,22 +2472,22 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 		if (asic == NULL)
 			return false;
 
-		error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/enable", "1");
 		/* Disable previous filter + trigger. */
 		write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", "!stacktrace");
 		write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", "0");
 
 		if (json_object_has_value(request, "reg_offset")) {
 			sprintf(filter, "did == 0x%x && reg == 0x%x", asic->did, (uint32_t) json_object_get_number(request, "reg_offset"));
-			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", filter);
+			error |= !write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", filter);
 
 			sprintf(filter, "stacktrace if reg == 0x%x", (uint32_t) json_object_get_number(request, "reg_offset"));
-			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", filter);
+			error |= !write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", filter);
 		} else {
 			sprintf(filter, "did == 0x%x", asic->did);
 
-			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", filter);
-			error |= write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", "stacktrace");
+			error |= !write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/filter", filter);
+			error |= !write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_device_wreg/trigger", "stacktrace");
 		}
 
 		enable_tracing = true;
@@ -2494,8 +2495,10 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 		enable_tracing = false;
 	}
 
-	if (error)
+	if (error) {
+		fprintf(stderr, "Failed to enable the required kernel events. Maybe your kernel is too old?\n");
 		return false;
+	}
 
 	/* Clear buffer */
 	if (!write_str_to_file(SYSFS_PATH_TRACING "trace", "a"))
@@ -2506,6 +2509,11 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 		data->run = true;
 		data->verbose = verbose;
 		data->tracing_pipe_fd = fopen(SYSFS_PATH_TRACING "trace_pipe", "r");
+		if (!data->tracing_pipe_fd) {
+			fprintf(stderr, "Failed to open " SYSFS_PATH_TRACING "trace_pipe\n");
+			free(data);
+			return false;
+		}
 		fcntl(fileno(data->tracing_pipe_fd), F_SETFL, O_NONBLOCK);
 		data->mapping = calloc(8, sizeof(struct activity_capture_data));
 		data->mapping_count = 0;
@@ -3787,10 +3795,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 		json_object_set_number(json_object(answer), "dm_visual_confirm", read_sysfs_uint64(path));
 	} else if (strcmp(command, "tracing") == 0) {
-		events_tracing_helper(json_object_get_number(request, "mode"),
-									 json_object_get_boolean(request, "verbose"),
-									 asic,
-									 request);
+		if (!events_tracing_helper(json_object_get_number(request, "mode"),
+								   json_object_get_boolean(request, "verbose"),
+								   asic, request)) {
+			last_error = "failed to enable trace events";
+			goto error;
+		}
 		answer = json_value_init_object();
 	} else if (strcmp(command, "read-trace-buffer") == 0) {
 		answer = json_value_init_object();
