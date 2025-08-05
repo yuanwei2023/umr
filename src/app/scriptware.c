@@ -155,6 +155,8 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
                                 char name[64];
                                 if (sscanf(devices[y]->blocks[z]->ipname, "%[0-9a-z]{%"SCNu32"}", name, &inst) == 2) {
                                     errout("%d ", inst);
+                                } else {
+                                    errout("-1 "); // support devices with only 1 GC IP block
                                 }
                             }
                         }

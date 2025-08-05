@@ -31,7 +31,7 @@
  */
 int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 {
-	char asicname[128], ipname[128], regname[128];
+	char asicname[128], ipname[128], regname[128], *p;
 	int i, j;
 	uint64_t value, scale;
 	uint32_t v32;
@@ -39,6 +39,11 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 	if (sscanf(regpath, "%[^.].%[^.].%[^.]", asicname, ipname, regname) != 3) {
 		fprintf(stderr, "[ERROR]: Invalid regpath for write\n");
 		return -1;
+	}
+
+	// trim out {-1} from IP name
+	if ((p = strstr(ipname, "{-1}"))) {
+		*p = 0;
 	}
 
 	if (asicname[0] == '*' || !strcmp(asicname, asic->asicname)) {

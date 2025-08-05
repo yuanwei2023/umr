@@ -29,10 +29,16 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 {
 	int r, i, j, k, count = 0, noipreg = 1;
 	uint64_t scale;
-	char regname_copy[256], ipname_esc[256];
+	char regname_copy[256], ipname_esc[256], ipnametmp[256], *p;
 	uint32_t v32;
-
 	regex_t ip_regex, reg_regex;
+
+	// handle {-1} in the ipname
+	strcpy(ipnametmp, ipname);
+	if ((p = strstr(ipnametmp, "{-1}"))) {
+		*p = 0; // NUL out string to chop {-1} off
+		ipname = ipnametmp;
+	}
 
 	memset(ipname_esc, 0, sizeof ipname_esc);
 	for (i = r = 0; ipname[r]; r++) {

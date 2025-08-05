@@ -31,7 +31,7 @@
  */
 int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 {
-	char asicname[128], ipname[128], regname[128], bitname[128];
+	char asicname[128], ipname[128], regname[128], bitname[128], *p;
 	int i, j, k;
 	uint32_t value;
 	uint64_t scale, copy, mask;
@@ -39,6 +39,11 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 	if (sscanf(regpath, "%[^.].%[^.].%[^.].%[^.]", asicname, ipname, regname, bitname) != 4) {
 		fprintf(stderr, "[ERROR]: Invalid regpath for bit write\n");
 		return -1;
+	}
+
+	// trim out {-1} from IP name
+	if ((p = strstr(ipname, "{-1}"))) {
+		*p = 0;
 	}
 
 	if (asicname[0] == '*' || !strcmp(asicname, asic->asicname)) {
