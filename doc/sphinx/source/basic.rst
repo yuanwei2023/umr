@@ -58,7 +58,15 @@ yet loaded the *--pci* flag can be used.
 	umr --pci 0000:00:01.0 ...
 
 Would issue a command typically on the first integrated GPU found
-on a system.
+on a system.  The --pci command will instruct umr to bypass debugfs
+when accessing registers and memory.  If you want to keep using debugfs
+but select devices by PCI use the *--by-pci* command.
+
+::
+
+	umr --by-pci 0000:00:01.0 ....
+
+This will pick the device with that bus address but still use debugfs.
 
 ''''''''''''''''''''''''''''''''''
 Selecting by name and instance/pci

@@ -14,10 +14,23 @@ can be used:
 
 ::
 
-	struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, int vmid, uint32_t *stream, uint32_t nwords);
+	struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, 
+		int vm_partition,
+		uint32_t vmid, uint64_t from_addr,
+		uint32_t *stream, uint32_t nwords,
+		struct umr_shader_reg_pair **reg_head);
 
-Which will decode the buffer and return a pointer to
-the following structure if successful:
+This will decode PM4 packets for an ASIC referenced by 'asic', using a specific VM vm_partition
+referenced by 'vm_partition'.  The payload of the PM4 data is pointed to by the uint32_t pointer
+'stream' of length 'nwords' words.  For debugging purposes you can say which VMID and virtual address
+it came from with 'vmid' and 'from_addr', but if they're not available you can just pass 0 and 0.
+
+The 'reg_head' parameter is the 'queue_data' parameter that the packet API uses.  In the case of PM4 work it's
+used to keep track of register writes from a variety of PM4 opcodes that configure and program shaders when a
+DIPATCH or DRAW packet is decoded.  You can pass this as NULL if you don't want to track register writes between
+calls (it will track the writes in the call and then clean up the memory it allocates before returning).
+
+This will decode the buffer and return a pointer to the following structure if successful:
 
 ::
 
@@ -49,12 +62,24 @@ the following structure if successful:
 
 Adjacent PM4 packets are pointed to by 'next' (NULL terminated) and
 any IBs or shaders that are found are pointed to by 'ib' and 'shader'
-respectively.  The 'no_halt' parameter controls where the "halt_waves"
-option will be ignored or not.  This is used if the waves have already
-been halted and you don't wish to resume them with this call.
-
-The 'invalid' flag is set if the decoding of the packet fails due to
+respectively.  The 'invalid' flag is set if the decoding of the packet fails due to
 out of bounds checking (e.g. not enough words for the packet to decode).
+
+The register name/value pair list can be maintained with the following functions:
+
+::
+
+	void umr_shader_add_reg_pair(struct umr_shader_reg_pair **head, const char *regname, uint32_t value, uint32_t ib_vmid, uint64_t ib_addr);
+	void umr_free_shader_reg_pairs(struct umr_shader_reg_pair *regs);
+	struct umr_shader_reg_pair *umr_shader_find_regpair(struct umr_shader_reg_pair *head, const char *regname);
+	struct umr_shader_reg_pair *umr_shader_find_partial_regpair(struct umr_shader_reg_pair *head, const char *regname);
+
+A list can be created by setting a 'struct umr_shader_reg_pair' pointer to NULL and passing the address of the pointer to
+'umr_shader_add_reg_pair' with a pair you want to insert.  The pointer stored in 'head' can be passed to umr_pm4_decode_stream() (or related)
+functions as well as the packet API analogues.
+
+The function 'umr_shader_find_regpair()' looks for an exact name match and returns it.  The function 'umr_shader_find_partial_regpair()' looks
+for the first match that contains 'regname' as a substring and returns it.
 
 --------------------
 Freeing a PM4 Stream
@@ -87,6 +112,7 @@ will not free these copies.
 
 ::
 
+	// register name/value pairs used to track shader programming
 	struct umr_shader_reg_pair {
 		char regname[512];
 		uint32_t value;
@@ -95,6 +121,8 @@ will not free these copies.
 		uint64_t addr;
 		int used;
 	};
+
+	struct umr_pm4_stream;
 
 	// contains information about a compute/gfx shader program
 	struct umr_shaders_pgm {
@@ -110,34 +138,40 @@ will not free these copies.
 		// address in VM space for this shader
 		uint64_t addr;
 
+		// the register names/values leading up to this shader being issued
 		struct umr_shader_reg_pair *regs;
+
+		// a packet can issue multiple shaders
 		struct umr_shaders_pgm *next;
+
+		// the packet that issued this shader
+		struct umr_pm4_stream *pm4_packet;
 
 		struct {
 			uint64_t ib_base, ib_offset;
 		} src;
 	};
 
----------------
-Packet Decoding
----------------
+------------------
+Packet Dissasembly
+------------------
 
-To decode packets the following function is used:
+To dissasemble packets the following function is used:
 
 ::
 
-		struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream,
-									 uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid,
-									 unsigned long opcodes, int follow);
+	struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream,
+									uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid,
+									unsigned long opcodes, int follow);
 
-	The function takes an already streamed PM4 structure and proceeds to decode the packets and the internal fields.  The ib_addr/ib_vmid reference the address of the packets being
-	decoded while the from_addr/from_vmid point to any stream that pointed to this data (e.g. the ring offset that points to this IB).  The 'opcodes' parameter
-	indicates how many opcodes to decode (set to ~0UL for the entire stream).  The 'follow' parameter indicates whether the function should also decode packets from IBs pointed
-	to by this stream.
+The function takes an already streamed PM4 structure and proceeds to decode the packets and the internal fields.  The ib_addr/ib_vmid reference the address of the packets being
+decoded while the from_addr/from_vmid point to any stream that pointed to this data (e.g. the ring offset that points to this IB).  The 'opcodes' parameter
+indicates how many opcodes to decode (set to ~0UL for the entire stream).  The 'follow' parameter indicates whether the function should also decode packets from IBs pointed
+to by this stream.
 
-	It returns the address of the first undecoded packet in the stream.
+It returns the address of the first undecoded packet in the stream.
 
-	The function uses the following callback structure to pass information back to the caller:
+The function uses the following callback structure to pass information back to the caller:
 
 ::
 

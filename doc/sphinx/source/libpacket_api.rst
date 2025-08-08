@@ -18,6 +18,8 @@ These are indicated to libumr via the following enum:
 		UMR_RING_VPE,
 		UMR_RING_UMSCH,
 		UMR_RING_HSA,
+		UMR_RING_VCN_DEC,
+		UMR_RING_VCN_ENC,
 
 		UMR_RING_GUESS,
 		UMR_RING_UNK=0xFF, // if unknown
@@ -42,6 +44,7 @@ mapped buffer, or ring contents into a list described as follows:
 			struct umr_vpe_stream *vpe;
 			struct umr_umsch_stream *umsch;
 			struct umr_hsa_stream *hsa;
+			struct umr_vcn_enc_stream *enc;
 		} stream;
 
 		void *cont;
@@ -153,10 +156,32 @@ To decode a process mapped buffer into a stream the following function can be us
 
 	struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
 							   uint32_t from_vmid, uint32_t from_addr,
-							   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt);
+							   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 This decodes the array of words in 'stream' of length 'nwords' with a packet type of 'rt'.  The 'from_vmid' and 'from_addr' parameters
 indicate (if known) where this was taken from and can be used as part of shader/IB following.
+
+The 'queue_data' parameter is an opaque pointer that can always be passed as NULL if not needed.  It's used to be able to chain
+data between multiple calls (for instance to decode packets that are related).  Currently, it's used for the PM4 decoders
+to track register name/value pairs to help with shader debugging.  If passed as NULL the PM4 decoder will track register
+writes for the given call and then clean up any internally allocated memory.  However, if you start register value pair list
+it will track them between calls.
+
+For PM4 streams the 'queue_data' refers to register name/value pairs that can be maintained with the following functions:
+
+::
+
+	void umr_shader_add_reg_pair(struct umr_shader_reg_pair **head, const char *regname, uint32_t value, uint32_t ib_vmid, uint64_t ib_addr);
+	void umr_free_shader_reg_pairs(struct umr_shader_reg_pair *regs);
+	struct umr_shader_reg_pair *umr_shader_find_regpair(struct umr_shader_reg_pair *head, const char *regname);
+	struct umr_shader_reg_pair *umr_shader_find_partial_regpair(struct umr_shader_reg_pair *head, const char *regname);
+
+A list can be created by setting a 'struct umr_shader_reg_pair' pointer to NULL and passing the address of the pointer to
+'umr_shader_add_reg_pair' with a pair you want to insert.  The pointer stored in 'head' can be passed to umr_packet_decode_buffer() (or related)
+functions.
+
+The function 'umr_shader_find_regpair()' looks for an exact name match and returns it.  The function 'umr_shader_find_partial_regpair()' looks
+for the first match that contains 'regname' as a substring and returns it.
 
 ----------------------------
 Decoding a GPU mapped buffer
@@ -167,11 +192,11 @@ To decode a GPU mapped buffer into a stream the following function can be used:
 ::
 
 	struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-								  uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt);
+								  uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 						      
 This will read 'nwords' 32-bit words from the GPU mapped space indicated by the 'vmid' and 'addr' indicated and then proceed to
-decode the buffer via the user interface 'ui' presented.
+decode the buffer via the user interface 'ui' presented.  See the documentation above for 'queue_data'.
 
 ---------------------------
 Decoding a ring file buffer
@@ -182,11 +207,11 @@ To decode a kernel ring buffer into a stream the following function can be used:
 ::
 
 	struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-		char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt);
+		char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data);
 
 This function will open up the ring by prepending amdgpu_ to 'ringname'.  The shader engines can be sent a halt command if the 'halt_waves'
 flag is set.  The ring will be read from the 'start'th word to the 'stop'th word.  These can be specified as -1 to use the devices
-read and write ring pointers respectively.
+read and write ring pointers respectively.  See the documentation above for 'queue_data'.
 
 ---------------------------
 Disassemble a packet stream

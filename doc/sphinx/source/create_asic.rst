@@ -21,8 +21,6 @@ as follows:
 	struct umr_options {
 		int forced_instance,
 			instance,
-			need_scan,
-			print,
 			bitfields,
 			bitfields_full,
 			empty_log,
@@ -55,7 +53,8 @@ as follows:
 			export_model,
 			vgpr_granularity,
 			use_v1_regs_debugfs,
-			trap_unsorted_db;
+			trap_unsorted_db,
+			filter_shader_registers;
 
 		// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 		struct {
@@ -105,6 +104,8 @@ as follows:
 		FILE *test_log_fd;
 		struct umr_test_harness *th;
 	};
+
+
 
 Where the following parameters are relevant to creating an ASIC instance:
 

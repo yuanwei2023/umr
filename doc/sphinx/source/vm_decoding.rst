@@ -174,7 +174,7 @@ GPU virtual memory may be written with the --vm-write command:
 
 	umr --vm-write [<vmid>@]<address> <size>
 
-The command reads the data to be written from stdout.  As in
+This command writes binary data read from stdin to the GPU memory.  As in
 the case of the --vm-read command if the VMID is omitted then the
 writes are performed linearly into VRAM.
 
@@ -185,22 +185,3 @@ System Memory Access
 On newer kernels with a amdgpu_iomem debugfs entry system memory
 access to memory mapped to the GPU has been made easier.  Additional
 modules (e.g., fmem) are no longer required.
-
-On older kernels the fmem module might be required as on common kernel
-configurations found in distributions the kernel flag STRICT_DEVMEM is
-set.  This restricts access to /dev/mem to the PCI device range which
-will inhibit the ability of umr to read memory pointed to by virtual
-page mappings (if the 'S' bit is set).
-
-Aside from rebuilding the kernel with the flag changed the other
-alternative is a third party device such as /dev/fmem found at:
-
-	* https://github.com/NateBrune/fmem
-
-The repository is a bit out of date but is fairly trivial to fix up for
-modern kernels.
-
-UMR will try first for /dev/fmem if available and then fall back to
-/dev/mem.
-
-

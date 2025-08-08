@@ -108,48 +108,58 @@ them as well.  If the UMD uses the quintuple 0xBF9F0000 opcode
 markers to mark the end of the shader then this functionality
 can be used automatically.  If your UMD does not then the option
 'disasm_early_term' can be used to terminate disassembly once the
-first 's_endpgm' opcode is found.  Shader disassemblies resemble:
+first 's_endpgm' opcode is found.
+
+The shader output includes where the shader was source from, it's type, as well as
+the register writes detected inside the command submission.  Shader disassemblies resemble:
 
 ::
 
-	Shader from 3@[0x208800 + 0x3d0] at 3@0x100000b00, type 1, size 124
-		pgm[3@0x100000b00 + 0x0   ] = 0x32080005            v_add_u32_e32 v4, vcc, s5, v0
-		pgm[3@0x100000b00 + 0x4   ] = 0xe0042000            buffer_load_format_xy v[0:1], v4, s[12:15], 0 idxen
-		pgm[3@0x100000b00 + 0x8   ] = 0x80030004    ;;
-		pgm[3@0x100000b00 + 0xc   ] = 0xbe800002            s_mov_b32 s0, s2
-		pgm[3@0x100000b00 + 0x10  ] = 0xbe810080            s_mov_b32 s1, 0
-		pgm[3@0x100000b00 + 0x14  ] = 0xbe8300ff            s_mov_b32 s3, 0x27fac
-		pgm[3@0x100000b00 + 0x18  ] = 0x00027fac    ;;
-		pgm[3@0x100000b00 + 0x1c  ] = 0xbe8200a0            s_mov_b32 s2, 32
-		pgm[3@0x100000b00 + 0x20  ] = 0xc02a0100            s_buffer_load_dwordx4 s[4:7], s[0:3], 0x10
-		pgm[3@0x100000b00 + 0x24  ] = 0x00000010    ;;
-		pgm[3@0x100000b00 + 0x28  ] = 0xc02a0000            s_buffer_load_dwordx4 s[0:3], s[0:3], 0x0
-		pgm[3@0x100000b00 + 0x2c  ] = 0x00000000    ;;
-		pgm[3@0x100000b00 + 0x30  ] = 0x7e0402f2            v_mov_b32_e32 v2, 1.0
-		pgm[3@0x100000b00 + 0x34  ] = 0x7e060280            v_mov_b32_e32 v3, 0
-		pgm[3@0x100000b00 + 0x38  ] = 0xbf8c007f            s_waitcnt lgkmcnt(0)
-		pgm[3@0x100000b00 + 0x3c  ] = 0x7e080205            v_mov_b32_e32 v4, s5
-		pgm[3@0x100000b00 + 0x40  ] = 0x7e0a0207            v_mov_b32_e32 v5, s7
-		pgm[3@0x100000b00 + 0x44  ] = 0xbf8c0f70            s_waitcnt vmcnt(0)
-		pgm[3@0x100000b00 + 0x48  ] = 0xd1c10004            v_mad_f32 v4, s4, v0, v4
-		pgm[3@0x100000b00 + 0x4c  ] = 0x04120004    ;;
-		pgm[3@0x100000b00 + 0x50  ] = 0xd1c10005            v_mad_f32 v5, s6, v1, v5
-		pgm[3@0x100000b00 + 0x54  ] = 0x04160206    ;;
-		pgm[3@0x100000b00 + 0x58  ] = 0xc40008cf            exp pos0 v4, v5, v3, v2 done
-		pgm[3@0x100000b00 + 0x5c  ] = 0x02030504    ;;
-		pgm[3@0x100000b00 + 0x60  ] = 0x02000000            v_add_f32_e32 v0, s0, v0
-		pgm[3@0x100000b00 + 0x64  ] = 0x02020201            v_add_f32_e32 v1, s1, v1
-		pgm[3@0x100000b00 + 0x68  ] = 0x0a000002            v_mul_f32_e32 v0, s2, v0
-		pgm[3@0x100000b00 + 0x6c  ] = 0x0a020203            v_mul_f32_e32 v1, s3, v1
-		pgm[3@0x100000b00 + 0x70  ] = 0xc400020f            exp param0 v0, v1, v0, v0
-		pgm[3@0x100000b00 + 0x74  ] = 0x00000100    ;;
-		pgm[3@0x100000b00 + 0x78  ] = 0xbf810000            s_endpgm
+	Shader from 0x3@[0x800000b2a400 + 0xb68] at 0x3@0x800000e00000, type ES (5), size 1912
+	Shader registers (unfiltered):
+		gfx1201.regCB_BLEND0_CONTROL(3@0xb2adac) == 0x0
+			COLOR_SRCBLEND[0:4] == 0x0
+			COLOR_COMB_FCN[5:7] == 0x0
+			COLOR_DESTBLEND[8:12] == 0x0
+			ALPHA_SRCBLEND[16:20] == 0x0
+			ALPHA_COMB_FCN[21:23] == 0x0
+			ALPHA_DESTBLEND[24:28] == 0x0
+			SEPARATE_ALPHA_BLEND[29:29] == 0x0
+			ENABLE[30:30] == 0x0
+			DISABLE_ROP3[31:31] == 0x0
+		gfx1201.regCB_BLEND_ALPHA(3@0xb2aae0) == 0x0
+		gfx1201.regCB_BLEND_BLUE(3@0xb2aadc) == 0x0
+		gfx1201.regCB_BLEND_GREEN(3@0xb2aad8) == 0x0
+		gfx1201.regCB_BLEND_RED(3@0xb2aad4) == 0x0
+		gfx1201.regCB_COLOR0_ATTRIB(3@0xb2a918) == 0x0
+			NUM_FRAGMENTS[0:1] == 0x0
+			FORCE_DST_ALPHA_1[2:2] == 0x0
+			FORCE_LIMIT_COLOR_SECTOR_TO_256B_MAX[3:3] == 0x0
+	<... snip ...>
+
+	Shader program:
+		pgm[3@0x800000e00000 + 0x0   ] = 0xbefe01c1		s_mov_b64 exec, -1                                         	
+		pgm[3@0x800000e00000 + 0x4   ] = 0xd71f0001		v_mbcnt_lo_u32_b32 v1, -1, 0                               	
+		pgm[3@0x800000e00000 + 0x8   ] = 0x000100c1	;;                                                          	
+		pgm[3@0x800000e00000 + 0xc   ] = 0xbe840011		s_mov_b32 s4, s17                                          	
+		pgm[3@0x800000e00000 + 0x10  ] = 0xbe9c000a		s_mov_b32 s28, s10                                         	
+		pgm[3@0x800000e00000 + 0x14  ] = 0xbf0c9b0c		s_bitcmp0_b32 s12, 27                                      	
+		pgm[3@0x800000e00000 + 0x18  ] = 0xbfa20024		s_cbranch_scc1 36                                          	
+		pgm[3@0x800000e00000 + 0x1c  ] = 0x7e040281		v_mov_b32_e32 v2, 1                                        	
+		pgm[3@0x800000e00000 + 0x20  ] = 0xbf8704b1		s_delay_alu instid0(VALU_DEP_1) | instskip(SKIP_2) | instid1(SALU_CYCLE_1)	
+		pgm[3@0x800000e00000 + 0x24  ] = 0x7c9a0480		v_cmp_ne_u32_e32 vcc_lo, 0, v2                             	
+		pgm[3@0x800000e00000 + 0x28  ] = 0xd7200002		v_mbcnt_hi_u32_b32 v2, -1, v1                              	
+		pgm[3@0x800000e00000 + 0x2c  ] = 0x000202c1	;;                                                          	
+	<... snip ...>
+		pgm[3@0x800000e00000 + 0x76c ] = 0xbfa6ff66		s_cbranch_execnz 65382                                     	
+		pgm[3@0x800000e00000 + 0x770 ] = 0xbfa0ff76		s_branch 65398                                             	
+		pgm[3@0x800000e00000 + 0x774 ] = 0xbf9f0000		s_code_end                                                 	
 	Done disassembly of shader
+
 
 Which indicates the VMID and address of the shader, how many bytes it
 is and where it was found.  In this case this shader was indicated
-by an IB at VMID 3 offset 0x208800 + 0x3d0.  The byte offset indicates
-the last PM4 packet word indicating the address of the shader.
+by a DRAW or DISPATCH packet at VMID 3 offset 0x800000b2a400 + 0xb68.
 
 Each line of disassembly includes the address of the shader opcode,
 followed by the opcode in hex, followed by the disassembly provided
