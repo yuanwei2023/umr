@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'UMR: User Mode Register Debugger'
-copyright = u'2020, AMD'
+copyright = u'2025, AMD'
 author = u'Tom St Denis'
 
 # The version info for the project you're documenting, acts as replacement for
