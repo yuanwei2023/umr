@@ -155,7 +155,7 @@ To decode a process mapped buffer into a stream the following function can be us
 ::
 
 	struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-							   uint32_t from_vmid, uint32_t from_addr,
+							   uint32_t from_vmid, uint64_t from_addr,
 							   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 This decodes the array of words in 'stream' of length 'nwords' with a packet type of 'rt'.  The 'from_vmid' and 'from_addr' parameters

@@ -335,7 +335,7 @@ static void process_shaders(struct umr_asic *asic, int vm_partition, uint32_t vm
  * @reg_pairs: The linked list of register writes accumulated so far.
  *
  */
-static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t ib_addr, struct umr_pm4_stream *ps, struct umr_shader_reg_pair **reg_pairs)
+static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t ib_addr, struct umr_pm4_stream *ps, struct umr_shader_reg_pair **reg_pairs)
 {
 	uint32_t n, value;
 	char *regname = NULL;
