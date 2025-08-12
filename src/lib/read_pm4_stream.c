@@ -285,9 +285,9 @@ static void process_shaders(struct umr_asic *asic, int vm_partition, uint32_t vm
 		// filter out shaders that are not wanted
 		if (types[x].type == UMR_SHADER_COMPUTE && !asic->options.shader_enable.enable_comp_shader)
 			continue;
-		if (types[x].type == UMR_SHADER_VERTEX && !asic->options.shader_enable.enable_ps_shader)
+		if (types[x].type == UMR_SHADER_VERTEX && !asic->options.shader_enable.enable_vs_shader)
 			continue;
-		if (types[x].type == UMR_SHADER_PIXEL && !asic->options.shader_enable.enable_vs_shader)
+		if (types[x].type == UMR_SHADER_PIXEL && !asic->options.shader_enable.enable_ps_shader)
 			continue;
 		if (types[x].type == UMR_SHADER_ES && !asic->options.shader_enable.enable_es_shader)
 			continue;
