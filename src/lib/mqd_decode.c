@@ -537,6 +537,7 @@ static const struct umr_mqd_fields  umr_mqd_graphics_gfx12[] = {
 	{ 509, "reserved_509" },
 	{ 510, "fence_address_lo" },
 	{ 511, "fence_address_hi" },
+	{ -1, NULL },
 };
 
 static const struct umr_mqd_fields  umr_mqd_sdma_gfx12[] = {
@@ -611,14 +612,14 @@ static const struct umr_mqd_fields  umr_mqd_sdma_gfx12[] = {
 	{ 68, "reserved_68" },
 	{ 69, "reserved_69" },
 	{ 70, "reserved_70" },
-	{ 0, "reserved_71" },
-	{ 1, "reserved_72" },
-	{ 2, "reserved_73" },
-	{ 3, "reserved_74" },
-	{ 4, "reserved_75" },
-	{ 5, "reserved_76" },
-	{ 6, "reserved_77" },
-	{ 7, "reserved_78" },
+	{ 71, "reserved_71" },
+	{ 72, "reserved_72" },
+	{ 73, "reserved_73" },
+	{ 74, "reserved_74" },
+	{ 75, "reserved_75" },
+	{ 76, "reserved_76" },
+	{ 77, "reserved_77" },
+	{ 78, "reserved_78" },
 	{ 79, "reserved_79" },
 	{ 80, "reserved_80" },
 	{ 81, "reserved_81" },
@@ -668,6 +669,7 @@ static const struct umr_mqd_fields  umr_mqd_sdma_gfx12[] = {
 	{ 125, "reserved_125" },
 	{ 126, "sdma_engine_id" },
 	{ 127, "sdma_queue_id" },
+	{ -1, NULL },
 };
 
 static const struct umr_mqd_fields  umr_mqd_compute_gfx12 [] = {
@@ -1183,6 +1185,7 @@ static const struct umr_mqd_fields  umr_mqd_compute_gfx12 [] = {
 	{ 509, "gws_61_val" },
 	{ 510, "gws_62_val" },
 	{ 511, "gws_63_val" },
+	{ -1, NULL },
 };
 
 static const struct umr_mqd_fields umr_mqd_compute_gfx11[] = {

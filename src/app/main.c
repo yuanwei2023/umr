@@ -185,6 +185,14 @@ retry:
 		}
 	}
 
+	{
+		int maj, min;
+		umr_gfx_get_ip_ver(asic, &maj, &min);
+		if (maj == 12 && asic->family < FAMILY_GFX12) {
+			asic->family = FAMILY_GFX12;
+		}
+	}
+
 	return asic;
 }
 
