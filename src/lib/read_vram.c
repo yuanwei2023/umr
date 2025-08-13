@@ -822,7 +822,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		 va_mask, offset_mask, system_aperture_low, system_aperture_high,
 		 fb_top, fb_bottom, ptb_mask, pte_page_mask, agp_base, agp_bot, agp_top, prev_addr;
 
-	uint32_t chunk_size, tmp, pde0_block_fragment_size;
+	uint32_t chunk_size, pde0_block_fragment_size;
 	int pde_cnt, current_depth, page_table_depth, zfb, further, pde_was_pte;
 
 	// these are the verbatim registers being read to perform the page walk
@@ -911,7 +911,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	}
 
 	// read vm registers
-	if (vmid == 0) {
+	if (asic->options.user_queue.state.active == 0 && vmid == 0) {
 		// only need system aperture registers (SAM) if we're using VMID 0
 		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", vm0prefix);
 			registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
@@ -950,37 +950,48 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		agp_base = agp_bot = agp_top = 0;
 	}
 
-	// context registers
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+	// initialize local copy of context registers
+		if (asic->options.user_queue.state.active) {
+			registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = asic->options.user_queue.state.registers.PAGE_TABLE_START_ADDR_LO32;
+			registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 = asic->options.user_queue.state.registers.PAGE_TABLE_START_ADDR_HI32;
+			registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 = asic->options.user_queue.state.registers.PAGE_TABLE_END_ADDR_LO32;
+			registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 = asic->options.user_queue.state.registers.PAGE_TABLE_END_ADDR_HI32;
+			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = asic->options.user_queue.state.registers.PAGE_TABLE_BASE_ADDR_LO32;
+			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = asic->options.user_queue.state.registers.PAGE_TABLE_BASE_ADDR_HI32;
+			page_table_depth = asic->options.user_queue.client_info.vm_pagetable_info.num_level;
+			page_table_block_size = asic->options.user_queue.client_info.vm_pagetable_info.block_size - 9; // 0 == 9-bit block size
+
+			// we aren't using VMIDs but we still need to get the layout of the register so we just jam VMID 8 in there...
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_CNTL", regprefix, 8);
+			registers.mmVM_CONTEXTx_CNTL =
+				umr_bitslice_compose_value_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_DEPTH", page_table_depth) |
+				umr_bitslice_compose_value_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_BLOCK_SIZE", page_table_block_size);
+		} else {
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32", regprefix, vmid);
+				registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_HI32", regprefix, vmid);
+				registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_END_ADDR_LO32", regprefix, vmid);
+				registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_END_ADDR_HI32", regprefix, vmid);
+				registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_CNTL", regprefix, vmid);
+				registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+				page_table_depth      = umr_bitslice_reg_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_DEPTH", registers.mmVM_CONTEXTx_CNTL);
+				page_table_block_size = umr_bitslice_reg_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_BLOCK_SIZE", registers.mmVM_CONTEXTx_CNTL);
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32", regprefix, vmid);
+				registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32", regprefix, vmid);
+				registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
+		}
+
+	// setup all the state variables.
 		page_table_start_addr = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 << 12;
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_HI32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_start_addr |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 << 44;
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_END_ADDR_LO32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_end_addr = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 << 12;
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_END_ADDR_HI32", regprefix, vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		page_table_end_addr |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_HI32 << 44;
-
-	sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_CNTL", regprefix, vmid);
-		tmp = registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-		page_table_depth      = umr_bitslice_reg_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_DEPTH", tmp);
-		page_table_block_size = umr_bitslice_reg_by_name_by_ip_by_instance(asic, hub, partition, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
-
-	if (vmdata && vmdata->registers.page_table_base_addr) {
-		page_table_base_addr = vmdata->registers.page_table_base_addr;
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = page_table_base_addr & 0xFFFFFFFFULL;
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = page_table_base_addr >> 32ULL;
-	} else {
-		sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_LO32", regprefix, vmid);
-			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-			page_table_base_addr  = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 << 0;
-		sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR_HI32", regprefix, vmid);
-			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
-			page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
-	}
+		page_table_base_addr  = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_LO32 << 0;
+		page_table_base_addr  |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 << 32;
 
 	// for some firmwares when in GFXOFF power off state the registers
 	// read back as all F's
@@ -1060,7 +1071,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 	// if we are using VMID 0 we need to apply any address translations
 	// as specified by the System Aperature registers
-	if (vmid == 0) {
+	if (asic->options.user_queue.state.active == 0 && vmid == 0) {
 		uint32_t sam;
 
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
@@ -1602,13 +1613,6 @@ invalid_page:
 int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en, struct umr_vm_pagewalk *vmdata)
 {
 	int maj, min;
-
-	if (vmdata) {
-		struct umr_vm_pagewalk tmp;
-		tmp.registers = vmdata->registers;
-		memset(vmdata, 0, sizeof *vmdata);
-		vmdata->registers = tmp.registers;
-	}
 
 	umr_gfx_get_ip_ver(asic, &maj, &min);
 

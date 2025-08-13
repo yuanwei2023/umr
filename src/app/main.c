@@ -279,6 +279,8 @@ static void parse_options(char *str)
 			options.force_asic_file = 1;
 		} else if (!strcmp(option, "export_model")) {
 			options.export_model = 1;
+		} else if (!strcmp(option, "use_full_user_queue")) {
+			options.use_full_user_queue = 1;
 		} else {
 			printf("error: Unknown option [%s]\n", option);
 			exit(EXIT_FAILURE);
@@ -306,7 +308,8 @@ static void do_help(void)
 	"\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
 		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib, no_follow_chained_ib, "
 		"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
-		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, filter_shader_registers, full_shader, skip_gprs, no_fold_vm_decode, force_asic_file\n"
+		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, filter_shader_registers,"
+		"\n\t\t\tfull_shader, skip_gprs, no_fold_vm_decode, force_asic_file, use_full_user_queue\n"
 	"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 		"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 	"\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"
@@ -322,6 +325,17 @@ static void do_help(void)
 		"\n\t\tLike --pci but still uses the traditional debugfs path to interface with"
 		"\n\t\tthe hardware.  This is useful for interacting with APIs that identify hardware"
 		"\n\t\tby the PCI bus address.\n"
+	"\n\t--user-queue, -uq <client>.<queue>"
+		"\n\t\tAttach to a user queue specified by a given client and queue.  The client can be specified"
+		"\n\t\tas a number, or by PID by using a '=' prefix, or by process name with a '@' prefix.  The"
+		"\n\t\tqueue can be specified as a number, or by type with a '@' prefix (0==gfx, 1==compute).  If"
+		"\n\t\ta '-' follows the period then the first active HQD is attached to."
+		"\n\t\tFor instance: '14.1' specifies queue 1 of client 14.  '@glmark2.1' specifies the queue 1 of the"
+		"\n\t\tfirst instance of the 'glmark2' application found. '=2314.@0' specifies to use the first graphics"
+		"\n\t\tqueue found for the PID 2314.  Whereas, '=2314.-@0' specifies to use the first graphics queue"
+		"\n\t\twith an active HQD it finds.\n"
+	"\n\t--print-uq"
+		"\n\t\tPrint out all of the user queue information decoded.\n"
 	"\n\t--gfxoff, -go <0 | 1>"
 		"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
 		"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"
@@ -330,7 +344,10 @@ static void do_help(void)
 		"\n\t\trefers to the 0'th instance of the VM hub which is not the same as"
 		"\n\t\tspecifying '0'.  Values above -1 are for ASICs with multiple IP instances.\n"
 	"\n\t--vgpr-granularity, -vgpr <-1, 0...n>"
-		"\n\t\tSpecify the VGPR size granularity as a power of 2, e.g., '2' means 4 DWORDs per increment.\n"
+		"\n\t\tSpecify the VGPR size granularity as a power of 2, e.g., '2' means 4 DWORDs per increment.\n",
+		UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
+
+	printf(
 	"\n*** Bank Selection ***\n"
 	"\n\t--bank, -b <se> <sh> <instance>\n\t\tSelect a GRBM se/sh/instance bank in decimal. Can use 'x' to denote broadcast.\n"
 	"\n\t--sbank, -sb <me> <pipe> <queue> [vmid]\n\t\tSelect a SRBM me/pipe/queue bank in decimal.  VMID is optional (default: 0). \n"
@@ -353,8 +370,7 @@ static void do_help(void)
 	"\n\t--read, -r <string>\n\t\tRead a value from a register and print it to stdout.  This command"
 		"\n\t\tuses the same path notation as --write.  It also accepts * for regname."
 		"\n\t\tA trailing * on a regname will read any register that has a name that contains the"
-		"\n\t\tremainder of the name specified.\n",
-		UMR_BUILD_VER, UMR_BUILD_REV, UMR_BUILD_BRANCH, __DATE__);
+		"\n\t\tremainder of the name specified.\n");
 
 	printf(
 	"\n\t--logscan, -ls\n\t\tRead and display contents of the MMIO register log (usually specified with"
@@ -362,12 +378,13 @@ static void do_help(void)
 	"\n*** Device Utilization ***\n"
 	"\n\t--top, -t\n\t\tSummarize GPU utilization.  Can select a SE block with --bank.  Can use"
 		"\n\t\toptions 'use_colour' to colourize output and 'use_pci' to improve efficiency.\n"
-	"\n\t--waves, -wa [<ring_name> | <vmid>@<addr>.<size>]\n\t\tPrint out information about any active CU waves.  Can use '-O bits'"
+	"\n\t--waves, -wa [<none> | <uq> | <ring_name> | <vmid>@<addr>.<size>]\n\t\tPrint out information about any active CU waves.  Can use '-O bits'"
 		"\n\t\tto see decoding of various wave fields.  Can use the '-O halt_waves' option"
 		"\n\t\tto halt the SQ while reading registers.  An optional ring name can be specified"
 		"\n\t\twhich will then search a given ring for pointers to active shaders.  It will"
-		"\n\t\tdefault to the 'gfx' ring if nothing is specified.  Alternatively, an IB can be specified"
-		"\n\t\tby a vmid, address, and size (in hex bytes) triplet.\n"
+		"\n\t\tdefault to the 'gfx' ring if nothing is specified.  An IB can be specified"
+		"\n\t\tby a vmid, address, and size (in hex bytes) triplet.  Using user queues can"
+		"\n\t\tbe specified by passing 'uq'.\n"
 	"\n\t--singlestep, -ss <se>,<sh>,<wgp>,<simd>,<wave>\n\t\tSingle-step one wave."
 	"\n\t\tTries advancing execution on the specified wave by one instruction."
 	"\n\t--profiler, -prof [pixel= | vertex= | compute=]<nsamples> [ring]"
@@ -409,6 +426,8 @@ static void do_help(void)
 		"\n\t\tring, \"-RS gfx[0:16]\" would display the contents from address 0 to 16 inclusively, and "
 		"\n\t\t\"-RS gfx[.]\" or \"-RS gfx[.:.]\" would display contents from the ring READ pointer to "
 		"\n\t\tthe ring WRITE pointer.\n"
+	"\n\t--dump-uq, -du"
+		"\n\t\tDump the command submission attached to a given user queue selected with --user-queue.\n"
 	"\n\t--dump-ib, -di [vmid@]address length [pm]"
 		"\n\t\tDump an IB packet at an address with an optional VMID.  The length is specified"
 		"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
@@ -482,7 +501,7 @@ static void umr_start_rumr_client(struct rumr_client_state *cs, char *server)
 	struct rumr_comm_funcs *cf;
 	char *cfp;
 	cf = rumr_get_cf(server, &cfp);
-	if (rumr_client_connect(cs, cf, cfp)) {
+	if (rumr_client_connect(cs, cf, cfp, &options)) {
 		free(cf);
 		exit(EXIT_FAILURE);
 	}
@@ -546,6 +565,10 @@ int main(int argc, char **argv)
 		if ((pass - 1) == PASS_ASIC_MODEL) {
 			if (!asic)
 				asic = get_asic();
+
+			if (strlen(options.user_queue.clientid)) {
+				umr_parse_clientid(asic);
+			}
 		}
 
 		if ((pass - 1) == PASS_OPTIONS) {
@@ -565,7 +588,17 @@ int main(int argc, char **argv)
 
 		for (i = 1; i < argc; i++) {
 			if (pass == PASS_OPTIONS) {
-				if (!strcmp(argv[i], "--vgpr-granularity") || !strcmp(argv[i], "-vgpr")) {
+				if (!strcmp(argv[i], "--user-queue") || !strcmp(argv[i], "-uq")) {
+					if (i + 1 < argc) {
+						argflags[i] = 1;
+						argflags[i+1] = 1;
+						strcpy(options.user_queue.clientid, argv[i+1]);
+						++i;
+					} else {
+						fprintf(stderr, "[ERROR]: --user-queue requires at least one parameter\n");
+						return EXIT_FAILURE;
+					}
+				} else if (!strcmp(argv[i], "--vgpr-granularity") || !strcmp(argv[i], "-vgpr")) {
 					if (i + 1 < argc) {
 						argflags[i] = 1;
 						argflags[i+1] = 1;
@@ -756,7 +789,6 @@ int main(int argc, char **argv)
 						argflags[i] = 1;
 						argflags[i+1] = 1;
 						umr_start_rumr_client(&client_st, argv[i+1]);
-						asic->options = options;
 						++i;
 					} else {
 						fprintf(stderr, "[ERROR]: --rumr-client requires one parameter\n");
@@ -796,7 +828,10 @@ int main(int argc, char **argv)
 					goto stopprocessingcommands;
 				}
 			} else if (pass == PASS_COMMANDS) {
-				if (!strcmp(argv[i], "--dump-mqd")) {
+				if (!strcmp(argv[i], "--print-uq")) {
+					argflags[i] = 1;
+					umr_print_uq_info(asic);
+				} else if (!strcmp(argv[i], "--dump-mqd")) {
 					uint32_t mqdbuf[512], engsel, vmid;
 					uint64_t va;
 					if (i + 2 < argc) {
@@ -1005,6 +1040,47 @@ int main(int argc, char **argv)
 						fprintf(stderr, "[ERROR]: --ring-stream requires one parameter\n");
 						return EXIT_FAILURE;
 					}
+				} else if (!strcmp(argv[i], "--dump-uq") || !strcmp(argv[i], "-du")) {
+						uint32_t *buf, start, end, len;
+						argflags[i] = 1;
+
+						if (asic->options.user_queue.state.active) {
+							buf = calloc(asic->options.user_queue.state.submission.rb_buf_size, sizeof *buf);
+							if (!asic->options.use_full_user_queue) {
+								if (asic->options.user_queue.state.submission.rb_wptr_poll_value == asic->options.user_queue.state.submission.hqd_rptr_value) {
+									asic->err_msg("[ERROR]: The user queue's RPTR and WPTR are equal.  You can try using -O use_full_user_queue instead to read the entire queue.\n");
+									// free the buffer so we don't decode garbage
+									free(buf);
+									buf = NULL;
+								} else {
+									start = asic->options.user_queue.state.submission.hqd_rptr_value;
+									end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
+								}
+							} else {
+								start = 0;
+								end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
+							}
+							if (buf) {
+								// continue, so at this point we read the queue like a ring (allowing start > end)
+								if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
+									asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
+								} else {
+									// decode and diassemble the PM4 packets
+									asic->std_msg("Dumping user queue-%"PRIu64" (from word 0x%"PRIx32" to 0x%"PRIx32"):\n",
+										asic->options.user_queue.state.submission.queueid,
+										start, end);
+									umr_ring_stream_present(asic,
+										NULL, 0, 0, // ring
+										0, // vmid
+										asic->options.user_queue.state.submission.hqd_base_addr + start * 4, // addr
+										buf, len, // words, length
+										UMR_RING_PM4);
+								}
+								free(buf);
+							}
+						} else {
+							asic->err_msg("[ERROR]: User Queue VM state is not active, did you use a --user-queue command?\n");
+						}
 				} else if (!strcmp(argv[i], "--dump-ib") || !strcmp(argv[i], "-di")) {
 					if (i + 2 < argc) {
 						uint64_t address;

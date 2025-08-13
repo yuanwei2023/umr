@@ -31,6 +31,17 @@ loaded the corresponding instance will be automatically detected.
 Like --pci but still uses the traditional debugfs path to interface with
 the hardware.  This is useful for interacting with APIs that identify hardware
 by the PCI bus address.
+.IP "--user-queue, -uq <client>.<queue>"
+Attach to a user queue specified by a given client and queue.  The client can be specified
+as a number, or by PID by using a '=' prefix, or by process name with a '@' prefix.  The
+queue can be specified as a number, or by type with a '@' prefix (0==gfx, 1==compute).  If
+a '-' follows the period then the first active HQD is attached to.
+For instance: '14.1' specifies queue 1 of client 14.  '@glmark2.1' specifies the queue 1 of the
+first instance of the 'glmark2' application found. '=2314.@0' specifies to use the first graphics
+queue found for the PID 2314.  Whereas, '=2314.-@0' specifies to use the first graphics queue
+with an active HQD it finds.
+.IP --print-uq
+Print out all of the user queue information decoded.
 .IP "--gfxoff, -go <0 | 1>"
 Turn on or off GFXOFF on select hardware.  A non-zero value enables the GFXOFF feature and
 a zero value disables it.
@@ -123,6 +134,10 @@ separated strings.  Options should be specified before --update or --force comma
 .B skip_gprs
    Skip reading SGPRS and VGPRS when scanning waves
 
+.B use_full_user_queue
+   Read the entire user queue buffer from start to the WPTR.  May result in undefined behaviour with some VM
+   accessess.  Useful though if the SQ is blocked on something the CP has advanced past.
+
 .SH Bank Selection
 .IP "--bank, -b <se> <sh> <instance>"
 Select a GRBM se/sh/instance bank in decimal.  Can use 'x' to denote a broadcast selection.
@@ -179,7 +194,7 @@ options that apply are:
 and
 .B use_pci
 .
-.IP "--waves, -wa [ <ring_name> | <vmid>@<addr>.<size> ]"
+.IP "--waves, -wa [ <none> | <uq> | <ring_name> | <vmid>@<addr>.<size> ]"
 Print out information about any active CU waves.  Note that if GFX power gating
 is enabled this command may result in a GPU hang.  It's unlikely unless you're
 invoking it very rapidly.  Unlike the wave count reading in --top this command
@@ -258,6 +273,8 @@ prints [wptr-16, wptr] words of the SDMA0 ring, and
 "-RS sdma1[.:32]" prints [rptr, rptr+32] double-words of the
 SDMA1 ring. The contents of the ring is always interpreted,
 if it can be interpreted.
+.IP "--dump-uq, -du"
+Dump the command submission attached to a given user queue selected with --user-queue.
 .IP "--dump-ib, -di [vmid@]address length [pm]"
 Dump an IB packet at an address with an optional VMID.  The length is specified
 in bytes.  The type of decoder <pm> is optional and defaults to PM4 packets.

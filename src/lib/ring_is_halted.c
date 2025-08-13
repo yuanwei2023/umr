@@ -37,7 +37,7 @@ int umr_ring_is_halted(struct umr_asic *asic, char *ringname)
 	uint32_t *ringdata, ringsize;
 	int n;
 
-	if (!strcmp(ringname, "none"))
+	if (!strcmp(ringname, "none") || !strcmp(ringname, "uq"))
 		return 1;
 
 	// read ring data and reduce indeices modulo ring size

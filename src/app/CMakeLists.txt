@@ -28,6 +28,7 @@ endif()
 
 #application objects
 add_library(umrapp
+  print_uq.c
   scriptware.c
   print.c
   print_config.c

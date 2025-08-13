@@ -62,12 +62,52 @@ void umr_print_waves(struct umr_asic *asic)
 		fprintf(stderr, "[WARNING]: Wave listing is unreliable if waves aren't halted; use -O halt_waves\n");
 	}
 
-	// don't scan for shader info by reading the ring if no_disasm is
-	// requested.  This is useful for when the ring or IBs contain
-	// invalid or racy data that cannot be reliably parsed.
+	// attach to a PM4 stream "of some providence" so we can find shaders which is handy
+	// since without knowing the start address of the shader we have to guess and guessing can
+	// go wrong...
 	if (strcmp(asic->options.ring_name, "none")) {
-		if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3)
+		if (!strcmp(asic->options.ring_name, "uq")) {
+			// user wants to attach to the user queue for wave debugging
+			if (asic->options.user_queue.state.active) {
+				uint32_t start, end, *buf, len;
+				ib_addr.vmid = 0; // doesn't matter
+				if (!asic->options.use_full_user_queue) {
+					// only read between RPTR and WPTR
+					start = asic->options.user_queue.state.submission.hqd_rptr_value;
+					end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
+					ib_addr.addr = asic->options.user_queue.state.submission.hqd_base_addr + 4 * asic->options.user_queue.state.submission.hqd_rptr_value;
+				} else {
+					// if the user specifies -O use_full_user_queue then read from 0 to WPTR
+					start = 0;
+					end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
+					ib_addr.addr = asic->options.user_queue.state.submission.hqd_base_addr;
+				}
+				// read the user queue like a ring
+				buf = calloc(asic->options.user_queue.state.submission.rb_buf_size, sizeof *buf);
+				if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
+					asic->err_msg("[ERROR]: Could not read user queue packet stream.\n");
+					free(buf);
+					return;
+				}
+				ib_addr.size = len;
+				// decode the PM4 stream copied from the queue
+				stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, UMR_RING_PM4, NULL);
+				free(buf);
+				if (!stream) {
+					asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
+					return;
+				}
+				// flag to the rest of the function that we're good to go.
+				use_ring = 0;
+				ring_halted = 1;
+			} else {
+				asic->err_msg("[ERROR]: User queue is not attached, did you forget to use --user-queue on the command line?\n");
+				return;
+			}
+		} else if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3) {
+			// the user can specify an IB VM address directly as vmid@addr.length
 			use_ring = 0;
+		}
 
 		if (asic->options.halt_waves) {
 			// warn users if they don't specify a ring on gfx10 hardware
@@ -84,14 +124,18 @@ void umr_print_waves(struct umr_asic *asic)
 		if (asic->options.disasm_anyways)
 			ring_halted = 1;
 
-		// scan a ring but don't trigger the halt/resume
-		// since it would have already been done
-		if (use_ring) {
-			stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, &start, &stop, UMR_RING_GUESS, NULL);
-		} else {
-			stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4, NULL);
+		// if we don't have a stream yet we should initialize one
+		if (!stream) {
+			if (use_ring) {
+				// read a kernel ring
+				stream = umr_packet_decode_ring(asic, NULL, asic->options.ring_name[0] ? asic->options.ring_name : "gfx", 0, &start, &stop, UMR_RING_GUESS, NULL);
+			} else {
+				// read a VM buffer
+				stream = umr_packet_decode_vm_buffer(asic, NULL, ib_addr.vmid, ib_addr.addr, ib_addr.size / 4, UMR_RING_PM4, NULL);
+			}
 		}
 	} else {
+		// user wants to attach to no stream
 		ring_halted = 0;
 		stream = NULL;
 	}
@@ -192,8 +236,9 @@ void umr_print_waves(struct umr_asic *asic)
 
 			fprintf(output, ring_halted ? "\n\nPGM_MEM:" : "\n\nPGM_MEM (guess based on PC):");
 			if (ring_halted && stream)
-				shader = umr_packet_find_shader(stream, vmid, pgm_addr);
+				shader = umr_packet_find_shader(asic, stream, vmid, pgm_addr);
 			if (shader) {
+				// we found a shader so we can actually use real start addresses
 				fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)\n",
 					BLUE, shader->vmid, RST,
 					YELLOW, (unsigned long long)shader->addr, RST,
@@ -210,6 +255,7 @@ void umr_print_waves(struct umr_asic *asic)
 				free(shader);
 				shader = NULL;
 			} else {
+				// shader wasn't found (or we have no stream attached) so we just back up a few words as a guess.
 				pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
 				shader_addr = pgm_addr;
 				fprintf(output, "\n");

@@ -122,6 +122,46 @@ error:
 	return buf;
 }
 
+static struct rumr_buffer *send_opcode_data(struct rumr_client_state *state, uint32_t opcode, void *pkt, uint32_t pktsize)
+{
+	struct rumr_buffer *buf;
+	int r;
+
+	buf = rumr_buffer_init();
+		rumr_buffer_add_uint32(buf, (opcode << 10) | (RUMR_VERSION << 1)); // header word
+		rumr_buffer_add_data(buf, pkt, pktsize);
+	r = state->comm.tx(&state->comm, buf);
+	rumr_buffer_free(buf);
+	buf = NULL;
+	if (r) {
+		state->log_msg("[ERROR]: Could not transmit opcode to server.\n");
+		goto error;
+	}
+
+	// return reply from server
+	r = state->comm.rx(&state->comm, &buf);
+	if (!r && buf) {
+		uint32_t reply;
+		// ensure version and server bit is correct
+		reply = rumr_buffer_read_uint32(buf);
+		if (((reply>>1)&0xFF) != RUMR_VERSION) {
+			state->log_msg("[ERROR]: Incorrect server version returned from server\n");
+			rumr_buffer_free(buf);
+			return NULL;
+		}
+		if (!(reply&1)) {
+			state->log_msg("[ERROR]: Incorrect server flag returned from server\n");
+			rumr_buffer_free(buf);
+			return NULL;
+		}
+	} else {
+		rumr_buffer_free(buf);
+		buf = NULL;
+	}
+error:
+	return buf;
+}
+
 // handle VRAM/SRAM reads/writes and DMA translations
 static int mem_op(struct umr_asic *asic, uint64_t *addr, uint32_t size, void *dst, int write_en, int vram_en)
 {
@@ -226,7 +266,10 @@ static int gprs_op(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t thr
 			shift = 3;  // on SI..CIK allocations were done in 8-dword blocks
 		else
 			shift = 4;  // on VI allocations are in 16-dword blocks
-		size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE") + 1) << shift);
+		if (asic->family < FAMILY_NV)
+			size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE") + 1) << shift);
+		else
+			size = 4 * 124;
 	} else {
 		size = 4 * ((umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << asic->parameters.vgpr_granularity);
 	}
@@ -504,7 +547,7 @@ int rumr_client_discover(struct rumr_client_state *state)
  * @param addr  The address of the server to connect to.
  * @return int Returns 0 on success, a negative error code on failure.
  */
-int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs *cf, char *addr)
+int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs *cf, char *addr, struct umr_options *options)
 {
 	int r;
 
@@ -552,6 +595,20 @@ int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs 
 		state->asic->gpr_read_funcs.read_vgprs = read_vgprs;
 		state->asic->gpr_read_funcs.data = state;
 
+	// copy global options
+		if (options->user_queue.clientid[0]) {
+			// if the client side has specified a UQ then just copy that over whatever
+			// the server sent us
+			state->asic->options = *options;
+		} else {
+			// if the client side has not specified a UQ then use what the server sent
+			// keep whatever the server gave us for uq data
+			struct umr_options ops;
+			ops.user_queue = state->asic->options.user_queue;
+			state->asic->options = *options;
+			state->asic->options.user_queue = ops.user_queue;
+		}
+
 	// default shader options
 		if (state->asic->family <= FAMILY_VI) { // on gfx9+ hs/gs are opaque
 			state->asic->options.shader_enable.enable_gs_shader = 1;
@@ -566,13 +623,29 @@ int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs 
 		if (state->asic->family > FAMILY_VI)
 			state->asic->options.shader_enable.enable_es_ls_swap = 1;  // on >FAMILY_VI we swap LS/ES for HS/GS
 
-	// default options
-		state->asic->options.vm_partition = -1;
+	// tag rumr as active
+		state->asic->options.rumr_active = 1;
 
 	// create mmio lookup accelerator
 		umr_create_mmio_accel(state->asic);
 
 	return 0;
+}
+
+int rumr_client_user_queue_parse(struct umr_asic *asic)
+{
+	struct rumr_buffer *buf;
+	struct rumr_client_state *state = asic->reg_funcs.data;
+	int r;
+
+	buf = send_opcode_data(state, RUMR_OP_USER_QUEUE_PARSE, &asic->options.user_queue.clientid, sizeof(asic->options.user_queue.clientid));
+	if (buf) {
+		rumr_buffer_read_data(buf, &asic->options.user_queue, sizeof(asic->options.user_queue));
+		r = buf->failed;
+		rumr_buffer_free(buf);
+		return r;
+	}
+	return -1;
 }
 
 /**

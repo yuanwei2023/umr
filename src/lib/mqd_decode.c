@@ -2620,7 +2620,7 @@ char **umr_mqd_decode_data(enum umr_mqd_engine_sel eng, enum chipfamily fam, uin
 			m = fields[x].fields;
 			for (y = z = 0; m[y].label; y++) {
 				if (match[0] == '*' || strstr(m[y].label, match)) {
-					sprintf(buf, "MQD[%"PRIu32"] == 0x%"PRIx32" (%s)", m[y].offset, data[m[y].offset], m[y].label);
+					sprintf(buf, "MQD[%03"PRIu32"] == 0x%08"PRIx32" (%s)", m[y].offset, data[m[y].offset], m[y].label);
 					txt[z++] = strdup(buf);
 				}
 			}

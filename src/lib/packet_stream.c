@@ -303,12 +303,12 @@ void umr_packet_free(struct umr_packet_stream *stream)
  *
  * Returns a poiner to a umr_shaders_pgm structure if the shader program is found.
  */
-struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream, unsigned vmid, uint64_t addr)
+struct umr_shaders_pgm *umr_packet_find_shader(struct umr_asic *asic, struct umr_packet_stream *stream, unsigned vmid, uint64_t addr)
 {
 	switch (stream->type) {
 		case UMR_RING_PM4:
 		case UMR_RING_PM4_LITE:
-			return umr_find_shader_in_stream(stream->stream.pm4, vmid, addr);
+			return umr_find_shader_in_stream(asic, stream->stream.pm4, vmid, addr);
 
 		case UMR_RING_SDMA:
 		case UMR_RING_MES:

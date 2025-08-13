@@ -75,6 +75,8 @@ struct rumr_buffer *rumr_serialize_asic(struct umr_asic *asic)
 		rumr_buffer_add_uint32(buf, asic->is_apu);
 	// NO blocks
 		rumr_buffer_add_uint32(buf, asic->no_blocks);
+	// user queue data
+		rumr_buffer_add_data(buf, &asic->options.user_queue, sizeof(asic->options.user_queue));
 
 	// per IP block
 	for (ip = 0; ip < asic->no_blocks; ip++) {
@@ -177,6 +179,8 @@ struct umr_asic *rumr_parse_serialized_asic(struct rumr_buffer *buf)
 	// NO blocks
 		asic->no_blocks = rumr_buffer_read_uint32(buf);
 		asic->blocks = calloc(asic->no_blocks, sizeof asic->blocks[0]);
+	// user queues
+		rumr_buffer_read_data(buf, &asic->options.user_queue, sizeof(asic->options.user_queue));
 
 	// per IP block
 	for (ip = 0; ip < asic->no_blocks; ip++) {

@@ -340,6 +340,21 @@ static int handle_op_ring_access(struct rumr_server_state *state, struct rumr_bu
 	return 0;
 }
 
+static int handle_op_user_queue_parse(struct rumr_server_state *state, struct rumr_buffer *inbuf, struct rumr_buffer *outbuf)
+{
+	int ret;
+	struct umr_asic *asic = state->asic;
+
+	memset(&asic->options.user_queue, 0, sizeof(asic->options.user_queue));
+	rumr_buffer_read_data(inbuf, asic->options.user_queue.clientid, sizeof (asic->options.user_queue.clientid));
+	asic->options.user_queue.clientid[sizeof (asic->options.user_queue.clientid) - 1] = 0;
+	ret = umr_parse_clientid(asic);
+	if (!ret) {
+		rumr_buffer_add_data(outbuf, &asic->options.user_queue, sizeof(asic->options.user_queue));
+	}
+	return 0;
+}
+
 /** rumr_server_loop: Handles one command from client
  * state: The server state
  *
@@ -399,6 +414,9 @@ int rumr_server_loop(struct rumr_server_state *state)
 				break;
 			case RUMR_OP_RING_ACCESS:
 				r = handle_op_ring_access(state, rbuf, outbuf);
+				break;
+			case RUMR_OP_USER_QUEUE_PARSE:
+				r = handle_op_user_queue_parse(state, rbuf, outbuf);
 				break;
 			case RUMR_OP_GOODBYE:
 				state->comm.closeconn(&state->comm);

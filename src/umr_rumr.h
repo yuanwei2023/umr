@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 // version of RUMR protocol
-#define RUMR_VERSION 0x01
+#define RUMR_VERSION 0x02
 
 // amount of preheader space used by comms
 // layer this allows transmitting "once"
@@ -43,6 +43,7 @@ enum rumr_opcodes {
 	RUMR_OP_WAVE_ACCESS,
 	RUMR_OP_GPR_ACCESS,
 	RUMR_OP_RING_ACCESS,
+	RUMR_OP_USER_QUEUE_PARSE,
 	RUMR_OP_GOODBYE,
 };
 
@@ -106,9 +107,10 @@ struct rumr_client_state {
 };
 
 // client functions
-int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs *cf, char *addr);
+int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs *cf, char *addr, struct umr_options *options);
 void rumr_client_close(struct rumr_client_state *state);
 int rumr_client_discover(struct rumr_client_state *state);
+int rumr_client_user_queue_parse(struct umr_asic *asic);
 #endif
 
 // buffer functions

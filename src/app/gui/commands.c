@@ -2295,7 +2295,7 @@ static JSON_Value *wave_to_json(struct umr_asic *asic, struct umr_wave_data *wd,
 			uint64_t shader_addr;
 			uint64_t pgm_addr = pc;
 
-			shader = umr_packet_find_shader(stream, vmid, pgm_addr);
+			shader = umr_packet_find_shader(asic, stream, vmid, pgm_addr);
 
 			if (shader) {
 				shader_size = shader->size;

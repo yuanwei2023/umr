@@ -34,9 +34,6 @@ struct umr_vm_pagewalk {
 	uint64_t pde[8], pte;
 	pde_fields_t pde_fields[8];
 	pte_fields_t pte_fields;
-	struct {
-		uint64_t page_table_base_addr;
-	} registers;
 };
 
 int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en);

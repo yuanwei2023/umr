@@ -54,7 +54,7 @@ struct umr_pm4_stream {
 
 struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t from_addr, uint32_t *stream, uint32_t nwords, struct umr_shader_reg_pair **reg_head);
 void umr_free_pm4_stream(struct umr_pm4_stream *stream);
-struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
+struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_asic *asic, struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr);
 const char *umr_pm4_opcode_to_str(uint32_t header);
 
 struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);

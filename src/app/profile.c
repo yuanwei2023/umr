@@ -153,7 +153,7 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 			// try to find shader in PM4 stream
 			shader = NULL;
 			if (stream)
-				shader = umr_packet_find_shader(stream, phit[nitems].vmid, phit[nitems].pc);
+				shader = umr_packet_find_shader(asic, stream, phit[nitems].vmid, phit[nitems].pc);
 			if (shader) {
 				struct umr_profiler_text *shader_text;
 

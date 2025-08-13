@@ -203,7 +203,7 @@ struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, str
 void umr_packet_free(struct umr_packet_stream *stream);
 
 // find a compute/gfx shader program in a packet stream
-struct umr_shaders_pgm *umr_packet_find_shader(struct umr_packet_stream *stream, unsigned vmid, uint64_t addr);
+struct umr_shaders_pgm *umr_packet_find_shader(struct umr_asic *asic, struct umr_packet_stream *stream, unsigned vmid, uint64_t addr);
 
 // disassemble a packet stream
 struct umr_packet_stream *umr_packet_disassemble_stream(struct umr_packet_stream *stream, uint64_t ib_addr, uint32_t ib_vmid,

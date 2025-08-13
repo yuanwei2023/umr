@@ -498,8 +498,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
  * this object becomes invalid so you must free() this first,
  * then free the PM4 stream.
  */
-struct umr_shaders_pgm *umr_find_shader_in_stream(
-	struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr)
+struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_asic *asic, struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr)
 {
 	struct umr_shaders_pgm *p, *pp;
 
@@ -510,7 +509,7 @@ struct umr_shaders_pgm *umr_find_shader_in_stream(
 			struct umr_shaders_pgm *pgm = stream->shader;
 
 			while (pgm) {
-				if (pgm->vmid == vmid &&
+				if ((pgm->vmid == vmid || asic->options.user_queue.state.active) && // only compare VMIDs if user queues aren't used
 					(addr >= pgm->addr) &&
 					(addr < (pgm->addr + pgm->size))) {
 						p = pgm;
@@ -525,7 +524,7 @@ struct umr_shaders_pgm *umr_find_shader_in_stream(
 
 		// recurse into IBs if any
 		if (stream->ib) {
-			p = umr_find_shader_in_stream(stream->ib, vmid, addr);
+			p = umr_find_shader_in_stream(asic, stream->ib, vmid, addr);
 			if (p)
 				return p;
 		}
