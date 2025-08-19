@@ -609,6 +609,8 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 		// grab type specific header data
 		if (ps->pkttype == 0)
 			ps->pkt0off = *stream & 0xFFFF;
+		else if (ps->pkttype == 2)
+			--(ps->n_words);
 		else if (ps->pkttype == 3)
 			ps->opcode = (*stream >> 8) & 0xFF;
 
