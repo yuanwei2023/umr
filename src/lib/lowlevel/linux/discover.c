@@ -71,9 +71,10 @@ static int find_pci_instance(const char* pci_string)
 		int parsed_device;
 		FILE *f;
 
-		// ignore . and ..
+		// ignore '.', '..', and pci-bus
 		if (strcmp(dir_entry->d_name, ".") == 0 ||
-		    strcmp(dir_entry->d_name, "..") == 0)
+		    strcmp(dir_entry->d_name, "..") == 0 ||
+			strchr(dir_entry->d_name, ':'))
 			continue;
 
 		// ignore non AMDGPU DRI directoties
@@ -104,15 +105,19 @@ static int find_pci_instance(const char* pci_string)
 			memmove(device, device + 4, strlen(device) - 3);
 		if (strcmp(pci_string, device) == 0) {
 			// save the instance in case this is pre-ipdiscovery hardware
-			saved = atoi(dir_entry->d_name);
+			int inst = atoi(dir_entry->d_name);
+			// do not consider render nodes
+			if (inst < 128) {
+				saved = inst;
 
-			// test if IP discovery exists for this
-			snprintf(name, sizeof(name), "/sys/class/drm/card%s/device/ip_discovery/die/0/num_ips", dir_entry->d_name);
-			f = fopen(name, "r");
-			if (!f)
-				continue;
-			fclose(f);
-			break;
+				// test if IP discovery exists for this
+				snprintf(name, sizeof(name), "/sys/class/drm/card%s/device/ip_discovery/die/0/num_ips", dir_entry->d_name);
+				f = fopen(name, "r");
+				if (!f)
+					continue;
+				fclose(f);
+				break;
+			}
 		}
 	}
 	closedir(dir);
