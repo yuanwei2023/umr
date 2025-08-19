@@ -55,42 +55,42 @@ static const struct {
 	{ "UNK", 0, 0 }, // 0d
 	{ "UNK", 0, 0 }, // 0e
 	{ "UNK", 0, 0 }, // 0f
-	{ "PKT3_NOP", 8, 0 }, // 10
+	{ "PKT3_NOP", 6, 0 }, // 10
 	{ "PKT3_SET_BASE", 9, 0 }, // 11
-	{ "PKT3_CLEAR_STATE", 8, 0 }, // 12
-	{ "PKT3_INDEX_BUFFER_SIZE", 9, 0 },// 13
+	{ "PKT3_CLEAR_STATE", 6, 0 }, // 12
+	{ "PKT3_INDEX_BUFFER_SIZE", 6, 0 },// 13
 	{ "UNK", 0, 0 }, // 14
-	{ "PKT3_DISPATCH_DIRECT", 8, 0 }, // 15
-	{ "PKT3_DISPATCH_INDIRECT", 9, 0 }, // 16
+	{ "PKT3_DISPATCH_DIRECT", 6, 0 }, // 15
+	{ "PKT3_DISPATCH_INDIRECT", 6, 0 }, // 16
 	{ "UNK", 0, 0 }, // 17
 	{ "UNK", 0, 0 }, // 18
 	{ "UNK", 0, 0 }, // 19
 	{ "UNK", 0, 0 }, // 1a
 	{ "UNK", 0, 0 }, // 1b
 	{ "UNK", 0, 0 }, // 1c
-	{ "PKT3_ATOMIC_GDS", 8, 0 }, // 1d
+	{ "PKT3_ATOMIC_GDS", 6, 0 }, // 1d
 	{ "PKT3_ATOMIC_MEM", 8, 0 }, // 1e
 	{ "UNK", 0, 0 }, // 1f
-	{ "PKT3_SET_PREDICATION", 9, 0 }, // 20
+	{ "PKT3_SET_PREDICATION", 6, 0 }, // 20
 	{ "UNK", 0, 0 }, // 21
-	{ "PKT3_COND_EXEC", 8, 0 }, // 22
+	{ "PKT3_COND_EXEC", 6, 0 }, // 22
 	{ "UNK", 0, 0 }, // 23
 	{ "UNK", 0, 0 }, // 24
-	{ "PKT3_DRAW_INDEX_INDIRECT", 9, 0 }, // 25
+	{ "PKT3_DRAW_INDEX_INDIRECT", 6, 0 }, // 25
 	{ "PKT3_INDEX_BASE", 9, 0 }, // 26
-	{ "PKT3_DRAW_INDEX_2", 8, 0 }, // 27
-	{ "PKT3_CONTEXT_CONTROL", 8, 0 }, // 28
+	{ "PKT3_DRAW_INDEX_2", 6, 0 }, // 27
+	{ "PKT3_CONTEXT_CONTROL", 6, 0 }, // 28
 	{ "UNK", 0, 0 }, // 29
 	{ "UNK", 0, 0 }, // 2a
 	{ "UNK", 0, 0 }, // 2b
 	{ "UNK", 0, 0 }, // 2c
-	{ "PKT3_DRAW_INDEX_AUTO", 8, 0 }, // 2d
+	{ "PKT3_DRAW_INDEX_AUTO", 6, 0 }, // 2d
 	{ "UNK", 0, 0 }, // 2e
-	{ "PKT3_NUM_INSTANCES", 8, 0 }, // 2f
+	{ "PKT3_NUM_INSTANCES", 6, 0 }, // 2f
 	{ "UNK", 0, 0 }, // 30
 	{ "UNK", 0, 0 }, // 31
 	{ "UNK", 0, 0 }, // 32
-	{ "PKT3_INDIRECT_BUFFER_CONST", 8, 0 }, // 33
+	{ "PKT3_INDIRECT_BUFFER_CONST", 6, 0 }, // 33
 	{ "UNK", 0, 0 }, // 34
 	{ "UNK", 0, 0 }, // 35
 	{ "UNK", 0, 0 }, // 36
@@ -99,21 +99,21 @@ static const struct {
 	{ "UNK", 0, 0 }, // 39
 	{ "UNK", 0, 0 }, // 3a
 	{ "UNK", 0, 0 }, // 3b
-	{ "PKT3_WAIT_REG_MEM", 8, 0 }, // 3c
+	{ "PKT3_WAIT_REG_MEM", 6, 0 }, // 3c
 	{ "UNK", 0, 0 }, // 3d
 	{ "UNK", 0, 0 }, // 3e
-	{ "PKT3_INDIRECT_BUFFER_CIK", 8, 0 }, // 3f
+	{ "PKT3_INDIRECT_BUFFER_CIK", 6, 0 }, // 3f
 	{ "PKT3_COPY_DATA", 8, 0 },// 40
 	{ "UNK", 0, 0 }, // 41
-	{ "PKT3_PFP_SYNC_ME", 8, 0 }, // 42
-	{ "PKT3_SURFACE_SYNC", 8, 0 }, // 43
+	{ "PKT3_PFP_SYNC_ME", 6, 0 }, // 42
+	{ "PKT3_SURFACE_SYNC", 6, 0 }, // 43
 	{ "UNK", 0, 0 }, // 44
 	{ "UNK", 0, 0 }, // 45
-	{ "PKT3_EVENT_WRITE", 8, 0 }, // 46
-	{ "PKT3_EVENT_WRITE_EOP", 8, 0 }, // 47
+	{ "PKT3_EVENT_WRITE", 6, 0 }, // 46
+	{ "PKT3_EVENT_WRITE_EOP", 6, 0 }, // 47
 	{ "UNK", 0, 0 }, // 48
 	{ "PKT3_RELEASE_MEM", 8, 0 }, // 49
-	{ "PKT3_PREAMBLE_CNTL", 8, 0 }, // 4a
+	{ "PKT3_PREAMBLE_CNTL", 6, 0 }, // 4a
 	{ "UNK", 0, 0 }, // 4b
 	{ "PKT3_DISPATCH_MESH_INDIRECT_MULTI", 10, 0 }, // 4c
 	{ "PKT3_DISPATCH_TASKMESH_GFX", 10, 0 }, // 4d
@@ -135,16 +135,16 @@ static const struct {
 	{ "PKT3_PRIME_UTCL2", 9, 0 }, // 5d
 	{ "PKT3_LOAD_UCONFIG_REG", 8, 0 }, // 5e
 	{ "PKT3_LOAD_SH_REG", 8, 0 }, // 5f
-	{ "PKT3_LOAD_CONFIG_REG", 8, 0 }, // 60
-	{ "PKT3_LOAD_CONTEXT_REG", 8, 0 }, // 61
+	{ "PKT3_LOAD_CONFIG_REG", 6, 0 }, // 60
+	{ "PKT3_LOAD_CONTEXT_REG", 6, 0 }, // 61
 	{ "UNK", 0, 0 }, // 62
 	{ "PKT3_LOAD_SH_REG_INDEX", 8, 0 }, // 63
 	{ "UNK", 0, 0 }, // 64
 	{ "UNK", 0, 0 }, // 65
 	{ "UNK", 0, 0 }, // 66
 	{ "UNK", 0, 0 }, // 67
-	{ "PKT3_SET_CONFIG_REG", 8, 0 }, // 68
-	{ "PKT3_SET_CONTEXT_REG", 8, 0 }, // 69
+	{ "PKT3_SET_CONFIG_REG", 6, 0 }, // 68
+	{ "PKT3_SET_CONTEXT_REG", 6, 0 }, // 69
 	{ "UNK", 0, 0 }, // 6a
 	{ "UNK", 0, 0 }, // 6b
 	{ "UNK", 0, 0 }, // 6c
@@ -157,7 +157,7 @@ static const struct {
 	{ "UNK", 0, 0 }, // 73
 	{ "UNK", 0, 0 }, // 74
 	{ "UNK", 0, 0 }, // 75
-	{ "PKT3_SET_SH_REG", 8, 0 }, // 76
+	{ "PKT3_SET_SH_REG", 6, 0 }, // 76
 	{ "UNK", 0, 0 }, // 77
 	{ "UNK", 0, 0 }, // 78
 	{ "PKT3_SET_UCONFIG_REG", 8, 0 }, // 79
@@ -167,13 +167,13 @@ static const struct {
 	{ "UNK", 0, 0 }, // 7d
 	{ "UNK", 0, 0 }, // 7e
 	{ "UNK", 0, 0 }, // 7f
-	{ "PKT3_LOAD_CONST_RAM", 8, 0 }, // 80
-	{ "PKT3_WRITE_CONST_RAM", 8, 0 }, // 81
+	{ "PKT3_LOAD_CONST_RAM", 6, 0 }, // 80
+	{ "PKT3_WRITE_CONST_RAM", 6, 0 }, // 81
 	{ "UNK", 0, 0 }, // 82
-	{ "PKT3_DUMP_CONST_RAM", 8, 0 }, // 83
-	{ "PKT3_INCREMENT_CE_COUNTER", 8, 0 }, // 84
+	{ "PKT3_DUMP_CONST_RAM", 6, 0 }, // 83
+	{ "PKT3_INCREMENT_CE_COUNTER", 6, 0 }, // 84
 	{ "UNK", 0, 0 }, // 85
-	{ "PKT3_WAIT_ON_CE_COUNTER", 8, 0 }, // 86
+	{ "PKT3_WAIT_ON_CE_COUNTER", 6, 0 }, // 86
 	{ "UNK", 0, 0 }, // 87
 	{ "UNK", 0, 0 }, // 88
 	{ "UNK", 0, 0 }, // 89
