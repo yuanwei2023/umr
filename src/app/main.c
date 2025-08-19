@@ -1501,7 +1501,7 @@ int main(int argc, char **argv)
 					}
 		#if UMR_SERVER
 				} else if (!strcmp(argv[i], "--server")) {
-					char *url = (i < argc - 1) ? argv[i + 1] : "tcp://*:1234";
+					char *url = (i < argc - 1) ? argv[i + 1] : "tcp://0.0.0.0:1234";
 					run_server_loop(url, NULL);
 		#endif
 				}

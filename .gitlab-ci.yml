@@ -29,7 +29,6 @@ build_docker_arch:
       glew
       libdrm
       llvm
-      nanomsg
       sdl2
 
 # build template
@@ -118,7 +117,6 @@ build_docker_ubuntu:
       libgbm-dev
       libglew-dev
       libglx-dev
-      libnanomsg-dev
       libncurses-dev
       libopengl-dev
       libpciaccess-dev
@@ -147,7 +145,6 @@ build_docker_fedora:
       libpciaccess-devel
       llvm-devel
       make
-      nanomsg-devel
       ncurses-libs
       rpm-build
       zlib-devel

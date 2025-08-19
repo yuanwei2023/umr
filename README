@@ -31,7 +31,7 @@ Building
 
 To build umr you will need pciaccess, ncurses, libdrm, llvm and
 pthread headers and libraries. To enable the graphical frontend,
-you'll also need nanomsg, json-c and sdl2.
+you'll also need sdl2.
 
 To build umr:
 

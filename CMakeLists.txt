@@ -35,7 +35,7 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm14, zlib
 
 set(CPACK_RPM_PACKAGE_AUTOREQ 0)
 set(CPACK_RPM_PACKAGE_AUTOPROV 0)
-set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm-libs, zlib, SDL2-devel, libgbm-devel, nanomsg-devel")
+set(CPACK_RPM_PACKAGE_REQUIRES "ncurses-libs, libpciaccess, llvm-libs, zlib, SDL2-devel, libgbm-devel")
 
 include(CPack)
 
@@ -166,14 +166,6 @@ endif()
 
 if(UMR_SERVER)
   add_compile_definitions(UMR_SERVER=1)
-  find_package(NanoMsg)
-  if(NANOMSG_FOUND)
-    add_compile_definitions(HAVE_NANOMSG=1)
-    set(REQUIRED_EXTERNAL_LIBS_GUI ${REQUIRED_EXTERNAL_LIBS_GUI} ${NANOMSG_LIBRARIES} )
-    include_directories(${NANOMSG_INCLUDE_DIR})
-  else()
-    message(FATAL_ERROR "nanomsg library not found. Install it or use -DUMR_NO_SERVER=ON.")
-  endif()
 endif()
 
 

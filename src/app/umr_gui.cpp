@@ -32,10 +32,6 @@
 #include <regex.h>
 #include <limits.h>
 
-#if UMR_SERVER
-#include <nanomsg/nn.h>
-#include <nanomsg/reqrep.h>
-#endif
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_sdl.h"
@@ -48,6 +44,10 @@
 #include <EGL/eglext.h>
 
 #include "gui/qoi/qoi.h"
+
+extern "C" {
+#include "umr_rumr.h"
+}
 
 /* Random helpers */
 extern void send_request(JSON_Value *req, struct umr_asic *asic);
@@ -97,9 +97,8 @@ static pthread_mutex_t mtx;
 #include "gui/activity_panel.cpp"
 
 struct Link {
-	int sock;
-	int endpoint;
-	bool use_sock;
+	struct rumr_comm_funcs *cf; /* NULL if replaying a session. */
+	char *addr;
 };
 
 static void save_to_disk(const char *session_folder, int msg_idx,
@@ -130,26 +129,35 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request,
 				  void **raw_data, unsigned *raw_data_size,
 				  const char *session_folder, int msg_idx) {
 	#if UMR_SERVER
-	if (lnk.use_sock) {
+	if (lnk.cf) {
 		char* s = json_serialize_to_string(request);
 		int len = strlen(s) + 1;
-		int r = nn_send(lnk.sock, s, len, 0);
+
+		struct rumr_buffer *buf = rumr_buffer_init();
+		rumr_buffer_add_data(buf, s, len);
 		json_free_serialized_string(s);
 
-		if (r < 0)
-			exit(0);
+		int r = lnk.cf->tx(lnk.cf, buf);
 		json_value_free(request);
+		rumr_buffer_free(buf);
 
-		if (r < 0)
+		if (r < 0) {
+			printf("tx failed (size: %d)\n", len);
+			return NULL;
+		}
+
+		buf = NULL;
+		r = lnk.cf->rx(lnk.cf, &buf);
+		if (r < 0 || buf == NULL) {
+			printf("rx failed\n");
+			return NULL;
+		}
+
+		if (buf->size == 0)
 			return NULL;
 
-		char *buffer;
-		len = nn_recv(lnk.sock, &buffer, NN_MSG, 0);
-		if (len < 0)
-			exit(0);
-
-		if (len == 0)
-			return NULL;
+		char *buffer = (char*)buf->data;
+		len = buf->woffset;
 
 		int strl = strlen(&buffer[sizeof(uint32_t)]) + 1;
 		memcpy(raw_data_size, buffer, sizeof(uint32_t));
@@ -171,7 +179,7 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request,
 						 &buffer[sizeof(uint32_t)], strl,
 						 raw_data ? *raw_data : NULL, *raw_data_size);
 
-		nn_freemsg(buffer);
+		rumr_buffer_free(buf);
 
 		return out;
 	} else
@@ -388,6 +396,17 @@ struct communication_th_args {
 static void *communication_thread(void *_job) {
 	int id = 0;
 	char session_folder[PATH_MAX];
+
+	/* Wait for the server to reply first. */
+	if (lnk.cf) {
+		do {
+			if (lnk.cf->connect(lnk.cf, lnk.addr) == 0)
+				break;
+			sleep(1);
+		} while (true);
+	}
+
+
 	while (id < 1024) {
 		struct stat statbuf;
 		snprintf(session_folder, sizeof(session_folder), "/tmp/umr_session.%d", id++);
@@ -556,7 +575,22 @@ void reset_before_replay(std::vector<AsicData*> &asics,
 	*activity_panel = new ActivityPanel(NULL);
 }
 
-static int run_gui(const char *url)
+static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
+{
+	struct rumr_comm_funcs *cf;
+	*addr = arg;
+
+	if (!memcmp(arg, "tcp://", 6)) {
+		cf = (struct rumr_comm_funcs *) calloc(1, sizeof rumr_tcp_funcs);
+		*cf = rumr_tcp_funcs;
+		cf->log_msg = printf;
+		*addr = &arg[6];
+		return cf;
+	}
+	return NULL;
+}
+
+static int run_gui(char *url)
 {
 	pthread_mutexattr_t mat;
 	pthread_mutexattr_init(&mat);
@@ -572,28 +606,14 @@ static int run_gui(const char *url)
 		if (r == 0 && S_ISDIR(statbuf.st_mode)) {
 			replay = true;
 		} else {
-			#if UMR_SERVER
-			int rv;
-			if ((lnk.sock = nn_socket(AF_SP, NN_REQ)) < 0) {
-				exit(1);
+			lnk.cf = rumr_get_cf(url, &lnk.addr);
+			if (lnk.cf == NULL) {
+				printf("Invalid server address '%s'\n", url);
+				return -1;
 			}
-			if ((rv = nn_connect (lnk.sock, url)) < 0) {
-				printf("Error: invalid url '%s'\n", url);
-				exit(1);
-			}
-			int size = 100000000;
-			if (nn_setsockopt(lnk.sock, NN_SOL_SOCKET, NN_RCVMAXSIZE, &size, sizeof(size)) < 0) {
-				exit(0);
-			}
-			lnk.use_sock = true;
-			lnk.endpoint = rv;
-			#else
-			printf("Error: UMR remote GUI feature was not enabled at build time.\n");
-			exit(1);
-			#endif
 		}
 	} else {
-		lnk.use_sock = false;
+		lnk.cf = NULL;
 	}
 
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
@@ -633,7 +653,7 @@ static int run_gui(const char *url)
 		(SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
 	char title[512];
-	if (lnk.use_sock)
+	if (lnk.cf)
 		sprintf(title, "umr (%s) EXPERIMENTAL ", url);
 	else
 		strcpy(title, "umr EXPERIMENTAL");
@@ -737,7 +757,7 @@ static int run_gui(const char *url)
 		}
 		memcpy(&before, &now, sizeof(now));
 
-		if (lnk.use_sock && previous_ping != ping_value) {
+		if (lnk.cf && previous_ping != ping_value) {
 			char title[512];
 			sprintf(title, "umr (%s, %.1f ms)", url, ping_value);
 			previous_ping = ping_value;
@@ -989,9 +1009,8 @@ static int run_gui(const char *url)
 	pthread_mutex_unlock(&mtx);
 
 #if UMR_SERVER
-	if (lnk.use_sock) {
-		nn_shutdown(lnk.sock, lnk.endpoint);
-		nn_close(lnk.sock);
+	if (lnk.cf) {
+		lnk.cf->close(lnk.cf);
 	}
 #endif
 
@@ -1114,6 +1133,6 @@ char * SyntaxHighlighter::transform(const char *in) {
 
 extern "C" {
 	void umr_run_gui(const char *url) {
-		run_gui(url);
+		run_gui((char*)url);
 	}
 }
