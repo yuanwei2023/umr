@@ -916,11 +916,14 @@ static int run_gui(char *url)
 				ImGui::EndTabItem();
 			}
 
+			struct umr_wave_data wd;
+			ImGui::BeginDisabled(umr_wave_data_init(data.asic, &wd) < 0);
 			if (ImGui::BeginTabItem("#b58900W#ffffffaves", NULL, kb_shortcut(SDLK_w) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[7]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
+			ImGui::EndDisabled();
 
 			if (ImGui::BeginTabItem("Rin#b58900g#ffffffs", NULL, kb_shortcut(SDLK_g) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				data.panels[3]->display(dt, avail, can_send_request);
