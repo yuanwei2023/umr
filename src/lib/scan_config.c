@@ -284,12 +284,24 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 	if (!f)
 		goto gca_config;
 	r = 0;
+	memset(&asic->config.fw, 0, sizeof asic->config.fw);
 	while (r < UMR_MAX_FW && fgets(fname, sizeof(fname)-1, f)) {
-		sscanf(fname, "%s feature version: %" SCNu32 ", firmware version: 0x%" SCNx32 "\n",
-			asic->config.fw[r].name,
-			&asic->config.fw[r].feature_version,
-			&asic->config.fw[r].firmware_version);
-		++r;
+		char *p;
+		fname[strlen(fname)-1] = 0;
+		p = strstr(fname, "feature");
+		if (p) {
+			char t1[64];
+			p[-1] = 0;
+			strcpy(asic->config.fw[r].name, fname);
+			if (sscanf(p, "feature version: %[0-9x], firmware version: 0x%" SCNx32 "\n", t1, &asic->config.fw[r].firmware_version) == 2) {
+				if (memcmp(t1, "0x", 2)) {
+					sscanf(t1, "%"SCNu32, &asic->config.fw[r].feature_version);
+				} else {
+					sscanf(t1, "%"SCNx32, &asic->config.fw[r].feature_version);
+				}
+				++r;
+			}
+		}
 	}
 	fclose(f);
 
