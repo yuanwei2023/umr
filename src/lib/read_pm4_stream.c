@@ -233,6 +233,7 @@ void umr_shader_add_reg_pair(struct umr_shader_reg_pair **head, const char *regn
 	reg_pair->value = value;
 	reg_pair->vmid = ib_vmid;
 	reg_pair->addr = ib_addr;
+	reg_pair->used = 0;
 }
 
 /**
@@ -315,11 +316,11 @@ static void process_shaders(struct umr_asic *asic, int vm_partition, uint32_t vm
 					}
 				}
 #endif
-				// we found both addresses so let's add this shader
-				uint64_t addr = (((uint64_t)hi->value) << 40) | (((uint64_t)lo->value) << 8);
-				add_shader(asic, ps, vmid, addr, vm_partition, types[x].type, reg_pairs);
 				hi->used = 1;
 				lo->used = 1;
+				// we found both addresses so let's add this shader
+				uint64_t addr = (((uint64_t)hi->value) << 40) | (((uint64_t)lo->value) << 8);
+				add_shader(asic, ps, vmid, addr, vm_partition, types[x].type, reg_pairs);				
 			}
 		}
 	}
