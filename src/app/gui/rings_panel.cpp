@@ -280,8 +280,10 @@ public:
 						ImGui::TableSetColumnIndex(1);
 						ImGui::Text("0x%08x", (uint32_t)json_array_get_number(op, j));
 						ImGui::TableSetColumnIndex(2);
-						ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
-						free(opcode_strs[j]);
+						if (opcode_strs) {
+							ImGui::Text("%s", shader_syntax.transform(opcode_strs[j]));
+							free(opcode_strs[j]);
+						}
 					}
 					ImGui::EndTable();
 					free(opcode_strs);
