@@ -22,11 +22,6 @@
  * next paragraph) shall be included in all copies or substantial portions
  * of the Software.
  */
-
-/* This panel is largely inspired by gpuvis (https://github.com/mikesart/gpuvis),
- * but tailored to amdgpu and without dependencies on trace-cmd.
- */
-
 #include "imgui.h"
 #include "panels.h"
 #include "parson.h"
