@@ -45,6 +45,7 @@ static const char *mes_v10_opcodes[] = {
 /* 11 */	"MES_SCH_API_SET_SE_MODE",
 /* 12 */	"MES_SCH_API_SET_GANG_SUBMIT",
 /* 13 */	"MES_SCH_API_SET_HW_RSRC_1",
+/* 14 */    "MES_SCH_API_INV_TLBS",
 };
 
 static char *mes_v10_misc_api_opcodes[] = {
@@ -948,8 +949,25 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reserved1", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "cleaner_shader_fence_mc_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				break;
+			case 20: // MES_SCH_API_INV_TLBS
+				if (mes_ver_maj >= 12) {
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_sel", fetch_word(asic, stream, i), NULL, 16, 8); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "flush_type", fetch_word(asic, stream, i), NULL, 16, 8); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_sel_id", fetch_word(asic, stream, i), NULL, 16, 16); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "hub_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+					if (pack8 && !(i&1)) ++i;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_size", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reserved", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
+				}
+				break;
 		}
-
 		if (stream->invalid)
 			break;
 
