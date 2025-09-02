@@ -22,6 +22,8 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+#include <stdbool.h>
+
 #include "umr.h"
 
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
@@ -452,7 +454,10 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 		}
 		case 0x3f: // INDIRECT_BUFFER_CIK
 		case 0x33: // INDIRECT_BUFFER_CONST
-			if (!asic->options.no_follow_ib) {
+			// Check chain bit to dump chained IBs for INDIRECT_BUFFER_CONST (0x33)
+			bool follow_chained_ib = !asic->options.no_follow_chained_ib && ps->opcode == 0x33 ?
+									BITS(fetch_word(asic, ps, 2), 20, 21) : false;
+			if (!asic->options.no_follow_ib || follow_chained_ib) {
 				uint64_t ib_addr;
 				uint32_t tvmid, size;
 				void *buf;

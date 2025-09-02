@@ -287,6 +287,7 @@ struct umr_options {
 	    read_smc,
 	    quiet,
 	    no_follow_ib,
+		no_follow_chained_ib,
 	    no_follow_shader,
 	    no_follow_loadx,
 	    verbose,
