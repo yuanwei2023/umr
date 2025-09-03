@@ -132,7 +132,14 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 			}
 			break;
 		case 5: // FENCE
-			ps->nwords = 3;
+			switch (ps->sub_opcode) {
+				case 0: // FENCE
+					ps->nwords = 3;
+					break;
+				case 1: // FENCE CONDITIONAL INTERRUPT
+					ps->nwords = 7;
+					break;
+			}
 			break;
 		case 6: // TRAP
 			ps->nwords = 1;

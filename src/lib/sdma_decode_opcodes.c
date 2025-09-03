@@ -2043,22 +2043,49 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 		case 4: // INDIRECT
 			break; // fall through
 		case 5: // FENCE
-			ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "FENCE", stream->header_dw, stream->words);
-			ui->add_field(ui, ib_addr + 0, ib_vmid, "MTYPE", (stream->header_dw >> 16) & 0x7, NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 0, ib_vmid, "GCC", (stream->header_dw >> 19) & 0x1, NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 0, ib_vmid, "SYS", (stream->header_dw >> 20) & 0x1, NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 0, ib_vmid, "SNP", (stream->header_dw >> 22) & 0x1, NULL, 10, 32);
-			ui->add_field(ui, ib_addr + 0, ib_vmid, "GPA", (stream->header_dw >> 23) & 0x1, NULL, 10, 32);
-			if (sc->has_cp_fields) {
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "L2_POLICY", (stream->header_dw >> 24) & 0x3, NULL, 10, 32);
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "LLC_POLICY", (stream->header_dw >> 26) & 0x1, NULL, 10, 32);
+			switch (stream->sub_opcode) {
+				case 0: // FENCE
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "FENCE", stream->header_dw, stream->words);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "MTYPE", (stream->header_dw >> 16) & 0x7, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "GCC", (stream->header_dw >> 19) & 0x1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "SYS", (stream->header_dw >> 20) & 0x1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "SNP", (stream->header_dw >> 22) & 0x1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "GPA", (stream->header_dw >> 23) & 0x1, NULL, 10, 32);
+					if (sc->has_cp_fields) {
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "L2_POLICY", (stream->header_dw >> 24) & 0x3, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "LLC_POLICY", (stream->header_dw >> 26) & 0x1, NULL, 10, 32);
+					}
+					if (sc->has_cpv_flag) {
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "CPV", (stream->header_dw >> 28) & 0x1, NULL, 10, 32);
+					}
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "FENCE_ADDR_LO", fetch_word(asic, stream, 0), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "FENCE_ADDR_HI", fetch_word(asic, stream, 1), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "FENCE_DATA", fetch_word(asic, stream, 2), NULL, 16, 32);
+					break;
+				case 1: // FENCE CONDITIONAL INTERRUPT
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "FENCE COND INTR", stream->header_dw, stream->words);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "MTYPE", (stream->header_dw >> 16) & 0x7, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "SYS", (stream->header_dw >> 20) & 0x1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "SNP", (stream->header_dw >> 22) & 0x1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "GPA", (stream->header_dw >> 23) & 0x1, NULL, 10, 32);
+					if (sc->has_cp_fields) {
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "L2_POLICY", (stream->header_dw >> 24) & 0x3, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "LLC_POLICY", (stream->header_dw >> 26) & 0x1, NULL, 10, 32);
+					}
+					if (sc->has_cpv_flag) {
+						ui->add_field(ui, ib_addr + 0, ib_vmid, "CPV", (stream->header_dw >> 28) & 0x1, NULL, 10, 32);
+					}
+					ui->add_field(ui, ib_addr + 0, ib_vmid, "QW", (stream->header_dw >> 31) & 0x1, NULL, 10, 32);
+
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "FENCE_ADDR_LO", fetch_word(asic, stream, 0), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "FENCE_ADDR_HI", fetch_word(asic, stream, 1), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "FENCE_DATA_LO", fetch_word(asic, stream, 2), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "FENCE_DATA_HI", fetch_word(asic, stream, 3), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "FENCE_REF_ADDR_LO", fetch_word(asic, stream, 4), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 24, ib_vmid, "FENCE_REF_ADDR_HI", fetch_word(asic, stream, 5), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 28, ib_vmid, "FENCE_INT_CONTEXT", fetch_word(asic, stream, 6), NULL, 16, 32);
+					return;
 			}
-			if (sc->has_cpv_flag) {
-				ui->add_field(ui, ib_addr + 0, ib_vmid, "CPV", (stream->header_dw >> 28) & 0x1, NULL, 10, 32);
-			}
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "FENCE_ADDR_LO", fetch_word(asic, stream, 0), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 8, ib_vmid, "FENCE_ADDR_HI", fetch_word(asic, stream, 1), NULL, 16, 32);
-			ui->add_field(ui, ib_addr + 12, ib_vmid, "FENCE_DATA", fetch_word(asic, stream, 2), NULL, 16, 32);
 			return;
 		case 6: // TRAP
 			break; // fall through
