@@ -229,7 +229,7 @@ struct umr_pci_config {
 };
 
 struct umr_fw_config {
-	char name[16];
+	char name[64];
 	uint32_t feature_version,
 		 firmware_version;
 };
