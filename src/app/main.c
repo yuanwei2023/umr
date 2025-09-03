@@ -256,6 +256,8 @@ static void parse_options(char *str)
 			options.no_follow_ib = 1;
 			options.no_follow_shader = 1;
 			options.no_follow_loadx = 1;
+		} else if (!strcmp(option, "no_follow_chained_ib")) {
+			options.no_follow_chained_ib = 1;
 		} else if (!strcmp(option, "verbose")) {
 			options.verbose = 1;
 		} else if (!strcmp(option, "halt_waves")) {
@@ -302,7 +304,7 @@ static void do_help(void)
 	"\n\t--database-path, -dbp <path>"
 		"\n\t\tSpecify a database path for register, ip, and asic model data.\n"
 	"\n\t--option -O <string>[,<string>,...]\n\t\tEnable various flags:"
-		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib,"
+		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib, no_follow_chained_ib, "
 		"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
 		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, filter_shader_registers, full_shader, skip_gprs, no_fold_vm_decode, force_asic_file\n"
 	"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"

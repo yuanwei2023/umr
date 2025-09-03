@@ -64,6 +64,10 @@ separated strings.  Options should be specified before --update or --force comma
      Instruct the --ring-stream command to not attempt to follow IBs pointed to by the packets
      in the ring.
 
+.B no_follow_chained_ib
+     By default, umr will follow all IBs that have the CHAIN bit set regardless of the 'no_follow_ib'
+     option.  Specifying this will disable following chained IBs as well.
+
 .B use_pci
      Enable PCI access for MMIO instead of using debugfs.  Used by the --read,
      --top, --write, and --write-bit commands.  Does not currently
