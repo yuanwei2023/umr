@@ -1347,18 +1347,42 @@ JSON_Array *parse_vm_info(const char *content)
 
 			ptr = next_space + 1;
 			const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
+			char *cat_ptrs[ARRAY_SIZE(categories)];
+
+			for (size_t i = 0; ptr && i < ARRAY_SIZE(categories); i++) {
+				cat_ptrs[i] = strstr(ptr, categories[i]);
+				ptr = cat_ptrs[i];
+				if (ptr == NULL)
+					return NULL;
+			}
+
 			uint64_t pid_total = 0;
-			for (int i = 0; ptr && i < 6; i++) {
-				ptr = strstr(ptr, categories[i]);
+			for (size_t i = 0; i < ARRAY_SIZE(cat_ptrs); i++) {
+				ptr = cat_ptrs[i];
+
 				/* Consume all chars until next line */
 				while (*ptr != '\n')
 					ptr++;
 				ptr++;
 
 				while (ptr) {
+					if (ptr && strstr(ptr, "pid:") == ptr)
+						break;
+
 					char *end_of_line = strchr(ptr, '\n');
-					char *id = strstr(ptr, "0x");
-					if (id && id < end_of_line) {
+					char *id;
+
+					if (i < (ARRAY_SIZE(cat_ptrs) - 1) && end_of_line >= cat_ptrs[i+1])
+						break;
+
+					if (end_of_line) {
+						id = memmem(ptr, end_of_line - ptr, "0x", 2);
+						end_of_line += 1;
+					} else {
+						id = strstr(ptr, "0x");
+					}
+
+					if (id) {
 						id += 11;
 						while (*id == ' ')
 							id++;
@@ -1408,7 +1432,7 @@ JSON_Array *parse_vm_info(const char *content)
 						json_array_append_value(bos, bo);
 						ptr = end_of_line + 1;
 					} else {
-						break;
+						ptr = end_of_line;
 					}
 				}
 			}

@@ -78,6 +78,7 @@ static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_as
         "\tIdle BOs:\n"
         "\tEvicted BOs:\n"
         "\t\t0x00000000:         4096 byte  GTT CPU_GTT_USWC VRAM_CONTIGUOUS\n"
+        "\n"
         "\tRelocated BOs:\n"
         "\tMoved BOs:\n"
         "\tInvalidated BOs:\n"
@@ -91,13 +92,17 @@ static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_as
         "pid:3140\tProcess:GeckoMain ----------\n"
         "\tIdle BOs:\n"
         "\t\t0x00000000:         4096 byte VRAM CPU_GTT_USWC VRAM_CONTIGUOUS\n"
-        "\t\t0x00000001:         4096 byte   GTT exported as 000000000a49a273 NO_CPU_ACCESS CPU_GTT_USWC\n"
+        "\n"
+        "\t\t0x00000001:         4096 byte   GTT exported as 000000000a49a273 NO_CPU_ACCESS CPU_GTT_USWC 	write fence:detached-driver signaled-timeline seq 94397 signalled\n"
+        "\twrite fence:detached-driver signaled-timeline seq 2 signalled\n"
+        "\n"
         "\tEvicted BOs:\n"
         "\tRelocated BOs:\n"
         "\tMoved BOs:\n"
         "\tInvalidated BOs:\n"
         "\tDone BOs:\n"
         "\t\t0x00000001:      2097152 byte  GTT CPU_ACCESS_REQUIRED CPU_GTT_USWC\n"
+        "\n"
         "\tTotal idle size:                8192\tobjs:\t2\n"
         "\tTotal evicted size:                0\tobjs:\t0\n"
         "\tTotal relocated size:              0\tobjs:\t0\n"
@@ -108,6 +113,7 @@ static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_as
     const char *names[] = { "", "GeckoMain" };
     int pids[] = { 0, 3140 };
     JSON_Array *out = parse_vm_info(content);
+    printf("%s\n", json_serialize_to_string_pretty(json_array_get_wrapping_value(out)));
     ASSERT_EQ(json_array_get_count(out), 2);
     for (int i = 0; i < 2; i++) {
         JSON_Object *v = json_object(json_array_get_value(out, i));
