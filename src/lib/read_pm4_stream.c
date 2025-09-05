@@ -454,8 +454,8 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 		}
 		case 0x3f: // INDIRECT_BUFFER_CIK
 		case 0x33: // INDIRECT_BUFFER_CONST
-			// Check chain bit to dump chained IBs for INDIRECT_BUFFER_CONST (0x33)
-			bool follow_chained_ib = !asic->options.no_follow_chained_ib && ps->opcode == 0x33 ?
+			// Check chain bit to dump chained IBs for INDIRECT_BUFFER and INDIRECT_BUFFER_CONST
+			bool follow_chained_ib = !asic->options.no_follow_chained_ib && ps->n_words == 3 ?
 									BITS(fetch_word(asic, ps, 2), 20, 21) : false;
 			if (!asic->options.no_follow_ib || follow_chained_ib) {
 				uint64_t ib_addr;
