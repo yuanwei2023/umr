@@ -595,7 +595,7 @@ struct umr_wave_status {
 // This captures *all* active/halted waves
 struct umr_wave_data {
 	uint32_t vgprs[64 * 256], sgprs[1024], num_threads;
-	int se, sh, cu, simd, wave, have_vgprs;
+	int se, sh, cu, simd, wave, have_vgprs, tainted;
 	const char **reg_names;
 	struct umr_wave_status ws;
 	struct umr_wave_thread *threads;

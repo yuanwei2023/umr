@@ -153,6 +153,10 @@ void umr_print_waves(struct umr_asic *asic)
 		fprintf(output, "\n------------------------------------------------------\n%s\n", wavefront_desc);
 		free(wavefront_desc);
 
+		if (wd->tainted) {
+			fprintf(output, "[WARNING]: THIS WAVE DATA IS POSSIBLY TAINTED BY A RACE CONDITION\n");
+		}
+
 		H("Main Registers");
 		for (x = 0; wd->reg_names[x]; x++) {
 			X(x);

@@ -1137,10 +1137,24 @@ char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_da
 		case 10:
 		case 11:
 		case 12:
-			snprintf(str, sizeof(str)-1, "se%" PRIu32 ".sa%" PRIu32 ".wgp%" PRIu32 ".simd%" PRIu32 ".wave%" PRIu32,
-				wd->se, wd->sh, wd->cu,
-				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID"),
-				umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID"));
+		{
+			int reg_wave, reg_simd, reg_wgp, reg_sa, reg_se, match;
+			reg_wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
+			reg_simd = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID");
+			reg_wgp = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID");
+			reg_sa = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID");
+			reg_se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
+			if (reg_wave == wd->wave && reg_simd == wd->simd &&
+				reg_wgp == wd->cu && reg_sa == wd->sh && reg_se == wd->se) {
+				match = 1;
+				wd->tainted = 0;
+			} else {
+				match = 0;
+				wd->tainted = 1;
+			}
+			snprintf(str, sizeof(str)-1, "se%" PRIu32 ".sa%" PRIu32 ".wgp%" PRIu32 ".simd%" PRIu32 ".wave%" PRIu32" %s",
+				wd->se, wd->sh, wd->cu, wd->simd, wd->wave, match ? "" : "(HW register not matching local data, possible race condition)");
+		}
 			break;
 	}
 	return strdup(str);
