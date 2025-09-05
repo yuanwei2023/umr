@@ -29,6 +29,114 @@
 
 #define MANY_TO_INSTANCE(wgp, simd) (((simd) & 3) | ((wgp) << 2))
 
+static const char *gfx8_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID",
+	"ixSQ_WAVE_INST_DW0",
+	"ixSQ_WAVE_INST_DW1",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_TBA_LO",
+	"ixSQ_WAVE_TBA_HI",
+	"ixSQ_WAVE_TMA_LO",
+	"ixSQ_WAVE_TMA_HI",
+	"ixSQ_WAVE_IB_DBG0",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx9_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID",
+	"ixSQ_WAVE_INST_DW0",
+	"ixSQ_WAVE_INST_DW1",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_DBG0",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx10_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID1",
+	"ixSQ_WAVE_HW_ID2",
+	"ixSQ_WAVE_INST_DW0",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_STS2",
+	"ixSQ_WAVE_IB_DBG1",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx11_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID1",
+	"ixSQ_WAVE_HW_ID2",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_TRAPSTS",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_STS2",
+	"ixSQ_WAVE_IB_DBG1",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	NULL
+};
+
+static const char *gfx12_regs[] = {
+	"ixSQ_WAVE_STATUS",
+	"ixSQ_WAVE_PC_LO",
+	"ixSQ_WAVE_PC_HI",
+	"ixSQ_WAVE_EXEC_LO",
+	"ixSQ_WAVE_EXEC_HI",
+	"ixSQ_WAVE_HW_ID1",
+	"ixSQ_WAVE_HW_ID2",
+	"ixSQ_WAVE_GPR_ALLOC",
+	"ixSQ_WAVE_LDS_ALLOC",
+	"ixSQ_WAVE_IB_STS",
+	"ixSQ_WAVE_IB_STS2",
+	"ixSQ_WAVE_IB_DBG1",
+	"ixSQ_WAVE_M0",
+	"ixSQ_WAVE_MODE",
+	"ixSQ_WAVE_STATE_PRIV",
+	"ixSQ_WAVE_EXCP_FLAG_PRIV",
+	"ixSQ_WAVE_EXCP_FLAG_USER",
+	"ixSQ_WAVE_TRAP_CTRL",
+	"ixSQ_WAVE_ACTIVE",
+	"ixSQ_WAVE_VALID_AND_IDLE",
+	"ixSQ_WAVE_DVGPR_ALLOC_LO",
+	"ixSQ_WAVE_DVGPR_ALLOC_HI",
+	"ixSQ_WAVE_SCHED_MODE",
+	NULL
+};
+
 static void wave_read_regs_via_mmio(struct umr_asic *asic, uint32_t simd,
 			   uint32_t wave, uint32_t thread,
 			   uint32_t regno, uint32_t num, uint32_t *out)
@@ -558,114 +666,6 @@ static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 	}
 	return 0;
 }
-
-static const char *gfx8_regs[] = {
-	"ixSQ_WAVE_STATUS",
-	"ixSQ_WAVE_PC_LO",
-	"ixSQ_WAVE_PC_HI",
-	"ixSQ_WAVE_EXEC_LO",
-	"ixSQ_WAVE_EXEC_HI",
-	"ixSQ_WAVE_HW_ID",
-	"ixSQ_WAVE_INST_DW0",
-	"ixSQ_WAVE_INST_DW1",
-	"ixSQ_WAVE_GPR_ALLOC",
-	"ixSQ_WAVE_LDS_ALLOC",
-	"ixSQ_WAVE_TRAPSTS",
-	"ixSQ_WAVE_IB_STS",
-	"ixSQ_WAVE_TBA_LO",
-	"ixSQ_WAVE_TBA_HI",
-	"ixSQ_WAVE_TMA_LO",
-	"ixSQ_WAVE_TMA_HI",
-	"ixSQ_WAVE_IB_DBG0",
-	"ixSQ_WAVE_M0",
-	"ixSQ_WAVE_MODE",
-	NULL
-};
-
-static const char *gfx9_regs[] = {
-	"ixSQ_WAVE_STATUS",
-	"ixSQ_WAVE_PC_LO",
-	"ixSQ_WAVE_PC_HI",
-	"ixSQ_WAVE_EXEC_LO",
-	"ixSQ_WAVE_EXEC_HI",
-	"ixSQ_WAVE_HW_ID",
-	"ixSQ_WAVE_INST_DW0",
-	"ixSQ_WAVE_INST_DW1",
-	"ixSQ_WAVE_GPR_ALLOC",
-	"ixSQ_WAVE_LDS_ALLOC",
-	"ixSQ_WAVE_TRAPSTS",
-	"ixSQ_WAVE_IB_STS",
-	"ixSQ_WAVE_IB_DBG0",
-	"ixSQ_WAVE_M0",
-	"ixSQ_WAVE_MODE",
-	NULL
-};
-
-static const char *gfx10_regs[] = {
-	"ixSQ_WAVE_STATUS",
-	"ixSQ_WAVE_PC_LO",
-	"ixSQ_WAVE_PC_HI",
-	"ixSQ_WAVE_EXEC_LO",
-	"ixSQ_WAVE_EXEC_HI",
-	"ixSQ_WAVE_HW_ID1",
-	"ixSQ_WAVE_HW_ID2",
-	"ixSQ_WAVE_INST_DW0",
-	"ixSQ_WAVE_GPR_ALLOC",
-	"ixSQ_WAVE_LDS_ALLOC",
-	"ixSQ_WAVE_TRAPSTS",
-	"ixSQ_WAVE_IB_STS",
-	"ixSQ_WAVE_IB_STS2",
-	"ixSQ_WAVE_IB_DBG1",
-	"ixSQ_WAVE_M0",
-	"ixSQ_WAVE_MODE",
-	NULL
-};
-
-static const char *gfx11_regs[] = {
-	"ixSQ_WAVE_STATUS",
-	"ixSQ_WAVE_PC_LO",
-	"ixSQ_WAVE_PC_HI",
-	"ixSQ_WAVE_EXEC_LO",
-	"ixSQ_WAVE_EXEC_HI",
-	"ixSQ_WAVE_HW_ID1",
-	"ixSQ_WAVE_HW_ID2",
-	"ixSQ_WAVE_GPR_ALLOC",
-	"ixSQ_WAVE_LDS_ALLOC",
-	"ixSQ_WAVE_TRAPSTS",
-	"ixSQ_WAVE_IB_STS",
-	"ixSQ_WAVE_IB_STS2",
-	"ixSQ_WAVE_IB_DBG1",
-	"ixSQ_WAVE_M0",
-	"ixSQ_WAVE_MODE",
-	NULL
-};
-
-static const char *gfx12_regs[] = {
-	"ixSQ_WAVE_STATUS",
-	"ixSQ_WAVE_PC_LO",
-	"ixSQ_WAVE_PC_HI",
-	"ixSQ_WAVE_EXEC_LO",
-	"ixSQ_WAVE_EXEC_HI",
-	"ixSQ_WAVE_HW_ID1",
-	"ixSQ_WAVE_HW_ID2",
-	"ixSQ_WAVE_GPR_ALLOC",
-	"ixSQ_WAVE_LDS_ALLOC",
-	"ixSQ_WAVE_IB_STS",
-	"ixSQ_WAVE_IB_STS2",
-	"ixSQ_WAVE_IB_DBG1",
-	"ixSQ_WAVE_M0",
-	"ixSQ_WAVE_MODE",
-	"ixSQ_WAVE_STATE_PRIV",
-	"ixSQ_WAVE_EXCP_FLAG_PRIV",
-	"ixSQ_WAVE_EXCP_FLAG_USER",
-	"ixSQ_WAVE_TRAP_CTRL",
-	"ixSQ_WAVE_ACTIVE",
-	"ixSQ_WAVE_VALID_AND_IDLE",
-	"ixSQ_WAVE_DVGPR_ALLOC_LO",
-	"ixSQ_WAVE_DVGPR_ALLOC_HI",
-	"ixSQ_WAVE_SCHED_MODE",
-	NULL
-};
 
 /**
  * umr_wave_data_init - Initialize a umr_wave_data structure per GFX IP version
