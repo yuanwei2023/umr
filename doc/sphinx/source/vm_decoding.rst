@@ -3,9 +3,13 @@ GPU Memory Access
 =================
 
 UMR can decode virtual memory addresses as encoded for the GPU
-to use.  Currently support for SI through AI hardware has been
+to use.  Currently support for SI through AI (and NV) hardware has been
 made public.  The decoder reads the page table data (typically in
-VRAM) via the debugfs entry for vram.
+VRAM) via the debugfs entry for MMIO and vram.
+
+If a user queue client is selected with the *--user-queue* command
+then the page table data is supplied by the client debugfs file and
+the VMID chosen doesn't matter.
 
 The VM commands can use the 'verbose' option which prints out useful
 information for kernel developers while decoding a virtual address.
@@ -92,9 +96,6 @@ For AI+ platforms a VMID > 0 decode might resemble something like:
 	BASE=0x000000007fb6a001, VA=0x000000000000, PBA==0x00007fb6a000, V=1, S=0, C=0, P=0
 	   \-> PDE2@{0x7fb6a800/100}=0x00000000bfb69001, VA=0x800000000000, PBA==0x0000bfb69000, V=1, S=0, C=0, P=0, FS=0
 		  \-> PDE1@{0x7fb69000/0}=0x00000000bfb65001, VA=0x000000000000, PBA==0x0000bfb65000, V=1, S=0, C=0, P=0, FS=0
-	pde0.pte = 1
-	pde0.block_fragment_size = 0
-	page_table_block_size = 9
 			 \-> PTE@{0x7fb65000/0}==0x00400001820004f3, VA=0x000000040000, PBA==0x000182000000, V=1, S=1, P=0, FS=9, F=0
 				\-> Computed address we will read from: sys:182040400 (reading: 4 bytes)
 
@@ -182,6 +183,56 @@ writes are performed linearly into VRAM.
 System Memory Access
 --------------------
 
-On newer kernels with a amdgpu_iomem debugfs entry system memory
+On newer kernels with a *amdgpu_iomem* debugfs entry system memory
 access to memory mapped to the GPU has been made easier.  Additional
 modules (e.g., fmem) are no longer required.
+
+For applications using HMM zones UMR will first attempt to use the 
+*amdgpu_iomem* debugfs entry and if that fails it will then access the
+processes */proc/${pid}/mem* file to access the memory.  This requires
+that a user queue is selected first with the *--user-queue* command.  Other
+than selecting a queue this transition from using debugfs to procfs is transparent
+to the user.  This way UMR supports pages that are both kernel or process bound
+in system memory.
+
+For instance, this kfd client application has an HQD ring buffer read pointer located in system memory:
+
+::
+
+	$ umr --user-queue kfd,comm=test,queue=0 -vm 0@0x7fb2a928a000 1
+	=== VM Decoding of address 0@0x7fb2a928a000 ===
+	mmGCVM_CONTEXT0_PAGE_TABLE_START_ADDR_LO32=0x0
+	mmGCVM_CONTEXT0_PAGE_TABLE_START_ADDR_HI32=0x0
+	mmGCVM_CONTEXT0_PAGE_TABLE_END_ADDR_LO32=0xffffffff
+	mmGCVM_CONTEXT0_PAGE_TABLE_END_ADDR_HI32=0xf
+	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_LO32=0xdaabd001
+	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_HI32=0x3
+	mmGCVM_CONTEXT0_CNTL=0x6
+	VMID0.page_table_block_size=0
+	VMID0.page_table_depth=3
+	mmVGA_MEMORY_BASE_ADDRESS=0x0
+	mmVGA_MEMORY_BASE_ADDRESS_HIGH=0x0
+	mmMC_VM_FB_OFFSET=0x0
+	mmGCMC_VM_MX_L1_TLB_CNTL=0x0
+	mmGCMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x0
+	mmGCMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x0
+	mmGCMC_VM_FB_LOCATION_BASE=0x8000
+	mmGCMC_VM_FB_LOCATION_TOP=0x83fb
+	mmGCMC_VM_AGP_BASE=0x0
+	mmGCMC_VM_AGP_BOT=0x0
+	mmGCMC_VM_AGP_TOP=0x0
+	BASE=0x00000003daabd001, VA=0x7f8000000000, PBA==0x0003daabd000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+	\-> PDE2@{0x3daabd7f8/ff}=0x000000035c103001, VA=0x7f8000000000, PBA==0x00035c103000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+		\-> PDE1@{0x35c103650/ca}=0x000000035bf03001, VA=0x003280000000, PBA==0x00035bf03000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+			\-> PDE0@{0x35bf03a48/149}=0x000000035c304001, VA=0x000029200000, PBA==0x00035c304000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+				\-> PTE@{0x35c304450/0x8a}=0x80c0000151d89067, VA=0x00000008a000, PBA==0x000151d89000, V=1, S=1, C=1, Z=0, X=0, R=1, W=1, FS=0, SW=0, T=0, G=0, D=0, P=1, MTYPE=UC
+				\-> Computed address we will read from: sys:151d89000, (reading: 4096 bytes from a 4096 byte page)
+
+	=== Completed VM Decoding ===
+
+And despite the PTE having the S bit set to 1 (system memory) we can read it (it is at offset 0x80 into this page) just as easily:
+
+::
+	
+	$ umr --user-queue kfd,comm=test,queue=0 -vr 0@0x7fb2a928a080 8 | xxd -e
+	00000000: 00000001 00000000                     ........

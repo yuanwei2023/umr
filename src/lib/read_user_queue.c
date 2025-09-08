@@ -41,14 +41,14 @@ int umr_read_user_queue_buffer(struct umr_asic *asic, uint32_t start, uint32_t e
     *len = 0;
     if (start > end) {
         // read from start to RB_BUZSZ and then 0 to end
-        n = asic->options.user_queue.state.submission.rb_buf_size - start;
+        n = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size - start;
         if (umr_read_vram(asic, asic->options.vm_partition, 0,
-            asic->options.user_queue.state.submission.hqd_base_addr + start * 4, n * 4, buf) < 0) {
+            asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + start * 4, n * 4, buf) < 0) {
                 asic->err_msg("[ERROR]: Could not read between 'start' and RB_BUFSZ from user queue buffer.\n");
                 return -1;
         }
         if (umr_read_vram(asic, asic->options.vm_partition, 0,
-            asic->options.user_queue.state.submission.hqd_base_addr, end * 4, buf + n * 4) < 0) {
+            asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr, end * 4, buf + n * 4) < 0) {
                 asic->err_msg("[ERROR]: Could not read between 0 and 'end' from user queue buffer.\n");
                 return -1;
         }
@@ -57,7 +57,7 @@ int umr_read_user_queue_buffer(struct umr_asic *asic, uint32_t start, uint32_t e
     } else {
         // read from start to end
         if (umr_read_vram(asic, asic->options.vm_partition, 0,
-            asic->options.user_queue.state.submission.hqd_base_addr + start * 4, (end - start) * 4, buf) < 0) {
+            asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + start * 4, (end - start) * 4, buf) < 0) {
                 asic->err_msg("[ERROR]: Could not read between 'start' and 'end' from user queue buffer.\n");
                 return -1;
         }

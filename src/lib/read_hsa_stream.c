@@ -37,6 +37,103 @@ static const char *hsa_types[] = {
 	((idx) < sizeof(str_lut) / sizeof(str_lut[0]) ? str_lut[(idx)] : (default))
 
 /**
+ * add_shader - Add a shader reference to the current packet
+ *
+ * @asic:  The ASIC the stream and shaders are bound to
+ * @ps: The packet to attach the reference to a shader to
+ * @vmid: The VMID of the shader program
+ * @shader_addr: The address of the shader program
+ * @vm_partition: The specific GC instance the shader is running on
+ * @type: The UMR_SHADER_* type the shader is (pixel, vertex, etc)
+ * @reg_pairs: The linked list structure containing all of the register writes found in the submission up until this packet
+ */
+static void add_shader(struct umr_asic *asic,
+	struct umr_hsa_stream *ps,
+	uint32_t vmid, uint64_t shader_addr, int vm_partition,
+	int type, struct umr_shader_reg_pair *reg_pairs)
+{
+	struct umr_shaders_pgm *pgm;
+
+	if (ps->shader == NULL) {
+		// attach the shader to the head
+		ps->shader = calloc(1, sizeof(ps->shader[0]));
+		pgm = ps->shader;
+	} else {
+		// walk till the end of the list
+		pgm = ps->shader;
+		while (pgm->next) {
+			pgm = pgm->next;
+		}
+		pgm->next = calloc(1, sizeof(ps->shader[0]));
+		pgm = pgm->next;
+	}
+
+//	pgm->aql_packet = ps;
+	pgm->vmid = vmid;
+	pgm->addr = shader_addr;
+	if (!asic->options.no_follow_shader)
+		pgm->size = umr_compute_shader_size(asic, vm_partition, pgm);
+	else
+		pgm->size = 1;
+	pgm->type = type;
+	pgm->regs = umr_copy_regpairs(reg_pairs);
+}
+
+static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *stream, uint64_t kernel_object)
+{
+	struct umr_shader_reg_pair *reg_pair = NULL;
+	char gfxname[64], tmp[256];
+	int gfx_maj, gfx_min;
+
+	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
+
+	// read the kernel_object buffer
+	if (umr_read_vram(asic, asic->options.vm_partition, 0,
+			kernel_object, 512/8,
+			&stream->kernel_dispatch.kernel_object) < 0) {
+		asic->err_msg("[ERROR]: Could not read kernel_object from the HSA_KERNEL_DISPATCH packet\n");
+		return;
+	}
+
+	// initialize fields
+	stream->kernel_dispatch.kernel_object_va = kernel_object;
+	stream->kernel_dispatch.kernel_code_entry_byte_offset = kernel_object +
+		((stream->kernel_dispatch.kernel_object[(128/32)]) |
+		((uint64_t)stream->kernel_dispatch.kernel_object[(128/32)+1] << 32ULL));
+	stream->kernel_dispatch.kernarg_size = stream->kernel_dispatch.kernel_object[(64/32)];
+	stream->kernel_dispatch.compute_pgm_rsrc1 = stream->kernel_dispatch.kernel_object[(384/32)];
+	stream->kernel_dispatch.compute_pgm_rsrc2 = stream->kernel_dispatch.kernel_object[(416/32)];
+	stream->kernel_dispatch.compute_pgm_rsrc3 = stream->kernel_dispatch.kernel_object[(352/32)];
+
+	// find gfx name
+	{
+		int i;
+		char *p;
+		for (i = 0; i < asic->no_blocks; i++) {
+			if (!memcmp(asic->blocks[i]->ipname, "gfx", 3)) {
+				strcpy(gfxname, asic->blocks[i]->ipname);
+				// chop off instance
+				p = strstr(gfxname, "{");
+				if (p) {
+					*p = 0;
+				}
+				break;
+			}
+		}
+	}
+
+	// create shader object to attach to stream
+	sprintf(tmp, "%s.%sCOMPUTE_PGM_RSRC1", gfxname, gfx_maj <= 10 ? "mm" : "reg");
+	umr_shader_add_reg_pair(&reg_pair, tmp, stream->kernel_dispatch.compute_pgm_rsrc1, 0, kernel_object);
+	sprintf(tmp, "%s.%sCOMPUTE_PGM_RSRC2", gfxname, gfx_maj <= 10 ? "mm" : "reg");
+	umr_shader_add_reg_pair(&reg_pair, tmp, stream->kernel_dispatch.compute_pgm_rsrc2, 0, kernel_object);
+	sprintf(tmp, "%s.%sCOMPUTE_PGM_RSRC3", gfxname, gfx_maj <= 10 ? "mm" : "reg");
+	umr_shader_add_reg_pair(&reg_pair, tmp, stream->kernel_dispatch.compute_pgm_rsrc3, 0, kernel_object);
+	add_shader(asic, stream, 0, stream->kernel_dispatch.kernel_code_entry_byte_offset, asic->options.vm_partition, UMR_SHADER_COMPUTE, reg_pair);
+	umr_free_shader_reg_pairs(reg_pair);
+}
+
+/**
  * umr_hsa_decode_stream - Decode an array of 32-bit words into an HSA stream
  *
  * @asic: The ASIC the HSA stream is bound to
@@ -68,27 +165,8 @@ struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *st
 			ms->acquire_fence_scope = (t16 >> 9) & 3;
 			ms->release_fence_scope = (t16 >> 11) & 3;
 
-		// # of **16-bit** words depends on packet type
-		switch (ms->type) {
-			case 0: // vendor specific
-				ms->nwords = 1;
-				break;
-			case 1: // Invalid
-				ms->nwords = 1;
-				break;
-			case 2: // kernel_dispatch
-				ms->nwords = 32; // 31 + header
-				break;
-			case 3: // barrier_and
-				ms->nwords = 32;
-				break;
-			case 4: // agent_dispatch
-				ms->nwords = 32;
-				break;
-			case 5: // barrier_or
-				ms->nwords = 32;
-				break;
-		}
+		// # of **16-bit** words all packets are 32 words
+		ms->nwords = 32;
 
 		// if not enough stream for packet or reach 0, stop parsing
 		if (nwords < ms->nwords || !ms->nwords) {
@@ -107,12 +185,24 @@ struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *st
 		for (n = 0; n < ms->nwords - 1; n++) {
 			ms->words[n] = *s++;
 		}
+
+		// fetch shaders from DISPATCH_KERNEL packets
+		if (ms->type == 2) {
+			uint64_t t64;
+			t64 = ms->words[15];
+			t64 |= ((uint64_t)ms->words[16]) << 16;
+			t64 |= ((uint64_t)ms->words[17]) << 32;
+			t64 |= ((uint64_t)ms->words[18]) << 48; // kernel_object pointer
+			parse_kernel_object(asic, ms, t64);
+		}
+
 		nwords -= ms->nwords;
 		if (nwords) {
 			ms->next = calloc(1, sizeof *(ms->next));
 			if (!ms->next)
 				goto error;
 			prev_ms = ms;
+			ms->next->prev = ms;
 			ms = ms->next;
 		}
 	}
@@ -165,7 +255,8 @@ struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, stru
 	ui->start_ib(ui, ib_addr, ib_vmid, 0, 0, 0, 0);
 	while (stream && opcodes-- && stream->nwords) {
 		opcode_name = STR_LOOKUP(hsa_types, stream->type, "HSA_UNK");
-		ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->type, 0, stream->nwords, opcode_name, stream->header, stream->words);
+		if (stream->type != 1) // start only if not INVALID
+			ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->type, 0, stream->nwords, opcode_name, stream->header, stream->words);
 
 		// recall HSA is viewed as 16-bit words which is also use
 		// negative "field_size" values
@@ -174,6 +265,31 @@ struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, stru
 		i = 0;
 		ib_addr += 2; // skip over header
 		switch (stream->type) {
+			case 1: // INVALID
+				// allow heuristic decoding of INVALID packets because the CP
+				// stamps packets as invalid as they're decoded
+
+				// only continue if heuristic decoding and user queues are enabled
+				if (!(asic->options.aql_heuristic && asic->options.user_queue.state.active)) {
+					ui->start_opcode(ui, ib_addr-2, ib_vmid, 0, stream->type, 0, stream->nwords, "HSA_INVALID", stream->header, stream->words);
+					break;
+				}
+
+				// read the 64-bit word from offset 0x20 and 0x28 that should be a kernel_object and kernarg_address let's see if the top 32-bits
+				// align with say the HQD base address
+				t64 = ((uint64_t)fetch_word(asic, stream, 15)) | ((uint64_t)fetch_word(asic, stream, 16)<<16ULL) | ((uint64_t)fetch_word(asic, stream, 17)<<32ULL) | ((uint64_t)fetch_word(asic, stream, 18)<<48ULL);
+				if ((t64 >> 32ULL) != (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr >> 32ULL)) {
+					ui->start_opcode(ui, ib_addr-2, ib_vmid, 0, stream->type, 0, stream->nwords, "HSA_INVALID", stream->header, stream->words);
+					break;
+				}
+
+				t64 = ((uint64_t)fetch_word(asic, stream, 19)) | ((uint64_t)fetch_word(asic, stream, 20)<<16ULL) | ((uint64_t)fetch_word(asic, stream, 21)<<32ULL) | ((uint64_t)fetch_word(asic, stream, 22)<<48ULL);
+				if ((t64 >> 32ULL) != (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr >> 32ULL)) {
+					ui->start_opcode(ui, ib_addr-2, ib_vmid, 0, stream->type, 0, stream->nwords, "HSA_INVALID", stream->header, stream->words);
+					break;
+				}
+				ui->start_opcode(ui, ib_addr-2, ib_vmid, 0, stream->type, 0, stream->nwords, "HSA_KERNEL_DISPATCH (heuristic)", stream->header, stream->words);
+				// fall through
 			case 2: // kernel dispatch
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "setup_dimensions", fetch_word(asic, stream, i) & 3, NULL, 10, -16); ++i;
 				ui->add_field(ui, ib_addr + 2 * i, ib_vmid, "workgroup_size_x", fetch_word(asic, stream, i), NULL, 10, -16); ++i;
@@ -237,6 +353,14 @@ struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, stru
 		if (stream->invalid)
 			break;
 
+		if (stream->shader) {
+			struct umr_shaders_pgm *pgm = stream->shader;
+			while (pgm) {
+				ui->add_shader(ui, asic, ib_addr-2, ib_vmid, pgm);
+				pgm = pgm->next;
+			}
+		}
+
 		ib_addr += 2 * (stream->nwords - 1);
 		stream = stream->next;
 	}
@@ -252,8 +376,66 @@ void umr_free_hsa_stream(struct umr_hsa_stream *stream)
 {
 	while (stream) {
 		struct umr_hsa_stream *n;
+		struct umr_shaders_pgm *pgm;
+		pgm = stream->shader;
+		while (pgm) {
+			struct umr_shaders_pgm *next = pgm->next;
+			free(pgm->regs);
+			free(pgm);
+			pgm = next;
+		}
 		n = stream->next;
 		free(stream);
 		stream = n;
 	}
+}
+
+/**
+ * umr_find_shader_in_hsa_stream - Find a shader in a PM4 stream
+ *
+ * @stream: A previously captured PM4 stream from a ring
+ * @vmid:  The VMID of the shader to look for
+ * @addr: An address inside the shader to match
+ *
+ * Returns a pointer to a copy of a shader object if found or
+ * NULL if not.  Note:  If you free the PM4 stream it came from
+ * this object becomes invalid so you must free() this first,
+ * then free the PM4 stream.
+ */
+struct umr_shaders_pgm *umr_find_shader_in_hsa_stream(struct umr_asic *asic, struct umr_hsa_stream *stream, unsigned vmid, uint64_t addr)
+{
+	struct umr_shaders_pgm *p, *pp;
+
+	p = NULL;
+	while (stream) {
+		// compare shader if any
+		if (stream->shader) {
+			struct umr_shaders_pgm *pgm = stream->shader;
+
+			while (pgm) {
+				if ((pgm->vmid == vmid || asic->options.user_queue.state.active) && // only compare VMIDs if user queues aren't used
+					(addr >= pgm->addr) &&
+					(addr < (pgm->addr + pgm->size))) {
+						p = pgm;
+						break;
+					}
+				pgm = pgm->next;
+			}
+			if (p) {
+				break;
+			}
+		}
+		if (p) {
+			break;
+		}
+		stream = stream->next;
+	}
+
+	if (p) {
+		pp = calloc(1, sizeof(struct umr_shaders_pgm));
+		*pp = *p;
+		return pp;
+	}
+
+	return NULL;
 }

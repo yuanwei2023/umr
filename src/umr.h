@@ -72,6 +72,19 @@ enum umr_shader_type {
 	UMR_SHADER_OPAQUE,
 };
 
+enum umr_queue_type {
+	UMR_QUEUE_GFX=0,
+	UMR_QUEUE_COMPUTE,
+	UMR_QUEUE_COMPUTE_PM4,
+	UMR_QUEUE_SDMA,
+};
+
+enum umr_client_type {
+	UMR_CLIENT_KGD=0,
+	UMR_CLIENT_KFD,
+	UMR_CLIENT_UMSCH,
+};
+
 /* sourced from amd_powerplay.h from the kernel */
 enum amd_pp_sensors {
 	AMDGPU_PP_SENSOR_GFX_SCLK = 0,
@@ -314,7 +327,8 @@ struct umr_options {
 	    use_v1_regs_debugfs,
 	    trap_unsorted_db,
 		filter_shader_registers,
-		use_full_user_queue;
+		use_full_user_queue,
+		aql_heuristic;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
@@ -373,6 +387,8 @@ struct umr_options {
 	struct {
 		char clientid[256]; // client ID number of '@procname' followed by . and the queue #1, e.g. '14.1' means queue-1 from client-14
 
+		enum umr_client_type client_type;
+
 		// the line of dri/${instance}/clients that matched the clientid[] above
 		struct {
             char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
@@ -394,30 +410,11 @@ struct umr_options {
 					fragment_size;
 			} vm_pagetable_info;
 			struct {
-				uint32_t queue_type; // 0==gfx, 1==compute
+				enum umr_queue_type queue_type;
 				uint32_t queue_id;
 				uint64_t mqd_gpu_address;
 				uint32_t mqd_words[512];
-			} queue[UMR_MAX_MQD_QUEUES];
-		} client_info;
-
-		// parsed out VM/IB related info used by lib functions
-		struct {
-			int active; // flag to say whether we should use these as opposed to traditional registers/etc
-
-			// VM context registers
-			struct {
-				uint32_t
-					PAGE_TABLE_START_ADDR_LO32,
-					PAGE_TABLE_START_ADDR_HI32,
-					PAGE_TABLE_END_ADDR_LO32,
-					PAGE_TABLE_END_ADDR_HI32,
-					PAGE_TABLE_BASE_ADDR_LO32,
-					PAGE_TABLE_BASE_ADDR_HI32;
-			} registers;
-
-			// submission information (where to find packets)
-			struct {
+				// submission information (where to find packets)
 				uint64_t
 					hqd_base_addr, // base address of submission IB
 
@@ -429,11 +426,27 @@ struct umr_options {
 
 					hqd_active, // cp*hqd_active
 
-					queueid, // queue # in this client 
-					queuetype, // what type (0==gfx, 1==compute)
-
 					rb_buf_size; // parsed copy of RB_BUFSZ
-			} submission;
+			} queue[UMR_MAX_MQD_QUEUES];
+		} client_info;
+
+		// parsed out VM/IB related info used by lib functions
+		struct {
+			int active, // flag to say whether we should use these as opposed to traditional registers/etc
+				qidx;   // which queue[] slot the user has asked umr to bind to
+
+			uint64_t va; // current VA being translated (used internally)
+
+			// VM context registers
+			struct {
+				uint32_t
+					PAGE_TABLE_START_ADDR_LO32,
+					PAGE_TABLE_START_ADDR_HI32,
+					PAGE_TABLE_END_ADDR_LO32,
+					PAGE_TABLE_END_ADDR_HI32,
+					PAGE_TABLE_BASE_ADDR_LO32,
+					PAGE_TABLE_BASE_ADDR_HI32;
+			} registers;
 		} state;
 	} user_queue;
 };

@@ -101,7 +101,7 @@ The following functions can find shaders in PM4 streams:
 
 ::
 
-	struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_pm4_stream *stream, int vm_partition, unsigned vmid, uint64_t addr);
+	struct umr_shaders_pgm *umr_find_shader_in_pm4_stream(struct umr_pm4_stream *stream, int vm_partition, unsigned vmid, uint64_t addr);
 	struct umr_shaders_pgm *umr_find_shader_in_ring(struct umr_asic *asic, char *ringname, unsigned vmid, uint64_t addr, int no_halt);
 
 If found they return a pointer to a shader structure which then

@@ -51,24 +51,36 @@ Reading a set of registers
 --------------------------
 
 At times you may want to read a set of registers that share a naming
-convention without specifying them all at once.  This can be
-accomplished with the *many* options flag.  In this mode the
-register name is a string is found in desired registers.  For
-example:
+convention without specifying them all at once.  To accomplish this
+a partial substring match can be used instead.  By not specifying a complete
+specific register name you can get UMR to read multiple registers that partially
+match the register in question. For example:
 
 ::
 
-	umr -O many --read *.uvd6.GATE
+	$ umr --read *.gfx1100.RB_BASE
+	gfx1100.regCP_RB_BASE => 0xff0068d0
+	gfx1100.regSDMA0_QUEUE0_RB_BASE => 0xff0069f0
+	gfx1100.regSDMA0_QUEUE0_RB_BASE_HI => 0x0000007f
+	gfx1100.regSDMA0_QUEUE1_RB_BASE => 0x00000000
+	gfx1100.regSDMA0_QUEUE1_RB_BASE_HI => 0x00000000
+	...<snip>...
 
-Will read and print out any register with the word 'GATE' contained
-in the register name in the uvd6 IP block.
+Will read and print out any register with the word 'RB_BASE' contained
+in the register name in the gfx1100 IP block.
 
 This can also be accomplished by using a '*' at the end of the register
 name.  For example:
 
 ::
 
-	umr --read *.uvd6.GATE*
+	$ umr --read *.gfx1100.RB_BASE*
+	gfx1100.regCP_RB_BASE => 0xff0068d0
+	gfx1100.regSDMA0_QUEUE0_RB_BASE => 0xff0069f0
+	gfx1100.regSDMA0_QUEUE0_RB_BASE_HI => 0x0000007f
+	gfx1100.regSDMA0_QUEUE1_RB_BASE => 0x00000000
+	gfx1100.regSDMA0_QUEUE1_RB_BASE_HI => 0x00000000
+	...<snip>...
 
 would accomplish the same as the previous example.
 

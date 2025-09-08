@@ -51,6 +51,7 @@ void umr_print_waves(struct umr_asic *asic)
 	int no_bits;
 	struct umr_bitfield *bits;
 	char linebuf[256];
+	struct umr_shader_reg_pair *regs;
 
 	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
 
@@ -70,28 +71,49 @@ void umr_print_waves(struct umr_asic *asic)
 			// user wants to attach to the user queue for wave debugging
 			if (asic->options.user_queue.state.active) {
 				uint32_t start, end, *buf, len;
+				uint32_t rt;
 				ib_addr.vmid = 0; // doesn't matter
+				buf = calloc(asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size, sizeof *buf);
 				if (!asic->options.use_full_user_queue) {
-					// only read between RPTR and WPTR
-					start = asic->options.user_queue.state.submission.hqd_rptr_value;
-					end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
-					ib_addr.addr = asic->options.user_queue.state.submission.hqd_base_addr + 4 * asic->options.user_queue.state.submission.hqd_rptr_value;
+					if (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value == asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value) {
+						asic->err_msg("[ERROR]: The user queue's RPTR and WPTR are equal.  You can try using -O use_full_user_queue instead to read the entire queue.\n");
+						// free the buffer so we don't decode garbage
+						free(buf);
+						buf = NULL;
+					} else {
+						start = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value;
+						end = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value;
+					}
 				} else {
-					// if the user specifies -O use_full_user_queue then read from 0 to WPTR
 					start = 0;
-					end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
-					ib_addr.addr = asic->options.user_queue.state.submission.hqd_base_addr;
+					end = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value;
+				}
+				// AQL RPTR/WPTR is in terms of 64-byte (16 dword) packets
+				// we need to do AQL math in 32-bit word terms because other
+				// queues are all in terms of 32-bits
+				if (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
+					start = (start * 16) % asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+					end = (end * 16) % asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+
+					// enable disasm_early_term because they don't use the same terminals as mesa
+					asic->options.disasm_early_term = 1;
 				}
 				// read the user queue like a ring
-				buf = calloc(asic->options.user_queue.state.submission.rb_buf_size, sizeof *buf);
 				if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
 					asic->err_msg("[ERROR]: Could not read user queue packet stream.\n");
 					free(buf);
 					return;
 				}
 				ib_addr.size = len;
-				// decode the PM4 stream copied from the queue
-				stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, UMR_RING_PM4, NULL);
+				// decode the stream copied from the queue
+				switch (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type) {
+					case UMR_QUEUE_COMPUTE_PM4:
+					case UMR_QUEUE_GFX: rt = UMR_RING_PM4; break;
+					case UMR_QUEUE_COMPUTE: rt = UMR_RING_HSA; break;
+					default:
+						asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
+				}
+				stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, rt, NULL);
 				free(buf);
 				if (!stream) {
 					asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
@@ -239,15 +261,81 @@ void umr_print_waves(struct umr_asic *asic)
 			pgm_addr = pc;
 
 			fprintf(output, ring_halted ? "\n\nPGM_MEM:" : "\n\nPGM_MEM (guess based on PC):");
+			regs = NULL;
+			shader = NULL;
 			if (ring_halted && stream)
 				shader = umr_packet_find_shader(asic, stream, vmid, pgm_addr);
+
 			if (shader) {
+				regs = shader->regs;
+
 				// we found a shader so we can actually use real start addresses
-				fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)\n",
+				fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)",
 					BLUE, shader->vmid, RST,
 					YELLOW, (unsigned long long)shader->addr, RST,
 					BLUE, shader->size, RST);
+			} else if (	asic->options.user_queue.state.active &&
+						asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
+				// if !shader and compute_AQL mode, then try using queue_packet_id) to look up the AQL packet and find the RSRC regs from there
+				uint32_t queue_packet_id, x;
+				struct umr_hsa_stream *hsa = stream->stream.hsa;
 
+				// TODO: right now umr only binds to one queue, the wave here might not be from the current queue attached
+
+				// figure out the queue_packet_id based on gfx version
+				switch (gfx_maj) {
+					case 9:
+						if (gfx_min < 4) {
+							// < gfx940
+							queue_packet_id = wd->sgprs[0x6C + 6] & ((1UL << 24) - 1);
+						} else {
+							// gfx940
+							queue_packet_id = (wd->sgprs[0x6C + 11] >> 6) & ((1UL << 24) - 1);
+						}
+						break;
+					case 10:
+					case 11:
+						queue_packet_id = wd->sgprs[0x6C + 6] & ((1UL << 24) - 1);
+						break;
+					case 12:
+						queue_packet_id = wd->sgprs[0x6C + 8] & ((1UL << 24) - 1);
+						break;
+				}
+
+				// look for an AQL that matches stream[idx] == rptr - queue_packet_id
+				x = queue_packet_id - asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value; // TODO: use_full_queue will break this
+				while (hsa && x--) {
+					hsa = hsa->next;
+				}
+				if (hsa && hsa->shader) {
+					regs = hsa->shader->regs;
+				}
+			}
+
+			// print regs
+			if (regs) {
+				fprintf(output, "\n   %sShader registers:\n", shader ? "" : "Found DISPATCH_KERNEL, ");
+				while (regs) {
+					fprintf(output, "      %s(%"PRIu32"@0x%"PRIx64") == 0x%"PRIx32"\n", regs->regname, regs->vmid, regs->addr, regs->value);
+					if (asic->options.bitfields) {
+						struct umr_reg *reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(regs->regname, ".") + 1);
+						if (reg && reg->no_bits > 1) {
+							int k;
+							for (k = 0; k < reg->no_bits; k++) {
+								uint32_t v;
+								v = (1UL << (reg->bits[k].stop + 1 - reg->bits[k].start)) - 1;
+								v &= (regs->value >> reg->bits[k].start);
+								fprintf(output, "         %s[%u:%u] == 0x%"PRIx32"\n",
+									reg->bits[k].regname, reg->bits[k].start, reg->bits[k].stop, v);
+							}
+						}
+					}
+					regs = regs->next;
+				}
+				fprintf(output, "\n");
+			}
+
+			if (shader) {
 				// start decoding a bit before PC if possible
 				if (!(asic->options.full_shader) && (shader->addr + ((NUM_OPCODE_WORDS*4)/2) < pgm_addr))
 					pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
@@ -255,6 +343,8 @@ void umr_print_waves(struct umr_asic *asic)
 					pgm_addr = shader->addr;
 				if (asic->options.full_shader)
 					shader_size = shader->size;
+				if ((pgm_addr + shader_size) > (shader->addr + shader->size))
+					shader_size = (shader->addr + shader->size) - pgm_addr;
 				shader_addr = shader->addr;
 				free(shader);
 				shader = NULL;

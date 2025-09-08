@@ -55,7 +55,7 @@ static int reg_sort(const void *a, const void *b)
 }
 
 /**
- * copy_regpairs - Create a distinct copy of a register pair linked list
+ * umr_copy_regpairs - Create a distinct copy of a register pair linked list
  *
  * @head: The register pair linked list to clone
  *
@@ -63,7 +63,7 @@ static int reg_sort(const void *a, const void *b)
  * While this function does setup the 'next' pointer the returned pointer is itself
  * a heap pointer to an array so it should be freed instead of walking the list.
  */
-static struct umr_shader_reg_pair *copy_regpairs(struct umr_shader_reg_pair *head)
+struct umr_shader_reg_pair *umr_copy_regpairs(struct umr_shader_reg_pair *head)
 {
 	struct umr_shader_reg_pair *copy, *tmp;
 	uint32_t x, count;
@@ -141,7 +141,7 @@ static void add_shader(struct umr_asic *asic,
 	else
 		pgm->size = 1;
 	pgm->type = type;
-	pgm->regs = copy_regpairs(reg_pairs);
+	pgm->regs = umr_copy_regpairs(reg_pairs);
 }
 
 /**
@@ -489,7 +489,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 }
 
 /**
- * umr_find_shader_in_stream - Find a shader in a PM4 stream
+ * umr_find_shader_in_pm4_stream - Find a shader in a PM4 stream
  *
  * @stream: A previously captured PM4 stream from a ring
  * @vmid:  The VMID of the shader to look for
@@ -500,7 +500,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
  * this object becomes invalid so you must free() this first,
  * then free the PM4 stream.
  */
-struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_asic *asic, struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr)
+struct umr_shaders_pgm *umr_find_shader_in_pm4_stream(struct umr_asic *asic, struct umr_pm4_stream *stream, unsigned vmid, uint64_t addr)
 {
 	struct umr_shaders_pgm *p, *pp;
 
@@ -526,7 +526,7 @@ struct umr_shaders_pgm *umr_find_shader_in_stream(struct umr_asic *asic, struct 
 
 		// recurse into IBs if any
 		if (stream->ib) {
-			p = umr_find_shader_in_stream(asic, stream->ib, vmid, addr);
+			p = umr_find_shader_in_pm4_stream(asic, stream->ib, vmid, addr);
 			if (p)
 				return p;
 		}

@@ -10,7 +10,19 @@ the current state of the shaders.
 
 ::
 
-	umr --waves
+	umr --waves [ ${ringname} | uq | vmid@addr.size | none ]
+
+The parameter to the command can be one of the following: the name of a kernel ring,
+the word 'uq' to specify using the user queue the user bound to, a triple of
+a VMID, virtual address, and buffer size (assumes PM4), or simply the word 'none' to
+indicate no packet stream is associated with this command.
+
+The specification of a packet stream source is useful because it tells umr where it might
+find information about how the shader (kernel) being debugged was programmed.
+
+--------------
+Basic Decoding
+--------------
 
 If there are active waves the default output format resembles:
 
@@ -39,7 +51,7 @@ the command is effectively ignored.
 
 ::
 
-	umr -O halt_waves --waves
+	umr -O halt_waves --waves gfx_0.0.0
 
 Typically, if the command succeeds the display will hang while umr is
 running (it will issue a resume before terminating).  For instance,
@@ -52,9 +64,13 @@ cleanly.
 The wave status command supports an alternative output format with the
 'bits' option.
 
+---------------
+Detailed output
+---------------
+
 ::
 
-	umr -O bits --waves
+	umr -O bits --waves gfx_0.0.0
 
 Which produces output that resembles:
 
@@ -180,7 +196,7 @@ Which produces output that resembles:
 		pgm[2@0x800000200a28 + 0x14  ] = 0xbf8cc07f         s_waitcnt lgkmcnt(0)                                            
 		pgm[2@0x800000200a28 + 0x18  ] = 0xf0800f00         image_sample v[0:3], v0, s[8:15], s[0:3] dmask:0xf              
 		pgm[2@0x800000200a28 + 0x1c  ] = 0x00020000 ;;                                                              
-	 *  pgm[2@0x800000200a28 + 0x20  ] = 0xbf8c0f70         s_waitcnt vmcnt(0)                                              
+	 *	pgm[2@0x800000200a28 + 0x20  ] = 0xbf8c0f70         s_waitcnt vmcnt(0)                                              
 		pgm[2@0x800000200a28 + 0x24  ] = 0xd2960000         v_cvt_pkrtz_f16_f32 v0, v0, v1                                  
 		pgm[2@0x800000200a28 + 0x28  ] = 0x00020300 ;;                                                              
 		pgm[2@0x800000200a28 + 0x2c  ] = 0xd2960001         v_cvt_pkrtz_f16_f32 v1, v2, v3                                  
@@ -190,10 +206,148 @@ Which produces output that resembles:
 		pgm[2@0x800000200a28 + 0x3c  ] = 0xbf810000         s_endpgm                                                        
 	End of disassembly.
 
-
-
 This format of output is a lot more verbose but includes human readable
 bitfield decodings which may aid in debugging purposes.  Where
 possible it will also print out SGPRs and on newer platforms (gfx9+)
 it may also include VGPRs.
 
+---------------------
+Kernel configurations
+---------------------
+
+When a shader (kernel) is found in the packet stream the output of the PGM_MEM area changes:
+
+::
+
+	$ umr --user-queue kfd,comm=test,queue=0 --waves uq -O halt_waves
+	------------------------------------------------------
+	se2.sa1.wgp2.simd0.wave0 
+
+
+	Main Registers:
+			ixSQ_WAVE_STATUS: 10010040 |      ixSQ_WAVE_PC_LO: a8ff9a08 |      ixSQ_WAVE_PC_HI: 00007fb2 |    ixSQ_WAVE_EXEC_LO: 00000001 | 
+			ixSQ_WAVE_EXEC_HI: 00000000 |     ixSQ_WAVE_HW_ID1: 20090800 |     ixSQ_WAVE_HW_ID2: 09000102 |  ixSQ_WAVE_GPR_ALLOC: 00001000 | 
+			ixSQ_WAVE_LDS_ALLOC: 00000000 |     ixSQ_WAVE_IB_STS: 00000000 |    ixSQ_WAVE_IB_STS2: 70000000 |    ixSQ_WAVE_IB_DBG1: 01000000 | 
+			ixSQ_WAVE_M0: 80000000 |       ixSQ_WAVE_MODE: 000000f0 | ixSQ_WAVE_STATE_PRIV: 00004200 | ixSQ_WAVE_EXCP_FLAG_PRIV: 00000000 | 
+			ixSQ_WAVE_EXCP_FLAG_USER: 00000000 |  ixSQ_WAVE_TRAP_CTRL: 00000000 |     ixSQ_WAVE_ACTIVE: 00000000 | ixSQ_WAVE_VALID_AND_IDLE: 00000001 | 
+			ixSQ_WAVE_DVGPR_ALLOC_LO: bebebeef | ixSQ_WAVE_DVGPR_ALLOC_HI: bebebeef | ixSQ_WAVE_SCHED_MODE: 00000000 | 
+
+	>SGPRS[0..3] = { ffffffff, 00007fb1, a928a000, 00007fb2 }
+	>SGPRS[4..7] = { a4200100, 00007fb1, 00000001, 00000000 }
+	>SGPRS[8..11] = { 00000000, 002e5e00, 00000000, 00025180 }
+	>SGPRS[12..15] = { 40605000, 0000751c, 32e00000, 00007520 }
+	>SGPRS[16..19] = { ffffffff, 00000000, 00000001, 00000000 }
+	...<snip>...
+	PGM_MEM: (found shader at: 0@0x7fb2a8ff9a00 of 24 bytes)
+	Shader registers:
+		gfx1201.regCOMPUTE_PGM_RSRC1(0@0x7fb2a8ff0940) == 0xe00f0100
+		gfx1201.regCOMPUTE_PGM_RSRC2(0@0x7fb2a8ff0940) == 0x1390
+		gfx1201.regCOMPUTE_PGM_RSRC3(0@0x7fb2a8ff0940) == 0x0
+
+		pgm[9@0x7fb2a8ff9a00 + 0x0   ] = 0xbea10080         s_mov_b32 s33, 0                                                
+		pgm[9@0x7fb2a8ff9a00 + 0x4   ] = 0xbf830008         s_sleep 8                                                       
+	*	pgm[9@0x7fb2a8ff9a00 + 0x8   ] = 0xbe8000c1         s_mov_b32 s0, -1                                                
+		pgm[9@0x7fb2a8ff9a00 + 0xc   ] = 0x8b6a007e         s_and_b32 vcc_lo, exec_lo, s0                                   
+		pgm[9@0x7fb2a8ff9a00 + 0x10  ] = 0xbfa4fffc         s_cbranch_vccnz 65532                                           
+		pgm[9@0x7fb2a8ff9a00 + 0x14  ] = 0xbfb00000         s_endpgm                                                        
+	End of disassembly.
+
+Here it found the compute kernel (shader) was programmed by an AQL packet at **0x7fb2a8ff9a00** in the clients
+virtual memory space.  The registers printed are related to the programming of the kernel and will change
+depending on the client.  For instance, kgd clients likely program far more registers that control the execution
+of the shader.  The *-O bits* option can be specified to get bitfield decoding of the kernel (shader) programming
+registers.
+
+On certain architectures UMR supports finding AQL data when the PC address of the wave is *outside* the kernels
+understood virtual memory range.  For instance, in this demo the kernel programmed jumps to another kernel that was
+not programmed by an AQL packet directly:
+
+::
+
+	$ umr --user-queue kfd,comm=test2,queue=0 --waves uq -O halt_waves
+	...<snip>...
+		PGM_MEM:
+	Found DISPATCH_KERNEL, Shader registers:
+		gfx1201.regCOMPUTE_PGM_RSRC1(0@0x7a05428c8940) == 0xe00f0103
+		gfx1201.regCOMPUTE_PGM_RSRC2(0@0x7a05428c8940) == 0x1391
+		gfx1201.regCOMPUTE_PGM_RSRC3(0@0x7a05428c8940) == 0x0
+
+
+		pgm[8@0x7a05428d1914 + 0x0   ] = 0xbfc80000         s_wait_loadcnt_dscnt 0x0                                        
+		pgm[8@0x7a05428d1914 + 0x4   ] = 0xbfc40000         s_wait_expcnt 0x0                                               
+		pgm[8@0x7a05428d1914 + 0x8   ] = 0xbfc20000         s_wait_samplecnt 0x0                                            
+		pgm[8@0x7a05428d1914 + 0xc   ] = 0xbfc30000         s_wait_bvhcnt 0x0                                               
+		pgm[8@0x7a05428d1914 + 0x10  ] = 0xbfc70000         s_wait_kmcnt 0x0                                                
+		pgm[8@0x7a05428d1914 + 0x14  ] = 0xbe810021         s_mov_b32 s1, s33                                               
+		pgm[8@0x7a05428d1914 + 0x18  ] = 0xbea10020         s_mov_b32 s33, s32                                              
+		pgm[8@0x7a05428d1914 + 0x1c  ] = 0xbf830001         s_sleep 1                                                       
+	*	pgm[8@0x7a05428d1914 + 0x20  ] = 0xbe8000c1         s_mov_b32 s0, -1                                                
+		pgm[8@0x7a05428d1914 + 0x24  ] = 0xbf88fffe         s_wait_alu 0xfffe                                               
+		pgm[8@0x7a05428d1914 + 0x28  ] = 0x8b6a007e         s_and_b32 vcc_lo, exec_lo, s0                                   
+		pgm[8@0x7a05428d1914 + 0x2c  ] = 0xbf88fffe         s_wait_alu 0xfffe                                               
+		pgm[8@0x7a05428d1914 + 0x30  ] = 0xbfa4fffa         s_cbranch_vccnz 65530                                           
+		pgm[8@0x7a05428d1914 + 0x34  ] = 0xbea10001         s_mov_b32 s33, s1                                               
+		pgm[8@0x7a05428d1914 + 0x38  ] = 0xbf88fffe         s_wait_alu 0xfffe                                               
+		pgm[8@0x7a05428d1914 + 0x3c  ] = 0xbe80481e         s_setpc_b64 s[30:31]                                            
+	End of disassembly.
+
+In this example we see the term "**Found DISPATCH_KERNEL**" which means UMR found the AQL
+packet that dispatched this wave.  In this event the registers displayed are accurate.  The disassembly
+is based on just rewinding the PC value 8 words which may or may not align with a valid opcode in the kernel.
+
+----------------
+Full Kernel Text
+----------------
+
+By default, UMR outputs upto about 16 words worth of the shader data to dissassemble.  If you want to see
+the entire kernel program use the *-O full_shader* option which when the kernel dispatch opcode is found
+in the packet stream it will disassemble the entire shader.  If no packet is found it will just revert
+to disassembling some data around the waves PC address.
+
+Using the full shader (kernel) is more reliable for decoding since UMR can start at the beginning of the
+text section and there is no chance of a misaligned opcode decoding.
+
+::
+
+	$ umr --user-queue kfd,comm=ollama,queue=2 --waves uq -O full_shader,halt_waves
+		PGM_MEM: (found shader at: 0@0x7e4d3c182f00 of 1836 bytes)
+	Shader registers:
+		gfx1201.regCOMPUTE_PGM_RSRC1(0@0x7e4d3c13dd00) == 0x600f0083
+		gfx1201.regCOMPUTE_PGM_RSRC2(0@0x7e4d3c13dd00) == 0xb84
+		gfx1201.regCOMPUTE_PGM_RSRC3(0@0x7e4d3c13dd00) == 0x0
+
+		pgm[8@0x7e4d3c182f00 + 0x0   ] = 0xf4002080         s_load_b64 s[2:3], s[0:1], 0x10                                 
+		pgm[8@0x7e4d3c182f00 + 0x4   ] = 0xf8000010 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x8   ] = 0x8b13ff73         s_and_b32 s19, ttmp7, 0xffff                                    
+		pgm[8@0x7e4d3c182f00 + 0xc   ] = 0x0000ffff ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x10  ] = 0xbfc70000         s_wait_kmcnt 0x0                                                
+		pgm[8@0x7e4d3c182f00 + 0x14  ] = 0xbf118002         s_cmp_lg_u64 s[2:3], 0                                          
+		pgm[8@0x7e4d3c182f00 + 0x18  ] = 0x980c80c1         s_cselect_b32 s12, -1, 0                                        
+		pgm[8@0x7e4d3c182f00 + 0x1c  ] = 0xbf108002         s_cmp_eq_u64 s[2:3], 0                                          
+		pgm[8@0x7e4d3c182f00 + 0x20  ] = 0xbfa201c2         s_cbranch_scc1 450                                              
+		pgm[8@0x7e4d3c182f00 + 0x24  ] = 0x84048213         s_lshl_b32 s4, s19, 2                                           
+		pgm[8@0x7e4d3c182f00 + 0x28  ] = 0xf4000081         s_load_b32 s2, s[2:3], s4 offset:0x0                            
+		pgm[8@0x7e4d3c182f00 + 0x2c  ] = 0x08000000 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x30  ] = 0xf4006100         s_load_b256 s[4:11], s[0:1], 0x34                               
+		pgm[8@0x7e4d3c182f00 + 0x34  ] = 0xf8000034 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x38  ] = 0xbfa60023         s_cbranch_execnz 35                                             
+		pgm[8@0x7e4d3c182f00 + 0x3c  ] = 0xbfc70000         s_wait_kmcnt 0x0                                                
+		pgm[8@0x7e4d3c182f00 + 0x40  ] = 0x86029f04         s_ashr_i32 s2, s4, 31                                           
+		pgm[8@0x7e4d3c182f00 + 0x44  ] = 0xbf870499         s_delay_alu instid0(SALU_CYCLE_1) | instskip(NEXT) | instid1(SALU_CYCLE_1)      
+		...<snip>...
+		pgm[8@0x7e4d3c182f00 + 0x3e8 ] = 0x0000000f ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x3ec ] = 0xffffb800 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x3f0 ] = 0xee05007c         global_load_b32 v17, v[0:1], off                                
+		pgm[8@0x7e4d3c182f00 + 0x3f4 ] = 0x00000011 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x3f8 ] = 0x00000000 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x3fc ] = 0xd7006a00         v_add_co_u32 v0, vcc_lo, 0x120, v0                              
+		pgm[8@0x7e4d3c182f00 + 0x400 ] = 0x000200ff ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x404 ] = 0x00000120 ;;                                                              
+		pgm[8@0x7e4d3c182f00 + 0x408 ] = 0x40020280         v_add_co_ci_u32_e32 v1, vcc_lo, 0, v1, vcc_lo                   
+		pgm[8@0x7e4d3c182f00 + 0x40c ] = 0xbfc00008         s_wait_loadcnt 0x8                                              
+	*	pgm[8@0x7e4d3c182f00 + 0x410 ] = 0x34282905         v_ashrrev_i32_e32 v20, v5, v20                                  
+		pgm[8@0x7e4d3c182f00 + 0x414 ] = 0xbfc00007         s_wait_loadcnt 0x7                                              
+		pgm[8@0x7e4d3c182f00 + 0x418 ] = 0x322e2484         v_lshrrev_b32_e32 v23, 4, v18                                   
+		...<snip>...
+
+Here UMR found a kernel of **1836** bytes length (at address **0x7e4d3c182f00**) where the PC of this particular wave is **0x410** bytes into the kernel text.  

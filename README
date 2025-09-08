@@ -1,5 +1,5 @@
 User Mode Register Debugger for AMDGPU Hardware
-Copyright (c) 2024 AMD Inc.
+Copyright (c) 2025 AMD Inc.
 
 Introduction
 -------------
@@ -25,6 +25,9 @@ mailing list at:
 
     : https://lists.freedesktop.org/mailman/listinfo/amd-gfx
 
+Online documentation is available at:
+
+    : https://umr.readthedocs.io/en/main/
 
 Building
 ---------

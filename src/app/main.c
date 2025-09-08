@@ -281,6 +281,8 @@ static void parse_options(char *str)
 			options.export_model = 1;
 		} else if (!strcmp(option, "use_full_user_queue")) {
 			options.use_full_user_queue = 1;
+		} else if (!strcmp(option, "aql_heuristic")) {
+			options.aql_heuristic = 1;
 		} else {
 			printf("error: Unknown option [%s]\n", option);
 			exit(EXIT_FAILURE);
@@ -309,7 +311,7 @@ static void do_help(void)
 		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib, no_follow_chained_ib, "
 		"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
 		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, filter_shader_registers,"
-		"\n\t\t\tfull_shader, skip_gprs, no_fold_vm_decode, force_asic_file, use_full_user_queue\n"
+		"\n\t\t\tfull_shader, skip_gprs, no_fold_vm_decode, force_asic_file, use_full_user_queue, aql_heuristic\n"
 	"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 		"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 	"\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"
@@ -325,15 +327,12 @@ static void do_help(void)
 		"\n\t\tLike --pci but still uses the traditional debugfs path to interface with"
 		"\n\t\tthe hardware.  This is useful for interacting with APIs that identify hardware"
 		"\n\t\tby the PCI bus address.\n"
-	"\n\t--user-queue, -uq <client>.<queue>"
-		"\n\t\tAttach to a user queue specified by a given client and queue.  The client can be specified"
-		"\n\t\tas a number, or by PID by using a '=' prefix, or by process name with a '@' prefix.  The"
-		"\n\t\tqueue can be specified as a number, or by type with a '@' prefix (0==gfx, 1==compute).  If"
-		"\n\t\ta '-' follows the period then the first active HQD is attached to."
-		"\n\t\tFor instance: '14.1' specifies queue 1 of client 14.  '@glmark2.1' specifies the queue 1 of the"
-		"\n\t\tfirst instance of the 'glmark2' application found. '=2314.@0' specifies to use the first graphics"
-		"\n\t\tqueue found for the PID 2314.  Whereas, '=2314.-@0' specifies to use the first graphics queue"
-		"\n\t\twith an active HQD it finds.\n"
+	"\n\t--user-queue, -uq [<clienttype>,<client>,<queue>]"
+		"\n\t\tAttach to a user queue specified by a given client and queue.  Where clienttype is 'kgd' or 'kfd',"
+		"\n\t\tclient is one of 'client=number', 'pid=number', or 'comm=string' to select a client by it's"
+		"\n\t\tclient number, process PID, or command name, and 'queue' is one of 'queue=number' or 'type=string'."
+		"\n\t\tFor 'type' the string must be one of 'gfx', 'compute', or 'sdma'.\n"
+		"\n\t\tFor example: 'kfd,comm=ollama,queue=2' specifies a KFD client attached to the first instance of ollama and queue #2.\n"
 	"\n\t--print-uq"
 		"\n\t\tPrint out all of the user queue information decoded.\n"
 	"\n\t--gfxoff, -go <0 | 1>"
@@ -567,7 +566,18 @@ int main(int argc, char **argv)
 				asic = get_asic();
 
 			if (strlen(options.user_queue.clientid)) {
-				umr_parse_clientid(asic);
+				// parse the client table looking for the specified client data.
+				if (umr_parse_clientid(asic)) {
+					asic->err_msg("[ERROR]: Could not parse user queue client description\n");
+					exit(EXIT_FAILURE);
+				}
+				// optionally halt waves now
+				if (asic->options.halt_waves) {
+					strcpy(asic->options.ring_name, "uq");
+					if (umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 1000)) {
+						asic->err_msg("[WARNING]: User queue did not halt (or is complete since RPTR == WPTR)\n");
+					}
+				}
 			}
 		}
 
@@ -1045,41 +1055,66 @@ int main(int argc, char **argv)
 						argflags[i] = 1;
 
 						if (asic->options.user_queue.state.active) {
-							buf = calloc(asic->options.user_queue.state.submission.rb_buf_size, sizeof *buf);
+							buf = calloc(asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size, sizeof *buf);
 							if (!asic->options.use_full_user_queue) {
-								if (asic->options.user_queue.state.submission.rb_wptr_poll_value == asic->options.user_queue.state.submission.hqd_rptr_value) {
+								if (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value == asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value) {
 									asic->err_msg("[ERROR]: The user queue's RPTR and WPTR are equal.  You can try using -O use_full_user_queue instead to read the entire queue.\n");
 									// free the buffer so we don't decode garbage
 									free(buf);
 									buf = NULL;
 								} else {
-									start = asic->options.user_queue.state.submission.hqd_rptr_value;
-									end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
+									start = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value;
+									end = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value;
 								}
 							} else {
 								start = 0;
-								end = asic->options.user_queue.state.submission.rb_wptr_poll_value;
+								end = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value;
 							}
 							if (buf) {
+								// AQL RPTR/WPTR is in terms of 64-byte (16 dword) packets
+								// we need to do AQL math in 32-bit word terms because other
+								// queues are all in terms of 32-bits
+								if (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
+									start = (start * 16) % asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+									end = (end * 16) % asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+
+									// enable disasm_early_term because they don't use the same terminals as mesa
+									asic->options.disasm_early_term = 1;
+								}
 								// continue, so at this point we read the queue like a ring (allowing start > end)
 								if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
 									asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
 								} else {
-									// decode and diassemble the PM4 packets
-									asic->std_msg("Dumping user queue-%"PRIu64" (from word 0x%"PRIx32" to 0x%"PRIx32"):\n",
-										asic->options.user_queue.state.submission.queueid,
+									uint32_t rt;
+									switch (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type) {
+										case UMR_QUEUE_COMPUTE_PM4:
+										case UMR_QUEUE_GFX: rt = UMR_RING_PM4; break;
+										case UMR_QUEUE_COMPUTE: rt = UMR_RING_HSA; break;
+										case UMR_QUEUE_SDMA: rt = UMR_RING_SDMA; break;
+										default:
+											asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
+									}
+									// decode and diassemble the command submission packets
+									asic->std_msg("Dumping 0x%"PRIx32" words from user queue-%"PRIu64" (from word 0x%"PRIx32" to 0x%"PRIx32"):\n",
+										len,
+										asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_id,
 										start, end);
 									umr_ring_stream_present(asic,
 										NULL, 0, 0, // ring
 										0, // vmid
-										asic->options.user_queue.state.submission.hqd_base_addr + start * 4, // addr
+										asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + start * 4, // addr
 										buf, len, // words, length
-										UMR_RING_PM4);
+										rt);
 								}
 								free(buf);
 							}
 						} else {
 							asic->err_msg("[ERROR]: User Queue VM state is not active, did you use a --user-queue command?\n");
+						}
+
+						// resume waves after dumping the queue
+						if (asic->options.halt_waves) {
+							umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 						}
 				} else if (!strcmp(argv[i], "--dump-ib") || !strcmp(argv[i], "-di")) {
 					if (i + 2 < argc) {

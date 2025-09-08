@@ -287,8 +287,7 @@ next_page:
 				int r;
 				r = asic->mem_funcs.access_sram(asic, start_addr, chunk_size, pdst, write_en);
 				if (r < 0) {
-					fprintf(stderr, "[ERROR]: Cannot access system ram, perhaps CONFIG_STRICT_DEVMEM is set in your kernel config?\n");
-					fprintf(stderr, "[ERROR]: Alternatively download and install /dev/fmem\n");
+					fprintf(stderr, "[ERROR]: Cannot access system ram at address: 0x%"PRIx64"\n", start_addr);
 					return -1;
 				}
 			} else {
@@ -856,6 +855,10 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	unsigned hubid;
 	static const char *indentation = "                  \\->";
 	struct umr_ip_block *ip;
+
+	if (asic->options.user_queue.state.active) {
+		asic->options.user_queue.state.va = address;
+	}
 
 	// if we are capturing pagewalk data capture the inputs
 	if (vmdata) {
@@ -1537,8 +1540,7 @@ next_page:
 					int r;
 					r = asic->mem_funcs.access_sram(asic, start_addr, chunk_size, pdst, write_en);
 					if (r < 0) {
-						fprintf(stderr, "[ERROR]: Cannot access system ram, perhaps CONFIG_STRICT_DEVMEM is set in your kernel config?\n");
-						fprintf(stderr, "[ERROR]: Alternatively download and install /dev/fmem\n");
+						fprintf(stderr, "[ERROR]: Cannot access system ram at address: 0x%"PRIx64"\n", start_addr);
 						return -1;
 					}
 				} else {
@@ -1549,8 +1551,7 @@ next_page:
 						new_addr = (new_addr - agp_bot) + agp_base;
 						r = asic->mem_funcs.access_sram(asic, new_addr, chunk_size, pdst, write_en);
 						if (r < 0) {
-							fprintf(stderr, "[ERROR]: Cannot access system ram, perhaps CONFIG_STRICT_DEVMEM is set in your kernel config?\n");
-							fprintf(stderr, "[ERROR]: Alternatively download and install /dev/fmem\n");
+							fprintf(stderr, "[ERROR]: Cannot access system ram at address: 0x%"PRIx64"\n", start_addr);
 							return -1;
 						}
 					} else {

@@ -37,11 +37,24 @@ struct umr_hsa_stream {
 
 	int invalid;
 
-	struct umr_hsa_stream *next;
+	struct {
+		uint32_t kernel_object[512/32]; // copy of kernel object
+		uint64_t kernel_object_va, kernarg_va; // VAs of kernel object and kernarg buffers
+		uint64_t kernel_code_entry_byte_offset; // VA of kernel code
+		uint32_t kernarg_size;
+		uint32_t compute_pgm_rsrc1,
+				 compute_pgm_rsrc2,
+				 compute_pgm_rsrc3;
+	} kernel_dispatch;
+
+	struct umr_shaders_pgm *shader; // shader program if any
+
+	struct umr_hsa_stream *prev, *next;
 };
 
 struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
 struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_hsa_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
 void umr_free_hsa_stream(struct umr_hsa_stream *stream);
+struct umr_shaders_pgm *umr_find_shader_in_hsa_stream(struct umr_asic *asic, struct umr_hsa_stream *stream, unsigned vmid, uint64_t addr);
 
 #endif

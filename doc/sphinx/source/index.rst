@@ -13,11 +13,13 @@ UMR: User Mode Register Debugger
    intro
    build
    basic
+   scriptware
+   user_queue
    register_access
-   wave_status
-   profiler
    vm_decoding
+   wave_status
    ring
+   profiler
    top
    power
    gui

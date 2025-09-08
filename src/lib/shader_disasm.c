@@ -174,8 +174,9 @@ int umr_vm_disasm(struct umr_asic *asic, FILE *output, int vm_partition, unsigne
 }
 
 // compute shader by looking for 5 s_endpgm opcodes in a row
-#define S_ENDPGM 0xbf810000
-#define S_ENDINV 0xbf9f0000
+#define S_ENDPGM  0xbf810000
+#define S_ENDPGM2 0xbfb00000
+#define S_ENDINV  0xbf9f0000
 
 /**
  * umr_compute_shader_size - Compute the size of a shader
@@ -212,7 +213,7 @@ uint32_t umr_compute_shader_size(struct umr_asic *asic, int vm_partition, struct
 			x = 0;
 		}
 		y += 4;
-		if (buf[x] == S_ENDPGM || buf[x] == S_ENDINV) {
+		if (buf[x] == S_ENDPGM || buf[x] == S_ENDINV || buf[x] == S_ENDPGM2) {
 			lastendpgm = y - 4;
 			++endpgm_cnt;
 			if (endpgm_cnt == 5)

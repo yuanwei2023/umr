@@ -23,8 +23,16 @@
  *
  */
 #include "umr.h"
+#define _GNU_SOURCE
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
-
 
 #if 0
 #define DEBUG(...) asic->err_msg("DEBUG:" __VA_ARGS__)
@@ -63,12 +71,46 @@ uint64_t umr_vm_dma_to_phys(struct umr_asic *asic, uint64_t dma_addr)
 	return phys;
 }
 
+static int umr_access_sram_via_iomem(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
+{
+	uint32_t r;
+
+	lseek(asic->fd.iomem, address, SEEK_SET);
+	if (write_en == 0) {
+		memset(dst, 0xFF, size);
+		if ((r = read(asic->fd.iomem, dst, size)) != size) {
+			return -1;
+		}
+	} else {
+		if ((r = write(asic->fd.iomem, dst, size)) != size) {
+			return -1;
+		}
+	}
+	return 0;
+}
+
+static int umr_access_sram_via_hmm(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
+{
+	ssize_t s;
+	char name[128];
+	int fd;
+
+	sprintf(name, "/proc/%d/mem", asic->options.user_queue.client_info.proc_info.pid);
+	fd = open(name, O_RDWR);
+	if (write_en) {
+		s = pwrite(fd, dst, size, address);
+	} else {
+		s = pread(fd, dst, size, address);
+	}
+	close(fd);
+	return (s == size) ? 0 : -1;
+}
+
 /**
  * @brief Access system memory.
  *
  * This function reads from or writes to system memory at a specified physical address.
- * It attempts to use the amdgpu_iomem debugfs entry if available, otherwise it tries
- * to access /dev/fmem or /dev/mem directly.
+ * It attempts to use the amdgpu_iomem debugfs entry.
  *
  * @param asic Pointer to the UMR ASIC structure containing device-specific information.
  * @param address The physical system memory address to read from or write to.
@@ -80,63 +122,30 @@ uint64_t umr_vm_dma_to_phys(struct umr_asic *asic, uint64_t dma_addr)
  */
 int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
 {
-	int fd, need_close=0;
-	uint32_t r;
-
-	DEBUG("Reading physical sys addr: 0x" PRIx64 "\n", address);
-
-	// check if we have access to the amdgpu_iomem debugfs entry
-	if (asic->fd.iomem >= 0) {
-		fd = asic->fd.iomem;
-	} else {
-retry:
-		// if not try to read system memory directly
-		need_close = 1;
-
-		// try /dev/fmem first
-		fd = open("/dev/fmem", O_RDWR);
-		if (fd < 0)
-			fd = open("/dev/mem", O_RDWR | O_DSYNC);
-	}
-
-	if (fd >= 0) {
-		lseek(fd, address, SEEK_SET);
-		if (write_en == 0) {
-			memset(dst, 0xFF, size);
-			if ((r = read(fd, dst, size)) != size) {
-				perror("Cannot read from system memory");
-				asic->err_msg("[ERROR]: Accessing system memory returned: %d\n", r);
-				if (need_close)
-					close(fd);
-				if (fd == asic->fd.iomem)
-					goto retry;
-				return -1;
-			}
-			if (asic->options.test_log && asic->options.test_log_fd) {
-				uint8_t *tlp = (uint8_t *)dst;
-				unsigned x;
-				fprintf(asic->options.test_log_fd, "SYSRAM@0x%"PRIx64" = {", address);
-				for (x = 0; x < size; x++) {
-					fprintf(asic->options.test_log_fd, "%02"PRIx8, tlp[x]);
-				}
-				fprintf(asic->options.test_log_fd, "}\n");
+	if (umr_access_sram_via_iomem(asic, address, size, dst, write_en)) {
+		if (asic->options.user_queue.state.active) {
+			if (umr_access_sram_via_hmm(asic, asic->options.user_queue.state.va, size, dst, write_en)) {
+				goto error;
 			}
 		} else {
-			if ((r = write(fd, dst, size)) != size) {
-				perror("Cannot write to system memory");
-				asic->err_msg("[ERROR]: Accessing system memory returned: %d\n", r);
-				if (need_close)
-					close(fd);
-				if (fd == asic->fd.iomem)
-					goto retry;
-				return -1;
-			}
+			goto error;
 		}
-		if (need_close)
-			close(fd);
-		return 0;
 	}
+
+	if (asic->options.test_log && asic->options.test_log_fd) {
+		uint8_t *tlp = (uint8_t *)dst;
+		unsigned x;
+		fprintf(asic->options.test_log_fd, "SYSRAM@0x%"PRIx64" = {", address);
+		for (x = 0; x < size; x++) {
+			fprintf(asic->options.test_log_fd, "%02"PRIx8, tlp[x]);
+		}
+		fprintf(asic->options.test_log_fd, "}\n");
+	}
+	return 0;
+error:
+	asic->err_msg("[ERROR]: Could not %s system memory at address 0x%"PRIx64"\n", write_en ? "write to" : "read from", address);
 	return -1;
+
 }
 
 /**

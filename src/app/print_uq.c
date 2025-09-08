@@ -34,14 +34,14 @@
 void umr_print_uq_info(struct umr_asic *asic)
 {
     int x;
-    char *queue_names[] = { "gfx", "compute" };
+    char *queue_names[] = { "gfx", "compute", "compute_pm4", "sdma" };
 
     if (!asic->options.user_queue.clientid[0]) {
         asic->std_msg("[WARNING]: No user queue information was found.\n");
         return;
     }
 
-    asic->std_msg("User Queue info for client: '%s'\n", asic->options.user_queue.clientid);
+    asic->std_msg("User Queue info for client: '%s' (qidx=%d)\n", asic->options.user_queue.clientid, asic->options.user_queue.state.qidx);
     asic->std_msg("\tcommand: %s\n", asic->options.user_queue.client_line.command);
     asic->std_msg("\ttgid: %s\n", asic->options.user_queue.client_line.tgid);
     asic->std_msg("\tdev: %s\n", asic->options.user_queue.client_line.dev);
@@ -74,32 +74,39 @@ void umr_print_uq_info(struct umr_asic *asic)
 		asic->options.user_queue.state.registers.PAGE_TABLE_BASE_ADDR_LO32,
 		asic->options.user_queue.state.registers.PAGE_TABLE_BASE_ADDR_HI32);
 
-    asic->std_msg(
-        "\tHQD state:\n\t\thqd_base_addr: 0x%"PRIx64"\n\t\thqd_rptr_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\t"
-        "rb_wptr_poll_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\thqd_active: 0x%"PRIx64"\n\t\trb_buf_size: 0x%"PRIx64
-        "\n\t\tqueue id: %"PRIu64"\n\t\tqueue type: %"PRIu64"\n\n",
-        asic->options.user_queue.state.submission.hqd_base_addr,
-        asic->options.user_queue.state.submission.hqd_rptr_addr,
-        asic->options.user_queue.state.submission.hqd_rptr_value,
-        asic->options.user_queue.state.submission.rb_wptr_poll_addr,
-        asic->options.user_queue.state.submission.rb_wptr_poll_value,
-        asic->options.user_queue.state.submission.hqd_active,
-        asic->options.user_queue.state.submission.rb_buf_size,
-        asic->options.user_queue.state.submission.queueid,
-        asic->options.user_queue.state.submission.queuetype);
-
     for (x = 0; x < UMR_MAX_MQD_QUEUES; x++) {
         if (asic->options.user_queue.client_info.queue[x].mqd_gpu_address) {
             char **mqd_txt;
+            uint32_t qt;
 
-            asic->std_msg("\tqueue_id: %"PRIu32"\n", asic->options.user_queue.client_info.queue[x].queue_id);
+            asic->std_msg("Queue #%d:\n\tqueue_id: %"PRIu32"\n", x, asic->options.user_queue.client_info.queue[x].queue_id);
             asic->std_msg("\tqueue_type: %"PRIu32" (%s)\n",
                 asic->options.user_queue.client_info.queue[x].queue_type,
-                queue_names[asic->options.user_queue.client_info.queue[x].queue_type]);
-            asic->std_msg("\tmqd_gpu_address: 0x%"PRIx64"\n\tMQD Contents:\n", asic->options.user_queue.client_info.queue[x].mqd_gpu_address);
+                asic->options.user_queue.client_info.queue[x].queue_type > 3 ? "UNK" : queue_names[asic->options.user_queue.client_info.queue[x].queue_type]);
+            asic->std_msg("\tmqd_gpu_address: 0x%"PRIx64"\n", asic->options.user_queue.client_info.queue[x].mqd_gpu_address);
 
+            asic->std_msg(
+                "\tHQD state:\n\t\thqd_base_addr: 0x%"PRIx64"\n\t\thqd_rptr_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\t"
+                "rb_wptr_poll_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\thqd_active: 0x%"PRIx64"\n\t\trb_buf_size: 0x%"PRIx64
+                "\n\n\tMQD Contents:\n",
+                asic->options.user_queue.client_info.queue[x].hqd_base_addr,
+                asic->options.user_queue.client_info.queue[x].hqd_rptr_addr,
+                asic->options.user_queue.client_info.queue[x].hqd_rptr_value,
+                asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr,
+                asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value,
+                asic->options.user_queue.client_info.queue[x].hqd_active,
+                asic->options.user_queue.client_info.queue[x].rb_buf_size);
+
+            switch (asic->options.user_queue.client_info.queue[x].queue_type) {
+		        case UMR_QUEUE_COMPUTE_PM4:
+                case UMR_QUEUE_COMPUTE: qt = UMR_MQD_ENGINE_COMPUTE; break;
+                case UMR_QUEUE_GFX: qt = UMR_MQD_ENGINE_GFX; break;
+                case UMR_QUEUE_SDMA: qt = UMR_MQD_ENGINE_SDMA0; break;
+                default:
+                    asic->err_msg("[BUG]: Invalid queue type [%d] in --print-uq\n", (int)asic->options.user_queue.client_info.queue[x].queue_type);
+            }
             mqd_txt = umr_mqd_decode_data(
-                asic->options.user_queue.client_info.queue[x].queue_type ? UMR_MQD_ENGINE_COMPUTE : UMR_MQD_ENGINE_GFX,
+                qt,
                 asic->family,
                 asic->options.user_queue.client_info.queue[x].mqd_words,
                 "*");

@@ -2,9 +2,26 @@
 Basic Commands
 ==============
 
-UMR accepts commands from the command line in a left-to-right
-order.  This means that options and device selection should take
-place before operations.
+UMR parses the command line from left to right in several passes.
+The first pass processes any options that modify UMR's behaviour
+without the need to first connect to an ASIC instance.  The second
+pass attaches to a test harness if any.  The third
+pass connects to an ASIC model (locally, via rumr, etc).
+The last pass processes any commands that require an ASIC model to be
+bound to to function.
+
+For instance,
+
+::
+
+	umr -O bits -r *.*.RB_BASE
+
+is equivalent to say:
+
+::
+
+	umr -r *.*.RB_BASE -O bits
+
 
 ----------------
 Device Selection
@@ -13,7 +30,10 @@ Device Selection
 By default umr tries to issue commands for the device in the 0'th
 slot under **/sys/kernel/debug/dri/**.  This is called the 0'th
 *instance*.  A new instance can be selected with the *--instance*
-flag.
+flag.  If no ASIC is specified on the command line and the 0'th
+instance does not exist or it is not an AMDGPU device UMR will attempt
+the 1'st instance and so on until it connects with a device or hits the
+enumeration limit.
 
 '''''''''''''''''''''
 Selecting by Instance
@@ -132,6 +152,8 @@ The options available are:
 | no_follow_ib            | Instructs the --ring-stream  command to not follow IBs pointed to by    |
 |                         | the ring                                                                |
 +-------------------------+-------------------------------------------------------------------------+
+| no_follow_chained_ib    | Do not follow IBs that are marked as chained                            |
++-------------------------+-------------------------------------------------------------------------+
 | use_pci                 | Enables direct PCI access bypassing the kernels debugfs entries.        |
 +-------------------------+-------------------------------------------------------------------------+
 | use_colour              | Enables colourful output in various commands.  Also accepts use_color   |
@@ -163,6 +185,14 @@ The options available are:
 | full_shader             | Always print the full shader in --waves and --ring-stream  output       |
 +-------------------------+-------------------------------------------------------------------------+
 | filter_shader_registers | Filter shader registers presented when running --ring-stream            |
++-------------------------+-------------------------------------------------------------------------+
+| skip_gprs               | Skip reading VGPR and SGPR registers when decoding wave status data     |
++-------------------------+-------------------------------------------------------------------------+
+| use_full_user_queue     | Decode from the start of the ring buffer to the write pointer when      |
+|                         | user queues from either KFD or KGD clients                              |
++-------------------------+-------------------------------------------------------------------------+
+| aql_heuristics          | Use heuristics to decode AQL packets marked INVALID when racing a live  |
+|                         | command processor (CP) that is not halted.                              |
 +-------------------------+-------------------------------------------------------------------------+
 
 ------------------

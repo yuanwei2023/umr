@@ -32,14 +32,12 @@ Like --pci but still uses the traditional debugfs path to interface with
 the hardware.  This is useful for interacting with APIs that identify hardware
 by the PCI bus address.
 .IP "--user-queue, -uq <client>.<queue>"
-Attach to a user queue specified by a given client and queue.  The client can be specified
-as a number, or by PID by using a '=' prefix, or by process name with a '@' prefix.  The
-queue can be specified as a number, or by type with a '@' prefix (0==gfx, 1==compute).  If
-a '-' follows the period then the first active HQD is attached to.
-For instance: '14.1' specifies queue 1 of client 14.  '@glmark2.1' specifies the queue 1 of the
-first instance of the 'glmark2' application found. '=2314.@0' specifies to use the first graphics
-queue found for the PID 2314.  Whereas, '=2314.-@0' specifies to use the first graphics queue
-with an active HQD it finds.
+.IP "--user-queue, -uq [<clienttype>,<client>,<queue>]"
+Attach to a user queue specified by a given client and queue.  Where clienttype is 'kgd' or 'kfd',
+client is one of 'client=number', 'pid=number', or 'comm=string' to select a client by it's
+client number, process PID, or command name, and 'queue' is one of 'queue=number' or 'type=string'.
+For 'type' the string must be one of 'gfx', 'compute', or 'sdma'.
+For example: 'kfd,comm=ollama,queue=2' specifies a KFD client attached to the first instance of ollama and queue #2.
 .IP --print-uq
 Print out all of the user queue information decoded.
 .IP "--gfxoff, -go <0 | 1>"

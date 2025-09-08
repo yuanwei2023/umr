@@ -104,10 +104,10 @@ both the hub name (currently gfx or mm) and VMID/offset pair.  Followed
 by the number of words and where it came from.
 
 The ring decoder can also detect shader programs and disassemble
-them as well.  If the UMD uses the quintuple 0xBF9F0000 opcode
+them as well.  If the UMD uses the quintuple **0xBF9F0000** opcode
 markers to mark the end of the shader then this functionality
 can be used automatically.  If your UMD does not then the option
-'disasm_early_term' can be used to terminate disassembly once the
+'*-O disasm_early_term*' can be used to terminate disassembly once the
 first 's_endpgm' opcode is found.
 
 The shader output includes where the shader was source from, it's type, as well as
@@ -159,7 +159,7 @@ the register writes detected inside the command submission.  Shader disassemblie
 
 Which indicates the VMID and address of the shader, how many bytes it
 is and where it was found.  In this case this shader was indicated
-by a DRAW or DISPATCH packet at VMID 3 offset 0x800000b2a400 + 0xb68.
+by a DRAW or DISPATCH packet at VMID **3** offset **0x800000b2a400 + 0xb68**.
 
 Each line of disassembly includes the address of the shader opcode,
 followed by the opcode in hex, followed by the disassembly provided
@@ -218,3 +218,77 @@ Bitfield Decoding
 
 The ring decoders also support decoding bitfields when register
 writes are detected.  This is enabled with the 'bits' option.
+
+-----------------------------
+User Queue Packet Disassembly
+-----------------------------
+
+When the user binds UMR to a queue from a KFD or KGD client the command *--dump-uq* can be
+used to disassemble the packets in the selected queue.  UMR automatically selects the correct
+packet type based on the client and queue type being selected.  Currently supported are PM4, AQL, and SDMA
+packet streams.
+
+::
+
+	$ umr --user-queue kfd,comm=test2,queue=0 --dump-uq
+	Dumping 0x20 words from user queue-0 (from word 0x10 to 0x30):
+	Decoding IB at 0x0@0x72825d800040 from 0x0@0x0 of 0 words (type 0)
+	[0x0@0x72825d800040 + 0x0000]   [        0x00000b02]    Opcode 0x2 [HSA_KERNEL_DISPATCH] (32 words, type: 0, hdr: 0xb02)
+	[0x0@0x72825d800040 + 0x0002]   [            0x0003]    |---> setup_dimensions=3
+	[0x0@0x72825d800040 + 0x0004]   [            0x0001]    |---> workgroup_size_x=1
+	[0x0@0x72825d800040 + 0x0006]   [            0x0001]    |---> workgroup_size_y=1
+	[0x0@0x72825d800040 + 0x0008]   [            0x0001]    |---> workgroup_size_z=1
+	[0x0@0x72825d800040 + 0x000a]   [            0x0000]    |---> reserved0=0
+	[0x0@0x72825d800040 + 0x000c]   [        0x00000001]    |---> grid_size_x=1
+	[0x0@0x72825d800040 + 0x0010]   [        0x00000001]    |---> grid_size_y=1
+	[0x0@0x72825d800040 + 0x0014]   [        0x00000001]    |---> grid_size_z=1
+	[0x0@0x72825d800040 + 0x0018]   [        0x00000400]    |---> private_segment_size=1024
+	[0x0@0x72825d800040 + 0x001c]   [        0x00000000]    |---> group_segment_size=0
+	[0x0@0x72825d800040 + 0x0020]   [0x0000728370690940]    |---> kernel_object=0x728370690940
+	[0x0@0x72825d800040 + 0x0028]   [0x000072825d600100]    |---> kernarg_address=0x72825d600100
+	[0x0@0x72825d800040 + 0x0030]   [0x0000000000000000]    |---> reserved2=0x0
+	[0x0@0x72825d800040 + 0x0038]   [0x0000000000000000]    |---> completion_signal=0x0
+	[0x0@0x72825d800040 + 0x0040]   [        0x00001503]    Opcode 0x3 [HSA_BARRIER_AND] (32 words, type: 0, hdr: 0x1503)
+	[0x0@0x72825d800040 + 0x0042]   [            0x0000]    |---> reserved0=0
+	[0x0@0x72825d800040 + 0x0044]   [        0x00000000]    |---> reserved1=0
+	[0x0@0x72825d800040 + 0x0048]   [0x0000000000000000]    |---> dep_signal[0]=0x0
+	[0x0@0x72825d800040 + 0x0050]   [0x0000000000000000]    |---> dep_signal[1]=0x0
+	[0x0@0x72825d800040 + 0x0058]   [0x0000000000000000]    |---> dep_signal[2]=0x0
+	[0x0@0x72825d800040 + 0x0060]   [0x0000000000000000]    |---> dep_signal[3]=0x0
+	[0x0@0x72825d800040 + 0x0068]   [0x0000000000000000]    |---> dep_signal[4]=0x0
+	[0x0@0x72825d800040 + 0x0070]   [0x0000000000000000]    |---> reserved2=0x0
+	[0x0@0x72825d800040 + 0x0078]   [0x000072836f9fd600]    |---> completion_signal=0x72836f9fd600
+	Done decoding IB
+
+	Shader from 0x0@[0x72825d800040 + 0x0] at 0x0@0x728370699a00, type COMPUTE (2), size 60
+	Shader registers (unfiltered):
+			gfx1201.regCOMPUTE_PGM_RSRC1(0@0x728370690940) == 0xe00f0103
+			gfx1201.regCOMPUTE_PGM_RSRC2(0@0x728370690940) == 0x1391
+			gfx1201.regCOMPUTE_PGM_RSRC3(0@0x728370690940) == 0x0
+
+	Shader program:
+		pgm[0@0x728370699a00 + 0x0   ] = 0xbea10080         s_mov_b32 s33, 0                                           
+		pgm[0@0x728370699a00 + 0x4   ] = 0xbea00080         s_mov_b32 s32, 0                                           
+		pgm[0@0x728370699a00 + 0x8   ] = 0xbe8a0106         s_mov_b64 s[10:11], s[6:7]                                 
+		pgm[0@0x728370699a00 + 0xc   ] = 0xbe880104         s_mov_b64 s[8:9], s[4:5]                                   
+		pgm[0@0x728370699a00 + 0x10  ] = 0xbe860102         s_mov_b64 s[6:7], s[2:3]                                   
+		pgm[0@0x728370699a00 + 0x14  ] = 0xbe840100         s_mov_b64 s[4:5], s[0:1]                                   
+		pgm[0@0x728370699a00 + 0x18  ] = 0x7e3e0300         v_mov_b32_e32 v31, v0                                      
+		pgm[0@0x728370699a00 + 0x1c  ] = 0xbe804700         s_getpc_b64 s[0:1]                                         
+		pgm[0@0x728370699a00 + 0x20  ] = 0xbe810f01         s_sext_i32_i16 s1, s1                                      
+		pgm[0@0x728370699a00 + 0x24  ] = 0x8000ff00         s_add_co_u32 s0, s0, 0xfffffef4                            
+		pgm[0@0x728370699a00 + 0x28  ] = 0xfffffef4 ;;                                                          
+		pgm[0@0x728370699a00 + 0x2c  ] = 0x8201ff01         s_add_co_ci_u32 s1, s1, -1                                 
+		pgm[0@0x728370699a00 + 0x30  ] = 0xffffffff ;;                                                          
+		pgm[0@0x728370699a00 + 0x34  ] = 0xbe9e4900         s_swappc_b64 s[30:31], s[0:1]                              
+		pgm[0@0x728370699a00 + 0x38  ] = 0xbfb00000         s_endpgm                                                   
+	Done disassembly of shader
+
+In this example we see the packets being decoded are located at **0x72825d800040** in the clients
+virtual memory space.  In this case there are two packets being decoded one of which dispatches a
+kernel which is disassembled afterwards.
+
+**NOTE:** For AQL streams the addressing can be somewhat confusing.  It counts 'words' as 32-bit words not
+16-bit words as found in HSA.  For instance, the notice of "(from word 0x10 to 0x30)"  means it is dumping
+from bytes 0x10 * 4 == 64 to byte 0x30 * 4 == 192 from the start of the HQD base address.  We see this in
+the start address **0x72825d800040** which is 0x40 bytes into the page the HQD base address starts on.

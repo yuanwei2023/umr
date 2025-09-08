@@ -294,7 +294,6 @@ void umr_packet_free(struct umr_packet_stream *stream)
 	}
 }
 
-
 /**
  * umr_packet_find_shader - Find a shader or compute kernel in a stream
  * @stream: An array of 32-bit words corresponding to the packet data to decode
@@ -308,16 +307,18 @@ struct umr_shaders_pgm *umr_packet_find_shader(struct umr_asic *asic, struct umr
 	switch (stream->type) {
 		case UMR_RING_PM4:
 		case UMR_RING_PM4_LITE:
-			return umr_find_shader_in_stream(asic, stream->stream.pm4, vmid, addr);
+			return umr_find_shader_in_pm4_stream(asic, stream->stream.pm4, vmid, addr);
+
+		case UMR_RING_HSA:
+			return umr_find_shader_in_hsa_stream(asic, stream->stream.hsa, vmid, addr);
 
 		case UMR_RING_SDMA:
 		case UMR_RING_MES:
 		case UMR_RING_VPE:
 		case UMR_RING_UMSCH:
-		case UMR_RING_HSA:
 		case UMR_RING_VCN_ENC:
 		case UMR_RING_VCN_DEC:
-			stream->asic->err_msg("[BUG]: Cannot find shader in UMSCH, VPE, MES, HSA, or SDMA types of streams\n");
+			stream->asic->err_msg("[BUG]: Cannot find shader in UMSCH, VPE, MES, SDMA, or VCN enc/dec types of streams\n");
 			return NULL;
 
 		case UMR_RING_UNK:
