@@ -27,6 +27,7 @@
 #include <signal.h>
 #include <time.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 /**
  * umr_parse_clientid -- Parse the user_queue structure fields against debugfs
@@ -79,22 +80,26 @@ int umr_parse_clientid(struct umr_asic *asic)
         use_pid = 1;
     }
 
+    // look for queue id
     pp = strstr(p, ".");
     if (!pp) {
-        asic->err_msg("[ERROR]: Invalid clientid syntax on command line should be of the form 'clientid.queueid'\n");
+        asic->err_msg("[ERROR]: Invalid clientid syntax should be of the form 'clientid.queueid'\n");
         return -1;
     }
     *pp = 0; // split string in two
     ++pp;
 
-    // if they specify a leading - in the queueid it means only use active queues
-    if (*pp == '-') {
-        use_active = 1;
-        ++pp;
-    }
-    // if they specify the queue id with a prefixed @ means we want to match queue type not id.
-    if (*pp == '@') {
-        use_type = 1;
+    // handle modifiers in any order
+    while (*pp && !isdigit(*pp)) {
+        if (*pp == '-') {
+            // if they specify a leading - in the queueid it means only use active queues
+            use_active = 1;
+        } else if (*pp == '@') {
+            // if they specify the queue id with a prefixed @ means we want to match queue type not id.
+            use_type = 1;
+        } else {
+            asic->err_msg("[ERROR]: Invalid character in user queue id field [%c]\n", *pp);
+        }
         ++pp;
     }
     queueid = atoi(pp);
