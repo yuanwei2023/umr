@@ -86,7 +86,30 @@ if(NOT BASH_COMPLETION_FOUND)
 	set(BASH_COMPLETION_COMPLETIONSDIR "/usr/share/bash-completion/completions")
 endif()
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/umr-completion.bash DESTINATION ${BASH_COMPLETION_COMPLETIONSDIR} RENAME umr)
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/database/ DESTINATION ${CMAKE_INSTALL_DATADIR}/umr/database/)
+
+if (NOT COMPRESS_DATABASE_FILES)
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/database/ DESTINATION ${CMAKE_INSTALL_DATADIR}/umr/database/)
+else()
+  message("Comprsessing ${PROJECT_SOURCE_DIR}/database/*")
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/database.tar.zst
+    COMMAND tar --zstd -cf ${CMAKE_CURRENT_BINARY_DIR}/database.tar.zst *
+    DEPENDS ${PROJECT_SOURCE_DIR}/database
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/database
+    COMMENT "Compressing database files..."
+  )
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/database.sha256
+    COMMAND sha256sum ${CMAKE_CURRENT_BINARY_DIR}/database.tar.zst | cut -d ' ' -f1 > ${CMAKE_CURRENT_BINARY_DIR}/database.sha256
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/database.tar.zst
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/database
+    COMMENT "Calculating compressed database sha256sum..."
+  )
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/database.tar.zst DESTINATION ${CMAKE_INSTALL_DATADIR}/umr/database/)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/database.sha256 DESTINATION ${CMAKE_INSTALL_DATADIR}/umr/database/)
+
+  add_custom_target(compress_db_files ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/database.tar.zst ${CMAKE_CURRENT_BINARY_DIR}/database.sha256)
+endif()
 
 if(UMR_INSTALL_DEV)
 	install(FILES ${PROJECT_SOURCE_DIR}/src/umr.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/)
