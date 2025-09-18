@@ -35,6 +35,9 @@ static char *op_40_mem_sel[] = { "mem-mapped reg", "memory", "tc_l2", "gds", "pe
 static char *op_84_cntr_sel[] = { "invalid", "ce", "cs", "ce and cs" };
 static char *op_7a_index_str[] = { "default", "prim_type", "index_type", "num_instance", "multi_vgt_param", "reserved", "reserved", "reserved",
 								   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+static char *op_b0_input_mode[] = {"direct" /*00*/, "indirect" /*01*/, "indirect_multi" /*02*/, NULL};
+static char *op_b0_sub_opcode[] = {"DispatchNodes" /*00*/, "GraphScheduler" /*01*/, "CondExecStateHash" /*02*/};
+
 static const struct {
 	const char *name;
 	int maj, min;
@@ -215,7 +218,7 @@ static const struct {
 	{ "PKT3_DISPATCH_TASKMESH_INDIRECT_MULTI_ACE", 10, 0 }, // ad
 	{ "UNK", 0, 0 }, // ae
 	{ "UNK", 0, 0 }, // af
-	{ "UNK", 0, 0 }, // b0
+	{ "PKT3_DISPATCH_NODES", 10, 0 }, // b0
 	{ "UNK", 0, 0 }, // b1
 	{ "UNK", 0, 0 }, // b2
 	{ "UNK", 0, 0 }, // b3
@@ -1564,6 +1567,23 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 36, ib_vmid, "STRIDE", fetch_word(asic, stream, 8), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 40, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, 9), NULL, 16, 32);
 			break;
+		case 0xB0: // DISPATCH_NODES
+			// PM4_MEC_DISPATCH_NODES_ACE
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "SHADER_DIR_ADDR_LO", fetch_word(asic, stream, 0), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "SHADER_DIR_ADDR_HI", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ISSUE_SQTT_MARKER_EVENT", BITS(fetch_word(asic, stream, 1), 16, 17), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "INPUT_MODE", BITS(fetch_word(asic, stream, 1), 17, 19), op_b0_input_mode[BITS(fetch_word(asic, stream, 1), 17, 19)], 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ISSUE_GFX_EXIT_SIGNAL", BITS(fetch_word(asic, stream, 1), 19, 20), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "GRAPH_DATA_ADDR_LO", fetch_word(asic, stream, 2), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "GRAPH_DATA_ADDR_HI", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "USER_DATA_BASE", BITS(fetch_word(asic, stream, 4), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, 5), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "ROOT_SHADER_ID", fetch_word(asic, stream, 6), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "INPUT_RECORDS_ADDR_LO", fetch_word(asic, stream, 7), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 36, ib_vmid, "INPUT_RECORDS_ADDR_HI", BITS(fetch_word(asic, stream, 8), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 40, ib_vmid, "INPUT_RECORDS_STRIDE", fetch_word(asic, stream, 9), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 44, ib_vmid, "INPUT_RECORDS_COUNT", fetch_word(asic, stream, 10), NULL, 16, 32);
+			break;
 		default:
 			decode_pkt3_gfx9(asic, ui, stream, ib_addr, ib_vmid);
 			break;
@@ -1809,6 +1829,57 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "TF_DATA", BITS(fetch_word(asic, stream, 4), 0, 32), NULL, 16, 32);
 				else
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "DOORBELL_OFFSET3", BITS(fetch_word(asic, stream, 4), 2, 28), NULL, 16, 32);
+			}
+			break;
+		case 0xB0: // DISPATCH_NODES
+			if (stream->n_words == 11) {
+				// PM4_MEC_DISPATCH_NODES_ACE
+				ui->add_field(ui, ib_addr + 4, ib_vmid, "SHADER_DIR_ADDR_LO", fetch_word(asic, stream, 0), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "SHADER_DIR_ADDR_HI", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "ISSUE_SQTT_MARKER_EVENT", BITS(fetch_word(asic, stream, 1), 16, 17), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "INPUT_MODE", BITS(fetch_word(asic, stream, 1), 17, 19), op_b0_input_mode[BITS(fetch_word(asic, stream, 1), 17, 19)], 16, 32);
+				ui->add_field(ui, ib_addr + 8, ib_vmid, "ISSUE_GFX_EXIT_SIGNAL", BITS(fetch_word(asic, stream, 1), 19, 20), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 12, ib_vmid, "GRAPH_DATA_ADDR_LO", fetch_word(asic, stream, 2), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 16, ib_vmid, "GRAPH_DATA_ADDR_HI", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 20, ib_vmid, "USER_DATA_BASE", BITS(fetch_word(asic, stream, 4), 0, 16), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 24, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, 5), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 28, ib_vmid, "ROOT_SHADER_ID", fetch_word(asic, stream, 6), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 32, ib_vmid, "INPUT_RECORDS_ADDR_LO", fetch_word(asic, stream, 7), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 36, ib_vmid, "INPUT_RECORDS_ADDR_HI", BITS(fetch_word(asic, stream, 8), 0, 16), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 40, ib_vmid, "INPUT_RECORDS_STRIDE", fetch_word(asic, stream, 9), NULL, 16, 32);
+				ui->add_field(ui, ib_addr + 44, ib_vmid, "INPUT_RECORDS_COUNT", fetch_word(asic, stream, 10), NULL, 16, 32);
+			} else {
+		    	uint32_t sub_opcode = BITS(fetch_word(asic, stream, 0), 0, 6);
+
+				if (sub_opcode == 2 && stream->n_words == 2) {
+					// PM4_PFP_COND_EXEC_STATE_HASH
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SUB_OPCODE", BITS(fetch_word(asic, stream, 0), 0, 6), op_b0_sub_opcode[BITS(fetch_word(asic, stream, 0), 0, 6)], 16, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "HASH_INDEX", BITS(fetch_word(asic, stream, 0), 8, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_SKIP_DWORDS", BITS(fetch_word(asic, stream, 0), 16, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "HASH_VALUE", fetch_word(asic, stream, 1), NULL, 16, 32);
+				} else if ((sub_opcode == 1 && stream->n_words == 7) || (sub_opcode == 0 && stream->n_words == 12)) {
+					// PM4_PFP_GRAPH_SCHEDULER_GFX / PM4_PFP_DISPATCH_NODES_GFX
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SUB_OPCODE", BITS(fetch_word(asic, stream, 0), 0, 6), op_b0_sub_opcode[BITS(fetch_word(asic, stream, 0), 0, 6)], 16, 32);
+					ui->add_field(ui, ib_addr + 4, ib_vmid, "SHADER_DIR_ADDR_LO", BITS(fetch_word(asic, stream, 0), 6, 32) << 6, NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "SHADER_DIR_ADDR_HI", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 8, ib_vmid, "ISSUE_SQTT_MARKER_EVENT", BITS(fetch_word(asic, stream, 1), 16, 17), NULL, 16, 32);
+					if (sub_opcode == 0) {
+						ui->add_field(ui, ib_addr + 8, ib_vmid, "INPUT_MODE", BITS(fetch_word(asic, stream, 1), 17, 19), op_b0_input_mode[BITS(fetch_word(asic, stream, 1), 17, 19)], 16, 32);
+					}
+					ui->add_field(ui, ib_addr + 12, ib_vmid, "GRAPH_DATA_ADDR_LO", fetch_word(asic, stream, 2), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 16, ib_vmid, "GRAPH_DATA_ADDR_HI", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 20, ib_vmid, "VB_TABLE_ADDR_LO", fetch_word(asic, stream, 4), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 24, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 5), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + 28, ib_vmid, "DRAW_INITIATOR_INDEXED", fetch_word(asic, stream, 6), NULL, 16, 32);
+					if (sub_opcode == 0) {
+						// PM4_PFP_DISPATCH_NODES_GFX
+						ui->add_field(ui, ib_addr + 32, ib_vmid, "ROOT_PIPELINE_INDEX", fetch_word(asic, stream, 7), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 36, ib_vmid, "INPUT_RECORDS_ADDR_LO", fetch_word(asic, stream, 8), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 40, ib_vmid, "INPUT_RECORDS_ADDR_HI", BITS(fetch_word(asic, stream, 9), 0, 16), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 44, ib_vmid, "INPUT_RECORDS_STRIDE", fetch_word(asic, stream, 10), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + 48, ib_vmid, "INPUT_RECORDS_COUNT", fetch_word(asic, stream, 11), NULL, 16, 32);
+					}
+				}
 			}
 			break;
 		case 0xB9: // SET_CONTEXT_REG_PAIRS_PACKED
