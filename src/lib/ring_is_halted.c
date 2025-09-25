@@ -58,6 +58,9 @@ int umr_ring_is_halted(struct umr_asic *asic, char *ringname)
 			return -1;
 		}
 
+		asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value %= asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+		asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value %= asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+
 		// bail out if no packets left
 		if (wptr == rptr)
 			return 0;
@@ -76,6 +79,9 @@ int umr_ring_is_halted(struct umr_asic *asic, char *ringname)
 				asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
 				return -1;
 			}
+
+			asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value %= asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+			asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value %= asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
 
 			// if the wptr or rptr moved the queue is obviously not halted.
 			if ((rptr != asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value) ||

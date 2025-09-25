@@ -70,7 +70,7 @@ void umr_print_waves(struct umr_asic *asic)
 		if (!strcmp(asic->options.ring_name, "uq")) {
 			// user wants to attach to the user queue for wave debugging
 			if (asic->options.user_queue.state.active) {
-				uint32_t start, end, *buf, len;
+				uint32_t start=0, end=0, *buf=NULL, len;
 				uint32_t rt;
 				ib_addr.vmid = 0; // doesn't matter
 				buf = calloc(asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size, sizeof *buf);
@@ -98,30 +98,32 @@ void umr_print_waves(struct umr_asic *asic)
 					// enable disasm_early_term because they don't use the same terminals as mesa
 					asic->options.disasm_early_term = 1;
 				}
-				// read the user queue like a ring
-				if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
-					asic->err_msg("[ERROR]: Could not read user queue packet stream.\n");
+				if (buf) {
+					// read the user queue like a ring
+					if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
+						asic->err_msg("[ERROR]: Could not read user queue packet stream.\n");
+						free(buf);
+						return;
+					}
+					ib_addr.size = len;
+					// decode the stream copied from the queue
+					switch (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type) {
+						case UMR_QUEUE_COMPUTE_PM4:
+						case UMR_QUEUE_GFX: rt = UMR_RING_PM4; break;
+						case UMR_QUEUE_COMPUTE: rt = UMR_RING_HSA; break;
+						default:
+							asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
+					}
+					stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, rt, NULL);
 					free(buf);
-					return;
+					if (!stream) {
+						asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
+						return;
+					}
+					// flag to the rest of the function that we're good to go.
+					use_ring = 0;
+					ring_halted = 1;
 				}
-				ib_addr.size = len;
-				// decode the stream copied from the queue
-				switch (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type) {
-					case UMR_QUEUE_COMPUTE_PM4:
-					case UMR_QUEUE_GFX: rt = UMR_RING_PM4; break;
-					case UMR_QUEUE_COMPUTE: rt = UMR_RING_HSA; break;
-					default:
-						asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
-				}
-				stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, rt, NULL);
-				free(buf);
-				if (!stream) {
-					asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
-					return;
-				}
-				// flag to the rest of the function that we're good to go.
-				use_ring = 0;
-				ring_halted = 1;
 			} else {
 				asic->err_msg("[ERROR]: User queue is not attached, did you forget to use --user-queue on the command line?\n");
 				return;
