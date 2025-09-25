@@ -74,6 +74,21 @@ logs emit the PCI bus address but not the DRI instance.
     $ umr --script pci-bus-to-instance 0000:03:00.0
     1
 
+
+------------------
+pci-bus-to-instxcc
+------------------
+
+This command translates a PCI bus address that also includes the XCC id encoded as a the PCI bus function
+back to a DRI instance number.  Useful when logs emit the PCI bus address but not the DRI instance.
+
+::
+
+    $ umr --script pci-bus-to-instxcc 0000:03:00.2
+    -i 1 -vmp 2
+
+Because this command outputs two values it also includes the umr command line syntax to specify them.
+
 ----
 xcds
 ----

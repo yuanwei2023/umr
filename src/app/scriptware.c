@@ -27,6 +27,7 @@
 #include <signal.h>
 #include <time.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 static void helptext(umr_err_output errout)
 {
@@ -36,6 +37,7 @@ static void helptext(umr_err_output errout)
     errout("\tpci-did <instance>\n\t\tOutput the PCI device ID (did) of the AMDGPU device with a given instance\n\n");
     errout("\tpci-bus <instance>\n\t\tOutput the PCI device bus address of the AMDGPU device with a given instance\n\n");
     errout("\tpci-bus-to-instance <busno>\n\t\tOutput the DRI instance matching a PCI device bus address\n\n");
+    errout("\tpci-bus-to-instxcc <busno>\n\t\tTranslate a PCI bus address with XCC encoded PCI function into a pair of -i and -vmp\n\n");
     errout("\txcds <instance>\n\t\tList all GC partitions for a given device\n\n");
     errout("\tgfxname <instance>\n\t\tOutputs the base name for the GC IP block of a given GPU instance\n\n");
 }
@@ -101,7 +103,27 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
                 errout("\n");
                 ++x;
             } else {
-                errout("[ERROR]: 'pci-did' --script command requires one parameter.\n");
+                errout("[ERROR]: 'pci-bus-to-instance' --script command requires one parameter.\n");
+            }
+        } else if (!strcmp(argv[x], "pci-bus-to-instxcc")) {
+            if (x + 1 < argc) {
+                int y, xcc;
+                char tmp[64];
+                strcpy(tmp, argv[x+1]);
+                if (isdigit(tmp[strlen(tmp)-1])) {
+                    xcc = atoi(&tmp[strlen(tmp)-1]);
+                    tmp[strlen(tmp)-1] = '0';
+                }
+                for (y = 0; y < no_asics; y++) {
+                    if (!strcmp(devices[y]->options.pci.name, tmp)) {
+                        errout("-i %d -vmp %d ", devices[y]->instance, xcc);
+                        break;
+                    }
+                }
+                errout("\n");
+                ++x;
+            } else {
+                errout("[ERROR]: 'pci-bus-to-instxcc' --script command requires one parameter.\n");
             }
         } else if (!strcmp(argv[x], "pci-bus")) {
             if (x + 1 < argc) {
@@ -115,7 +137,7 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
                 errout("\n");
                 ++x;
             } else {
-                errout("[ERROR]: 'pci-did' --script command requires one parameter.\n");
+                errout("[ERROR]: 'pci-bus' --script command requires one parameter.\n");
             }
         } else if (!strcmp(argv[x], "gfxname")) {
             if (x + 1 < argc) {
