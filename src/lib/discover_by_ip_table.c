@@ -44,6 +44,8 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	char ipcmn[256], linebuf[512];
 	uint32_t no_regs, x;
 	struct umr_ip_block *ip;
+	int vce_present;
+	struct umr_discovery_table_entry *pdet;
 
 	snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", nit->path, nit->fname);
 	f = fopen(linebuf, "r");
@@ -73,11 +75,23 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	ip->discoverable.instance = det->instance;
 	ip->discoverable.logical_inst = det->logical_inst;
 
+	// scan for a VCE block to prevent renaming UVD
+	pdet = det;
+	vce_present = 0;
+	while (det) {
+		if (!strcmp(det->ipname, "vce")) {
+			vce_present = 1;
+			break;
+		}
+		det = det->next;
+	}
+	det = pdet;
+
 	// swap for common names since some IP discovery names won't always
 	// match the IP header names
 	if (!strcmp(det->ipname, "gc")) {
 		strcpy(ipcmn, "gfx");
-	} else if (!strcmp(det->ipname, "uvd")) { // for any IP that has discovery UVD == VCN
+	} else if (!vce_present && !strcmp(det->ipname, "uvd")) {
 		strcpy(ipcmn, "vcn");
 	} else if (!strcmp(det->ipname, "dci")) {
 		strcpy(ipcmn, "dce");
@@ -253,7 +267,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 {
 	struct umr_discovery_table_entry *det = NULL, *pdet = NULL;
 	struct umr_database_scan_item *it, *nit;
-	int numblocks, used_blocks, x, y;
+	int vce_present, numblocks, used_blocks, x, y;
 	struct umr_asic *asic;
 	char asicname[128], *dasic;
 	struct export_data {
@@ -307,6 +321,18 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 	asic->err_msg = errout;
 
 	pdet = det;
+
+	// on hardware with a VCE block the name "uvd" means "uvd", otherwise "uvd" is the HWIP_ID of the "vcn" block
+	vce_present = 0;
+	while (det) {
+		if (!strcmp(det->ipname, "vce")) {
+			vce_present = 1;
+			break;
+		}
+		det = det->next;
+	}
+	det = pdet;
+
 	used_blocks = 0;
 	while (det) {
 		char cmnname[256];
@@ -322,7 +348,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 			strcpy(cmnname, "mp");
 		} else if (!strcmp(det->ipname, "sdma1")) {
 			strcpy(cmnname, "sdma");
-		} else if (!strcmp(det->ipname, "uvd")) {
+		} else if (!vce_present && !strcmp(det->ipname, "uvd")) {
 			strcpy(cmnname, "vcn");
 		} else if (!strcmp(det->ipname, "dci")) {
 			strcpy(cmnname, "dce");
