@@ -79,6 +79,8 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 		strcpy(ipcmn, "gfx");
 	} else if (!strcmp(det->ipname, "uvd")) { // for any IP that has discovery UVD == VCN
 		strcpy(ipcmn, "vcn");
+	} else if (!strcmp(det->ipname, "dci")) {
+		strcpy(ipcmn, "dce");
 	} else if (!strcmp(det->ipname, "dmu")) {
 		strcpy(ipcmn, "dcn");
 	} else if (!strcmp(det->ipname, "nbif")) {
@@ -322,6 +324,8 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 			strcpy(cmnname, "sdma");
 		} else if (!strcmp(det->ipname, "uvd")) {
 			strcpy(cmnname, "vcn");
+		} else if (!strcmp(det->ipname, "dci")) {
+			strcpy(cmnname, "dce");
 		} else if (!strcmp(det->ipname, "dmu")) {
 			strcpy(cmnname, "dcn");
 		} else if (!strcmp(det->ipname, "nbif")) {
