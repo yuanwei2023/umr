@@ -79,7 +79,7 @@ static void add_shader(struct umr_asic *asic,
 	pgm->regs = umr_copy_regpairs(reg_pairs);
 }
 
-static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *stream, uint64_t kernel_object)
+static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *stream, uint64_t kernel_object, uint64_t kernarg)
 {
 	struct umr_shader_reg_pair *reg_pair = NULL;
 	char gfxname[64], tmp[256];
@@ -101,6 +101,7 @@ static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *st
 		((stream->kernel_dispatch.kernel_object[(128/32)]) |
 		((uint64_t)stream->kernel_dispatch.kernel_object[(128/32)+1] << 32ULL));
 	stream->kernel_dispatch.kernarg_size = stream->kernel_dispatch.kernel_object[(64/32)];
+	stream->kernel_dispatch.kernarg_va = kernarg;
 	stream->kernel_dispatch.compute_pgm_rsrc1 = stream->kernel_dispatch.kernel_object[(384/32)];
 	stream->kernel_dispatch.compute_pgm_rsrc2 = stream->kernel_dispatch.kernel_object[(416/32)];
 	stream->kernel_dispatch.compute_pgm_rsrc3 = stream->kernel_dispatch.kernel_object[(352/32)];
@@ -131,6 +132,17 @@ static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *st
 	umr_shader_add_reg_pair(&reg_pair, tmp, stream->kernel_dispatch.compute_pgm_rsrc3, 0, kernel_object);
 	add_shader(asic, stream, 0, stream->kernel_dispatch.kernel_code_entry_byte_offset, asic->options.vm_partition, UMR_SHADER_COMPUTE, reg_pair);
 	umr_free_shader_reg_pairs(reg_pair);
+
+	// copy the kernarg
+	stream->kernel_dispatch.kernarg_data = calloc(1, stream->kernel_dispatch.kernarg_size);
+	if (stream->kernel_dispatch.kernarg_data) {
+		if (umr_read_vram(asic, asic->options.vm_partition, 0,
+				stream->kernel_dispatch.kernarg_va, stream->kernel_dispatch.kernarg_size,
+				stream->kernel_dispatch.kernarg_data) < 0) {
+			asic->err_msg("[ERROR]: Could not read kernarg from the HSA_KERNEL_DISPATCH packet\n");
+			return;
+		}
+	}
 }
 
 /**
@@ -188,12 +200,16 @@ struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *st
 
 		// fetch shaders from DISPATCH_KERNEL packets
 		if (ms->type == 2) {
-			uint64_t t64;
-			t64 = ms->words[15];
-			t64 |= ((uint64_t)ms->words[16]) << 16;
-			t64 |= ((uint64_t)ms->words[17]) << 32;
-			t64 |= ((uint64_t)ms->words[18]) << 48; // kernel_object pointer
-			parse_kernel_object(asic, ms, t64);
+			uint64_t kernobj, kernarg;
+			kernobj = ms->words[15];
+			kernobj |= ((uint64_t)ms->words[16]) << 16;
+			kernobj |= ((uint64_t)ms->words[17]) << 32;
+			kernobj |= ((uint64_t)ms->words[18]) << 48; // kernel_object pointer
+			kernarg = ms->words[19];
+			kernarg |= ((uint64_t)ms->words[20]) << 16;
+			kernarg |= ((uint64_t)ms->words[21]) << 32;
+			kernarg |= ((uint64_t)ms->words[22]) << 48; // kernarg pointer
+			parse_kernel_object(asic, ms, kernobj, kernarg);
 		}
 
 		nwords -= ms->nwords;
@@ -359,6 +375,8 @@ struct umr_hsa_stream *umr_hsa_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_shader(ui, asic, ib_addr-2, ib_vmid, pgm);
 				pgm = pgm->next;
 			}
+			if (stream->kernel_dispatch.kernarg_data)
+				ui->add_data(ui, asic, ib_addr-2, ib_vmid, (uint64_t)stream->kernel_dispatch.kernarg_data, stream->kernel_dispatch.kernarg_size, UMR_DATABLOCK_AQL_KERNARG, 0);
 		}
 
 		ib_addr += 2 * (stream->nwords - 1);
@@ -385,6 +403,7 @@ void umr_free_hsa_stream(struct umr_hsa_stream *stream)
 			pgm = next;
 		}
 		n = stream->next;
+		free(stream->kernel_dispatch.kernarg_data);
 		free(stream);
 		stream = n;
 	}

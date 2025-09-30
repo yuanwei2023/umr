@@ -269,13 +269,23 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 		return;
 
 	next_level(ui);
-	fprintf(data->stack[data->sp].f, "Data block from 0x%"PRIx32"@[0x%"PRIx64" + 0x%"PRIx64"] at 0x%"PRIx32"@0x%"PRIx64", type %d, ", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, buf_vmid, buf_addr, type);
-
-	if (type == UMR_DATABLOCK_MQD_VI || type == UMR_DATABLOCK_MQD_NV) {
+	if (type == UMR_DATABLOCK_AQL_KERNARG) {
+		// buf_addr is the pointer to the process buffer, buf_vmid is the size in this case
+		uint32_t *p = ((uint32_t*)buf_addr), x, y;
+		fprintf(data->stack[data->sp].f, "KERNEL_DISPATCH kernarg (size %"PRIu32" bytes) from AQL packet 0x%"PRIx32"@[0x%"PRIx64" + 0x%"PRIx64"]:", buf_vmid, ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr);
+		for (x = 0; x < buf_vmid; x += 8) {
+			fprintf(data->stack[data->sp].f, "\n\t%08"PRIx32": ", x);
+			for (y = 0; (y < 8) && ((y + x) < buf_vmid); y++) {
+				fprintf(data->stack[data->sp].f, "%08"PRIx32" ", p[x+y]);
+			}
+		}
+		fprintf(data->stack[data->sp].f, "\nEnd of kernarg.\n\n");
+	} else if (type == UMR_DATABLOCK_MQD_VI || type == UMR_DATABLOCK_MQD_NV) {
 		static const char *selnames[] = { "compute", "reserved", "sdma0", "sdma1", "gfx", "mes" };
 		enum umr_mqd_engine_sel eng;
 		uint32_t mqd[512], x;
 
+		fprintf(data->stack[data->sp].f, "Data block from 0x%"PRIx32"@[0x%"PRIx64" + 0x%"PRIx64"] at 0x%"PRIx32"@0x%"PRIx64", type %d, ", ib_vmid, data->stack[data->sp-1].ib_addr, ib_addr - data->stack[data->sp-1].ib_addr, buf_vmid, buf_addr, type);
 		fprintf(data->stack[data->sp].f, "sub-type %"PRIu64"[%s]\n", etype, selnames[etype]);
 		switch (etype) { // ENGINE_SEL from MAP_QUEUES packet
 			case 0: eng = UMR_MQD_ENGINE_COMPUTE; break;
@@ -296,8 +306,8 @@ static void add_data(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uin
 				free(txt);
 			}
 		}
+		fprintf(data->stack[data->sp].f, "Done output of block\n\n");
 	}
-	fprintf(data->stack[data->sp].f, "Done output of block\n\n");
 	fclose(data->stack[data->sp].f);
 	--(data->sp);
 }

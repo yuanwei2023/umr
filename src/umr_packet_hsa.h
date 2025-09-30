@@ -45,6 +45,7 @@ struct umr_hsa_stream {
 		uint32_t compute_pgm_rsrc1,
 				 compute_pgm_rsrc2,
 				 compute_pgm_rsrc3;
+		uint32_t *kernarg_data;
 	} kernel_dispatch;
 
 	struct umr_shaders_pgm *shader; // shader program if any
