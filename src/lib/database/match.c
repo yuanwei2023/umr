@@ -54,12 +54,13 @@ struct umr_database_scan_item *umr_database_find_ip(
 			if (!strcmp(ipname, si->ipname)) {
 				if (maj == si->maj) {
 					if (!best) {
-						best = si;
+						if (si->min <= min && si->rev <= rev)
+							best = si;
 					} else if (min >= si->min) {
-						if (min - si->min < min - best->min || min < best->min) {
+						if ((min - si->min) < (min - best->min)) {
 							best = si;
 						} else if (min - si->min == min - best->min) {
-							if (rev >= si->rev && (rev - si->rev < rev - best->rev || rev < best->rev))
+							if ((rev >= si->rev) && ((rev - si->rev) < (rev - best->rev)))
 								best = si;
 						}
 					}
