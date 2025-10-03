@@ -48,7 +48,7 @@ elif [ "$1" == "mec" ]; then
 fi
 
 echo "Generating ${prefix}_dmesg.txt"
-journalctl -b > "${prefix}_dmesg.txt"
+journalctl -b -k > "${prefix}_dmesg.txt"
 
 #collect results
 tar -czvf ${where}/${prefix}_logs.tgz *.txt
