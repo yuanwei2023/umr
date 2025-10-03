@@ -333,8 +333,6 @@ static void do_help(void)
 		"\n\t\tclient number, process PID, or command name, and 'queue' is one of 'queue=number' or 'type=string'."
 		"\n\t\tFor 'type' the string must be one of 'gfx', 'compute', or 'sdma'.\n"
 		"\n\t\tFor example: 'kfd,comm=ollama,queue=2' specifies a KFD client attached to the first instance of ollama and queue #2.\n"
-	"\n\t--print-uq"
-		"\n\t\tPrint out all of the user queue information decoded.\n"
 	"\n\t--gfxoff, -go <0 | 1>"
 		"\n\t\tEnable GFXOFF with a non-zero value or disable with a 0.  Used to control the GFXOFF feature on"
 		"\n\t\tselect hardware. Command without parameter will check GFXOFF status.\n"
@@ -417,7 +415,13 @@ static void do_help(void)
 	"\n\t--vm-disasm, -vdis [<vmid>@]<address> <size>"
 		"\n\t\tDisassemble 'size' bytes (in hex) from a given address (in hex).  The size can"
 		"\n\t\tbe specified as zero to have umr try and compute the shader size.\n"
-	"\n*** Ring and PM4 decoding ***\n"
+	"\n*** Packet Decoding and User Queue Commands ***\n"
+	"\n\t--list-uq"
+		"\n\t\tList out brief information about all of the KFD and KGD clients and their queues.\n"
+	"\n\t--print-uq"
+		"\n\t\tPrint out all of the user queue information decoded for a specified --user-queue.\n"
+	"\n\t--dump-uq, -du"
+		"\n\t\tDump the command submission attached to a given user queue selected with --user-queue.\n"
 	"\n\t--ring-stream, -RS <string>([from:to])\n\t\tRead the contents of a ring named by the string without the amdgpu_ring_ prefix. "
 		"\n\t\tBy default it will read and display the entire ring.  A starting and ending "
 		"\n\t\taddress can be specified in decimal or a '.' can be used to indicate relative "
@@ -425,8 +429,6 @@ static void do_help(void)
 		"\n\t\tring, \"-RS gfx[0:16]\" would display the contents from address 0 to 16 inclusively, and "
 		"\n\t\t\"-RS gfx[.]\" or \"-RS gfx[.:.]\" would display contents from the ring READ pointer to "
 		"\n\t\tthe ring WRITE pointer.\n"
-	"\n\t--dump-uq, -du"
-		"\n\t\tDump the command submission attached to a given user queue selected with --user-queue.\n"
 	"\n\t--dump-ib, -di [vmid@]address length [pm]"
 		"\n\t\tDump an IB packet at an address with an optional VMID.  The length is specified"
 		"\n\t\tin bytes.  The type of decoder <pm> is optional and defaults to PM4 packets."
@@ -567,7 +569,7 @@ int main(int argc, char **argv)
 
 			if (strlen(options.user_queue.clientid)) {
 				// parse the client table looking for the specified client data.
-				if (umr_parse_clientid(asic)) {
+				if (umr_init_clientid(asic)) {
 					asic->err_msg("[ERROR]: Could not parse user queue client description\n");
 					exit(EXIT_FAILURE);
 				}
@@ -838,7 +840,10 @@ int main(int argc, char **argv)
 					goto stopprocessingcommands;
 				}
 			} else if (pass == PASS_COMMANDS) {
-				if (!strcmp(argv[i], "--print-uq")) {
+				if (!strcmp(argv[i], "--list-uq")) {
+					argflags[i] = 1;
+					umr_list_uqs(asic);
+				} else if (!strcmp(argv[i], "--print-uq")) {
 					argflags[i] = 1;
 					umr_print_uq_info(asic);
 				} else if (!strcmp(argv[i], "--dump-mqd")) {

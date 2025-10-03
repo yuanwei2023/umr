@@ -290,6 +290,76 @@ struct umr_test_harness {
 	uint32_t sq_ind_index;
 };
 
+
+struct umr_user_queue {
+	char clientid[256]; // client ID number of '@procname' followed by . and the queue #1, e.g. '14.1' means queue-1 from client-14
+
+	enum umr_client_type client_type;
+
+	// the line of dri/${instance}/clients that matched the clientid[] above
+	struct {
+		char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
+	} client_line;
+
+	// contents of the client-${id} directory
+	struct {
+		struct {
+			uint32_t pid;
+			char comm[256];
+		} proc_info;
+		struct {
+			uint64_t
+				pd_address,
+				max_pfn; // number of PAGE_SIZE pages in VM space (basically *4096)
+			uint32_t
+				num_level, // number of levels in page table
+				block_size,
+				fragment_size;
+		} vm_pagetable_info;
+		struct {
+			enum umr_queue_type queue_type;
+			uint32_t queue_id;
+			uint64_t mqd_gpu_address;
+			uint32_t mqd_words[512];
+			// submission information (where to find packets)
+			uint64_t
+				hqd_base_addr, // base address of submission IB
+
+				hqd_rptr_addr, // read pointer (pointer to the value)
+				hqd_rptr_value, // the actual value read out of the MQD
+
+				rb_wptr_poll_addr, // write pointer
+				rb_wptr_poll_value,
+
+				hqd_active, // cp*hqd_active
+
+				rb_buf_size; // parsed copy of RB_BUFSZ
+		} queue[UMR_MAX_MQD_QUEUES];
+	} client_info;
+
+	// parsed out VM/IB related info used by lib functions
+	struct {
+		int active, // flag to say whether we should use these as opposed to traditional registers/etc
+			qidx;   // which queue[] slot the user has asked umr to bind to
+
+		uint64_t va; // current VA being translated (used internally)
+
+		// VM context registers
+		struct {
+			uint32_t
+				PAGE_TABLE_START_ADDR_LO32,
+				PAGE_TABLE_START_ADDR_HI32,
+				PAGE_TABLE_END_ADDR_LO32,
+				PAGE_TABLE_END_ADDR_HI32,
+				PAGE_TABLE_BASE_ADDR_LO32,
+				PAGE_TABLE_BASE_ADDR_HI32;
+		} registers;
+	} state;
+
+	// linked list use for enumerating clients
+	struct umr_user_queue *next, *prev;
+};
+
 struct umr_options {
 	int forced_instance,
 		instance,
@@ -385,71 +455,7 @@ struct umr_options {
 	// user mode queue client support
 	// this structure has (several) nested structures that represent various sources of information
 	// ultimately the goal is to connect to a user supply queue to see the command submission and it's contents.
-	struct {
-		char clientid[256]; // client ID number of '@procname' followed by . and the queue #1, e.g. '14.1' means queue-1 from client-14
-
-		enum umr_client_type client_type;
-
-		// the line of dri/${instance}/clients that matched the clientid[] above
-		struct {
-            char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
-        } client_line;
-
-		// contents of the client-${id} directory
-		struct {
-			struct {
-				uint32_t pid;
-				char comm[256];
-			} proc_info;
-			struct {
-				uint64_t
-					pd_address,
-					max_pfn; // number of PAGE_SIZE pages in VM space (basically *4096)
-				uint32_t
-					num_level, // number of levels in page table
-					block_size,
-					fragment_size;
-			} vm_pagetable_info;
-			struct {
-				enum umr_queue_type queue_type;
-				uint32_t queue_id;
-				uint64_t mqd_gpu_address;
-				uint32_t mqd_words[512];
-				// submission information (where to find packets)
-				uint64_t
-					hqd_base_addr, // base address of submission IB
-
-					hqd_rptr_addr, // read pointer (pointer to the value)
-					hqd_rptr_value, // the actual value read out of the MQD
-
-					rb_wptr_poll_addr, // write pointer
-					rb_wptr_poll_value,
-
-					hqd_active, // cp*hqd_active
-
-					rb_buf_size; // parsed copy of RB_BUFSZ
-			} queue[UMR_MAX_MQD_QUEUES];
-		} client_info;
-
-		// parsed out VM/IB related info used by lib functions
-		struct {
-			int active, // flag to say whether we should use these as opposed to traditional registers/etc
-				qidx;   // which queue[] slot the user has asked umr to bind to
-
-			uint64_t va; // current VA being translated (used internally)
-
-			// VM context registers
-			struct {
-				uint32_t
-					PAGE_TABLE_START_ADDR_LO32,
-					PAGE_TABLE_START_ADDR_HI32,
-					PAGE_TABLE_END_ADDR_LO32,
-					PAGE_TABLE_END_ADDR_HI32,
-					PAGE_TABLE_BASE_ADDR_LO32,
-					PAGE_TABLE_BASE_ADDR_HI32;
-			} registers;
-		} state;
-	} user_queue;
+	struct umr_user_queue user_queue;
 };
 
 // Page Directory Entry for VM page walking
@@ -796,7 +802,11 @@ void umr_run_gui(const char *url);
 int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics, int xgmi_scan);
 void umr_enumerate_device_list_free(struct umr_asic **asics);
 
-int umr_parse_clientid(struct umr_asic *asic);
+int umr_init_clientid(struct umr_asic *asic);
+struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid);
 int umr_read_user_queue_buffer(struct umr_asic *asic, uint32_t start, uint32_t end, uint32_t *buf, uint32_t *len);
+
+struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic);
+void umr_user_queue_free(struct umr_user_queue *uq);
 
 #endif

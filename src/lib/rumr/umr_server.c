@@ -348,7 +348,7 @@ static int handle_op_user_queue_parse(struct rumr_server_state *state, struct ru
 	memset(&asic->options.user_queue, 0, sizeof(asic->options.user_queue));
 	rumr_buffer_read_data(inbuf, asic->options.user_queue.clientid, sizeof (asic->options.user_queue.clientid));
 	asic->options.user_queue.clientid[sizeof (asic->options.user_queue.clientid) - 1] = 0;
-	ret = umr_parse_clientid(asic);
+	ret = umr_init_clientid(asic);
 	if (!ret) {
 		rumr_buffer_add_data(outbuf, &asic->options.user_queue, sizeof(asic->options.user_queue));
 	}

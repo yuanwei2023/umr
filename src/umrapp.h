@@ -77,3 +77,4 @@ int umr_kfd_topo_get_pci_busaddr(int node, char *busaddr);
 
 void umr_handle_scriptware(umr_err_output errout, char *database_path, char **argv, int argc);
 void umr_print_uq_info(struct umr_asic *asic);
+void umr_list_uqs(struct umr_asic *asic);

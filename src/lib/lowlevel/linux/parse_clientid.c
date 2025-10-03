@@ -74,13 +74,13 @@ static int init_gfx9_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -117,13 +117,13 @@ static int init_gfx9_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -162,13 +162,13 @@ static int init_gfx10_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -202,13 +202,13 @@ static int init_gfx10_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -247,13 +247,13 @@ static int init_gfx10_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -294,13 +294,13 @@ static int init_gfx11_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -334,13 +334,13 @@ static int init_gfx11_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -379,13 +379,13 @@ static int init_gfx11_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -425,13 +425,13 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -465,13 +465,13 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -510,13 +510,13 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].hqd_rptr_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].hqd_rptr_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read hqd_rptr value\n");
+                asic->err_msg("[ERROR]: Could not read hqd_rptr value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
             if (umr_read_vram(asic, asic->options.vm_partition, 0,
                     asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr, 8,
                     &asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value) < 0) {
-                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value\n");
+                asic->err_msg("[ERROR]: Could not read rb_wptr_poll value (try disabling GFXOFF with '-go 0')\n");
                 return -1;
             }
 
@@ -564,27 +564,37 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
  *
  * for instance: "kfd,comm=ollama,queue=2"
  */
-
- // parse gfx user queues
-int umr_parse_clientid(struct umr_asic *asic)
+struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
 {
     int client_named = 0, use_name = 0, use_pid = 0, use_type = 0, found = 0, x;
     int gfx_maj, gfx_min;
     uint64_t queueid, tmp;
-    char p[256], pp[256], str[256], path[512], *ps, *pps;
+    char p[256], pp[256], str[256], path[512];
+    const char *ps, *pps;
     FILE *f;
+    struct umr_user_queue retq = { 0 }, tmpq = { 0 };
+
+    // save the current queue because we'll need to override it
+    retq.state.qidx = -1;
+    tmpq = asic->options.user_queue;
 
     // default the queue index to -1 to indicate invalid
     asic->options.user_queue.state.qidx = -1;
 
     // if this is a rumr client we send the request remotely
     if (asic->options.rumr_active) {
-        return rumr_client_user_queue_parse(asic);
+        int r = rumr_client_user_queue_parse(asic);
+        if (!r) {
+            retq = asic->options.user_queue;
+            asic->options.user_queue = tmpq;
+            return retq;
+        } else {
+            asic->err_msg("[ERROR]: Could not fetch user queue info over rumr tunnel.\n");
+            return retq;
+        }
     }
 
-    // TODO: handle loading queue[] array and state info from test harness
-
-    ps = asic->options.user_queue.clientid;
+    ps = cid;
     memset(p, 0, sizeof p);
     memset(pp, 0, sizeof pp);
     while (*ps) {
@@ -635,7 +645,7 @@ int umr_parse_clientid(struct umr_asic *asic)
 
     if (!client_named) {
         asic->err_msg("[ERROR]: You must specify a client type 'kgd' or 'kfd' in the --user-queue command.\n");
-        return -1;
+        goto error;
     }
 
     // BY THIS POINT
@@ -648,7 +658,7 @@ int umr_parse_clientid(struct umr_asic *asic)
     f = fopen(path, "r");
     if (!f) {
         asic->err_msg("[ERROR]: Could not open clients file for device instance %d\n", asic->instance);
-        return -1;
+        goto error;
     }
 
     // scan file for the target client
@@ -683,12 +693,12 @@ int umr_parse_clientid(struct umr_asic *asic)
                     asic->options.user_queue.client_info.proc_info.comm) != 2) {
                 asic->err_msg("[ERROR]: Could not parse proc_info file %s\n", path);
                 fclose(f);
-                return -1;
+                goto error;
             }
             fclose(f);
         } else {
             asic->err_msg("[ERROR]: Could not open client's proc_info file from %s\n", path);
-            return -1;
+            goto error;
         }
 
         // parse the vm_pagetable_info file
@@ -703,12 +713,12 @@ int umr_parse_clientid(struct umr_asic *asic)
                     &asic->options.user_queue.client_info.vm_pagetable_info.fragment_size) != 5) {
                 asic->err_msg("[ERROR]: Could not parse vm_pagetable_info file %s\n", path);
                 fclose(f);
-                return -1;
+                goto error;
             }
             fclose(f);
         } else {
             asic->err_msg("[ERROR]: Could not open client's vm_pagetable_info file from %s\n", path);
-            return -1;
+            goto error;
         }
 
 		umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
@@ -818,7 +828,7 @@ int umr_parse_clientid(struct umr_asic *asic)
     } else {
         asic->err_msg("[ERROR]: The client '%s' was not found for this device.\n", asic->options.user_queue.clientid);
         memset(&asic->options.user_queue, 0, sizeof asic->options.user_queue);
-        return -1;
+        goto error;
     }
 
     // enable VM translations using the queue state
@@ -840,10 +850,10 @@ int umr_parse_clientid(struct umr_asic *asic)
                 r = init_gfx12_queue(asic, x, &init);
             } else {
                 asic->err_msg("[BUG]: The gfx maj %d is not currently supported by umr for user queues\n", gfx_maj);
-                return -1;
+                goto error;
             }
             if (r < 0) {
-                return r;
+                goto error;
             }
             // we're done
             if (init) {
@@ -855,6 +865,126 @@ int umr_parse_clientid(struct umr_asic *asic)
         }
     }
 
+    retq = asic->options.user_queue;
+error:
+    asic->options.user_queue = tmpq;
+    return retq;
+}
+
+/**
+    umr_init_clientid - Initialize the ASIC model to connect to a specified client
+
+    Uses the client string from asic->options.user_queue.clientid
+ */
+int umr_init_clientid(struct umr_asic *asic)
+{
+    char cid[256];
+
+    // TODO: handle loading queue[] array and state info from test harness
+
+    strcpy(cid, asic->options.user_queue.clientid);
+    asic->options.user_queue = umr_parse_clientid(asic, cid);
+
     // TODO: handle storing queue[x] and state info in test-harness.
-    return 0;
+
+    // done
+    return asic->options.user_queue.state.qidx == -1 ? -1 : 0;
+}
+
+struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
+{
+    struct umr_user_queue *lq = NULL, *tq;
+    char path[512], buf[512];
+    FILE *f = NULL, *cf = NULL;
+
+    lq = calloc(1, sizeof *lq);
+    if (!lq)
+        goto error;
+
+    // now p points to the procname or clientid and pp points to the queueid
+    sprintf(path, "/sys/kernel/debug/dri/%d/clients", asic->instance);
+    f = fopen(path, "r");
+    if (!f) {
+        asic->err_msg("[ERROR]: Could not open clients file for device instance %d\n", asic->instance);
+        goto error;
+    }
+
+    // scan file for the target client
+    fgets(path, sizeof path, f); // skip first line
+    while (fgets(path, sizeof path, f)) {
+        int kgd_mode = 1;
+        struct {
+            char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
+        } client_line;
+        sscanf(path, "%s %s %s %s %s %s %s %s %s",
+            client_line.command, client_line.tgid,
+            client_line.dev, client_line.master,
+            client_line.a, client_line.uid,
+            client_line.magic, client_line.name,
+            client_line.id);
+
+        // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
+        cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
+        if (cf) {
+            sprintf(path, "Process %s", client_line.tgid);
+            while(fgets(buf, sizeof buf, cf)) {
+                if (strstr(buf, path)) {
+                    kgd_mode = 0;
+                    break;
+                }
+            }
+            fclose(cf);
+        }
+
+        // parse the client
+        sprintf(buf, "%s,client=%d,queue=0", kgd_mode ? "kgd" : "kfd", atoi(client_line.id));
+        tq = lq->prev;
+        *lq = umr_parse_clientid(asic, buf);
+        lq->prev = tq;
+
+        // advance the list
+        lq->next = calloc(1, sizeof *lq);
+        if (lq->next) {
+            lq->next->prev = lq;
+            lq = lq->next;
+        } else {
+            goto error;
+        }
+
+    }
+    fclose(f);
+
+    // last entry is always redundant so remove
+    if (lq->prev) {
+        lq = lq->prev;
+        free(lq->next);
+        lq->next = NULL;
+    }
+
+    while (lq->prev)
+        lq = lq->prev;
+    return lq;
+error:
+    if (f)
+        fclose(f);
+    while (lq->prev)
+        lq = lq->prev;
+    while (lq) {
+        tq = lq->next;
+        free(lq);
+        lq = tq;
+    }
+    return NULL;
+}
+
+void umr_user_queue_free(struct umr_user_queue *uq)
+{
+    struct umr_user_queue *tq;
+    while (uq->prev)
+        uq = uq->prev;
+    while (uq) {
+        tq = uq->next;
+        free(uq);
+        uq = tq;
+    }
 }

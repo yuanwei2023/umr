@@ -38,8 +38,6 @@ client is one of 'client=number', 'pid=number', or 'comm=string' to select a cli
 client number, process PID, or command name, and 'queue' is one of 'queue=number' or 'type=string'.
 For 'type' the string must be one of 'gfx', 'compute', or 'sdma'.
 For example: 'kfd,comm=ollama,queue=2' specifies a KFD client attached to the first instance of ollama and queue #2.
-.IP --print-uq
-Print out all of the user queue information decoded.
 .IP "--gfxoff, -go <0 | 1>"
 Turn on or off GFXOFF on select hardware.  A non-zero value enables the GFXOFF feature and
 a zero value disables it.
@@ -246,7 +244,13 @@ Write a 32-bit word 'data' (in hex) to a given address (in hex) in host machine 
 Disassemble 'size' bytes (in hex) from a given address (in hex).  The size can be
 specified as zero to have umr try and compute the shader size.
 
-.SH Ring and PM4 Decoding
+.SH Packet Decoding and User Queue Commands
+.IP "--list-uq"
+List out brief information about all of the KFD and KGD clients and their queues.
+.IP "--print-uq"
+Print out all of the user queue information decoded for a specified --user-queue.
+.IP "--dump-uq, -du"
+Dump the command submission attached to a given user queue selected with --user-queue.
 .IP "--ring-stream, -RS <string>[range]"
 Read the contents of the ring named by the string
 .B amdgpu_ring_<string>,
@@ -271,8 +275,6 @@ prints [wptr-16, wptr] words of the SDMA0 ring, and
 "-RS sdma1[.:32]" prints [rptr, rptr+32] double-words of the
 SDMA1 ring. The contents of the ring is always interpreted,
 if it can be interpreted.
-.IP "--dump-uq, -du"
-Dump the command submission attached to a given user queue selected with --user-queue.
 .IP "--dump-ib, -di [vmid@]address length [pm]"
 Dump an IB packet at an address with an optional VMID.  The length is specified
 in bytes.  The type of decoder <pm> is optional and defaults to PM4 packets.
