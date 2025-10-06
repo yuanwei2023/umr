@@ -170,7 +170,7 @@ static int mem_op(struct umr_asic *asic, uint64_t *addr, uint32_t size, void *ds
 	uint32_t *pkt, n;
 	struct rumr_client_state *state = asic->mem_funcs.data;
 
-	pkt = calloc(4 + (write_en ? size >> 2 : 0), sizeof pkt[0]);
+	pkt = calloc(6 + (write_en ? size >> 2 : 0), sizeof pkt[0]);
 	if (!pkt) {
 		state->log_msg("[ERROR]: Out of memory\n");
 		return -1;
