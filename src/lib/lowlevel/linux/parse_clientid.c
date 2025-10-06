@@ -664,18 +664,22 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
     // scan file for the target client
     fgets(path, sizeof path, f); // skip first line
     while (fgets(path, sizeof path, f)) {
-        sscanf(path, "%s %s %s %s %s %s %s %s %s",
+        if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
             asic->options.user_queue.client_line.command, asic->options.user_queue.client_line.tgid,
             asic->options.user_queue.client_line.dev, asic->options.user_queue.client_line.master,
             asic->options.user_queue.client_line.a, asic->options.user_queue.client_line.uid,
             asic->options.user_queue.client_line.magic, asic->options.user_queue.client_line.name,
-            asic->options.user_queue.client_line.id);
-        if ((use_name && !strcmp(p, asic->options.user_queue.client_line.command)) ||
-            (use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.tgid)) ||
-            (!use_name && !use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.id))) {
-            // found the entry
-            found = 1;
-            break;
+            asic->options.user_queue.client_line.id) == 9) {
+            if ((use_name && !strcmp(p, asic->options.user_queue.client_line.command)) ||
+                (use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.tgid)) ||
+                (!use_name && !use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.id))) {
+                // found the entry
+                found = 1;
+                break;
+            }
+        } else {
+            asic->err_msg("[ERROR]: Could not parse 'clients' file from debugfs.  Could be your kernel is too old.\n");
+            goto error;
         }
     }
     fclose(f);
@@ -916,12 +920,16 @@ struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
         struct {
             char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
         } client_line;
-        sscanf(path, "%s %s %s %s %s %s %s %s %s",
+
+        if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
             client_line.command, client_line.tgid,
             client_line.dev, client_line.master,
             client_line.a, client_line.uid,
             client_line.magic, client_line.name,
-            client_line.id);
+            client_line.id) != 9) {
+            asic->err_msg("[ERROR]: Could not parse 'clients' file.  Could be that your kernel is too old.\n");
+            goto error;
+        }
 
         // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
         cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
@@ -967,7 +975,7 @@ struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
 error:
     if (f)
         fclose(f);
-    while (lq->prev)
+    while (lq && lq->prev)
         lq = lq->prev;
     while (lq) {
         tq = lq->next;
@@ -980,7 +988,7 @@ error:
 void umr_user_queue_free(struct umr_user_queue *uq)
 {
     struct umr_user_queue *tq;
-    while (uq->prev)
+    while (uq && uq->prev)
         uq = uq->prev;
     while (uq) {
         tq = uq->next;
