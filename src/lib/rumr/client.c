@@ -186,14 +186,18 @@ static int mem_op(struct umr_asic *asic, uint64_t *addr, uint32_t size, void *ds
 	pkt[1] = (*addr >> 32ULL);
 	pkt[2] = (write_en ? (1<<2) : 0) | (subop);
 	pkt[3] = size;
+	// share with the server the VA we're tying to decode because it'll be needed to access HMM space
+	pkt[4] = (asic->options.user_queue.state.va & 0xFFFFFFFFULL);
+	pkt[5] = (asic->options.user_queue.state.va >> 32ULL);
+
 	n = 0;
 	if (write_en && dst) {
 		uint32_t *pbuf = dst;
 		for (n = 0; n < (size >> 2); n++) {
-			pkt[4 + n] = pbuf[n];
+			pkt[6 + n] = pbuf[n];
 		}
 	}
-	n += 4;
+	n += 6;
 	buf = send_opcode_buf(asic->mem_funcs.data, RUMR_OP_MEM_ACCESS, pkt, n);
 	free(pkt);
 

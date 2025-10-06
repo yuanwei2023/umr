@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 // version of RUMR protocol
-#define RUMR_VERSION 0x02
+#define RUMR_VERSION 0x03
 
 // amount of preheader space used by comms
 // layer this allows transmitting "once"

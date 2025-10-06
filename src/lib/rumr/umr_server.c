@@ -144,6 +144,8 @@ static int handle_op_mem_access(struct rumr_server_state *state, struct rumr_buf
 		uint32_t
 			addr_lo,
 			addr_hi,
+			va_lo,
+			va_hi,
 			options,
 			size;
 
@@ -162,6 +164,9 @@ static int handle_op_mem_access(struct rumr_server_state *state, struct rumr_buf
 		in.subcommand = in.options & 3;
 		in.rw = (in.options >> 2) & 1;
 	in.size = rumr_buffer_read_uint32(inbuf);
+	in.va_lo = rumr_buffer_read_uint32(inbuf);
+	in.va_hi = rumr_buffer_read_uint32(inbuf);
+		asic->options.user_queue.state.va = ((uint64_t)in.va_hi << 32ULL) | in.va_lo;
 
 	if (in.subcommand == 3) {
 		state->log_msg("[ERROR]: Invalid mem access subcommand\n");
