@@ -89,10 +89,14 @@ static struct umr_asic *get_asic(void)
 	if (th && th->discovery.contents) {
 		asic = umr_discover_asic_by_discovery_table("emulated", &options, std_printf);
 		umr_attach_test_harness(th, asic);
+		asic->err_msg = std_printf;
+		asic->std_msg = std_printf;
 		return asic;
 	} else if (th && strlen(options.dev_name)) {
 		asic = umr_discover_asic_by_name(&options, options.dev_name, std_printf);
 		umr_attach_test_harness(th, asic);
+		asic->err_msg = std_printf;
+		asic->std_msg = std_printf;
 		return asic;
 	}
 

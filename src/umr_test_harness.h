@@ -31,6 +31,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script);
 void umr_free_test_harness(struct umr_test_harness *th);
 void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic);
 int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst);
+int umr_test_harness_get_userqueue(struct umr_asic *asic, uint8_t *dst);
 void *umr_test_harness_get_ring_data(struct umr_asic *asic, uint32_t *ringsize);
 
 #endif

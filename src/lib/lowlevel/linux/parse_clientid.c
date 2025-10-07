@@ -884,13 +884,25 @@ int umr_init_clientid(struct umr_asic *asic)
 {
     char cid[256];
 
-    // TODO: handle loading queue[] array and state info from test harness
+    // Copy from test harness if enabled
+	if (asic->options.test_log && !asic->options.test_log_fd) {
+		umr_test_harness_get_userqueue(asic, (uint8_t *)&asic->options.user_queue);
+    } else {
+        // read from live system
+        strcpy(cid, asic->options.user_queue.clientid);
+        asic->options.user_queue = umr_parse_clientid(asic, cid);
 
-    strcpy(cid, asic->options.user_queue.clientid);
-    asic->options.user_queue = umr_parse_clientid(asic, cid);
-
-    // TODO: handle storing queue[x] and state info in test-harness.
-
+        // Store user queue selected to the test harness
+        if (asic->options.test_log && asic->options.test_log_fd) {
+            uint8_t *p = (uint8_t *)&asic->options.user_queue;
+            unsigned x;
+            fprintf(asic->options.test_log_fd, "USERQUEUE = {");
+            for (x = 0; x < sizeof(asic->options.user_queue); x++) {
+                fprintf(asic->options.test_log_fd, "%02"PRIx8, p[x]);
+            }
+            fprintf(asic->options.test_log_fd, "}\n");
+        }
+    }
     // done
     return asic->options.user_queue.state.qidx == -1 ? -1 : 0;
 }

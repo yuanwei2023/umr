@@ -148,10 +148,10 @@ static uint8_t *consume_bytes(const char **ptr, uint32_t *size)
 		if (!r)
 			break;
 		if (++x == s) {
-			po = realloc(p, s + 32);
+			po = realloc(p, s + 1024);
 			if (po) {
 				p = po;
-				s += 32;
+				s += 1024;
 			} else {
 				free(p);
 				fprintf(stderr, "[ERROR]: Out of memory\n");
@@ -260,7 +260,7 @@ static int expect_word(const char **ptr, char *token)
  */
 void umr_free_test_harness(struct umr_test_harness *th)
 {
-	struct umr_test_harness_ram_blocks *sram, *vram, *config, *discovery;
+	struct umr_test_harness_ram_blocks *sram, *vram, *config, *discovery, *userqueue;
 	struct umr_test_harness_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
 	struct umr_test_harness_sq_blocks *sq;
 	void *t;
@@ -270,6 +270,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 
 	discovery = th->discovery.next;
 	config = th->config.next;
+	userqueue = th->userqueue.next;
 	sram = th->sysram.next;
 	vram = th->vram.next;
 	mmio = th->mmio.next;
@@ -281,6 +282,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 
 	free(th->discovery.contents);
 	free(th->config.contents);
+	free(th->userqueue.contents);
 	free(th->sysram.contents);
 	free(th->vram.contents);
 	free(th->mmio.values);
@@ -302,6 +304,13 @@ void umr_free_test_harness(struct umr_test_harness *th)
 		free(config->contents);
 		free(config);
 		config = t;
+	}
+
+	while (userqueue) {
+		t = userqueue->next;
+		free(userqueue->contents);
+		free(userqueue);
+		userqueue = t;
 	}
 
 	while (sram) {
@@ -373,7 +382,7 @@ void umr_free_test_harness(struct umr_test_harness *th)
 struct umr_test_harness *umr_create_test_harness(const char *script)
 {
 	struct umr_test_harness *th;
-	struct umr_test_harness_ram_blocks *sram, *vram, *config, *discovery;
+	struct umr_test_harness_ram_blocks *sram, *vram, *config, *discovery, *userqueue;
 	struct umr_test_harness_mmio_blocks *mmio, *vgpr, *sgpr, *wave, *ring;
 	struct umr_test_harness_sq_blocks *sq;
 	int r;
@@ -381,6 +390,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 	th = calloc(1, sizeof *th);
 
 	discovery = &th->discovery;
+	userqueue = &th->userqueue;
 	config = &th->config;
 	sram = &th->sysram;
 	vram = &th->vram;
@@ -401,6 +411,15 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 				goto error;
 			config->next = calloc(1, sizeof *config);
 			config = config->next;
+		}
+		if (consume_word(&script, "USERQUEUE")) {
+			if (!expect_word(&script, "="))
+				goto error;
+			userqueue->contents = consume_bytes(&script, &userqueue->size);
+			if (!userqueue->size)
+				goto error;
+			userqueue->next = calloc(1, sizeof *userqueue);
+			userqueue = userqueue->next;
 		}
 		if (consume_word(&script, "DISCOVERY")) {
 			if (!expect_word(&script, "="))
@@ -884,6 +903,25 @@ int umr_test_harness_get_config_data(struct umr_asic *asic, uint8_t *dst)
 
 	for (x = 0; x < (int)th->config.size; x++) {
 		dst[x] = th->config.contents[x];
+	}
+	return x;
+}
+
+/**
+ * umr_test_harness_get_userqueue
+ *
+ * @asic: The ASIC the test harness is already applied to
+ * @dst: Where to copy the array out to
+ *
+ * Returns the number of bytes copied.
+ */
+int umr_test_harness_get_userqueue(struct umr_asic *asic, uint8_t *dst)
+{
+	int x;
+	struct umr_test_harness *th = asic->options.th;
+
+	for (x = 0; x < (int)th->userqueue.size; x++) {
+		dst[x] = th->userqueue.contents[x];
 	}
 	return x;
 }
