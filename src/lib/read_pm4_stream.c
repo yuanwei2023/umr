@@ -442,7 +442,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 		case 0x76: // SET_SH_REG (looking for writes to shader registers);
 		case 0x9B: // SET_SH_REG_INDEX
 		{
-			uint32_t reg_addr = fetch_word(asic, ps, 0) + 0x2C00;
+			uint32_t reg_addr = BITS(fetch_word(asic, ps, 0), 0, 16) + 0x2C00;
 			ib_addr += 4;
 			for (n = 1; n < ps->n_words; n++) {
 				regname = umr_reg_name(asic, reg_addr + n - 1);

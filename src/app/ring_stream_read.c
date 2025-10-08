@@ -207,7 +207,9 @@ static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, u
 			if (!asic->options.filter_shader_registers || strstr(regs->regname, _type)) {
 				fprintf(data->stack[data->sp].f, "\t%s(%"PRIu32"@0x%"PRIx64") == 0x%"PRIx32"\n", regs->regname, regs->vmid, regs->addr, regs->value);
 				if (asic->options.bitfields) {
-					struct umr_reg *reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(regs->regname, ".") + 1);
+					struct umr_reg *reg = NULL;
+					if (strstr(regs->regname, "."))
+						reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(regs->regname, ".") + 1);
 					if (reg && reg->no_bits > 1) {
 						int k;
 						for (k = 0; k < reg->no_bits; k++) {
