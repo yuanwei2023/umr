@@ -643,11 +643,6 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
         }
     }
 
-    if (!client_named) {
-        asic->err_msg("[ERROR]: You must specify a client type 'kgd' or 'kfd' in the --user-queue command.\n");
-        goto error;
-    }
-
     // BY THIS POINT
     // p => client id, command name, or pid
     // pp => queue id, type
@@ -675,6 +670,24 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                 (!use_name && !use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.id))) {
                 // found the entry
                 found = 1;
+                if (!client_named) {
+                    // try to auto detect the client type
+                    FILE *cf;
+                    char buf[256], str[256];
+                    // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
+                    asic->options.user_queue.client_type = UMR_CLIENT_KGD;
+                    cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
+                    if (cf) {
+                        sprintf(str, "Process %s", asic->options.user_queue.client_line.tgid);
+                        while(fgets(buf, sizeof buf, cf)) {
+                            if (strstr(buf, str)) {
+                                asic->options.user_queue.client_type = UMR_CLIENT_KFD;
+                                break;
+                            }
+                        }
+                        fclose(cf);
+                    }
+                }
                 break;
             }
         } else {

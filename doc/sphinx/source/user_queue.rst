@@ -23,10 +23,12 @@ Queue Bindings
 --------------
 
 To bind to a queue you have to specify a client string which is a comma separated list of
-three things: a client type, a client identifier, and a queue identifier.
+three things: (optionally) a client type, a client identifier, and a queue identifier.
 
 The **client type** is either 'kfd' or 'kgd' depending on the type of client you are debugging.
-'kgd' clients can include compute queues as well as graphics queues.
+'kgd' clients can include compute queues as well as graphics queues. The client type is optional
+if umr detects the process id in the KFD debugfs tree it will assume it's a KFD client otherwise
+it will assume it's a KGD client by default.
 
 The **client** identifier can take on several formats:
 
