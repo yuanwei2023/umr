@@ -34,22 +34,27 @@
 void umr_list_uqs(struct umr_asic *asic)
 {
     struct umr_user_queue *uq, *tq;
-    int x;
 
     tq = uq = umr_enumerate_user_queue_clients(asic);
     while (uq) {
-        asic->std_msg("Client #%s: comm=[%s] tgid=%s type=%s\n", 
-            uq->client_line.id, uq->client_line.command, uq->client_line.tgid, uq->client_type == UMR_CLIENT_KFD ? "kfd" : "kgd");
+        int x, first = 1;
         for (x = 0; x < UMR_MAX_MQD_QUEUES; x++) {
             if (uq->client_info.queue[x].mqd_gpu_address) {
-                asic->std_msg("\tqueue=%d type=%d mqd_gpu_addr=0x%"PRIx64" rptr=0x%"PRIx64" wptr=0x%"PRIx64" %s\n",
+                if (first) {
+                    asic->std_msg("Client #%s: comm=[%s] tgid=%s type=%s\n",
+                        uq->client_line.id, uq->client_line.command, uq->client_line.tgid, uq->client_type == UMR_CLIENT_KFD ? "kfd" : "kgd");
+                    first = 0;
+                }
+                asic->std_msg("%s   queue=%d type=%d mqd_gpu_addr=0x%"PRIx64" rptr=0x%"PRIx64" wptr=0x%"PRIx64"\n",
+                    uq->client_info.queue[x].hqd_rptr_value != uq->client_info.queue[x].rb_wptr_poll_value ? "**" : "  ",
                     uq->client_info.queue[x].queue_id, uq->client_info.queue[x].queue_type,
                     uq->client_info.queue[x].mqd_gpu_address,
                     uq->client_info.queue[x].hqd_rptr_value, 
-                    uq->client_info.queue[x].rb_wptr_poll_value,
-                    uq->client_info.queue[x].hqd_rptr_value != uq->client_info.queue[x].rb_wptr_poll_value ? "ACTIVE" : "");
+                    uq->client_info.queue[x].rb_wptr_poll_value);
             }
         }
+        if (!first && uq->next)
+            asic->std_msg("\n");
         uq = uq->next;
     }
     umr_user_queue_free(tq);
