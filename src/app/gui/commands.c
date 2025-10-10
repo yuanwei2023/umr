@@ -1576,6 +1576,10 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 	int max_lines = 128;
 	char **lines = realloc(NULL, max_lines * sizeof(char *));
 	while (ptr) {
+		/* Skip empty lines. */
+		if (*ptr == '\n')
+			ptr++;
+
 		const char *endline = strchr(ptr, '\n');
 
 		while (isspace(*ptr)) ptr++;
@@ -1596,7 +1600,6 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 	}
 
 	for (int i = 0; i < nlines;) {
-
 		if (strncmp(lines[i], "pid", 3) != 0) {
 			printf("Incorrect line start %d '%s'. Aborting\n", i, lines[i]);
 			return NULL;
@@ -1613,7 +1616,6 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 
 		JSON_Object *app = json_object(json_value_init_object());
 		json_object_set_number(app, "pid", pid);
-		json_array_append_value(pids, json_object_get_wrapping_value(app));
 
 		char *end = strchr(cursor, ':');
 		json_object_set_string_with_len(app, "command", cursor, end - cursor);
@@ -1692,6 +1694,9 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 
 			free(lines[i]);
 		}
+
+		if (json_object_get_count(app))
+			json_array_append_value(pids, json_object_get_wrapping_value(app));
 	}
 
 	return pids;
