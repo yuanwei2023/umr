@@ -113,7 +113,6 @@ static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_as
     const char *names[] = { "", "GeckoMain" };
     int pids[] = { 0, 3140 };
     JSON_Array *out = parse_vm_info(content);
-    printf("%s\n", json_serialize_to_string_pretty(json_array_get_wrapping_value(out)));
     ASSERT_EQ(json_array_get_count(out), 2);
     for (int i = 0; i < 2; i++) {
         JSON_Object *v = json_object(json_array_get_value(out, i));
@@ -134,8 +133,10 @@ static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_a
         "\t\t0x00000001:     19652608 byte VRAM exported as ino:15413 NO_CPU_ACCESS CPU_GTT_USWC\n"
         "pid    47113 command firefox:\n"
         "\t\t\t\t0x00000001:         4096 byte  GTT CPU_ACCESS_REQUIRED\n"
+        "\n"
         "\t\t\t\t0x00000002:      2097152 byte  GTT CPU_ACCESS_REQUIRED\n"
         "\t\t\t\t0x00000003:      2097152 byte VRAM CPU_GTT_USWC\n"
+        "\n"
         "\t\t\t\t0x00000004:      2097152 byte VRAM NO_CPU_ACCESS CPU_GTT_USWC\n"
         "\t\t\t\t0x00000005:         4096 byte  GTT CPU_ACCESS_REQUIRED\n"
         "\t\t\t\t0x00000006:         4096 byte  GTT CPU_ACCESS_REQUIRED\n"
