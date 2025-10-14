@@ -501,6 +501,7 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "preempt_legacy_gfx_queue", (fetch_word(asic, stream, i) >> 2) & 1, NULL, 10, 32);
 				if (mes_ver_maj >= 11) {
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmap_legacy_queue", (fetch_word(asic, stream, i) >> 3) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "remove_queue_after_reset", (fetch_word(asic, stream, i) >> 4) & 1, NULL, 10, 32);
 				}
 				++i;
 				if (pack8 && !(i&1)) ++i;
