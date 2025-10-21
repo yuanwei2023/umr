@@ -701,6 +701,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				print_base(asic, pde_entry, address, va_mask, pde_fields, 1);
 			memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 			if (vmdata) {
+				vmdata->pde_fields[vmdata->levels] = pde_fields;
 				vmdata->pde[vmdata->levels++] = pde_entry;
 			}
 
@@ -985,6 +986,7 @@ pde_is_pte:
 			// in AI+ the BASE_ADDR is treated like a PDE entry...
 			// decode PDE values
 			if (vmdata) {
+				vmdata->pde_fields[vmdata->levels] = umr_decode_pde_entry(asic, pde_entry);
 				vmdata->pde[vmdata->levels++] = pde_entry;
 			}
 
