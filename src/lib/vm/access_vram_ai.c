@@ -516,6 +516,11 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR_HI32 = umr_read_reg_by_name_by_ip_by_instance(asic, hub, partition, buf);
 		}
 
+	if (vmdata) {
+		vmdata->page_table_depth = page_table_depth;
+		vmdata->page_table_block_size = page_table_block_size;
+	}
+
 	// setup all the state variables.
 		page_table_start_addr = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 << 12;
 		page_table_start_addr |= (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 << 44;

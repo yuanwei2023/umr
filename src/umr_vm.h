@@ -27,7 +27,10 @@
 
 // memory access
 struct umr_vm_pagewalk {
-	int levels,
+	int
+		page_table_depth,
+		page_table_block_size,
+		levels,
 		sys_or_vram;
 	uint32_t vmid;
 	uint64_t va, phys;
