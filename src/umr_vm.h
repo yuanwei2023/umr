@@ -44,4 +44,16 @@ int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t siz
 #define umr_read_vram(asic, partition, vmid, address, size, dst) umr_access_vram(asic, partition, vmid, address, size, dst, 0, NULL)
 #define umr_write_vram(asic, partition, vmid, address, size, src) umr_access_vram(asic, partition, vmid, address, size, src, 1, NULL)
 
+pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entry);
+pde_fields_t umr_decode_pde_entry(const struct umr_asic *asic, uint64_t pde_entry);
+
+int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
+			      uint64_t address, uint32_t size,
+			      void *dst, int write_en, struct umr_vm_pagewalk *vmdata);
+
+int umr_access_vram_ai(struct umr_asic *asic, int partition,
+				  uint32_t vmid, uint64_t address, uint32_t size,
+			      void *dst, int write_en, struct umr_vm_pagewalk *vmdata);
+
+
 #endif

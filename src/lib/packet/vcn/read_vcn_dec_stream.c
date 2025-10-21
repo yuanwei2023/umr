@@ -26,7 +26,7 @@
 #include <stdbool.h>
 
 #include "umr.h"
-#include "import/ac_vcn_dec.h"
+#include "lib/import/ac_vcn_dec.h"
 
 static void decode_pkt0(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {

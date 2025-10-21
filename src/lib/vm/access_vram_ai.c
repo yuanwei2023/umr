@@ -22,300 +22,8 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
-#include "umrapp.h"
+#include "umr.h"
 #include <inttypes.h>
-
-/**
- * access_vram_via_mmio - Access VRAM via direct MMIO control
- */
-int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
-{
-	uint32_t MM_INDEX, MM_INDEX_HI, MM_DATA;
-	uint32_t *out = dst;
-	int maj, min;
-
-	umr_gfx_get_ip_ver(asic, &maj, &min);
-
-	// find registers
-	if (maj >= 10) {
-		MM_INDEX    = umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX");
-		MM_INDEX_HI = umr_find_reg(asic, "@mmBIF_BX_PF_MM_INDEX_HI");
-		MM_DATA     = umr_find_reg(asic, "@mmBIF_BX_PF_MM_DATA");
-	} else {
-		MM_INDEX    = umr_find_reg(asic, "@mmMM_INDEX");
-		MM_INDEX_HI = umr_find_reg(asic, "@mmMM_INDEX_HI");
-		MM_DATA     = umr_find_reg(asic, "@mmMM_DATA");
-	}
-
-	if (MM_INDEX == 0xFFFFFFFF    ||
-	    MM_INDEX_HI == 0xFFFFFFFF ||
-	    MM_DATA == 0xFFFFFFFF) {
-		// the kernel kinda hardcodes these
-		MM_INDEX = 0;
-		MM_DATA = 1;
-		MM_INDEX_HI = 6;
-	}
-
-	// scale up to byte address
-	MM_INDEX *= 4;
-	MM_INDEX_HI *= 4;
-	MM_DATA *= 4;
-
-	while (size) {
-		asic->reg_funcs.write_reg(asic, MM_INDEX, address | 0x80000000, REG_MMIO);
-		asic->reg_funcs.write_reg(asic, MM_INDEX_HI, address >> 31, REG_MMIO);
-		if (write_en == 0)
-			*out++ = asic->reg_funcs.read_reg(asic, MM_DATA, REG_MMIO);
-		else
-			asic->reg_funcs.write_reg(asic, MM_DATA, *out++, REG_MMIO);
-		size -= 4;
-		address += 4;
-	}
-	return 0;
-}
-
-/**
- * umr_access_vram_vi - Access GPU mapped memory for SI .. VI platforms
- */
-static int umr_access_vram_vi(struct umr_asic *asic, uint32_t vmid,
-			      uint64_t address, uint32_t size,
-			      void *dst, int write_en, struct umr_vm_pagewalk *vmdata)
-{
-	uint64_t start_addr, page_table_start_addr, page_table_base_addr,
-		 page_table_block_size, pte_idx, pde_idx, pte_entry, pde_entry,
-		 vm_fb_base, vm_fb_offset, pde_mask, pte_mask;
-	uint32_t chunk_size, tmp;
-	int page_table_depth;
-	struct {
-		uint64_t
-			frag_size,
-			pte_base_addr,
-			valid;
-	} pde_fields, pde_copy;
-	struct {
-		uint64_t
-			page_base_addr,
-			fragment,
-			system,
-			valid;
-	} pte_fields;
-	struct {
-		uint32_t
-			mmVM_CONTEXTx_PAGE_TABLE_START_ADDR,
-			mmVM_CONTEXTx_CNTL,
-			mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR,
-			mmMC_VM_FB_LOCATION,
-			mmMC_VM_FB_OFFSET;
-	} registers;
-	char buf[64];
-	unsigned char *pdst = dst;
-
-	(void)vmdata;
-	memset(&registers, 0, sizeof registers);
-	memset(&pde_copy, 0xff, sizeof pde_copy);
-
-	/*
-	 * PTE format on VI:
-	 * 63:40 reserved
-	 * 39:12 4k physical page base address
-	 * 11:7 fragment
-	 * 6 write
-	 * 5 read
-	 * 4 exe
-	 * 3 reserved
-	 * 2 snooped
-	 * 1 system
-	 * 0 valid
-	 *
-	 * PDE format on VI:
-	 * 63:59 block fragment size
-	 * 58:40 reserved
-	 * 39:1 physical base address of PTE
-	 * bits 5:1 must be 0.
-	 * 0 valid
-	 */
-
-	// read vm registers
-	sprintf(buf, "mmVM_CONTEXT%d_PAGE_TABLE_START_ADDR", vmid ? 1 : 0);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR = umr_read_reg_by_name(asic, buf);
-		page_table_start_addr = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR << 12;
-
-	sprintf(buf, "mmVM_CONTEXT%d_CNTL", vmid ? 1 : 0);
-		tmp = registers.mmVM_CONTEXTx_CNTL = umr_read_reg_by_name(asic, buf);
-		page_table_depth      = umr_bitslice_reg_by_name(asic, buf, "PAGE_TABLE_DEPTH", tmp);
-		page_table_block_size       = umr_bitslice_reg_by_name(asic, buf, "PAGE_TABLE_BLOCK_SIZE", tmp);
-
-	sprintf(buf, "mmVM_CONTEXT%" PRIu32 "_PAGE_TABLE_BASE_ADDR", vmid);
-		registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR = umr_read_reg_by_name(asic, buf);
-		page_table_base_addr  = (uint64_t)registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR << 12;
-
-	registers.mmMC_VM_FB_LOCATION = umr_read_reg_by_name(asic, "mmMC_VM_FB_LOCATION");
-	vm_fb_base  = ((uint64_t)registers.mmMC_VM_FB_LOCATION & 0xFFFF) << 24;
-
-	registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name(asic, "mmMC_VM_FB_OFFSET");
-	vm_fb_offset  = ((uint64_t)registers.mmMC_VM_FB_OFFSET & 0xFFFF) << 22;
-
-	if (asic->options.verbose)
-		asic->mem_funcs.vm_message(
-				"mmVM_CONTEXT%d_PAGE_TABLE_START_ADDR=0x%" PRIx32 "\n"
-				"mmVM_CONTEXT%d_PAGE_TABLE_BASE_ADDR=0x%" PRIx32 "\n"
-				"mmVM_CONTEXT%d_CNTL=0x%" PRIx32 "\n"
-				"mmMC_VM_FB_LOCATION=0x%" PRIx32 "\n"
-				"mmMC_VM_FB_OFFSET=0x%" PRIx32 "\n",
-			vmid ? 1 : 0,
-			registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR,
-			vmid,
-			registers.mmVM_CONTEXTx_PAGE_TABLE_BASE_ADDR,
-			vmid ? 1 : 0,
-			registers.mmVM_CONTEXTx_CNTL,
-			registers.mmMC_VM_FB_LOCATION,
-			registers.mmMC_VM_FB_OFFSET);
-
-	address -= page_table_start_addr;
-
-	do {
-		if (page_table_depth == 1) {
-			// decode addr into pte and pde selectors...
-			pde_mask = ((1ULL << (40 - 12 - 9 - page_table_block_size)) - 1);
-			pte_mask = ((1ULL << (9 + page_table_block_size)) - 1);
-
-			pde_idx = (address >> (12 + 9 + page_table_block_size)) & pde_mask;
-			pte_idx = (address >> 12) & pte_mask;
-
-			// shift masks so we can use them later
-			pte_mask <<= 12;
-			pde_mask <<= (12 + 9 + page_table_block_size);
-
-			// read PDE entry
-			if (umr_read_vram(asic, -1, UMR_LINEAR_HUB, page_table_base_addr + pde_idx * 8 - vm_fb_base, 8, &pde_entry)) {
-				asic->mem_funcs.vm_message("[ERROR]:  Could not read PDE.\n");
-				return -1;
-			}
-
-			// decode PDE values
-			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
-			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFF000ULL;
-			pde_fields.valid         = pde_entry & 1;
-			if ((asic->options.no_fold_vm_decode || memcmp(&pde_copy, &pde_fields, sizeof pde_fields)) && asic->options.verbose)
-				asic->mem_funcs.vm_message("PDE{0x%"PRIx64"/0x%"PRIx64"}=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 "\n",
-						page_table_base_addr + pde_idx * 8 - vm_fb_base,
-						pde_idx,
-						pde_entry,
-						address & pde_mask,
-						pde_fields.pte_base_addr,
-						pde_fields.valid);
-			memcpy(&pde_copy, &pde_fields, sizeof pde_fields);
-
-			if (!pde_fields.valid) {
-				if (pdst)
-					goto invalid_page;
-
-				// if we are vm-decode'ing just jump
-				// to the next page
-				start_addr = address & 0xFFF; // grab page offset so we can advance to next page
-				goto next_page;
-			}
-
-			// now read PTE entry for this page
-			if (umr_read_vram(asic, -1, UMR_LINEAR_HUB, pde_fields.pte_base_addr + pte_idx*8 - vm_fb_base, 8, &pte_entry) < 0)
-				return -1;
-
-			// decode PTE values
-			pte_fields.page_base_addr = pte_entry & 0xFFFFFFF000ULL;
-			pte_fields.fragment       = (pte_entry >> 7)  & 0x1F;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.valid          = pte_entry & 1;
-			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("\\-> PTE{0x%"PRIx64"/0x%"PRIx64"}=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
-					pde_fields.pte_base_addr + pte_idx*8 - vm_fb_base,
-					pte_idx,
-					pte_entry,
-					address & pte_mask,
-					pte_fields.page_base_addr,
-					pte_fields.valid,
-					pte_fields.system);
-
-			if (pdst && !pte_fields.valid)
-				goto invalid_page;
-
-			// compute starting address
-			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & 0xFFF);
-
-			if (!pte_fields.system)
-				start_addr = start_addr - vm_fb_offset;
-
-		} else {
-			// depth == 0 == PTE only
-			pte_idx = (address >> 12);
-
-			if (umr_read_vram(asic, -1, UMR_LINEAR_HUB, page_table_base_addr + pte_idx * 8 - vm_fb_base, 8, &pte_entry) < 0)
-				return -1;
-
-			// decode PTE values
-			pte_fields.page_base_addr = pte_entry & 0xFFFFFFF000ULL;
-			pte_fields.fragment       = (pte_entry >> 7)  & 0x1F;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.valid          = pte_entry & 1;
-			if (asic->options.verbose)
-				asic->mem_funcs.vm_message("PTE{0x%" PRIx64 "/0x%" PRIx64"}=0x%016" PRIx64 ", VA=0x%010" PRIx64 ", PBA==0x%010" PRIx64 ", V=%" PRIu64 ", S=%" PRIu64 "\n",
-					page_table_base_addr + pte_idx * 8 - vm_fb_base,
-					pte_idx,
-					pte_entry,
-					address & ~((uint64_t)0xFFF),
-					pte_fields.page_base_addr,
-					pte_fields.valid,
-					pte_fields.system);
-
-			if (pdst && !pte_fields.valid)
-				goto invalid_page;
-
-			// compute starting address
-			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & 0xFFF);
-		}
-
-next_page:
-		// read upto 4K from it
-		if (((start_addr & 0xFFF) + size) & ~0xFFF) {
-			chunk_size = 0x1000 - (start_addr & 0xFFF);
-		} else {
-			chunk_size = size;
-		}
-
-		// allow destination to be NULL to simply use decoder
-		if (pdst) {
-			if (pte_fields.system) {
-				int r;
-				r = asic->mem_funcs.access_sram(asic, start_addr, chunk_size, pdst, write_en);
-				if (r < 0) {
-					fprintf(stderr, "[ERROR]: Cannot access system ram at address: 0x%"PRIx64"\n", start_addr);
-					return -1;
-				}
-			} else {
-				if (umr_access_vram(asic, -1, UMR_LINEAR_HUB, start_addr, chunk_size, pdst, write_en, NULL) < 0) {
-					fprintf(stderr, "[ERROR]: Cannot access VRAM\n");
-					return -1;
-				}
-			}
-			pdst += chunk_size;
-		}
-		size -= chunk_size;
-		address += chunk_size;
-	} while (size);
-	return 0;
-
-invalid_page:
-	asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx32 "@%" PRIx64 "\n", vmid, address);
-	return -1;
-}
-
-/** round_up_pot -- Round up value to next power of two */
-static uint64_t round_up_next_gib(uint64_t x)
-{
-	uint64_t y = (1024ULL * 1024 * 1024); // start at 1GiB
-	while (y < x)
-		y += 1024UL * 1024 * 1024;
-	return y;
-}
 
 static uint64_t round_up_pot(uint64_t x)
 {
@@ -324,7 +32,6 @@ static uint64_t round_up_pot(uint64_t x)
 		y <<= 1;
 	return y;
 }
-
 
 static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table_end_addr)
 {
@@ -335,185 +42,6 @@ static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table
 	while (size_of_vm_bytes >>= 1)
 		vm_bits++;
 	return vm_bits;
-}
-
-/*
- * PDE format on AI:
- * 63:59 block fragment size
- * 58:55 reserved
- *   But if bit 56 is set, this is a PTE with 'further' set,
- *   which makes it act like a PDE.
- * 54 pde-is-pte
- * 53:48 reserved
- * 47:6 physical base address of PTE
- * 2 cache coherent/snoop
- * 1 system
- * 0 valid
- */
-static pde_fields_t decode_pde_entry(const struct umr_asic *asic, uint64_t pde_entry)
-{
-	pde_fields_t pde_fields = { 0 };
-	struct umr_ip_block *ip;
-
-	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
-	if (!ip) {
-		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
-		return pde_fields;
-	}
-
-	switch (ip->discoverable.maj) {
-		case 9:
-		case 10:
-			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
-			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
-			pde_fields.valid         = pde_entry & 1;
-			pde_fields.system        = (pde_entry >> 1) & 1;
-			pde_fields.coherent      = (pde_entry >> 2) & 1;
-			pde_fields.pte           = (pde_entry >> 54) & 1;
-			pde_fields.further       = (pde_entry >> 56) & 1;
-			if (ip->discoverable.maj == 10 && ip->discoverable.min >= 3) {
-				pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
-			}
-			break;
-		case 11:
-			pde_fields.frag_size     = (pde_entry >> 59) & 0x1F;
-			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
-			pde_fields.valid         = pde_entry & 1;
-			pde_fields.system        = (pde_entry >> 1) & 1;
-			pde_fields.coherent      = (pde_entry >> 2) & 1;
-			pde_fields.mtype         = (pde_entry >> 48) & 7;
-			pde_fields.pte           = (pde_entry >> 54) & 1;
-			pde_fields.further       = (pde_entry >> 56) & 1;
-			pde_fields.tfs_addr      = (pde_entry >> 57) & 1;
-			pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
-			break;
-		case 12:
-			pde_fields.frag_size     = (pde_entry >> 58) & 0x1F;
-			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
-			pde_fields.valid         = pde_entry & 1;
-			pde_fields.system        = (pde_entry >> 1) & 1;
-			pde_fields.coherent      = (pde_entry >> 2) & 1;
-			pde_fields.pa_rsvd       = (pde_entry >> 48) & 0xF;
-			pde_fields.mall_reuse    = (pde_entry >> 54) & 3;
-			pde_fields.tfs_addr      = (pde_entry >> 56) & 1;
-			pde_fields.pte           = (pde_entry >> 63) & 1;
-			break;
-	}
-	return pde_fields;
-}
-
-/*
- * PTE format on AI and PI:
- * 58:57 mtype (AI only)
- * 56 further
- * 54 reserved
- *   But if it is set, then this is actually a PDE with 'P'
- *   bit set, which makes the PDE act like a PTE.
- * 51 prt
- * 48:50 mtype (NV only)
- * 47:12 4k physical page base address
- * 11:7 fragment
- * 6 write
- * 5 read
- * 4 exe
- * 3 tmz (PI+)
- * 2 snooped / coherent
- * 1 system
- * 0 valid
- */
-static pte_fields_t decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entry)
-{
-	pte_fields_t pte_fields = { 0 };
-	uint64_t is_pde = 0;
-	struct umr_ip_block *ip;
-
-	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
-	if (!ip) {
-		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
-		return pte_fields;
-	}
-
-	switch (ip->discoverable.maj) {
-		case 9:
-			pte_fields.valid          = pte_entry & 1;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.coherent       = (pte_entry >> 2) & 1;
-			pte_fields.tmz            = (pte_entry >> 3) & 1;
-			pte_fields.execute        = (pte_entry >> 4) & 1;
-			pte_fields.read           = (pte_entry >> 5) & 1;
-			pte_fields.write          = (pte_entry >> 6) & 1;
-			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
-			pte_fields.prt            = (pte_entry >> 51) & 1;
-			pte_fields.pde            = (pte_entry >> 54) & 1;
-			pte_fields.further        = (pte_entry >> 56) & 1;
-			pte_fields.mtype          = (pte_entry >> 57) & 3;
-			is_pde                    = pte_fields.further;
-			break;
-		case 10:
-			pte_fields.valid          = pte_entry & 1;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.coherent       = (pte_entry >> 2) & 1;
-			pte_fields.tmz            = (pte_entry >> 3) & 1;
-			pte_fields.execute        = (pte_entry >> 4) & 1;
-			pte_fields.read           = (pte_entry >> 5) & 1;
-			pte_fields.write          = (pte_entry >> 6) & 1;
-			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
-			pte_fields.mtype          = (pte_entry >> 48) & 3;
-			pte_fields.prt            = (pte_entry >> 51) & 1;
-			pte_fields.pde            = (pte_entry >> 54) & 1;
-			pte_fields.further        = (pte_entry >> 56) & 1;
-			pte_fields.gcr            = (pte_entry >> 57) & 1;
-			if (ip->discoverable.min >= 3) {
-				pte_fields.llc_noalloc    = (pte_entry >> 58) & 1;
-			}
-			is_pde                    = pte_fields.further;
-			break;
-		case 11:
-			pte_fields.valid          = pte_entry & 1;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.coherent       = (pte_entry >> 2) & 1;
-			pte_fields.tmz            = (pte_entry >> 3) & 1;
-			pte_fields.execute        = (pte_entry >> 4) & 1;
-			pte_fields.read           = (pte_entry >> 5) & 1;
-			pte_fields.write          = (pte_entry >> 6) & 1;
-			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
-			pte_fields.mtype          = (pte_entry >> 48) & 3;
-			pte_fields.prt            = (pte_entry >> 51) & 1;
-			pte_fields.software       = (pte_entry >> 52) & 3;
-			pte_fields.pde            = (pte_entry >> 54) & 1;
-			pte_fields.further        = (pte_entry >> 56) & 1;
-			pte_fields.gcr            = (pte_entry >> 57) & 1;
-			pte_fields.llc_noalloc    = (pte_entry >> 58) & 1;
-			is_pde                    = pte_fields.further;
-			break;
-		case 12:
-			pte_fields.valid          = pte_entry & 1;
-			pte_fields.system         = (pte_entry >> 1) & 1;
-			pte_fields.coherent       = (pte_entry >> 2) & 1;
-			pte_fields.tmz            = (pte_entry >> 3) & 1;
-			pte_fields.execute        = (pte_entry >> 4) & 1;
-			pte_fields.read           = (pte_entry >> 5) & 1;
-			pte_fields.write          = (pte_entry >> 6) & 1;
-			pte_fields.fragment       = (pte_entry >> 7) & 0x1F;
-			pte_fields.pa_rsvd        = (pte_entry >> 48) & 0xF;
-			pte_fields.software       = (pte_entry >> 52) & 3;
-			pte_fields.mtype          = (pte_entry >> 54) & 3;
-			pte_fields.prt            = (pte_entry >> 56) & 1;
-			pte_fields.gcr            = (pte_entry >> 57) & 1;
-			pte_fields.dcc            = (pte_entry >> 58) & 1;
-			pte_fields.pte            = (pte_entry >> 63) & 1;
-			is_pde                    = !pte_fields.pte;
-			break;
-	}
-
-	// PTEs hold physical address in 47:12
-	// PDEs hold physical address in 47:6, so if this is a PTE-as-PDE (further), need a differnt mask
-	if (is_pde)
-		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFFC0ULL;
-	else
-		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL;
-
-	return pte_fields;
 }
 
 static void print_pde_fields(struct umr_asic *asic,
@@ -810,7 +338,7 @@ static void print_pte(struct umr_asic *asic,
  * 5. Reads from or writes to the computed physical address in VRAM or system memory based on the PTE settings.
  * 6. Captures detailed information about the page walk process if `vmdata` is provided, which can be useful for debugging and analysis.
  */
-static int umr_access_vram_ai(struct umr_asic *asic, int partition,
+int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				  uint32_t vmid, uint64_t address, uint32_t size,
 			      void *dst, int write_en, struct umr_vm_pagewalk *vmdata)
 {
@@ -1063,7 +591,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 	// the PAGE_TABLE_BASE_ADDR_* registers form the first level
 	// PDE value.  It is not read from a Page Directory Block (PDB)
-	pde_fields = decode_pde_entry(asic, page_table_base_addr);
+	pde_fields = umr_decode_pde_entry(asic, page_table_base_addr);
 
 	if (!pde_fields.system) {
 		// transform page_table_base (only if first PDB or the PTB is in VRAM)
@@ -1140,7 +668,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			// is slightly different so we branch here.
 
 			// decode the first PDE into it's component fields
-			pde_fields = decode_pde_entry(asic, pde_entry);
+			pde_fields = umr_decode_pde_entry(asic, pde_entry);
 
 			// The address of the next PDB/PTB is specified by the
 			// page base address field of PDE's
@@ -1216,7 +744,7 @@ static int umr_access_vram_ai(struct umr_asic *asic, int partition,
 					}
 				}
 
-				pde_fields = decode_pde_entry(asic, pde_entry);
+				pde_fields = umr_decode_pde_entry(asic, pde_entry);
 				if (current_depth == 1) {
 					// if we're at what should be the last PDE level
 					// then we apply additional rules to the interpretation
@@ -1326,7 +854,7 @@ pte_further:
 pde_is_pte:
 			// at this point we have the PTE for this page in
 			// the struct pte_entry
-			pte_fields = decode_pte_entry(asic, pte_entry);
+			pte_fields = umr_decode_pte_entry(asic, pte_entry);
 
 			// How many bits in the address are used to index into the PTB?
 			// If further is set, that means we jumped back to pde_is_pte,
@@ -1372,7 +900,7 @@ pde_is_pte:
 			if (asic->options.verbose) {
 				if (pte_is_pde) {
 					print_pde(asic, indentation, pde_cnt, page_table_depth, prev_addr,
-							pte_idx, pte_entry, address, va_mask, decode_pde_entry(asic, pte_entry), pte_is_pde);
+							pte_idx, pte_entry, address, va_mask, umr_decode_pde_entry(asic, pte_entry), pte_is_pde);
 
 				} else {
 					print_pte(asic, indentation, pde_cnt, page_table_depth, prev_addr, pte_idx,
@@ -1390,10 +918,10 @@ pde_is_pte:
 					// When PDE0 had TFS bit set, real address of PTB for PTE-as-PDE
 					// to point is PDE0.PBA + PTE-as-PDE.PBA.
 					uint64_t tmp_addr = pde_fields.pte_base_addr;
-					pde_fields = decode_pde_entry(asic, pte_entry);
+					pde_fields = umr_decode_pde_entry(asic, pte_entry);
 					pde_fields.pte_base_addr += tmp_addr;
 				} else {
-					pde_fields = decode_pde_entry(asic, pte_entry);
+					pde_fields = umr_decode_pde_entry(asic, pte_entry);
 					if (!pde_fields.system)
 						pde_fields.pte_base_addr -= vm_fb_offset;
 				}
@@ -1456,7 +984,7 @@ pde_is_pte:
 			}
 
 			// decode single PDE0 and figure out the page size
-			pde_fields = decode_pde_entry(asic, pde_entry);
+			pde_fields = umr_decode_pde_entry(asic, pde_entry);
 			pde0_block_fragment_size = pde_fields.frag_size;
 			pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
 
@@ -1482,7 +1010,7 @@ pde_is_pte:
 				}
 			}
 
-			pte_fields = decode_pte_entry(asic, pte_entry);
+			pte_fields = umr_decode_pte_entry(asic, pte_entry);
 
 			if (vmdata) {
 				vmdata->pte = pte_entry;
@@ -1589,121 +1117,4 @@ next_page:
 invalid_page:
 	asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx32 "@%" PRIx64 "\n", vmid, address);
 	return -1;
-}
-
-/**
- * umr_access_vram - Access GPU mapped memory
- *
- * @vmid:	The VMID that the address belongs to.  The bits 8:15
- * 			indicate which hub the memory belongs to:
- *
- * 				UMR_LINEAR_HUB: The memory is a physical address in the VRAM
- * 				UMR_GFX_HUB: The memory is a virtual address controlled by the GFX hub
- * 				UMR_MM_HUB: The memory is a virtual address controlled by the MM hub
- *
- *			The bits 0:7 indicate which VM to access (if any).
- *
- * @partition: The VM partition to be used (refers to different INST of VM register blocks)
- * @address: The address of the memory to access must be word aligned
- * @size:  The number of bytes to read
- * @data:  The buffer to read from/write to
- * @write_en:  Set to 0 to read, non-zero to write
- *
- * Returns -1 on error.
- */
-int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data, int write_en, struct umr_vm_pagewalk *vmdata)
-{
-	int maj, min;
-
-	umr_gfx_get_ip_ver(asic, &maj, &min);
-
-	// only aligned reads
-	if ((address & 3) || (size & 3)) {
-		asic->err_msg("[ERROR]:  The address and size must be a multiple of 4 to access VRAM\n");
-		return -1;
-	}
-
-	// only aligned destinations
-	if (((intptr_t)data) & 3) {
-		asic->err_msg("[BUG]: vram read destination is not 4-byte aligned\n");
-		return -1;
-	}
-
-	// read/write from process space
-	if ((vmid & 0xFF00) == UMR_PROCESS_HUB) {
-		if (!write_en)
-			memcpy(data, (char *)address, size);
-		else
-			memcpy((char *)address, data, size);
-		return 0;
-	}
-
-	// mask VM addresses
-	if ((vmid & 0xFF00) != UMR_LINEAR_HUB && asic->family > FAMILY_VI)
-		address &= 0xFFFFFFFFFFFFULL;
-
-	if ((vmid & 0xFF00) == UMR_LINEAR_HUB) {
-		// if we are using xgmi let's find the device for this address
-		// in an XGMI hive the XGMI nodes memory are concatenated together
-		// end to end.  so a linear address referenced by one node might
-		// be in another node in the hive
-		if (asic->options.use_xgmi) {
-			// TODO: This code does NOT support a page that
-			// spans multiple nodes.  That sort of setup is probably
-			// not used in the wild but we should keep note of it
-			int n;
-			uint64_t addr = address;
-			uint64_t segment_size;
-
-			// compute XGMI node segment size based on MC registers
-			// this varies depending on the architecture so we try
-			// all LFB_SIZE registers
-			if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "@mmMC_VM_XGMI_LFB_SIZE_ALDE")) {
-				segment_size = umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmMC_VM_XGMI_LFB_SIZE_ALDE") << 24ULL;
-			} else if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "@mmMC_VM_XGMI_LFB_SIZE")) {
-				segment_size = umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmMC_VM_XGMI_LFB_SIZE") << 24ULL;
-			} else if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "@mmGCMC_VM_XGMI_LFB_SIZE")) {
-				segment_size = umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmGCMC_VM_XGMI_LFB_SIZE") << 24ULL;
-			} else {
-				// fallback to just rounding up vram size
-				segment_size = 0;
-			}
-
-			// copy callbacks so that sysram/vram accesses
-			// go through callbacks when we use other nodes
-			if (!asic->config.xgmi.callbacks_applied)
-				umr_apply_callbacks(asic, &asic->mem_funcs, &asic->reg_funcs);
-
-			for (n = 0; asic->config.xgmi.nodes[n].asic; n++) {
-				// if remaining address is within this nodes VRAM size use it
-				if (addr < (segment_size ? segment_size : asic->config.xgmi.nodes[n].asic->config.vram_size)) {
-					asic = asic->config.xgmi.nodes[n].asic;
-					address = addr;
-					if ((address + size) > asic->config.xgmi.nodes[n].asic->config.vram_size) {
-						asic->err_msg("[BUG]: Block being read spans multiple XGMI nodes and this isn't supported by UMR.\n");
-					}
-					break;
-				} else {
-					// otherwise subtract this vram size from the address and go to the next device
-					addr -= segment_size ? segment_size : round_up_next_gib(asic->config.xgmi.nodes[n].asic->config.vram_size);
-				}
-			}
-			// now {asic, address} are the device and it's relative address
-			// that corresponds to the hive address the caller passed
-		}
-
-		// use callback for linear access if applicable
-		return asic->mem_funcs.access_linear_vram(asic, address, size, data, write_en);
-	}
-
-	// if we hit this point we have a VM address to pagewalk so we can finally access
-	// the page in question, since <= VI and >= AI are different enough
-	// we branch depending on the GFX version
-	if (maj <= 8) {
-			return umr_access_vram_vi(asic, vmid, address, size, data, write_en, vmdata);
-	} else {
-			return umr_access_vram_ai(asic, partition, vmid, address, size, data, write_en, vmdata);
-	}
-
-	return 0;
 }

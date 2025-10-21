@@ -25,7 +25,7 @@
 #include <malloc.h>
 
 #include "umr.h"
-#include "import/ac_vcn_dec.h"
+#include "lib/import/ac_vcn_dec.h"
 
 #define SUPPORT 0
 

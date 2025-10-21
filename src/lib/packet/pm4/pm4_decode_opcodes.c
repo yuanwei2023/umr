@@ -344,32 +344,6 @@ static const struct {
 	{ NULL, 0 },
 };
 
-/**
- * umr_gfx_get_ip_ver - Get the version of the GC/GFX IP block
- *
- * @asic: The ASIC to query
- * @maj: Where to store the major revision
- * @min: Where to store the minor revision
- *
- * Returns -1 on error.
- */
-int umr_gfx_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
-{
-	struct umr_ip_block *ip;
-
-	// try by GC version
-	ip = umr_find_ip_block(asic, "gfx", 0); // for multi instance
-	if (!ip)
-		ip = umr_find_ip_block(asic, "gfx", -1); // for single instance
-
-	if (ip) {
-		*maj = ip->discoverable.maj;
-		*min = ip->discoverable.min;
-		return 0;
-	}
-	return -1;
-}
-
 static char *vgt_event_decode(unsigned tag)
 {
 	unsigned x;

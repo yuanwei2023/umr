@@ -29,7 +29,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdbool.h>
-#include "import/ac_vcn_enc.h"
+#include "lib/import/ac_vcn_enc.h"
 
 #define MAX_VALUE_SIZE 32 /* enough for a 32 bit hex string - 11 total at most: 8 bytes + 0x + null */
 #define FORMAT10  "=%"PRIu32

@@ -1,4 +1,4 @@
-add_library(database OBJECT
+add_library(umrdatabase
   open.c
   read_asic.c
   read_ip.c
@@ -8,4 +8,5 @@ add_library(database OBJECT
   free_scan.c
 )
 
-target_link_libraries(database parson)
+target_link_libraries(umrdatabase umrcore parson)
+install(TARGETS umrdatabase DESTINATION ${CMAKE_INSTALL_LIBDIR})

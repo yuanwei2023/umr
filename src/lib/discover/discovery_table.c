@@ -23,8 +23,8 @@
  *
  */
 #include "umr.h"
-#include "import/discovery.h"
-#include "import/soc15_hw_ip.h"
+#include "lib/import/discovery.h"
+#include "lib/import/soc15_hw_ip.h"
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>

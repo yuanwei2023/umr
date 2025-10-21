@@ -1,5 +1,5 @@
 
-add_library(rumr OBJECT
+add_library(umrrumr
   buffer.c
   tcp_comm.c
   client.c
@@ -7,4 +7,5 @@ add_library(rumr OBJECT
   rumr_serial_asic.c
 )
 
-target_link_libraries(rumr parson)
+target_link_libraries(umrrumr umrcore parson)
+install(TARGETS umrrumr DESTINATION ${CMAKE_INSTALL_LIBDIR})

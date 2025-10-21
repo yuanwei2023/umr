@@ -23,8 +23,8 @@
 #include <stdbool.h>
 
 #include "umr.h"
-#include "import/ac_vcn_enc.h"
-#include "import/ac_vcn_dec.h"
+#include "lib/import/ac_vcn_enc.h"
+#include "lib/import/ac_vcn_dec.h"
 
 static struct umr_vcn_cmd_message *find_next_vcn_ib(struct umr_asic *asic, struct umr_vcn_cmd_message *vcn);
 
