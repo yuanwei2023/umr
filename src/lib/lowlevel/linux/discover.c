@@ -209,6 +209,11 @@ struct umr_asic *umr_discover_asic(struct umr_options *options, umr_err_output e
 		}
 	}
 
+	// if we're in no kernel mode try loading by name
+	if (!asic && options->no_kernel && options->dev_name[0]) {
+		asic = umr_discover_asic_by_name(options, options->dev_name, errout);
+	}
+
 	// try to scan via debugfs
 	if (!asic && options->instance >= 0 && !options->no_kernel) {
 		asic = calloc(1, sizeof *asic);
