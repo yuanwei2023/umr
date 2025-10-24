@@ -1,18 +1,33 @@
+/*
+ * Copyright (c) 2025 Advanced Micro Devices, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE COPYRIGHT HOLDER(S) OR AUTHOR(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Authors: Tom St Denis <tom.stdenis@amd.com>
+ *
+ */
 #include "umrapp.h"
-
 #include <inttypes.h>
 
 static uint32_t read_banked_reg(struct umr_asic *asic, char *name)
 {
-	struct umr_reg *reg;
-	uint64_t bank_addr;
-	reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, name);
-	if (!reg) {
-		asic->err_msg("[ERROR]: Cannot find CPG registers on ASIC.\n");
-		return 0xDEADBEEF;
-	}
-	bank_addr = umr_apply_bank_selection_address(asic);
-	return asic->reg_funcs.read_reg(asic, bank_addr | (reg->addr * 4), REG_MMIO);
+	return umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, name);
 }
 
 void umr_print_cpg(struct umr_asic *asic)
@@ -20,6 +35,8 @@ void umr_print_cpg(struct umr_asic *asic)
 	uint32_t rs64_en, mes_en;
 	uint32_t max_me_num, queues_per_pipe, pipes_per_me;
 	int maj, min;
+
+	struct umr_options opts = asic->options;
 
 	rs64_en = mes_en = asic->family >= FAMILY_GFX11;
 	asic->options.use_bank = 2;
@@ -119,5 +136,5 @@ void umr_print_cpg(struct umr_asic *asic)
 			}
 		}
 	}
-	asic->options.use_bank = 0;
+	asic->options = opts;
 }
