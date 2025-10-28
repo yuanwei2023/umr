@@ -514,6 +514,20 @@ static void umr_start_rumr_client(struct rumr_client_state *cs, char *server)
 	free(cf);
 }
 
+static void check_lockdown(void)
+{
+	FILE *f;
+	char buf[256];
+	f = fopen("/sys/kernel/security/lockdown", "r");
+	if (f) {
+		fgets(buf, sizeof buf, f);
+		if (!strstr(buf, "[none]")) {
+			fprintf(stderr, "[WARNING]: Kernel 'lockdown' mode was not set to [none] so umr likely won't work.\n");
+		}
+		fclose(f);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int pass, i, j, k, l;
@@ -525,6 +539,8 @@ int main(int argc, char **argv)
 #if UMR_GUI
 	int running_as_gui = 0;
 	char *guiurl = NULL;
+
+	check_lockdown();
 
 	if (strstr(argv[0], "umrgui")) {
 		if (argc >= 2)
