@@ -65,6 +65,55 @@ struct regs {
 	struct regs *next;
 };
 
+int bitcmp(const void *a, const void *b)
+{
+	const struct bitfield *A = a, *B = b;
+	return A->start - B->start;
+}
+
+void sort_bits(struct bitfield **bits)
+{
+	struct bitfield *tmpbits, *pbit;
+	int nobits, x;
+
+	if (!*bits)
+		return;
+
+	nobits = 0;
+	pbit = *bits;
+	while (pbit) {
+		++nobits;
+		pbit = pbit->next;
+	}
+	tmpbits = calloc(nobits, sizeof *tmpbits);
+	pbit = *bits;
+	for (x = 0; x < nobits; x++) {
+		tmpbits[x] = *pbit;
+		tmpbits[x].next = NULL;
+		pbit = pbit->next;
+	}
+	qsort(tmpbits, nobits, sizeof *tmpbits, bitcmp);
+
+	// free existing list
+	pbit = *bits;
+	while (pbit) {
+		struct bitfield *pp = pbit->next;
+		free(pbit);
+		pbit = pp;
+	}
+
+	// recreate a list ...
+	pbit = *bits = calloc(1, sizeof **bits);
+	**bits = tmpbits[0];
+	for (x = 1; x < nobits; x++) {
+		(*bits)->next = calloc(1, sizeof **bits);
+		*bits = (*bits)->next;
+		**bits = tmpbits[x];
+	}
+	free(tmpbits);
+	*bits = pbit;
+}
+
 /* skip whitespace */
 void whitespace(char **p)
 {
@@ -463,6 +512,8 @@ int main(int argc, char **argv)
 		for (x = 0; x < no_regs; x++) {
 			r = sr[x];
 			printf("%s %d 0x%"PRIx64" %"PRIu32" %"PRIu32" %"PRIu32"\n", r->name, r->type, r->addr, r->nobits, r->is64, r->idx);
+			if (r->bits)
+				sort_bits(&r->bits);
 			b = r->bits;
 			while (b) {
 				printf("\t%s %d %d\n", b->name, b->start, b->stop);

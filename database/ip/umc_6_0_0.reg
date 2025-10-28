@@ -1,7 +1,7 @@
 12
 mmUMCCH0_0_EccCtrl 0 0x53 2 0 0
-	RdEccEn 10 10
 	WrEccEn 0 0
+	RdEccEn 10 10
 mmUMCCH0_0_UmcLocalCap 0 0x306 1 0 0
 	EccDis 0 0
 mmUMCCH0_0_UMC_CONFIG 0 0x40 1 0 0
