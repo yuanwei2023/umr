@@ -1233,54 +1233,57 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 	closedir(dir);
 }
 
-void parse_drm_clients(struct umr_asic *asic, JSON_Array * clients)
+static void parse_drm_clients(struct umr_asic *asic, JSON_Array * clients)
 {
-	char *ptr = read_file(SYSFS_PATH_DEBUG_DRI "%d/clients", asic->instance);
+	/* Tokens we care about are non-empty. */
+	const char *tokens[] = {
+		"command", "tgid", "dev", "master", "a", "uid", "magic", "name", "id"
+	};
+	const enum json_value_type tokens_type[] = {
+		JSONString, JSONNumber, JSONNumber, JSONNull,
+		JSONNull, JSONNull, JSONNull, JSONString, JSONNumber
+	};
+	char *ptr = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/clients", asic->instance);
 	if (!ptr)
 		return;
-	/* Skip table header. */
-	ptr = strchr(ptr, '\n');
-	if (ptr == NULL)
-		return;
-	ptr++;
-	char *end = ptr + strlen(ptr);
-	char *eol;
 
-	int skipped_fields_size =
-		20 /* command */ + 1 +
-		5  /* tgid    */ + 1 +
-		3  /* dev     */ + 1 +
-		6  /* master  */ + 1 +
-		1  /* a       */ + 1 +
-		5  /* uid     */ + 1 +
-		10 /* magic   */ + 1;
-	do {
-		if (ptr + skipped_fields_size >= end)
-			break;
-			
-		ptr += skipped_fields_size;
-		while (isspace(*ptr) && ptr < end) ptr++;
-		if (ptr == end)
-			break;
-		char *next_sp = strchr(ptr, ' ');
-		if (next_sp == NULL)
-			break;
+	unsigned i, j, n_lines, line_check;
+	uint64_t number;
+	char **lines = parse_lines(ptr, &n_lines);
 
+	for (i = 1; i < n_lines; i++) {
 		JSON_Object *app = json_object(json_value_init_object());
-		json_object_set_string_with_len(app, "name", ptr, next_sp - ptr);
-		ptr = next_sp;
-		uint64_t id;
-		if (sscanf(ptr, "%" PRIu64, &id) == 1)
-			json_object_set_number(app, "id", id);
 
-		json_array_append_value(clients, json_object_get_wrapping_value(app));
+		line_check = 0;
+		for (j = 0; j < ARRAY_SIZE(tokens); j++) {
+			char *token = strtok(j == 0 ? lines[i] : NULL, " ");
+			if (token == NULL) {
+				/* Malformed line. */
+				break;
+			}
+			line_check++;
 
-		eol = strchr(ptr, '\n');
-
-		if (eol == NULL)
-			break;
-		ptr = eol + 1;
-	} while (true);
+			switch (tokens_type[j]) {
+				case JSONString:
+					json_object_set_string(app, tokens[j], token);
+					break;
+				case JSONNumber: {
+					if (sscanf(token, "%" PRIu64, &number) == 1)
+						json_object_set_number(app, tokens[j], number);
+					break;
+				}
+				default:
+					break;
+			}
+		}
+		if (line_check == ARRAY_SIZE(tokens_type)) {
+			json_array_append_value(clients, json_object_get_wrapping_value(app));
+		} else {
+			json_value_free(json_object_get_wrapping_value(app));
+		}
+	}
+	free(ptr);
+	free(lines);
 }
 
 JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
