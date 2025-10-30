@@ -240,6 +240,40 @@ static char * read_file_a(const char *format, ...) {
 	return _read_file(path, &buffer, &buffer_size);
 }
 
+static char **parse_lines(char *content, unsigned *line_count) {
+	unsigned n_lines = 0, max_lines = 8;
+	char **lines = NULL;
+
+	*line_count = 0;
+
+	if (content == NULL)
+		return NULL;
+
+	char *line = strtok(content, "\n");
+	if (line == NULL)
+		return NULL;
+
+	lines = realloc(lines, max_lines * sizeof(*lines));
+	lines[n_lines++] = line;
+
+	while ((line = strtok(NULL, "\n"))) {
+		if (*line == '\0')
+			continue;
+		while (isspace(*line))
+			line++;
+
+		lines[n_lines++] = line;
+		if (n_lines == max_lines) {
+			max_lines *= 2;
+			lines = realloc(lines, max_lines * sizeof(*lines));
+		}
+	}
+	lines[n_lines] = NULL;
+	*line_count = n_lines;
+
+	return lines;
+}
+
 static int find_pid_by_command_name(DIR *d, const char *process_name) {
 	struct dirent *ent;
 	struct stat fstat;
@@ -750,19 +784,16 @@ void parse_sysfs_clock_file(char *content, int *min, int *max) {
 	*min = 100000;
 	*max = 0;
 
-	int i, value;
-	char *in = content;
-	char *ptr;
-	char tmp[1024];
-	while((ptr = strchr(in, '\n'))) {
-		strncpy(tmp, in, ptr - in);
-		tmp[ptr - in] = '\0';
-		if (sscanf(tmp, "%d: %dMHz", &i, &value) == 2) {
+	int value, ign;
+	unsigned nlines;
+	char **lines = parse_lines(content, &nlines);
+	for (unsigned i = 0; i < nlines; i++) {
+		if (sscanf(lines[i], "%d: %dMHz", &ign, &value) == 2) {
 			if (value < *min) *min = value;
 			if (value > *max) *max = value;
 		}
-		in = ptr + 1;
 	}
+	free(lines);
 }
 
 static const char * lookup_field(const char **in, const char *field, char separator) {
@@ -1566,40 +1597,14 @@ static uint32_t get_ino_to_pid_mapping(struct umr_asic *asic,
 	return num_pids_mapping;
 }
 
-JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, int num_pids_mapping)
+JSON_Array *parse_gem_info(char *content, struct pid_exported *pids_exp, int num_pids_mapping)
 {
 	JSON_Array *pids = json_array(json_value_init_array());
 
-	const char *ptr = content;
+	unsigned nlines = 0;
+	char **lines = parse_lines(content, &nlines);
 
-	int nlines = 0;
-	int max_lines = 128;
-	char **lines = realloc(NULL, max_lines * sizeof(char *));
-	while (ptr) {
-		/* Skip empty lines. */
-		if (*ptr == '\n')
-			ptr++;
-
-		const char *endline = strchr(ptr, '\n');
-
-		while (isspace(*ptr)) ptr++;
-
-		if (endline == NULL) {
-			if (strlen(ptr) > 0)
-				lines[nlines++] = strdup(ptr);
-			break;
-		} else {
-			lines[nlines++] = strndup(ptr, endline - ptr);
-			ptr = endline + 1;
-		}
-
-		if (nlines + 1 >= max_lines) {
-			max_lines *= 2;
-			lines = realloc(lines, max_lines * sizeof(char *));
-		}
-	}
-
-	for (int i = 0; i < nlines;) {
+	for (unsigned i = 0; i < nlines;) {
 		if (strncmp(lines[i], "pid", 3) != 0) {
 			printf("Incorrect line start %d '%s'. Aborting\n", i, lines[i]);
 			return NULL;
@@ -1624,7 +1629,6 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 		JSON_Array *bos = json_array(json_value_init_array());
 		json_object_set_value(app, "bos", json_array_get_wrapping_value(bos));
 
-		free(lines[i]);
 		int pid_overriden = 0;
 		/* Now parse lines belonging to this pid */
 		for (i = i + 1; i < nlines; i++) {
@@ -1691,13 +1695,13 @@ JSON_Array *parse_gem_info(const char *content, struct pid_exported *pids_exp, i
 					}
 				}
 			}
-
-			free(lines[i]);
 		}
 
 		if (json_object_get_count(app))
 			json_array_append_value(pids, json_object_get_wrapping_value(app));
 	}
+
+	free(lines);
 
 	return pids;
 }

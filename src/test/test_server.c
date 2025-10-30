@@ -4,22 +4,23 @@
 extern void parse_sysfs_clock_file(char *content, int *min, int *max);
 extern JSON_Value *compare_fence_infos(const char *before, const char *after);
 extern JSON_Array *parse_vm_info(const char *content);
-extern JSON_Array *parse_gem_info(const char *content, void *pids, unsigned n);
+extern JSON_Array *parse_gem_info(char *content, void *pids, unsigned n);
 extern JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *content);
 extern JSON_Object *parse_kms_state_sysfs_file(const char *content);
 extern JSON_Object *parse_pp_features_sysfs_file(const char *content);
 
 static enum TEST_RESULT test_parse_sysfs_clock_file(__attribute__((unused)) struct umr_asic* asic)
 {
-    char *content =
+    char *content = strdup(
         "0: 500Mhz \n"
         "1: 0Mhz *\n"
-        "2: 2575Mhz \n";
+        "2: 2575Mhz \n");
 
     int min, max;
     parse_sysfs_clock_file(content, &min, &max);
     ASSERT_EQ(0, min);
     ASSERT_EQ(2575, max);
+    free(content);
     return TEST_SUCCESS;
 }
 
@@ -127,7 +128,7 @@ static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_as
 
 static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_asic* asic)
 {
-    const char *content =
+    char *content = strdup(
         "pid    44961 command Xwayland:\n"
         "pid    44961 command Xwayland:\n"
         "\t\t0x00000001:     19652608 byte VRAM exported as ino:15413 NO_CPU_ACCESS CPU_GTT_USWC\n"
@@ -140,7 +141,7 @@ static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_a
         "\t\t\t\t0x00000004:      2097152 byte VRAM NO_CPU_ACCESS CPU_GTT_USWC\n"
         "\t\t\t\t0x00000005:         4096 byte  GTT CPU_ACCESS_REQUIRED\n"
         "\t\t\t\t0x00000006:         4096 byte  GTT CPU_ACCESS_REQUIRED\n"
-        "\t\t\t\t0x00000007:         4096 byte  GTT CPU_ACCESS_REQUIRED\n";
+        "\t\t\t\t0x00000007:         4096 byte  GTT CPU_ACCESS_REQUIRED\n");
 
     unsigned pids[] = { 44961, 44961, 47113 };
     const char *names[] = { "Xwayland", "Xwayland", "firefox" };
@@ -154,6 +155,7 @@ static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_a
         ASSERT_EQ(json_array_get_count(json_object_get_array(v, "bos")), counts[i]);
     }
     json_value_free(json_array_get_wrapping_value(out));
+    free(content);
     return TEST_SUCCESS;
 }
 
