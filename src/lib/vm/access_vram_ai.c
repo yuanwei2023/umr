@@ -701,6 +701,8 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				print_base(asic, pde_entry, address, va_mask, pde_fields, 1);
 			memcpy(&pde_array[pde_cnt++], &pde_fields, sizeof pde_fields);
 			if (vmdata) {
+				vmdata->pde_idx[vmdata->levels] = pde_idx;
+				vmdata->pde_va_mask[vmdata->levels] = address & va_mask;
 				vmdata->pde_fields[vmdata->levels] = pde_fields;
 				vmdata->pde[vmdata->levels++] = pde_entry;
 			}
@@ -784,6 +786,8 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 					// capture page walk data if requested
 					if (vmdata) {
+						vmdata->pde_idx[vmdata->levels] = pde_idx;
+						vmdata->pde_va_mask[vmdata->levels] = address & va_mask;
 						vmdata->pde[vmdata->levels] = pde_entry;
 						vmdata->pde_fields[vmdata->levels++] = pde_fields;
 					}
@@ -978,6 +982,9 @@ pde_is_pte:
 
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
 			if (vmdata) {
+				vmdata->pte_idx = pte_idx;
+				vmdata->pte_va_mask = address & va_mask;
+				vmdata->pte_offset = address & offset_mask;
 				vmdata->pte = pte_entry;
 				vmdata->pte_fields = pte_fields;
 			}
@@ -985,15 +992,15 @@ pde_is_pte:
 			// page_table_depth == 0 which is also typically only reserved for VMID0
 			// in AI+ the BASE_ADDR is treated like a PDE entry...
 			// decode PDE values
-			if (vmdata) {
-				vmdata->pde_fields[vmdata->levels] = umr_decode_pde_entry(asic, pde_entry);
-				vmdata->pde[vmdata->levels++] = pde_entry;
-			}
-
 			// decode single PDE0 and figure out the page size
 			pde_fields = umr_decode_pde_entry(asic, pde_entry);
 			pde0_block_fragment_size = pde_fields.frag_size;
 			pte_page_mask = (1ULL << (12 + pde0_block_fragment_size)) - 1;
+
+			if (vmdata) {
+				vmdata->pde_fields[vmdata->levels] = pde_fields;
+				vmdata->pde[vmdata->levels++] = pde_entry;
+			}
 
 			if ((asic->options.no_fold_vm_decode || memcmp(&pde_array[0], &pde_fields, sizeof pde_fields)) && asic->options.verbose)
 				print_base(asic, page_table_base_addr, address, -1, pde_fields, 0);
@@ -1020,6 +1027,9 @@ pde_is_pte:
 			pte_fields = umr_decode_pte_entry(asic, pte_entry);
 
 			if (vmdata) {
+				vmdata->pte_idx = pte_idx;
+				vmdata->pte_va_mask = address & ~((uint64_t)pte_page_mask);
+				vmdata->pte_offset = address & pte_page_mask;
 				vmdata->pte = pte_entry;
 				vmdata->pte_fields = pte_fields;
 			}

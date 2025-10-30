@@ -34,7 +34,14 @@ struct umr_vm_pagewalk {
 		sys_or_vram;
 	uint32_t vmid;
 	uint64_t va, phys;
-	uint64_t pde[8], pte;
+	uint64_t
+			pde_idx[8],       // the selector into the various PDB levels
+			pde_va_mask[8],   // the masked portion of the VA of this level of PDE travel
+			pde[8],           // the 64-bit PDE value itself
+			pte,              // the 64-bit PTE value
+			pte_va_mask,      // the masked portion of the PTE travel
+			pte_idx,          // the selector into the PTB
+			pte_offset;       // the offset into the page that was walked to.
 	pde_fields_t pde_fields[8];
 	pte_fields_t pte_fields;
 };
