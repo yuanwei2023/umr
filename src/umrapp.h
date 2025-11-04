@@ -32,9 +32,6 @@ extern const char *libumrcore_rev;
 /* scan functions */
 int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *regname);
 
-/* print functions */
-void umr_print_asic(struct umr_asic *asic, char *ipname);
-
 /* set register */
 int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue);
 int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue);

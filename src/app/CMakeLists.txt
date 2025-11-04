@@ -31,7 +31,6 @@ add_library(umrapp
   list_uqs.c
   print_uq.c
   scriptware.c
-  print.c
   print_config.c
   profile.c
   scan.c
