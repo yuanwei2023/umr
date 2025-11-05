@@ -41,7 +41,9 @@ struct umr_vm_pagewalk {
 			pte,              // the 64-bit PTE value
 			pte_va_mask,      // the masked portion of the PTE travel
 			pte_idx,          // the selector into the PTB
-			pte_offset;       // the offset into the page that was walked to.
+			pte_offset,       // the offset into the page that was walked to.
+			pte_start_addr,   // the start address of the decoded page
+			pte_page_mask;    // The mask that computes the page offset (size of the page - 1)
 	pde_fields_t pde_fields[8];
 	pte_fields_t pte_fields;
 };

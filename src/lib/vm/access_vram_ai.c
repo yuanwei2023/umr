@@ -987,6 +987,8 @@ pde_is_pte:
 				vmdata->pte_offset = address & offset_mask;
 				vmdata->pte = pte_entry;
 				vmdata->pte_fields = pte_fields;
+				vmdata->pte_page_mask = offset_mask;
+				vmdata->pte_start_addr = start_addr;
 			}
 		} else {
 			// page_table_depth == 0 which is also typically only reserved for VMID0
@@ -1026,14 +1028,6 @@ pde_is_pte:
 
 			pte_fields = umr_decode_pte_entry(asic, pte_entry);
 
-			if (vmdata) {
-				vmdata->pte_idx = pte_idx;
-				vmdata->pte_va_mask = address & ~((uint64_t)pte_page_mask);
-				vmdata->pte_offset = address & pte_page_mask;
-				vmdata->pte = pte_entry;
-				vmdata->pte_fields = pte_fields;
-			}
-
 			if (asic->options.verbose)
 				print_pte(asic, NULL, 0, 0, pde_fields.pte_base_addr, pte_idx, pte_entry, address,
 						~((uint64_t)pte_page_mask), pte_fields, 0);
@@ -1044,6 +1038,15 @@ pde_is_pte:
 			// compute starting address
 			offset_mask = pte_page_mask;
 			start_addr = asic->mem_funcs.gpu_bus_to_cpu_address(asic, pte_fields.page_base_addr) + (address & offset_mask);
+			if (vmdata) {
+				vmdata->pte_idx = pte_idx;
+				vmdata->pte_va_mask = address & ~((uint64_t)pte_page_mask);
+				vmdata->pte_offset = address & pte_page_mask;
+				vmdata->pte = pte_entry;
+				vmdata->pte_fields = pte_fields;
+				vmdata->pte_start_addr = start_addr;
+				vmdata->pte_page_mask = pte_page_mask;
+			}
 		}
 
 next_page:
