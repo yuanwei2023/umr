@@ -3029,7 +3029,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream_opcodes(struct umr_asic *asic, st
 
 	n = 0;
 	while (os) {
-		n += os->nwords;
+		n += os->nwords + 1; // +1 for the header
 		os = os->next;
 	}
 
