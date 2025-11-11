@@ -501,7 +501,7 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
             asic->options.user_queue.client_info.queue[x].hqd_base_addr =
                 (((uint64_t)mqdwords[2] << 32) | mqdwords[1]) << 8; // sdmax_rlcx_rb_base
             asic->options.user_queue.client_info.queue[x].hqd_rptr_addr =
-                (((uint64_t)mqdwords[7] << 32) | mqdwords[8]); // sdmax_rlcx_rb_rptr_addr_lo
+                (((uint64_t)mqdwords[8] << 32) | mqdwords[7]); // sdmax_rlcx_rb_rptr_addr_lo
             asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr =
                 (((uint64_t)mqdwords[25] << 32) | mqdwords[24]); // sdmax_rlcx_rb_wptr_poll_addr_lo
 
