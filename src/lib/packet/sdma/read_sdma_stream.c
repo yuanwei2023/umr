@@ -111,6 +111,8 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 			break;
 		case 4: // INDIRECT
 			ps->ib.vmid = (ps->header_dw >> 16) & 0xF;
+			if (!ps->ib.vmid)
+				ps->ib.vmid = from_vmid;
 			ps->ib.addr = ((uint64_t)stream[1] << 32) | stream[0];
 			ps->ib.size = stream[2];
 			if (asic->family == FAMILY_AI) {
@@ -138,6 +140,12 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 					break;
 				case 1: // FENCE CONDITIONAL INTERRUPT
 					ps->nwords = 7;
+					break;
+				case 3: // PROTECTED FENCE
+					ps->nwords = 0;
+					break;
+				default:
+					asic->err_msg("[BUG]: Unsupported FENCE sub_opcode: %d\n", ps->sub_opcode);
 					break;
 			}
 			break;
@@ -284,6 +292,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 
 		// error decoding the packet because nwords was not changed
 		if (ps->nwords == 0xFFFFFFFFUL) {
+			asic->err_msg("[ERROR]: Packet failed to size correctly.\n");
 			ps->nwords = 0;
 			umr_free_sdma_stream(ops);
 			return NULL;

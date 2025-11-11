@@ -654,8 +654,9 @@ static void decode_upto_vi(struct umr_asic *asic, struct umr_stream_decode_ui *u
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "IB_BASE_SIZE", fetch_word(asic, stream, 2), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "IB_CSA_ADDR_LO", fetch_word(asic, stream, 3), NULL, 16, 32);
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "IB_CSA_ADDR_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
-			if (follow && stream->next_ib)
+			if (follow && stream->next_ib) {
 				umr_sdma_decode_stream_opcodes(asic, ui, stream->next_ib, stream->ib.addr, stream->ib.vmid, stream->next_ib->from.addr, stream->next_ib->from.vmid, ~0UL, 1);
+			}
 			return;
 		case 5: // FENCE
 			ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "FENCE", stream->header_dw, stream->words);
@@ -2085,6 +2086,9 @@ static void decode_upto_nv(struct umr_asic *asic, struct umr_stream_decode_ui *u
 					ui->add_field(ui, ib_addr + 24, ib_vmid, "FENCE_REF_ADDR_HI", fetch_word(asic, stream, 5), NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 28, ib_vmid, "FENCE_INT_CONTEXT", fetch_word(asic, stream, 6), NULL, 16, 32);
 					return;
+				case 3: // PROTECTED FENCE
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "PROTECTED FENCE", stream->header_dw, stream->words);
+					return;
 			}
 			return;
 		case 6: // TRAP
@@ -2644,6 +2648,9 @@ static void decode_upto_oss7(struct umr_asic *asic, struct umr_stream_decode_ui 
 					ui->add_field(ui, ib_addr + 20, ib_vmid, "FENCE_REF_ADDR_LO", stream->words[4], NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 24, ib_vmid, "FENCE_REF_ADDR_HI", stream->words[5], NULL, 16, 32);
 					ui->add_field(ui, ib_addr + 28, ib_vmid, "INTERRUPT_CONTEXT", stream->words[6], NULL, 16, 32);
+					return;
+				case 3: // PROTECTED FENCE
+					ui->start_opcode(ui, ib_addr, ib_vmid, 0, stream->opcode, stream->sub_opcode, stream->nwords + 1, "PROTECTED FENCE", stream->header_dw, stream->words);
 					return;
 				default:
 					if (ui->unhandled_subop)
