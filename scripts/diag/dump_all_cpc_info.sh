@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 #figure out where scripts are installed and source functions
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,22 @@ fi
 where=`pwd`
 
 # build a local copy of umr
-apt install build-essential libpciaccess-dev libncurses-dev cmake git -y
+install_deps() {
+        # Cross-distro dependency installation for building UMR
+        if command -v apt-get >/dev/null 2>&1; then
+                apt-get update -y
+                apt-get install -y build-essential libpciaccess-dev libncurses-dev cmake git
+        elif command -v dnf >/dev/null 2>&1; then
+                dnf install -y gcc gcc-c++ make libpciaccess-devel ncurses-devel cmake git
+        elif command -v yum >/dev/null 2>&1; then
+                yum install -y gcc gcc-c++ make libpciaccess-devel ncurses-devel cmake git
+        elif command -v zypper >/dev/null 2>&1; then
+                zypper --non-interactive install -y gcc gcc-c++ make libpciaccess-devel ncurses-devel cmake git
+        fi
+}
+
+# Install build dependencies
+install_deps
 cd ${dir}/../../
 git clean -dxf
 cmake -DUMR_NO_GUI=on -DUMR_NO_DRM=ON -DUMR_NO_LLVM=ON -DUMR_NO_SERVER=ON .
