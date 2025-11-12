@@ -158,5 +158,10 @@ void umr_print_cpc(struct umr_asic *asic)
 			}
 		}
 	}
+	printf("SCRATCH MEM:\n");
+	umr_write_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmCP_CPC_SCRATCH_INDEX", 0);
+	for (uint32_t i = 0; i < 1024; i++)
+		printf("0x%03x: 0x%08x\n", i, read_banked_reg(asic, "mmCP_CPC_SCRATCH_DATA"));
+
 	asic->options = opts;
 }
