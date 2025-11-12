@@ -91,6 +91,17 @@ void umr_print_cpc(struct umr_asic *asic)
 		for (uint32_t pipe = 0; pipe < (me == 1 ? pipes_per_mec : 2); ++pipe) {
 			asic->options.bank.srbm.pipe = pipe;
 
+			uint32_t iptr = read_banked_reg(asic, (me == 3) ? iptr_name_mes :
+									(rs64_en ? iptr_name_mec_rs64 : iptr_name_mec_f32));
+			if (asic->family < FAMILY_AI) {
+				uint32_t istat = read_banked_reg(asic, istat_name);
+				printf("ME %u Pipe %u: INSTR_PTR 0x%x  INT_STAT_DEBUG 0x%x\n", me, pipe, iptr, istat);
+			} else if (rs64_en) {
+				printf("ME %u Pipe %u: INSTR_PTR 0x%x (ASM 0x%x)\n", me, pipe, iptr, iptr << 2);
+			} else {
+				printf("ME %u Pipe %u: INSTR_PTR 0x%x\n", me, pipe, iptr);
+			}
+
 			for (uint32_t queue = 0; queue < (me == 3 ? 1 : queues_per_pipe); ++queue) {
 				asic->options.bank.srbm.me = me;
 				asic->options.bank.srbm.pipe = pipe;
@@ -144,17 +155,6 @@ void umr_print_cpc(struct umr_asic *asic)
 					printf("  SAVE BASE 0x%" PRIx64 "  SIZE 0x%x  STACK OFFSET 0x%x  SIZE 0x%x\n\n",
 					save_base, save_size, stack_off, stack_size);
 				}
-			}
-
-			uint32_t iptr = read_banked_reg(asic, (me == 3) ? iptr_name_mes :
-									(rs64_en ? iptr_name_mec_rs64 : iptr_name_mec_f32));
-			if (asic->family < FAMILY_AI) {
-				uint32_t istat = read_banked_reg(asic, istat_name);
-				printf("ME %u Pipe %u: INSTR_PTR 0x%x  INT_STAT_DEBUG 0x%x\n", me, pipe, iptr, istat);
-			} else if (rs64_en) {
-				printf("ME %u Pipe %u: INSTR_PTR 0x%x (ASM 0x%x)\n", me, pipe, iptr, iptr << 2);
-			} else {
-				printf("ME %u Pipe %u: INSTR_PTR 0x%x\n", me, pipe, iptr);
 			}
 		}
 	}
