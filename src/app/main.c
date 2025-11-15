@@ -536,25 +536,28 @@ int main(int argc, char **argv)
 	FILE *f;
 	struct rumr_client_state client_st;
 	char *argflags;
-#if UMR_GUI
-	int running_as_gui = 0;
-	char *guiurl = NULL;
 
 	check_lockdown();
 
-	if (strstr(argv[0], "umrgui")) {
-		if (argc >= 2)
-			guiurl = argv[1];
-		running_as_gui = 1;
-	} else if (argc >= 2 && strcmp(argv[1], "--gui") == 0) {
-		if (argc >= 3)
-			guiurl = argv[2];
-		running_as_gui = 1;
-	}
+#if UMR_GUI
+	{
+		int running_as_gui = 0;
+		char *guiurl = NULL;
 
-	if (running_as_gui) {
-		umr_run_gui(guiurl);
-		exit(EXIT_SUCCESS);
+		if (strstr(argv[0], "umrgui")) {
+			if (argc >= 2)
+				guiurl = argv[1];
+			running_as_gui = 1;
+		} else if (argc >= 2 && strcmp(argv[1], "--gui") == 0) {
+			if (argc >= 3)
+				guiurl = argv[2];
+			running_as_gui = 1;
+		}
+
+		if (running_as_gui) {
+			umr_run_gui(guiurl);
+			exit(EXIT_SUCCESS);
+		}
 	}
 #endif
 
