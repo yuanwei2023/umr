@@ -79,7 +79,6 @@
 #define VM_PDB_ENTRY_MASK           511     /* Mask for PDB entry selection (512 - 1) */
 #define VM_PTB_ENTRY_SIZE           8       /* Size of each PTE/PDE entry in bytes (both are 8 bytes) */
 #define VM_2MB_BLOCK_BITS           21      /* 2 MiB coverage (2^21) */
-#define VM_1GIB_BYTES               (1024ULL * 1024 * 1024)  /* Starting size for round_up_pot */
 
 /* VM Address Field Shifts */
 #define VM_PAGE_TABLE_ADDR_LO32_SHIFT  12   /* Shift for low 32-bit page table address register */
@@ -113,6 +112,8 @@ struct umr_vm_ai_state {
 	struct umr_asic *asic;				/* The ASIC model this decoding is attached to */
 	struct umr_vm_pagewalk *vmdata;		/* Optional captured data passed back to the caller (can be NULL) */
 	struct umr_ip_block *ip;			/* The 'gfx' IP block used to determine the IP revision repeatedly in the decoding */
+	int partition;
+	uint64_t va_tally;					/* The tally of VA bits used so far in the translation */
 
 	/* Main parameters of the page table */
 	struct {
@@ -212,7 +213,7 @@ struct umr_vm_ai_state {
  */
 static uint64_t round_up_pot(uint64_t x)
 {
-	uint64_t y = VM_1GIB_BYTES; /* start at 1GiB */
+	uint64_t y = 1;
 	while (y < x) {
 		y <<= 1;
 	}
@@ -320,28 +321,19 @@ static void print_pde_fields(struct umr_vm_ai_state *vm, pde_fields_t pde_fields
 }
 
 /**
- * @brief Print the base PDE or root page table entry
+ * @brief Print the base root page table entry
  *
  * @param vm Pointer to the VM state structure
  * @param address The virtual address being decoded
  * @param va_mask The mask applied to the virtual address for this level
- * @param is_base_not_pde Flag indicating if this is the BASE register (1) or a PDE (0)
  *
- * @details This function prints the root-level page directory entry, which comes from either
- *          the PAGE_TABLE_BASE_ADDR registers (when is_base_not_pde is 1) or from a PDE entry
- *          (when is_base_not_pde is 0). It outputs the entry value, masked virtual address,
- *          and decoded PDE fields.
  */
-static void print_base(struct umr_vm_ai_state *vm, uint64_t address, uint64_t va_mask, int is_base_not_pde)
+static void print_base(struct umr_vm_ai_state *vm)
 {
-	if (is_base_not_pde) {
-		vm->asic->mem_funcs.vm_message("BASE");
-	} else {
-		vm->asic->mem_funcs.vm_message("PDE");
-	}
+	vm->asic->mem_funcs.vm_message("BASE");
 	vm->asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64,
 			vm->pde.pde_entry,
-			address & va_mask);
+			vm->va_tally + vm->page_table.page_table_start_addr);
 	print_pde_fields(vm, vm->pde.pde_fields);
 }
 
@@ -359,7 +351,7 @@ static void print_base(struct umr_vm_ai_state *vm, uint64_t address, uint64_t va
  *          all decoded PDE fields. The indentation level reflects the depth in the page table
  *          hierarchy.
  */
-static void print_pde(struct umr_vm_ai_state *vm, const char *indentation, uint64_t address, uint64_t va_mask)
+static void print_pde(struct umr_vm_ai_state *vm, const char *indentation)
 {
 	vm->asic->mem_funcs.vm_message("%s ", &indentation[VM_INDENTATION_BASE - (vm->pde.pde_cnt * VM_INDENTATION_PER_LEVEL)]);
 	if (vm->pte.pte_is_pde) {
@@ -367,13 +359,12 @@ static void print_pde(struct umr_vm_ai_state *vm, const char *indentation, uint6
 	} else {
 		vm->asic->mem_funcs.vm_message("PDE%d", vm->page_table.page_table_depth - vm->pde.pde_cnt);
 	}
-
 	vm->asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64
 			"}=0x%016" PRIx64 ", VA=0x%012" PRIx64,
 			vm->pde.addr,
 			vm->pde.pde_idx,
 			vm->pde.pde_entry,
-			address & va_mask);
+			vm->va_tally + vm->page_table.page_table_start_addr);
 	print_pde_fields(vm, vm->pde.pde_fields);
 }
 
@@ -392,7 +383,7 @@ static void print_pde(struct umr_vm_ai_state *vm, const char *indentation, uint6
  *          TMZ, fragment size, PRT, and memory type. The memory type is decoded into human-readable
  *          strings (NC/RW/CC/UC). Output format varies by GPU generation (GFX9/10/11/12).
  */
-static void print_pte(struct umr_vm_ai_state *vm, const char *indentation, uint64_t address, uint64_t va_mask)
+static void print_pte(struct umr_vm_ai_state *vm, const char *indentation)
 {
 	if (indentation == NULL) {
 		vm->asic->mem_funcs.vm_message("\\-> PTE");
@@ -416,7 +407,7 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation, uint6
 					", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
 					", FS=%" PRIu64 ", T=%" PRIu64 ", MTYPE=",
 					vm->pte.pte_entry,
-					address & va_mask,
+					vm->va_tally + vm->page_table.page_table_start_addr,
 					vm->pte.pte_fields.page_base_addr,
 					vm->pte.pte_fields.valid,
 					vm->pte.pte_fields.system,
@@ -436,7 +427,7 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation, uint6
 					", X=%" PRIu64 ", R=%" PRIu64 ", W=%" PRIu64
 					", FS=%" PRIu64 ", T=%" PRIu64 ", G=%" PRIu64 ", MTYPE=",
 					vm->pte.pte_entry,
-					address & va_mask,
+					vm->va_tally + vm->page_table.page_table_start_addr,
 					vm->pte.pte_fields.page_base_addr,
 					vm->pte.pte_fields.valid,
 					vm->pte.pte_fields.system,
@@ -458,7 +449,7 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation, uint6
 					", FS=%" PRIu64 ", T=%" PRIu64 ", SW=%" PRIu64
 					", G=%" PRIu64 ", Y=%" PRIu64 ", MTYPE=",
 					vm->pte.pte_entry,
-					address & va_mask,
+					vm->va_tally + vm->page_table.page_table_start_addr,
 					vm->pte.pte_fields.page_base_addr,
 					vm->pte.pte_fields.valid,
 					vm->pte.pte_fields.system,
@@ -482,7 +473,7 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation, uint6
 					", G=%" PRIu64 ", D=%" PRIu64 ", P=%" PRIu64
 					", MTYPE=",
 					vm->pte.pte_entry,
-					address & va_mask,
+					vm->va_tally + vm->page_table.page_table_start_addr,
 					vm->pte.pte_fields.page_base_addr,
 					vm->pte.pte_fields.valid,
 					vm->pte.pte_fields.system,
@@ -518,6 +509,103 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation, uint6
 					vm->pte.pte_fields.mtype);
 			break;
 	}
+}
+
+/**
+ * @brief Prepares PTE configuration when transitioning from PDE to PTE level
+ *
+ * This function is called when transitioning from processing a PDE (Page Directory Entry)
+ * to the first PTE (Page Table Entry) or PTE-Further level in the page table walk.
+ * It extracts and applies the Fragment Size (FS) field from PDE0, which controls both
+ * the page size covered by each PTE and the address span of the Page Table Block (PTB).
+ *
+ * @param vm Pointer to the VM address translation state structure
+ *
+ * @details
+ * The function computes key PTB parameters based on the Fragment Size:
+ *
+ * - pde0_block_fragment_size: Fragment Size field from PDE0 (log2 of 4 KiB blocks per PTE)
+ *   * FS = 0: Each PTE covers 4 KiB (2^12 bytes)
+ *   * FS = 9: Each PTE covers 2 MiB (2^21 bytes)
+ *
+ * - page_table_block_size: Number of 2 MiB regions covered by a PTB
+ *   * PTBS = 0: PTB covers 2 MiB
+ *   * PTBS = 9: PTB covers 1024 MiB (1 GiB)
+ *
+ * - log2_ptb_entries: Number of PTEs in the PTB = 2^(9 + PTBS - FS)
+ *   * Example: PTBS=0, FS=0: 2^9 = 512 PTEs (covering 2 MiB / 4 KiB pages)
+ *   * Example: PTBS=9, FS=9: 2^9 = 512 PTEs (covering 1 GiB / 2 MiB pages)
+ *
+ * - ptb_mask: Bitmask for extracting PTE index within PTB
+ * - pte_page_mask: Bitmask for extracting page offset within a single PTE's coverage
+ */
+static void prepare_pde_to_pte(struct umr_vm_ai_state *vm)
+{
+	vm->page_table.pde0_block_fragment_size = vm->pde.pde_fields.frag_size;
+
+	vm->pte.log2_ptb_entries = (VM_PDB_ENTRY_BITS + (vm->page_table.page_table_block_size - vm->page_table.pde0_block_fragment_size));
+	vm->pte.ptb_mask = (1ULL << vm->pte.log2_ptb_entries) - 1;
+	vm->pte.pte_page_mask = (1ULL << (vm->page_table.pde0_block_fragment_size + VM_PAGE_SIZE_BITS)) - 1;
+}
+
+/**
+ * @brief Accesses memory at a translated physical address (PDEs, PTEs, or user pages)
+ *
+ * This function reads or writes data at a translated physical address from either
+ * GPU video memory (VRAM) or system memory (SRAM), depending on the system flag.
+ * It handles page table entries (PDEs and PTEs) as well as user page data.
+ * It also handles special cases like Zero Frame Buffer (ZFB) mode where VRAM addresses
+ * may need to be translated to system memory addresses.
+ *
+ * @param vm Pointer to the VM address translation state structure
+ * @param addr Physical address to access (must be appropriately aligned)
+ * @param sys Memory location flag:
+ *            - 0: Data is located in VRAM (video memory)
+ *            - 1: Data is located in system memory
+ * @param name Descriptive name for the data type (e.g., "PDE", "PTE", "user page") used in error messages
+ * @param dst Pointer to buffer where data will be read to or written from
+ * @param len Number of bytes to access
+ * @param write_en Access mode:
+ *                 - 0: Read operation
+ *                 - Non-zero: Write operation
+ *
+ * @return Returns 0 on success, -1 on access failure
+ *
+ * @details
+ * The function performs the following operations:
+ *
+ * - If sys == 0 (VRAM location):
+ *   * Checks if ZFB mode is active and address is in AGP aperture range
+ *   * If in ZFB mode: Translates VRAM address to system memory and accesses SRAM
+ *   * Otherwise: Accesses directly from VRAM using umr_access_vram()
+ *
+ * - If sys == 1 (System memory location):
+ *   * Accesses directly from system memory using access_sram()
+ */
+static int access_translated_address(struct umr_vm_ai_state *vm, uint64_t addr, int sys, char *name, void *dst, uint32_t len, int write_en)
+{
+	if (sys == 0) {
+		if (vm->vmctrl.zfb && (addr >= vm->vmctrl.agp_bot && addr < vm->vmctrl.agp_top)) {
+			/* ZFB mode: translate VRAM address to system memory */
+			addr = (addr - vm->vmctrl.agp_bot) + vm->vmctrl.agp_base;
+			if (vm->asic->mem_funcs.access_sram(vm->asic, addr, len, dst, write_en) < 0) {
+				vm->asic->mem_funcs.vm_message("[ERROR]: Cannot read %s entry at SYSRAM address %" PRIx64, name, addr);
+				return -1;
+			}
+		} else {
+			if (umr_access_vram(vm->asic, vm->partition, UMR_LINEAR_HUB, addr, len, dst, write_en, NULL) < 0) {
+				vm->asic->mem_funcs.vm_message("[ERROR]: Cannot read %s entry at VRAM address %" PRIx64, name, addr);
+				return -1;
+			}
+		}
+	} else {
+		/* System memory: access directly SRAM */
+		if (vm->asic->mem_funcs.access_sram(vm->asic, addr, len, dst, write_en) < 0) {
+			vm->asic->mem_funcs.vm_message("[ERROR]: Cannot read %s entry at SYSRAM address %" PRIx64, name, addr);
+			return -1;
+		}
+	}
+	return 0;
 }
 
 /**
@@ -568,12 +656,14 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	memset(&vm, 0, sizeof vm);
 	vm.asic = asic;
 	vm.vmdata = vmdata;
+	vm.partition = partition;
 	vm.ip = umr_find_ip_block(vm.asic, "gfx", vm.asic->options.vm_partition);
 	if (!vm.ip) {
 		vm.asic->mem_funcs.vm_message("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
 		return -1;
 	}
 
+	// if we are using user queues then save the VA in case we are using rumr
 	if (vm.asic->options.user_queue.state.active) {
 		vm.asic->options.user_queue.state.va = address;
 	}
@@ -668,6 +758,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 	/* initialize local copy of context registers */
 		if (vm.asic->options.user_queue.state.active) {
+			/* If we are bound to a client space (e.g., --user-queue) for a user queue let's copy from that structure */
 			vm.registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = vm.asic->options.user_queue.state.registers.PAGE_TABLE_START_ADDR_LO32;
 			vm.registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32 = vm.asic->options.user_queue.state.registers.PAGE_TABLE_START_ADDR_HI32;
 			vm.registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32 = vm.asic->options.user_queue.state.registers.PAGE_TABLE_END_ADDR_LO32;
@@ -683,6 +774,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				umr_bitslice_compose_value_by_name_by_ip_by_instance(vm.asic, hub, partition, buf, "PAGE_TABLE_DEPTH", vm.page_table.page_table_depth) |
 				umr_bitslice_compose_value_by_name_by_ip_by_instance(vm.asic, hub, partition, buf, "PAGE_TABLE_BLOCK_SIZE", vm.page_table.page_table_block_size);
 		} else {
+			/* we're not bound to a client space so let's read the context registers from MMIO space */
 			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32", regprefix, vmid);
 				vm.registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32 = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
 			sprintf(buf, "mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_HI32", regprefix, vmid);
@@ -737,7 +829,11 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		vm.vmctrl.vm_fb_offset      = (uint64_t)vm.registers.mmMC_VM_FB_OFFSET << VM_FB_OFFSET_SHIFT;
 
 	if (vm.asic->options.verbose) {
-		vm.asic->mem_funcs.vm_message("\n\n=== VM Decoding of address %d@0x%" PRIx64 " ===\n", vmid, address);
+		if (vm.asic->options.user_queue.state.active) {
+			vm.asic->mem_funcs.vm_message("\n\n=== VM Decoding of address 0x%" PRIx64 " from user queue '%s' ===\n", address, vm.asic->options.user_queue.clientid);
+		} else {
+			vm.asic->mem_funcs.vm_message("\n\n=== VM Decoding of address %d@0x%" PRIx64 " ===\n", vmid, address);
+		}
 		vm.asic->mem_funcs.vm_message(
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_LO32=0x%" PRIx32 "\n"
 				"mm%sVM_CONTEXT%" PRIu32 "_PAGE_TABLE_START_ADDR_HI32=0x%" PRIx32 "\n"
@@ -782,18 +878,20 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			);
 	}
 
+	/* in a flat depth==0 tree the PTB is the address span */
+	if (vm.page_table.page_table_depth == 0) {
+		vm.page_table.page_table_block_size = log2_vm_size(vm.page_table.page_table_start_addr, vm.page_table.page_table_end_addr) - VM_2MB_BLOCK_BITS;
+	}
+
 	/*
 	 * the PAGE_TABLE_BASE_ADDR_* registers form the first level
 	 * PDE value.  It is not read from a Page Directory Block (PDB)
 	 */
 	vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.page_table.page_table_base_addr);
-
 	if (!vm.pde.pde_fields.system) {
 		/* transform page_table_base (only if first PDB or the PTB is in VRAM) */
 		vm.page_table.page_table_base_addr -= vm.vmctrl.vm_fb_offset;
 	}
-
-	vm.page_table.pde0_block_fragment_size = 0;
 
 	/*
 	 * if we are using VMID 0 we need to apply any address translations
@@ -852,439 +950,324 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	address -= vm.page_table.page_table_start_addr;
 
 	do { /* for all pages being accessed ... */
+
+		/* reset the VA tally used to incrementally print out how much of the VA was consumed
+		 * at every level of the translation.
+		 */
+		vm.va_tally = 0;
+
 		/* the first PDE is the PAGE_TABLE_BASE_ADDR_* registers */
 		vm.pde.pde_entry = vm.page_table.page_table_base_addr;
 
 		// defaults in case we have to bail out before fully decoding to a PTE
+		memset(&vm.pte, 0, sizeof vm.pte);
 		vm.pde.pde_cnt = 0;
 		vm.pte.ptb_mask = (1ULL << VM_PDB_ENTRY_BITS) - 1;
 		vm.pte.pte_page_mask = (1ULL << VM_PAGE_SIZE_BITS) - 1;
 		vm.pte.further = 0;
 		vm.pde.pde_was_pte = 0;
 
-		if (vm.page_table.page_table_depth >= 1) { // TODO: this is not needed if we move the PTE page mask/etc calculations higher up
-			// if we are using more than 1 level of translation the decoding
-			// is slightly different so we branch here.
+		// decode the first PDE into it's component fields
+		vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pde.pde_entry);
 
-			// decode the first PDE into it's component fields
-			vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pde.pde_entry);
+		// The address of the next PDB/PTB is specified by the
+		// page base address field of PDE's
+		vm.pde.pde_address = vm.pde.pde_fields.pte_base_addr;
 
-			// The address of the next PDB/PTB is specified by the
-			// page base address field of PDE's
-			vm.pde.pde_address = vm.pde.pde_fields.pte_base_addr;
+		/*
+		 * Size of the first PDB depends on the total coverage of the
+		 * page table and the PAGE_TABLE_BLOCK_SIZE.
+		 * Entire table takes ceil(log2(total_vm_size)) bits
+		 * All PDBs except the first one take 9 bits each
+		 * The PTB covers at least 2 MiB (21 bits)
+		 * And PAGE_TABLE_BLOCK_SIZE is log2(num 2MiB ranges PTB covers)
+		 * As such, the formula for the size of the first PDB is:
+		 *                       PDB1, PDB0, etc.      PTB covers at least 2 MiB
+		 *                                        Block size can make it cover more
+		 *   total_vm_bits - (9 * num_middle_pdbs) - (page_table_block_size + 21)
+		 */
+		int total_vm_bits = log2_vm_size(vm.page_table.page_table_start_addr, vm.page_table.page_table_end_addr);
+		int top_pdb_bits = total_vm_bits - (VM_PDB_ENTRY_BITS * ((vm.page_table.page_table_depth?vm.page_table.page_table_depth:1) - 1)) - (vm.page_table.page_table_block_size + VM_2MB_BLOCK_BITS);
+
+		// the VA mask for the top-most PDB
+		va_mask = ((1ULL << top_pdb_bits) - 1) << (total_vm_bits - top_pdb_bits);
+
+		// add this portion of the VA to the tally
+		vm.va_tally |= address & va_mask;
+		if ((vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_fields, &vm.pde.pde_array[vm.pde.pde_cnt], sizeof vm.pde.pde_fields)) && vm.asic->options.verbose) {
+			print_base(&vm);
+		}
+		memcpy(&vm.pde.pde_array[vm.pde.pde_cnt++], &vm.pde.pde_fields, sizeof vm.pde.pde_fields);
+		if (vm.vmdata) {
+			vm.vmdata->pde_idx[vm.vmdata->levels] = vm.pde.pde_idx;
+			vm.vmdata->pde_va_mask[vm.vmdata->levels] = vm.va_tally + vm.page_table.page_table_start_addr;
+			vm.vmdata->pde_fields[vm.vmdata->levels] = vm.pde.pde_fields;
+			vm.vmdata->pde[vm.vmdata->levels++] = vm.pde.pde_entry;
+		}
+
+		current_depth = vm.page_table.page_table_depth;
+		/* Walk every default level of the translation
+		 * For flat tables this while loop is skipped.
+		 */
+		while (current_depth) {
+			/*
+			 * Every middle PDB has 512 entries, so shift a further 9 bits
+			 * for every layer beyond the first one.
+			 */
+			int amount_to_shift = (total_vm_bits - top_pdb_bits) - ((vm.page_table.page_table_depth - current_depth)*VM_PDB_ENTRY_BITS);
+			vm.pde.pde_idx = address >> amount_to_shift;
 
 			/*
-			 * Size of the first PDB depends on the total coverage of the
-			 * page table and the PAGE_TABLE_BLOCK_SIZE.
-			 * Entire table takes ceil(log2(total_vm_size)) bits
-			 * All PDBs except the first one take 9 bits each
-			 * The PTB covers at least 2 MiB (21 bits)
-			 * And PAGE_TABLE_BLOCK_SIZE is log2(num 2MiB ranges PTB covers)
-			 * As such, the formula for the size of the first PDB is:
-			 *                       PDB1, PDB0, etc.      PTB covers at least 2 MiB
-			 *                                        Block size can make it cover more
-			 *   total_vm_bits - (9 * num_middle_pdbs) - (page_table_block_size + 21)
+			 * Middle layers need the upper bits masked out after the right-shift.
+			 * For the top-most layer, the va_mask is set above the while loop,
+			 * so we can skip re-setting it here.
 			 */
-			int total_vm_bits = log2_vm_size(vm.page_table.page_table_start_addr, vm.page_table.page_table_end_addr);
-			int top_pdb_bits = total_vm_bits - (VM_PDB_ENTRY_BITS * (vm.page_table.page_table_depth - 1)) - (vm.page_table.page_table_block_size + VM_2MB_BLOCK_BITS);
-
-			va_mask = (1ULL << top_pdb_bits) - 1;
-			va_mask <<= (total_vm_bits - top_pdb_bits);
-
-			if ((vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_fields, &vm.pde.pde_array[vm.pde.pde_cnt], sizeof vm.pde.pde_fields)) && vm.asic->options.verbose) {
-				print_base(&vm, address, va_mask, 1);
-			}
-			memcpy(&vm.pde.pde_array[vm.pde.pde_cnt++], &vm.pde.pde_fields, sizeof vm.pde.pde_fields);
-			if (vm.vmdata) {
-				vm.vmdata->pde_idx[vm.vmdata->levels] = vm.pde.pde_idx;
-				vm.vmdata->pde_va_mask[vm.vmdata->levels] = address & va_mask;
-				vm.vmdata->pde_fields[vm.vmdata->levels] = vm.pde.pde_fields;
-				vm.vmdata->pde[vm.vmdata->levels++] = vm.pde.pde_entry;
+			if (current_depth != vm.page_table.page_table_depth) {
+				vm.pde.pde_idx &= VM_PDB_ENTRY_MASK;
+				va_mask = (uint64_t)VM_PDB_ENTRY_MASK << amount_to_shift;
 			}
 
-			current_depth = vm.page_table.page_table_depth;
-			while (current_depth) {
+			/* read PDE entry from the PDE base address + PDE selector * 8
+			* (Note: VM_PTB_ENTRY_SIZE works for both PTEs and PDEs as both are 8 bytes) */
+			vm.pde.addr = vm.pde.pde_address + vm.pde.pde_idx * VM_PTB_ENTRY_SIZE;
+			if (access_translated_address(&vm, vm.pde.addr, vm.pde.pde_fields.system, "PDE", &vm.pde.pde_entry, VM_PTB_ENTRY_SIZE, 0) < 0) {
+				return -1;
+			}
+			vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pde.pde_entry);			/* if the PDE isn't a PTE then print it out (if needed) */
+			if (!vm.pde.pde_fields.pte) {
+				vm.va_tally |= address & va_mask;
+				if ((vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_fields, &vm.pde.pde_array[vm.pde.pde_cnt], sizeof vm.pde.pde_fields)) && vm.asic->options.verbose) {
+					vm.pte.pte_is_pde = 0;
+					print_pde(&vm, indentation);
+				}
+				memcpy(&vm.pde.pde_array[vm.pde.pde_cnt++], &vm.pde.pde_fields, sizeof vm.pde.pde_fields);
+				/* capture page walk data if requested */
+				if (vm.vmdata) {
+					vm.vmdata->pde_idx[vm.vmdata->levels] = vm.pde.pde_idx;
+					vm.vmdata->pde_va_mask[vm.vmdata->levels] = vm.va_tally  + vm.page_table.page_table_start_addr;
+					vm.vmdata->pde[vm.vmdata->levels] = vm.pde.pde_entry;
+					vm.vmdata->pde_fields[vm.vmdata->levels++] = vm.pde.pde_fields;
+				}
+			} else {
 				/*
-				 * Every middle PDB has 512 entries, so shift a further 9 bits
-				 * for every layer beyond the first one.
-				 */
-				int amount_to_shift = (total_vm_bits - top_pdb_bits);
-				amount_to_shift -= ((vm.page_table.page_table_depth - current_depth)*VM_PDB_ENTRY_BITS);
-				vm.pde.pde_idx = address >> amount_to_shift;
-
-				/*
-				 * Middle layers need the upper bits masked out after the right-shift.
-				 * For the top-most layer, the va_mask is set above the while loop,
-				 * so we can skip re-setting it here.
-				 */
-				if (current_depth != vm.page_table.page_table_depth) {
-					vm.pde.pde_idx &= VM_PDB_ENTRY_MASK;
-					va_mask = (uint64_t)VM_PDB_ENTRY_MASK << amount_to_shift;
-				}
-
-				/* read PDE entry from the PDE base address + PDE selector * 8
-				 * (Note: VM_PTB_ENTRY_SIZE works for both PTEs and PDEs as both are 8 bytes) */
-				vm.pde.addr = vm.pde.pde_address + vm.pde.pde_idx * VM_PTB_ENTRY_SIZE;
-				if (vm.pde.pde_fields.system == 0) {
-					int r;
-
-					// if in ZFB mode translate VRAM addresses as necessary
-					if (vm.vmctrl.zfb && (vm.pde.addr >= vm.vmctrl.agp_bot && vm.pde.addr < vm.vmctrl.agp_top)) {
-						vm.pde.addr = (vm.pde.addr - vm.vmctrl.agp_bot) + vm.vmctrl.agp_base;
-						r = vm.asic->mem_funcs.access_sram(vm.asic, vm.pde.addr, VM_PTB_ENTRY_SIZE, &vm.pde.pde_entry, 0);
-						if (r < 0) {
-							vm.asic->mem_funcs.vm_message("[ERROR]: Could not read PDE from ZFB (SYSTEM RAM)\n");
-							return -1;
-						}
-					} else {
-						if (umr_read_vram(vm.asic, partition, UMR_LINEAR_HUB, vm.pde.addr, VM_PTB_ENTRY_SIZE, &vm.pde.pde_entry) < 0) {
-							vm.asic->mem_funcs.vm_message("[ERROR]: Could not read PDE from VRAM\n");
-							return -1;
-						}
-					}
-				} else {
-					int r;
-					r = vm.asic->mem_funcs.access_sram(vm.asic, vm.pde.addr, VM_PTB_ENTRY_SIZE, &vm.pde.pde_entry, 0);
-					if (r < 0) {
-						vm.asic->mem_funcs.vm_message("[ERROR]: Could not read PDE from SYSTEM RAM: %" PRIx64 "\n", vm.pde.pde_address + vm.pde.pde_idx * VM_PTB_ENTRY_SIZE);
-						return -1;
-					}
-				}
-
-				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pde.pde_entry);
-				if (current_depth == 1) { // TODO: refactor this block to a function, then call it after the while (current_depth) loop and before the goto pde_is_pte statement
-					/*
-					 * if we're at what should be the last PDE level
-					 * then we apply additional rules to the interpretation
-					 * of PDE0
-					 */
-
-					/*
-					 * get the Fragment Size (FS) field which is only
-					 * used at th PDE0 level
-					 */
-					vm.page_table.pde0_block_fragment_size = vm.pde.pde_fields.frag_size;
-
-					/*
-					 * page_table_block_size is the number of 2MiB regions covered by a PTB
-					 * If we set it to 0, then PTB cover 2 MiB
-					 * If it's 9 PTB cover 1024 MiB
-					 * pde0_block_fragment_size tells us how many 4 KiB regions each PTE covers
-					 * If it's 0 PTEs cover 4 KiB
-					 * If it's 9 PTEs cover 2 MiB
-					 * So the number of PTEs in a PTB is 2^(9+ptbs-pbfs)
-					 */
-					vm.pte.log2_ptb_entries = (VM_PDB_ENTRY_BITS + (vm.page_table.page_table_block_size - vm.page_table.pde0_block_fragment_size));
-					vm.pte.ptb_mask = (1ULL << vm.pte.log2_ptb_entries) - 1;
-					vm.pte.pte_page_mask = (1ULL << (vm.page_table.pde0_block_fragment_size + VM_PAGE_SIZE_BITS)) - 1;
-				}
-
-				/* if the PDE isn't a PTE then print it out (if needed) */
-				if (!vm.pde.pde_fields.pte) {
-					if ((vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_fields, &vm.pde.pde_array[vm.pde.pde_cnt], sizeof vm.pde.pde_fields)) && vm.asic->options.verbose) {
-						vm.pte.pte_is_pde = 0;
-						print_pde(&vm, indentation, address, va_mask);
-					}
-					memcpy(&vm.pde.pde_array[vm.pde.pde_cnt++], &vm.pde.pde_fields, sizeof vm.pde.pde_fields);
-					/* capture page walk data if requested */
-					if (vm.vmdata) {
-						vm.vmdata->pde_idx[vm.vmdata->levels] = vm.pde.pde_idx;
-						vm.vmdata->pde_va_mask[vm.vmdata->levels] = address & va_mask;
-						vm.vmdata->pde[vm.vmdata->levels] = vm.pde.pde_entry;
-						vm.vmdata->pde_fields[vm.vmdata->levels++] = vm.pde.pde_fields;
-					}
-				} else {
-					/*
-					* This PDE has the P(te) bit set and should be treated as a PTE
-					* so let's copy it over and jump ship
-					*/
-					vm.pte.pte_entry = vm.pde.pde_entry;
-					vm.pte.pte_idx = 0;
-					vm.pde.pde_was_pte = 1;
-					goto pde_is_pte;
-				}
-
-				/*
-				* if the address is in VRAM then offset it by the
-				* VM_FB_OFFSET value
+				* This PDE has the P(te) bit set and should be treated as a PTE
+				* so let's copy it over and jump ship
 				*/
+				vm.pte.pte_entry = vm.pde.pde_entry;
+				vm.pte.pte_idx = 0;
+				vm.pde.pde_was_pte = 1;
+				/* we're done decoding PDEs let's get ready to decode a PTE */
+				prepare_pde_to_pte(&vm);
+				goto pde_is_pte;
+			}
+
+			/*
+			* if the address is in VRAM then offset it by the
+			* VM_FB_OFFSET value
+			*/
+			if (!vm.pde.pde_fields.system) {
+				vm.pde.pde_fields.pte_base_addr -= vm.vmctrl.vm_fb_offset;
+			}
+
+			if (!vm.pde.pde_fields.valid) {
+				if (pdst)
+					goto invalid_page;
+				/*
+				* jump to next page if in
+				* vm-decode mode
+				*/
+				vm.pte.pte_fields.prt = 0;
+				vm.pte.pte_fields.valid = 0;
+				vm.pte.pte_fields.system = 0;
+				start_addr = address & VM_PAGE_OFFSET_MASK; /* grab page offset so we can advance to next page */
+				goto next_page;
+			}
+
+			/* for the next round the address we're decoding is the phys address in the currently decoded PDE */
+			--current_depth;
+			vm.pde.pde_address = vm.pde.pde_fields.pte_base_addr;
+		} /* while (current_depth) */
+
+		/* At this point we traversed all the default PDE levels and are
+		 * ready to process a PTE or PTE-Further so let's get ready to decode a PTE */
+		prepare_pde_to_pte(&vm);
+
+		/*
+		 * If we fall through to here, we are pointing into PTB, so pull out
+		 * the index and mask.
+		 * At minimum, each PTE is 4 KiB (12 bits)
+		 * PDE0.BFS tells us how many of these 4 KiB page each PTE covers
+		 * So add those bits in.
+		 * We also calculated the PTE mask up above, to know how many PTEs are in this PTB
+		 */
+		vm.pte.pte_idx = (address >> (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size)) & vm.pte.ptb_mask;
+pte_further: // we jump here if a PTE-Further was found (from a PTE-as-PDE) so we need to do 2nd PTE fetch/decode stage
+		/*
+		 * now read PTE entry for this page which is located
+		 * at the pte_base_addr of the last level of PDE decoded
+		 * plus 8 times the PTE selector into the PTB
+		 */
+		vm.pte.addr = vm.pde.pde_fields.pte_base_addr + (vm.pte.pte_idx * VM_PTB_ENTRY_SIZE);
+		if (access_translated_address(&vm, vm.pte.addr, vm.pde.pde_fields.system, "PTE", &vm.pte.pte_entry, VM_PTB_ENTRY_SIZE, 0) < 0) {
+			return -1;
+		}	
+pde_is_pte:  // we jump here if a PDE was marked as a PTE
+		/*
+		 * at this point we have the PTE for this page in
+		 * the struct pte_entry
+		 */
+		vm.pte.pte_fields = umr_decode_pte_entry(vm.asic, vm.pte.pte_entry);
+
+		/*
+		 * How many bits in the address are used to index into the PTB?
+		 * If further is set, that means we jumped back to pde_is_pte,
+		 * and the va_mask was properly set down there.
+		 */
+		if (!vm.pte.further) {
+			/* total_vm_bits are all the bits in the VM space
+			 * We want to ignore the top-most PDB, which uses top_pdb_bits
+			 * We also want to ignore lower PDBs, which use 9 bits each
+			 */
+			int bits_to_use = vm.page_table.page_table_block_size + VM_2MB_BLOCK_BITS;
+
+			/* At a minimum, we want to ignore the bottom 12 bits for a 4 KiB page */
+			int lower_bits_to_ignore = VM_PAGE_SIZE_BITS;
+
+			if (vm.pde.pde_fields.pte) {
+				/*
+				 * We are in here because we're in PDE0 with P bit. So we don't want
+				 * to skip the 9 bits from PDB0.
+				 */
+				bits_to_use += VM_PDB_ENTRY_BITS;
+
+				/*
+				 * If the P bit is set, we are coming from PDE0, thus this entry
+				 * covers the whole page_table_block_size, instead of the PDE0.BFS.
+				 * So we want to ignore those bits in the address.
+				 */
+				lower_bits_to_ignore += vm.page_table.page_table_block_size;
+			} else {
+				/*
+				 * If we are at an actual PTE, then based on PDE0.BFS, we want to ignore
+				 * some of the lowest bits.
+				 * If PDE0.BFS=0, the bottom 12 bits are used to index within the page
+				 * If PDE0.BFS=9, the bottom 21 bits are used to index within the page
+				 * etc.  These are the bits we want to ignore, and we already put 12 in.
+				 */
+				lower_bits_to_ignore += vm.page_table.pde0_block_fragment_size;
+			}
+			va_mask = (1ULL << bits_to_use) - 1;
+			va_mask = va_mask & ~((1ULL << lower_bits_to_ignore) - 1);
+		}
+
+		vm.pte.pte_is_pde = vm.pte.pte_fields.further && vm.pte.pte_fields.valid;
+		vm.pte.pte_block_fragment_size = 0;
+		vm.pte.pte_fields.pte_mask = va_mask;
+
+		if (vm.ip->discoverable.maj >= 12 && !vm.pte.pte_fields.pte && vm.pte.pte_fields.valid) {
+			vm.pte.pte_is_pde = 1;
+		}
+
+		if (vm.asic->options.verbose) {
+			if (vm.pte.pte_is_pde) {
+				vm.pde.addr = vm.pte.addr;
+				vm.pde.pde_idx = vm.pte.pte_idx;
+				vm.pde.pde_entry = vm.pte.pte_entry;
+				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
+				vm.va_tally |= address & va_mask;
+				print_pde(&vm, indentation);
+			} else {
+				vm.va_tally |= address & va_mask;
+				print_pte(&vm, indentation);
+			}
+		}
+
+		if (vm.pte.pte_is_pde) {
+			/*
+			 * If further bit is set, PTE is a PDE, so set pde_fields to PTE
+			 * decoded as a PDE.
+			 */
+			if (vm.ip->discoverable.maj >= 11 && vm.pde.pde_fields.tfs_addr && current_depth == 0 && !vm.pde.pde_was_pte) {
+				/*
+				 * When PDE0 had TFS bit set, real address of PTB for PTE-as-PDE
+				 * to point is PDE0.PBA + PTE-as-PDE.PBA.
+				 */
+				uint64_t tmp_addr = vm.pde.pde_fields.pte_base_addr;
+				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
+				vm.pde.pde_fields.pte_base_addr += tmp_addr;
+			} else {
+				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
 				if (!vm.pde.pde_fields.system) {
 					vm.pde.pde_fields.pte_base_addr -= vm.vmctrl.vm_fb_offset;
 				}
-
-				if (!vm.pde.pde_fields.valid) {
-					if (pdst)
-						goto invalid_page;
-					/*
-					* jump to next page if in
-					* vm-decode mode
-					*/
-					vm.pte.pte_fields.prt = 0;
-					vm.pte.pte_fields.valid = 0;
-					vm.pte.pte_fields.system = 0;
-					start_addr = address & VM_PAGE_OFFSET_MASK; /* grab page offset so we can advance to next page */
-					goto next_page;
-				}
-
-				/* for the next round the address we're decoding is the phys address in the currently decoded PDE */
-				--current_depth;
-				vm.pde.pde_address = vm.pde.pde_fields.pte_base_addr;
-			} /* while (current_depth) */
+			}
 
 			/*
-			 * If we fall through to here, we are pointing into PTB, so pull out
-			 * the index and mask.
-			 * At minimum, each PTE is 4 KiB (12 bits)
-			 * PDE0.BFS tells us how many of these 4 KiB page each PTE covers
-			 * So add those bits in.
-			 * We also calculated the PTE mask up above, to know how many PTEs are in this PTB
+			 * Going to go one more layer deep, so now we need the Further-PTE's
+			 * block_fragment_size. This tells us how many 4K pages each
+			 * last-layer-PTE covers.
 			 */
-			vm.pte.pte_idx = (address >> (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size)) & vm.pte.ptb_mask;
-pte_further:
-			/*
-			 * now read PTE entry for this page which is located
-			 * at the pte_base_addr of the last level of PDE decoded
-			 * plus 8 times the PTE selector into the PTB
-			 */
-			vm.pte.addr = vm.pde.pde_fields.pte_base_addr + (vm.pte.pte_idx * VM_PTB_ENTRY_SIZE);
-			if (vm.pde.pde_fields.system == 0) {
-				/* the PDE says this PTB is located in video memory so read from there */
-				uint64_t pte_addr = vm.pte.addr;
-				int r;
-
-				/* if in ZFB mode translate VRAM addresses as necessary */
-				if (vm.vmctrl.zfb && (pte_addr >= vm.vmctrl.agp_bot && pte_addr < vm.vmctrl.agp_top)) {
-					pte_addr = (pte_addr - vm.vmctrl.agp_bot) + vm.vmctrl.agp_base;
-					r = vm.asic->mem_funcs.access_sram(vm.asic, pte_addr, VM_PTB_ENTRY_SIZE, &vm.pte.pte_entry, 0);
-					if (r < 0) {
-						vm.asic->mem_funcs.vm_message("[ERROR]: Cannot read PTE entry at SYSRAM address %" PRIx64, pte_addr);
-						return -1;
-					}
-				} else {
-					if (umr_read_vram(vm.asic, partition, UMR_LINEAR_HUB, pte_addr, VM_PTB_ENTRY_SIZE, &vm.pte.pte_entry) < 0) {
-						vm.asic->mem_funcs.vm_message("[ERROR]: Cannot read PTE entry at VRAM address %" PRIx64, pte_addr);
-						return -1;
-					}
-				}
-			} else {
-				/* the PDE says this PTB is located in system memory so read from there */
-				int r;
-				r = vm.asic->mem_funcs.access_sram(vm.asic, vm.pte.addr, VM_PTB_ENTRY_SIZE, &vm.pte.pte_entry, 0);
-				if (r < 0)
-					return -1;
-			}
-pde_is_pte:
-			/*
-			 * at this point we have the PTE for this page in
-			 * the struct pte_entry
-			 */
-			vm.pte.pte_fields = umr_decode_pte_entry(vm.asic, vm.pte.pte_entry);
+			vm.pte.pte_block_fragment_size = vm.pde.pde_fields.frag_size;
 
 			/*
-			 * How many bits in the address are used to index into the PTB?
-			 * If further is set, that means we jumped back to pde_is_pte,
-			 * and the va_mask was properly set down there.
+			 * Each entry covers the Further-PTE.block_fragment_size numbers
+			 * of 4K pages so we can potentially ignore some low-order bits.
 			 */
-			if (!vm.pte.further) {
-				/* total_vm_bits are all the bits in the VM space
-				 * We want to ignore the top-most PDB, which uses top_pdb_bits
-				 * We also want to ignore lower PDBs, which use 9 bits each
-				 */
-				int bits_to_use = total_vm_bits - top_pdb_bits - (VM_PDB_ENTRY_BITS * (vm.page_table.page_table_depth - 1));
+			int last_level_ptb_bits = VM_PAGE_SIZE_BITS + vm.pte.pte_block_fragment_size;
+			vm.pte.pte_idx = address >> last_level_ptb_bits;
 
-				/* At a minimum, we want to ignore the bottom 12 bits for a 4 KiB page */
-				int lower_bits_to_ignore = VM_PAGE_SIZE_BITS;
-
-				if (vm.pde.pde_fields.pte) {
-					/*
-					 * We are in here because we're in PDE0 with P bit. So we don't want
-					 * to skip the 9 bits from PDB0.
-					 */
-					bits_to_use += VM_PDB_ENTRY_BITS;
-
-					/*
-					 * If the P bit is set, we are coming from PDE0, thus this entry
-					 * covers the whole page_table_block_size, instead of the PDE0.BFS.
-					 * So we want to ignore those bits in the address.
-					 */
-					lower_bits_to_ignore += vm.page_table.page_table_block_size;
-				} else {
-					/*
-					 * If we are at an actual PTE, then based on PDE0.BFS, we want to ignore
-					 * some of the lowest bits.
-					 * If PDE0.BFS=0, the bottom 12 bits are used to index within the page
-					 * If PDE0.BFS=9, the bottom 21 bits are used to index within the page
-					 * etc.  These are the bits we want to ignore, and we already put 12 in.
-					 */
-					lower_bits_to_ignore += vm.page_table.pde0_block_fragment_size;
-				}
-
-				va_mask = (1 << bits_to_use) - 1;
-				va_mask = va_mask & ~((1 << lower_bits_to_ignore) - 1);
-			}
-
-			vm.pte.pte_is_pde = vm.pte.pte_fields.further && vm.pte.pte_fields.valid;
-			vm.pte.pte_block_fragment_size = 0;
-			vm.pte.pte_fields.pte_mask = va_mask;
-
-			if (vm.ip->discoverable.maj >= 12 && !vm.pte.pte_fields.pte && vm.pte.pte_fields.valid) {
-				vm.pte.pte_is_pde = 1;
-			}
-
-			if (vm.asic->options.verbose) {
-				if (vm.pte.pte_is_pde) {
-					vm.pde.addr = vm.pte.addr;
-					vm.pde.pde_idx = vm.pte.pte_idx;
-					vm.pde.pde_entry = vm.pte.pte_entry;
-					vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
-					print_pde(&vm, indentation, address, va_mask);
-
-				} else {
-					print_pte(&vm, indentation, address, va_mask);
-				}
-			}
-
-			if (vm.pte.pte_is_pde) {
-				/*
-				 * If further bit is set, PTE is a PDE, so set pde_fields to PTE
-				 * decoded as a PDE.
-				 */
-				if (vm.ip->discoverable.maj >= 11 && vm.pde.pde_fields.tfs_addr && current_depth == 0 && !vm.pde.pde_was_pte) {
-					/*
-					 * When PDE0 had TFS bit set, real address of PTB for PTE-as-PDE
-					 * to point is PDE0.PBA + PTE-as-PDE.PBA.
-					 */
-					uint64_t tmp_addr = vm.pde.pde_fields.pte_base_addr;
-					vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
-					vm.pde.pde_fields.pte_base_addr += tmp_addr;
-				} else {
-					vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
-					if (!vm.pde.pde_fields.system) {
-						vm.pde.pde_fields.pte_base_addr -= vm.vmctrl.vm_fb_offset;
-					}
-				}
-
-				/*
-				 * Going to go one more layer deep, so now we need the Further-PTE's
-				 * block_fragment_size. This tells us how many 4K pages each
-				 * last-layer-PTE covers.
-				 */
-				vm.pte.pte_block_fragment_size = vm.pde.pde_fields.frag_size;
-
-				/*
-				 * Each entry covers the Further-PTE.block_fragment_size numbers
-				 * of 4K pages so we can potentially ignore some low-order bits.
-				 */
-				int last_level_ptb_bits = VM_PAGE_SIZE_BITS + vm.pte.pte_block_fragment_size;
-				vm.pte.pte_idx = address >> last_level_ptb_bits;
-
-				/*
-				 * The total size covered by the last-layer-PTB is a function of
-				 * pde0_block_fragment_size, which tells us how many 4K entries the
-				 * PTB covers.
-				 * So number of bits needed to index the entries in the final PTE is:
-				 */
-				uint32_t num_entry_bits = vm.page_table.pde0_block_fragment_size - vm.pte.pte_block_fragment_size;
-				/* Clamp the index to the new last-level PTB's size. */
-				vm.pte.pte_idx &= ((1 << num_entry_bits) - 1);
-
-				uint32_t upper_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size)) - 1;
-				vm.pte.pte_page_mask = (1ULL << last_level_ptb_bits) - 1;
-				va_mask &= (upper_mask & ~vm.pte.pte_page_mask);
-
-				vm.pde.pde_cnt++;
-				vm.pte.further = 1;
-				/* Jump back to translate from PTB pointed to by this PTE-as-PDE. */
-				goto pte_further;
-			}
-
-			if (!vm.pte.pte_fields.system)
-				vm.pte.pte_fields.page_base_addr -= vm.vmctrl.vm_fb_offset;
-
-			if (pdst && !vm.pte.pte_fields.prt && !vm.pte.pte_fields.valid)
-				goto invalid_page;
-
-			/* compute starting address */
-			if (vm.pde.pde_was_pte && current_depth) {
-				/* Each PTB covers 2^page_table_block_size * 2^21 bytes (2MiB). Each non-zero level of PDB has 2^9 PDEs. */
-				offset_mask = (1ULL << ((current_depth - 1) * VM_PDB_ENTRY_BITS + (VM_2MB_BLOCK_BITS + vm.page_table.page_table_block_size))) - 1;
-			} else if (!vm.pte.further) {
-				offset_mask = (1ULL << ((current_depth * VM_PDB_ENTRY_BITS) + (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size))) - 1;
-			} else {
-				offset_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.pte.pte_block_fragment_size)) - 1;
-			}
-
-			start_addr = vm.asic->mem_funcs.gpu_bus_to_cpu_address(vm.asic, vm.pte.pte_fields.page_base_addr) + (address & offset_mask);
-			if (vm.vmdata) {
-				vm.vmdata->pte_idx = vm.pte.pte_idx;
-				vm.vmdata->pte_va_mask = address & va_mask;
-				vm.vmdata->pte_offset = address & offset_mask;
-				vm.vmdata->pte = vm.pte.pte_entry;
-				vm.vmdata->pte_fields = vm.pte.pte_fields;
-				vm.vmdata->pte_page_mask = offset_mask;
-				vm.vmdata->pte_start_addr = start_addr;
-			}
-		} else { /* TODO: drop this code path once we sort out the PTE page mask/size/etc stuff in the above code paths */
 			/*
-			 * page_table_depth == 0 which is also typically only reserved for VMID0
-			 * in AI+ the BASE_ADDR is treated like a PDE entry...
-			 * decode PDE values
-			 * decode single PDE0 and figure out the page size
+			 * The total size covered by the last-layer-PTB is a function of
+			 * pde0_block_fragment_size, which tells us how many 4K entries the
+			 * PTB covers.
+			 * So number of bits needed to index the entries in the final PTE is:
 			 */
-			vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pde.pde_entry);
-			vm.page_table.pde0_block_fragment_size = vm.pde.pde_fields.frag_size;
-			vm.pte.pte_page_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size)) - 1;
+			uint32_t num_entry_bits = vm.page_table.pde0_block_fragment_size - vm.pte.pte_block_fragment_size;
+			/* Clamp the index to the new last-level PTB's size. */
+			vm.pte.pte_idx &= ((1 << num_entry_bits) - 1);
 
-			if (vm.vmdata) {
-				vm.vmdata->pde_fields[vm.vmdata->levels] = vm.pde.pde_fields;
-				vm.vmdata->pde[vm.vmdata->levels++] = vm.pde.pde_entry;
-			}
+			uint32_t upper_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size)) - 1;
+			vm.pte.pte_page_mask = (1ULL << last_level_ptb_bits) - 1;
+			va_mask &= (upper_mask & ~vm.pte.pte_page_mask);
 
-			if ((vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_array[0], &vm.pde.pde_fields, sizeof vm.pde.pde_fields)) && vm.asic->options.verbose) {
-				vm.pde.pde_entry = vm.page_table.page_table_base_addr;
-				print_base(&vm, address, -1, 0);
-			}
-			memcpy(&vm.pde.pde_array[0], &vm.pde.pde_fields, sizeof vm.pde.pde_fields);
-			if (!vm.pde.pde_fields.valid) {
-				return -1;
-			}
+			vm.pde.pde_cnt++;
+			vm.pte.further = 1;
+			/* Jump back to translate from PTB pointed to by this PTE-as-PDE. */
+			goto pte_further;
+		}
 
-			/* PTE addr = baseaddr[47:6] + (logical - start) >> fragsize) */
-			vm.pte.pte_idx = (address >> (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size));
+		// Adjust the page base address if this is not a system page relative to the FB offset
+		if (!vm.pte.pte_fields.system) {
+			vm.pte.pte_fields.page_base_addr -= vm.vmctrl.vm_fb_offset;
+		}
 
-			if (vm.pde.pde_fields.system == 0) {
-				if (umr_read_vram(vm.asic, partition, UMR_LINEAR_HUB, vm.pde.pde_fields.pte_base_addr + vm.pte.pte_idx * VM_PTB_ENTRY_SIZE, VM_PTB_ENTRY_SIZE, &vm.pte.pte_entry) < 0) {
-					vm.asic->err_msg("[ERROR]: Cannot read PTE from VRAM at address 0x%" PRIx64 "\n", vm.pde.pde_fields.pte_base_addr + vm.pte.pte_idx * VM_PTB_ENTRY_SIZE);
-					return -1;
-				}
-			} else {
-				if (vm.asic->mem_funcs.access_sram(vm.asic, vm.pde.pde_fields.pte_base_addr + vm.pte.pte_idx * VM_PTB_ENTRY_SIZE, VM_PTB_ENTRY_SIZE, &vm.pte.pte_entry, 0) < 0) {
-					vm.asic->err_msg("[ERROR]: Cannot read PTE from SYS RAM at address 0x%" PRIx64 "\n", vm.pde.pde_fields.pte_base_addr + vm.pte.pte_idx * VM_PTB_ENTRY_SIZE);
-					return -1;
-				}
-			}
-			vm.pte.pte_fields = umr_decode_pte_entry(vm.asic, vm.pte.pte_entry);
+		// if the page is not marked valid and not a partially resident texture page then treat it
+		// as invalid
+		if (pdst && !vm.pte.pte_fields.prt && !vm.pte.pte_fields.valid) {
+			goto invalid_page;
+		}
 
-			if (vm.asic->options.verbose) {
-				vm.pte.addr = vm.pde.pde_fields.pte_base_addr;
-				vm.pde.pde_was_pte = 0;
-				print_pte(&vm, NULL, address, ~((uint64_t)vm.pte.pte_page_mask));
-			}
+		/* compute starting address */
+		if (vm.pde.pde_was_pte && current_depth) {
+			/* Each PTB covers 2^page_table_block_size * 2^21 bytes (2MiB). Each non-zero level of PDB has 2^9 PDEs. 
+			 * We can end up here if a PDE has the PTE bit set and we bailed early in the page table walk
+			 */
+			offset_mask = (1ULL << ((current_depth - 1) * VM_PDB_ENTRY_BITS + (VM_2MB_BLOCK_BITS + vm.page_table.page_table_block_size))) - 1;
+		} else if (!vm.pte.further) {
+			offset_mask = (1ULL << ((current_depth * VM_PDB_ENTRY_BITS) + (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size))) - 1;
+		} else {
+			offset_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.pte.pte_block_fragment_size)) - 1;
+		}
 
-			if (pdst && !vm.pte.pte_fields.valid) {
-				goto invalid_page;			/* compute starting address */
-			}
-			offset_mask = vm.pte.pte_page_mask;
-			start_addr = vm.asic->mem_funcs.gpu_bus_to_cpu_address(vm.asic, vm.pte.pte_fields.page_base_addr) + (address & offset_mask);
-			if (vm.vmdata) {
-				vm.vmdata->pte_idx = vm.pte.pte_idx;
-				vm.vmdata->pte_va_mask = address & ~((uint64_t)vm.pte.pte_page_mask);
-				vm.vmdata->pte_offset = address & vm.pte.pte_page_mask;
-				vm.vmdata->pte = vm.pte.pte_entry;
-				vm.vmdata->pte_fields = vm.pte.pte_fields;
-				vm.vmdata->pte_start_addr = start_addr;
-				vm.vmdata->pte_page_mask = vm.pte.pte_page_mask;
-			}
+		start_addr = vm.asic->mem_funcs.gpu_bus_to_cpu_address(vm.asic, vm.pte.pte_fields.page_base_addr) + (address & offset_mask);
+		if (vm.vmdata) {
+			vm.vmdata->pte_idx = vm.pte.pte_idx;
+			vm.vmdata->pte_va_mask = vm.va_tally + vm.page_table.page_table_start_addr;
+			vm.vmdata->pte_offset = address & offset_mask;
+			vm.vmdata->pte = vm.pte.pte_entry;
+			vm.vmdata->pte_fields = vm.pte.pte_fields;
+			vm.vmdata->pte_page_mask = offset_mask;
+			vm.vmdata->pte_start_addr = start_addr;
 		}
 
 next_page:
@@ -1330,32 +1313,8 @@ next_page:
 		/* allow destination to be NULL to simply use decoder */
 		if (vm.pte.pte_fields.valid) {
 			if (pdst) {
-				if (vm.pte.pte_fields.system) {
-					/* The PTE points to a page in system memory */
-					int r;
-					r = vm.asic->mem_funcs.access_sram(vm.asic, start_addr, chunk_size, pdst, write_en);
-					if (r < 0) {
-						fprintf(stderr, "[ERROR]: Cannot access system ram at address: 0x%"PRIx64"\n", start_addr);
-						return -1;
-					}
-				} else {
-					/* The PTE points to a page in video memory */
-					uint64_t new_addr = start_addr;
-					int r;
-					/* if in zfb mode apply vram/agp offset as necessary */
-					if (vm.vmctrl.zfb && (new_addr >= vm.vmctrl.agp_bot && new_addr < vm.vmctrl.agp_top)) {
-						new_addr = (new_addr - vm.vmctrl.agp_bot) + vm.vmctrl.agp_base;
-						r = vm.asic->mem_funcs.access_sram(vm.asic, new_addr, chunk_size, pdst, write_en);
-						if (r < 0) {
-							fprintf(stderr, "[ERROR]: Cannot access system ram at address: 0x%"PRIx64"\n", start_addr);
-							return -1;
-						}
-					} else {
-						if (umr_access_vram(vm.asic, partition, UMR_LINEAR_HUB, new_addr, chunk_size, pdst, write_en, NULL) < 0) {
-							fprintf(stderr, "[ERROR]: Cannot access VRAM\n");
-							return -1;
-						}
-					}
+				if (access_translated_address(&vm, start_addr, vm.pte.pte_fields.system, "user page", pdst, chunk_size, write_en) < 0) {
+					return -1;
 				}
 				pdst += chunk_size;
 			}

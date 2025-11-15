@@ -48,9 +48,11 @@ of page tables.
 Based on the architecture various VM related registers will be
 printed out which instruct the user how the GPU has been programmed.
 
-The VA field indicates the portion of the address that is involved at
-that level of the decoding.  The PBA field indicates the 'page base
-address' which may point to a PDB, PTB, or page of memory.
+On AI+ ASICs the VA field indicates the portion of the input virtual address that is involved upto
+that level of the decoding (including previous levels).  Whereas, on prior generations
+the VA field indicates just the part of the address being translated at each level.
+
+The PBA field indicates the 'page base address' which may point to a PDB, PTB, or page of memory.
 
 The PDE entries have multiple bits that are decoded as follow:
 
@@ -74,43 +76,46 @@ For AI+ platforms a VMID > 0 decode might resemble something like:
 
 ::
 
-	=== VM Decoding of address 4@0x800000040400 ===
-	mmVM_CONTEXT4_PAGE_TABLE_START_ADDR_LO32=0x0
-	mmVM_CONTEXT4_PAGE_TABLE_START_ADDR_HI32=0x0
-	mmVM_CONTEXT4_PAGE_TABLE_BASE_ADDR_LO32=0xbfb6a001
-	mmVM_CONTEXT4_PAGE_TABLE_BASE_ADDR_HI32=0x0
-	mmVM_CONTEXT4_CNTL=0x7ffe87
-	VMID4.page_table_block_size=0
-	VMID4.page_table_depth=3
+	$ umr --user-queue queue=0,client=8 -vm 0@0x7bd82ccb1000 1
+
+	=== VM Decoding of address 0@0x7bd82ccb1000 ===
+	mmGCVM_CONTEXT0_PAGE_TABLE_START_ADDR_LO32=0x0
+	mmGCVM_CONTEXT0_PAGE_TABLE_START_ADDR_HI32=0x0
+	mmGCVM_CONTEXT0_PAGE_TABLE_END_ADDR_LO32=0xffffffff
+	mmGCVM_CONTEXT0_PAGE_TABLE_END_ADDR_HI32=0xf
+	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_LO32=0xdaae6001
+	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_HI32=0x3
+	mmGCVM_CONTEXT0_CNTL=0x6
+	VMID0.page_table_block_size=0
+	VMID0.page_table_depth=3
 	mmVGA_MEMORY_BASE_ADDRESS=0x0
-	mmVGA_MEMORY_BASE_ADDRESS_HIGH=0xf4
-	mmMC_VM_FB_OFFSET=0x40
-	mmMC_VM_MX_L1_TLB_CNTL=0x0
-	mmMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x0
-	mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x0
-	mmMC_VM_FB_LOCATION_BASE=0xf400
-	mmMC_VM_FB_LOCATION_TOP=0xf47f
-	mmMC_VM_AGP_BASE=0x0
-	mmMC_VM_AGP_BOT=0x0
-	mmMC_VM_AGP_TOP=0x0
-	BASE=0x000000007fb6a001, VA=0x000000000000, PBA==0x00007fb6a000, V=1, S=0, C=0, P=0
-	   \-> PDE2@{0x7fb6a800/100}=0x00000000bfb69001, VA=0x800000000000, PBA==0x0000bfb69000, V=1, S=0, C=0, P=0, FS=0
-		  \-> PDE1@{0x7fb69000/0}=0x00000000bfb65001, VA=0x000000000000, PBA==0x0000bfb65000, V=1, S=0, C=0, P=0, FS=0
-			 \-> PTE@{0x7fb65000/0}==0x00400001820004f3, VA=0x000000040000, PBA==0x000182000000, V=1, S=1, P=0, FS=9, F=0
-				\-> Computed address we will read from: sys:182040400 (reading: 4 bytes)
+	mmVGA_MEMORY_BASE_ADDRESS_HIGH=0x0
+	mmMC_VM_FB_OFFSET=0x0
+	mmGCMC_VM_MX_L1_TLB_CNTL=0x0
+	mmGCMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x0
+	mmGCMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x0
+	mmGCMC_VM_FB_LOCATION_BASE=0x8000
+	mmGCMC_VM_FB_LOCATION_TOP=0x83fb
+	mmGCMC_VM_AGP_BASE=0x0
+	mmGCMC_VM_AGP_BOT=0x0
+	mmGCMC_VM_AGP_TOP=0x0
+	BASE=0x00000003daae6001, VA=0x7b8000000000, PBA==0x0003daae6000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+	\-> PDE2@{0x3daae67b8/f7}=0x00000003daadd001, VA=0x7b8000000000, PBA==0x0003daadd000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+		\-> PDE1@{0x3daaddb00/160}=0x00000003daadc001, VA=0x7bd800000000, PBA==0x0003daadc000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+			\-> PDE0@{0x3daadcb30/166}=0x00000003daae2001, VA=0x7bd82cc00000, PBA==0x0003daae2000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+				\-> PTE@{0x3daae2588/0xb1}=0x80000003da7bd171, VA=0x7bd82ccb1000, PBA==0x0003da7bd000, V=1, S=0, C=0, Z=0, X=1, R=1, W=1, FS=2, SW=0, T=0, G=0, D=0, P=1, MTYPE=NC
+					\-> Computed address we will read from: vram:3da7bd000 (MCA:3da7bd000), (reading: 4096 bytes from a 4096 byte page)
 
 	=== Completed VM Decoding ===
 
 Where we see the introduction of the PDB/PTB addressing in the form of *@{address/offset}* where the address is the video
 memory address of the PDE or PTE.  The offset is the index (multiply by 8 to get a byte address) from the start of the 
-PDB or PTB to where the entry is found.  In the above example PDE2 was found at video memory 0x7fb6a800 which is the 0x100'th 
-PDE entry in that PDB (PBA=0x7fb6a000 + 0x100 * 8).
+PDB or PTB to where the entry is found.  In the above example PDE2 was found at video memory 0x3daae67b8 which is the 0xf7'th 
+PDE entry in that PDB (PBA=0x0003daae6000 + 0xf7 * 8).
 
-If you are debugging a PTB then more pages can be decoded at once
-by changing the second argument to the --vm-decode command.
+If you are debugging a PTB then more pages can be decoded at once by changing the second argument to the --vm-decode command.
 
-Various ASICs have special memory hubs that can be accessed via the
-VMID field.  In umr, the bits 8:15 of the VMID indicate the hub:
+Various ASICs have special memory hubs that can be accessed via the VMID field.  In umr, the bits 8:15 of the VMID indicate the hub:
 
 +-----------+-------------------------+
 | **Value** | **Memory Hub**          |
@@ -199,13 +204,15 @@ For instance, this kfd client application has an HQD ring buffer read pointer lo
 
 ::
 
-	$ umr --user-queue kfd,comm=test,queue=0 -vm 0@0x7fb2a928a000 1
-	=== VM Decoding of address 0@0x7fb2a928a000 ===
+	$ umr --user-queue queue=0,client=8 -vm 0x0@0x7bd820400000 1
+
+
+	=== VM Decoding of address 0@0x7bd820400000 ===
 	mmGCVM_CONTEXT0_PAGE_TABLE_START_ADDR_LO32=0x0
 	mmGCVM_CONTEXT0_PAGE_TABLE_START_ADDR_HI32=0x0
 	mmGCVM_CONTEXT0_PAGE_TABLE_END_ADDR_LO32=0xffffffff
 	mmGCVM_CONTEXT0_PAGE_TABLE_END_ADDR_HI32=0xf
-	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_LO32=0xdaabd001
+	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_LO32=0xdaae6001
 	mmGCVM_CONTEXT0_PAGE_TABLE_BASE_ADDR_HI32=0x3
 	mmGCVM_CONTEXT0_CNTL=0x6
 	VMID0.page_table_block_size=0
@@ -221,12 +228,12 @@ For instance, this kfd client application has an HQD ring buffer read pointer lo
 	mmGCMC_VM_AGP_BASE=0x0
 	mmGCMC_VM_AGP_BOT=0x0
 	mmGCMC_VM_AGP_TOP=0x0
-	BASE=0x00000003daabd001, VA=0x7f8000000000, PBA==0x0003daabd000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
-	\-> PDE2@{0x3daabd7f8/ff}=0x000000035c103001, VA=0x7f8000000000, PBA==0x00035c103000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
-		\-> PDE1@{0x35c103650/ca}=0x000000035bf03001, VA=0x003280000000, PBA==0x00035bf03000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
-			\-> PDE0@{0x35bf03a48/149}=0x000000035c304001, VA=0x000029200000, PBA==0x00035c304000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
-				\-> PTE@{0x35c304450/0x8a}=0x80c0000151d89067, VA=0x00000008a000, PBA==0x000151d89000, V=1, S=1, C=1, Z=0, X=0, R=1, W=1, FS=0, SW=0, T=0, G=0, D=0, P=1, MTYPE=UC
-				\-> Computed address we will read from: sys:151d89000, (reading: 4096 bytes from a 4096 byte page)
+	BASE=0x00000003daae6001, VA=0x7b8000000000, PBA==0x0003daae6000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+	\-> PDE2@{0x3daae67b8/f7}=0x00000003daadd001, VA=0x7b8000000000, PBA==0x0003daadd000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+		\-> PDE1@{0x3daaddb00/160}=0x00000003daadc001, VA=0x7bd800000000, PBA==0x0003daadc000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+			\-> PDE0@{0x3daadc810/102}=0x00000003da7b9001, VA=0x7bd820400000, PBA==0x0003da7b9000, V=1, S=0, C=0, U=0, A=0, FS=0, P=0
+				\-> PTE@{0x3da7b9000/0x0}=0x80c00001929501f7, VA=0x7bd820400000, PBA==0x000192950000, V=1, S=1, C=1, Z=0, X=1, R=1, W=1, FS=3, SW=0, T=0, G=0, D=0, P=1, MTYPE=UC
+					\-> Computed address we will read from: sys:192950000, (reading: 4096 bytes from a 4096 byte page)
 
 	=== Completed VM Decoding ===
 
@@ -234,5 +241,6 @@ And despite the PTE having the S bit set to 1 (system memory) we can read it (it
 
 ::
 	
-	$ umr --user-queue kfd,comm=test,queue=0 -vr 0@0x7fb2a928a080 8 | xxd -e
-	00000000: 00000001 00000000                     ........
+	$ umr --user-queue queue=0,client=8 -vr 0x0@0x7bd820400080 8 | xxd -e
+	00000000: 00001503 00000000                     ........
+
