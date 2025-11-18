@@ -37,7 +37,7 @@ struct ui_data {
 		uint32_t off;
 		FILE *f;
 	} stack[32];
-	int sp, no;
+	int sp, no, tainted;
 	struct umr_asic *asic;
 };
 
@@ -57,7 +57,8 @@ static void start_ib(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint32_t
 
 	next_level(ui);
 	data->stack[data->sp].ib_addr = ib_addr;
-	fprintf(data->stack[data->sp].f, "Decoding IB at %s0x%"PRIx32"%s@%s0x%"PRIx64"%s from %s0x%"PRIx32"%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)",
+	fprintf(data->stack[data->sp].f, "Decoding %sIB at %s0x%"PRIx32"%s@%s0x%"PRIx64"%s from %s0x%"PRIx32"%s@%s0x%"PRIx64"%s of %s%lu%s words (type %s%d%s)",
+	data->tainted ? "(TAINTED) " : "",
 	BLUE, ib_vmid, RST,
 	YELLOW, ib_addr, RST,
 	BLUE, from_vmid, RST,
@@ -70,17 +71,24 @@ static void start_opcode(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint
 {
 	struct ui_data *data = ui->data;
 	struct umr_asic *asic = data->asic;
+	char opname[256];
 	(void)raw_data;
 	data->stack[data->sp].b_addr = ib_addr + 4;
 	data->stack[data->sp].f_addr = ib_addr - 4;
 	data->stack[data->sp].rawdata = raw_data;
+	if (data->tainted) {
+		sprintf(opname, "%s (TAINTED)", opcode_name);
+	} else {
+		strcpy(opname, opcode_name);
+	}
+
 	if (ui->rt == UMR_RING_SDMA) {
 		fprintf(data->stack[data->sp].f, "\n[%s0x%"PRIx32"%s@%s0x%08"PRIx64"%s + %s0x%04"PRIx64"%s]\t[%s%8s0x%08"PRIx32"%s]\t%sOpcode%s %s0x%"PRIx32"%s/%s0x%"PRIx32"%s [%s%s%s] (%s%"PRIu32"%s words, type: %s%d%s, hdr: %s0x%"PRIx32"%s)",
 			BLUE, ib_vmid, RST,
 			YELLOW, data->stack[data->sp].ib_addr, RST,
 			YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
 			BMAGENTA, "", header, RST,
-			BWHITE, RST, GREEN, opcode, RST, GREEN, subop, RST, GREEN, opcode_name, RST,
+			BWHITE, RST, GREEN, opcode, RST, GREEN, subop, RST, GREEN, opname, RST,
 			BLUE, nwords, RST,
 			BLUE, pkttype, RST,
 			BLUE, header, RST);
@@ -90,7 +98,7 @@ static void start_opcode(struct umr_stream_decode_ui *ui, uint64_t ib_addr, uint
 			YELLOW, data->stack[data->sp].ib_addr, RST,
 			YELLOW, ib_addr - data->stack[data->sp].ib_addr, RST,
 			BMAGENTA, "", header, RST,
-			BWHITE, RST, GREEN, opcode, RST, GREEN, opcode_name, RST,
+			BWHITE, RST, GREEN, opcode, RST, GREEN, opname, RST,
 			BLUE, nwords, RST,
 			BLUE, pkttype, RST,
 			BLUE, header, RST);
@@ -344,11 +352,12 @@ static void unhandled_subop(struct umr_stream_decode_ui *ui, struct umr_asic *as
 	(void)stream_type;
 }
 
-static int taint(struct umr_stream_decode_ui *ui)
+static void taint(struct umr_stream_decode_ui *ui)
 {
-    (void)ui;
-    return 1;
+	struct ui_data *data = ui->data;
+	data->tainted = 1;
 }
+
 
 static void done(struct umr_stream_decode_ui *ui)
 {
