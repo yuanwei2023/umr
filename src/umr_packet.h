@@ -159,6 +159,9 @@ struct umr_stream_decode_ui {
 	 */
 	void (*unhandled_subop)(struct umr_stream_decode_ui *ui, struct umr_asic *asic, uint64_t ib_addr, uint32_t ib_vmid, void *stream, enum umr_ring_type stream_type);
 
+	/** taint -- Signal that current opcode decoding is tainted due to parsing invalid/unknown packet */
+    void (*taint)(struct umr_stream_decode_ui *ui);
+
 	void (*done)(struct umr_stream_decode_ui *ui);
 
 	/** data -- opaque pointer that can be used to track state information */

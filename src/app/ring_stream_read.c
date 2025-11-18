@@ -344,6 +344,12 @@ static void unhandled_subop(struct umr_stream_decode_ui *ui, struct umr_asic *as
 	(void)stream_type;
 }
 
+static int taint(struct umr_stream_decode_ui *ui)
+{
+    (void)ui;
+    return 1;
+}
+
 static void done(struct umr_stream_decode_ui *ui)
 {
 	struct ui_data *data = ui->data;
@@ -352,7 +358,7 @@ static void done(struct umr_stream_decode_ui *ui)
 	--(data->sp);
 }
 
-static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, NULL, start_opcode, add_field, add_shader, add_vcn, add_data, unhandled, unhandled_size, unhandled_subop, done, NULL };
+static struct umr_stream_decode_ui umr_ui = { UMR_RING_UNK, start_ib, NULL, start_opcode, add_field, add_shader, add_vcn, add_data, unhandled, unhandled_size, unhandled_subop, taint, done, NULL };
 
 static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *nwords)
 {

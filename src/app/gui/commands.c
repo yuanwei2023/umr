@@ -3417,6 +3417,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		ui.add_data = ring_add_data;
 		ui.unhandled = ring_unhandled;
 		ui.unhandled_size = NULL;
+		ui.taint = 0;
 		ui.done = ring_done;
 
 		uint32_t *lineardata = calloc(ringsize, sizeof(uint32_t));
