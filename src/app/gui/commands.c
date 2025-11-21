@@ -2547,7 +2547,7 @@ static int get_pid_name(int pid, char process_name[32]) {
 	return 0;
 }
 
-static int get_tgid_for_tid(int tid) {
+static uint32_t get_tgid_for_tid(uint32_t tid) {
 	char path[1024];
 	sprintf(path, "/proc/%d/status", tid);
 	char *content = read_file_a(path);
@@ -2562,10 +2562,8 @@ static int get_tgid_for_tid(int tid) {
 	n += strlen("Tgid:");
 	while (isspace(*n)) n++;
 
-	int tgid = strtol(n, NULL, 10);
+	uint32_t tgid = strtol(n, NULL, 10);
 	free(content);
-	if (tgid < 0)
-		return tid;
 	return tgid;
 }
 
