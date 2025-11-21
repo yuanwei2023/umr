@@ -380,6 +380,23 @@ static void read_size_from_md(struct umr_asic *asic, unsigned *metadata,
 	}
 }
 
+static bool check_bo_metadata(uint32_t gpu_fd, uint32_t bo_handle, struct drm_amdgpu_gem_metadata *metadata)
+{
+	int r;
+	metadata->handle = bo_handle;
+	metadata->op = AMDGPU_GEM_METADATA_OP_GET_METADATA;
+
+	r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_METADATA, metadata, sizeof(*metadata));
+	if (r)
+		return false;
+
+	uint32_t md_version = metadata->data.data[0] & 0xffff;
+	uint32_t md_flags = metadata->data.data[0] >> 16;
+
+	return metadata->data.data_size_bytes &&
+		   md_version > 2 && (md_flags & 1u);
+}
+
 static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
 							       unsigned *bo_handles, unsigned *bo_sizes,
 							       int bo_count, int *res, int *gpu_fds,
@@ -421,11 +438,7 @@ static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
 
 			/* Check metadata. */
 			struct drm_amdgpu_gem_metadata metadata;
-			metadata.handle = bo_handles[j];
-			metadata.op = AMDGPU_GEM_METADATA_OP_GET_METADATA;
-
-			r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_METADATA, &metadata, sizeof(metadata));
-			if (r)
+			if (!check_bo_metadata(gpu_fd, bo_handles[j], &metadata))
 				continue;
 
 			uint32_t md_version = metadata.data.data[0] & 0xffff;
@@ -637,28 +650,14 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 	 */
 	r = drmPrimeHandleToFD(gpu_fd, kms_handle, DRM_CLOEXEC | DRM_RDWR, &dmabuf_fd);
 	if (r) {
+		close(pid_fd);
 		close(gpu_fd);
 		return "Handle to dmabuf fd failed";
 	}
 
 	/* Query metadata. */
 	struct drm_amdgpu_gem_metadata metadata;
-	metadata.handle = kms_handle;
-	metadata.op = AMDGPU_GEM_METADATA_OP_GET_METADATA;
-
-	r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_METADATA, &metadata, sizeof(metadata));
-	if (r) {
-		close(dmabuf_fd);
-		close(gpu_fd);
-		close(pid_fd);
-		return "Failed to GEM metadata";
-	}
-
-	uint32_t md_version = metadata.data.data[0] & 0xffff;
-	uint32_t md_flags = metadata.data.data[0] >> 16;
-	if (!metadata.data.data_size_bytes ||
-		 (md_version <= 1 ||
-		  (md_version > 2 && !(md_flags & 1u)))) {
+	if (!check_bo_metadata(gpu_fd, kms_handle, &metadata)) {
 		close(dmabuf_fd);
 		close(gpu_fd);
 		close(pid_fd);
