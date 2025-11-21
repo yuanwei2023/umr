@@ -1128,9 +1128,78 @@ JSON_Value *compare_fence_infos(const char *fence_info_before, const char *fence
 }
 
 
+static bool parse_fdinfo_entry(const char *content, const char *dev_id, bool limit_to_drm_engines, JSON_Object *out)
+{
+	const char *c = content;
+	const char *start = content;
+
+	/* Filter based on device name (if available). */
+	bool discard = true;
+	const char *dev_id_v = lookup_field(&c, "drm-pdev", ':');
+	if (dev_id_v) {
+		discard = strcmp(dev_id_v, dev_id) != 0;
+	} else {
+		/* Older kernel didn't have this field so filter by "ino" instead. */
+		const char *ino = NULL;
+		if ((ino = lookup_field(&content, "ino", ':'))) {
+			struct stat buf;
+			unsigned ino_n = strtol(ino, NULL, 10);
+			char render_path[PATH_MAX];
+			const char *nodes[] = { "render", "card" };
+			for (size_t i = 0; i < ARRAY_SIZE(nodes) && discard; i++) {
+				sprintf(render_path, "/dev/dri/by-path/pci-%s-%s", dev_id, nodes[i]);
+
+				if (stat(render_path, &buf) == 0 && buf.st_ino == ino_n)
+					discard = false;
+			}
+		}
+	}
+	if (discard)
+		return false;
+
+	const char *ptr = start;
+
+	/* Lookup all drm-* entries */
+	while (ptr && (ptr = strstr(ptr, "drm-"))) {
+		char *cm = strchr(ptr, ':');
+		if (!cm)
+			continue;
+		char *key_name = strndup(ptr, cm - ptr);
+		cm++;
+
+		while (cm && isspace(*cm))
+			cm++;
+		if (!cm) {
+			free(key_name);
+			continue;
+		}
+
+		char *end = strchr(cm, '\n');
+
+		if (limit_to_drm_engines && strstr(key_name, "drm-engine") == NULL && strstr(key_name, "drm-client") == NULL)
+			goto end;
+
+		if (isdigit(*cm)) {
+			uint64_t value = strtol(cm, NULL, 10);
+			if (value)
+				json_object_set_number(out, key_name, value);
+		} else {
+			if (end)
+				json_object_set_string_with_len(out, key_name, cm, end - cm);
+			else
+				json_object_set_string(out, key_name, cm);
+		}
+		end:
+		ptr = end;
+		free(key_name);
+	}
+
+	return true;
+}
+
 static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev_id) {
 	/* Read fdinfo for each client. */
-	char fd_info_path[1024], fd_info[4096];
+	char fd_info_path[1024], fd_info[4096], lbl[64];
 	DIR *dir;
 	struct dirent *entry;
 
@@ -1145,89 +1214,27 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 	while ((entry = readdir(dir))) {
 		sprintf(fd_info, "%s/%s", fd_info_path, entry->d_name);
 
+		JSON_Value *fdinfo = json_value_init_object();
 		int64_t n = time_ns();
-		const char *orig_content = read_file(fd_info);
-		const char *c = orig_content;
 
-		if ((c = strstr(c, "drm-driver:\tamdgpu")) == NULL)
-			continue;
-
-		char *client_id = (char*)lookup_field(&c, "drm-client-id", ':');
-		if (!client_id)
-			continue;
-
-		if (json_object_has_value(json_object(container), client_id))
-			continue;
-
-		client_id = strdup(client_id);
-
-		/* Filter based on device name (if available). */
-		bool discard = true;
-		const char *dev_id_v = lookup_field(&c, "drm-pdev", ':');
-		if (dev_id_v) {
-			discard = strcmp(dev_id_v, dev_id) != 0;
-		} else {
-			/* Older kernel didn't have this field so filter by "ino" instead. */
-			const char *ino = NULL;
-			if ((ino = lookup_field(&orig_content, "ino", ':'))) {
-				struct stat buf;
-				unsigned ino_n = strtol(ino, NULL, 10);
-				char render_path[PATH_MAX];
-				const char *nodes[] = { "render", "card" };
-				for (size_t i = 0; i < ARRAY_SIZE(nodes) && discard; i++) {
-					sprintf(render_path, "/dev/dri/by-path/pci-%s-%s", dev_id, nodes[i]);
-
-					if (stat(render_path, &buf) == 0 && buf.st_ino == ino_n) {
-						discard = false;
-					}
-				}
-			}
-		}
-		if (discard) {
-			free(client_id);
+		if (!parse_fdinfo_entry(read_file(fd_info), dev_id, true, json_object(fdinfo))) {
+			json_value_free(fdinfo);
 			continue;
 		}
 
-		const char *ptr = c;
-
-		const char *client_name = lookup_field(&c, "drm-client-name", ':');
-
-		JSON_Value *jv = json_value_init_object();
-
-		/* Lookup all drm-engine-* entries */
-		while ((ptr = strstr(ptr, "drm-engine-"))) {
-			ptr += strlen("drm-engine-");
-			char *cm = strchr(ptr, ':');
-			if (!cm)
-				continue;
-			char *engine_name = strndup(ptr, cm - ptr);
-			cm++;
-
-			while (cm && isspace(*cm))
-				cm++;
-			if (!cm)
-				continue;
-			uint64_t value = strtol(cm, NULL, 10);
-
-			if (value)
-				json_object_set_number(json_object(jv), engine_name, value);
-			free(engine_name);
+		sprintf(lbl, "%ld", (long)json_object_get_number(json_object(fdinfo), "drm-client-id"));
+		json_object_set_number(json_object(fdinfo), "ts", n);
+		json_object_set_value(json_object(fdinfo), "app", json_value_deep_copy(json_object_get_wrapping_value(pid)));
+		if (json_object_has_value(json_object(fdinfo), "drm-client-name")) {
+			char name[1024];
+			snprintf(name, 1023, "%s|%s",
+				json_object_dotget_string(json_object(fdinfo), "app.app"),
+				json_object_get_string(json_object(fdinfo), "drm-client-name"));
+			json_object_dotset_string(json_object(fdinfo), "app.app", name);
 		}
+		json_object_set_number(json_object(fdinfo), "fd", strtol(entry->d_name, NULL, 10));
 
-		if (json_object_get_count(json_object(jv))) {
-			json_object_set_number(json_object(jv), "ts", n);
-			json_object_set_value(json_object(jv), "app", json_value_deep_copy(json_object_get_wrapping_value(pid)));
-			if (client_name) {
-				char name[1024];
-				snprintf(name, 1023, "%s|%s",
-					json_object_dotget_string(json_object(jv), "app.app"), client_name);
-				json_object_dotset_string(json_object(jv), "app.app", name);
-			}
-			json_object_set_number(json_object(jv), "fd", strtol(entry->d_name, NULL, 10));
-
-			json_object_set_value(json_object(container), client_id, jv);
-		}
-		free(client_id);
+		json_object_set_value(json_object(container), lbl, fdinfo);
 	}
 	
 	closedir(dir);
