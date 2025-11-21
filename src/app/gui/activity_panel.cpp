@@ -970,6 +970,7 @@ public:
 			delete c;
 		captures.clear();
 		timelines.clear();
+		selected_jobs.clear();
 	}
 
 	static void *post_process_capture_thread(void *data) {
