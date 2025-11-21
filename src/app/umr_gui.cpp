@@ -84,6 +84,127 @@ private:
 
 static pthread_mutex_t mtx;
 
+static ImColor get_value_color(int index, uint32_t value, uint32_t original, bool highlight)
+{
+	if (value == original) {
+		return palette[highlight ? 0 : (8 + 2 * (index % 2))];
+	} else {
+		return palette[highlight ? 2 : 3];
+	}
+}
+
+struct umr_bitfield * draw_value_as_bitfield(umr_bitfield *bitfield, int n_fields, uint64_t value, int bitwidth, struct umr_bitfield *hightlighted_field, uint64_t *new_value) {
+	const float line_height = ImGui::GetTextLineHeight();
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	float cx = ImGui::GetFontSize();
+	struct umr_bitfield *highlighted = NULL;
+
+	ImVec2 bitfield_pos[64];
+
+	/* Display bits value. */
+	int previous_bit = bitwidth;
+	for (int j = n_fields - 1; j >= 0; j--) {
+		struct umr_bitfield *bit = &bitfield[j];
+
+		bitfield_pos[j].x = p.x;
+
+		bool outside;
+		for (int k = previous_bit - 1; k >= bit->start; k--) {
+			if (k > bit->stop) {
+				ImGui::GetWindowDrawList()->AddText(p, ImColor(1.f, 1.f, 1.f, 0.2f), "x");
+				outside = true;
+			} else {
+				if (outside) {
+					p.x += cx * 0.5;
+					outside = false;
+				}
+
+				uint64_t mask = 1llu << k;
+				uint64_t v_original = (value & mask) >> k;
+				uint64_t v = new_value ? ((*new_value & mask) >> k) : v_original;
+
+				ImColor col(get_value_color(j, v, v_original, hightlighted_field == bit));
+
+				if (new_value) {
+					if (ImGui::IsMouseHoveringRect(p, ImVec2(p.x + cx * 0.5, p.y + line_height))) {
+						col = IM_COL32_WHITE;
+						if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+							if (v)
+								*new_value &= ~mask;
+							else
+								*new_value |= mask;
+						}
+					}
+				}
+
+				ImGui::GetWindowDrawList()->AddText(p, col, v ? "1" : "0");
+			}
+
+			if (ImGui::IsMouseHoveringRect(p, ImVec2(p.x + cx * 0.5, p.y + line_height)))
+				highlighted = bit;
+			p.x += cx * 0.5;
+
+		}
+		bitfield_pos[j].x = p.x - cx * 0.25;
+		p.x += cx * 0.5;
+		previous_bit = bit->start;
+	}
+
+	ImGui::NewLine();
+	/* Display bitfields name */
+	ImVec2 c[4];
+	float max_x_pos = 0;
+	for (int j = 0; j < n_fields; j++) {
+		struct umr_bitfield *bit = &bitfield[j];
+		ImColor color(get_value_color(j, 0, 0, hightlighted_field == bit));
+
+		ImGui::PushStyleColor(ImGuiCol_Text, ImU32(color));
+		ImVec2 cursor(ImGui::GetCursorScreenPos());
+
+		c[0] = ImVec2(bitfield_pos[j].x, p.y + ImGui::GetTextLineHeight());
+		c[3] = ImVec2(bitfield_pos[j].x - cx * 0.5 * (bit->stop - bit->start),
+						p.y + ImGui::GetTextLineHeight());
+		c[1] = ImVec2(bitfield_pos[j].x, cursor.y + ImGui::GetTextLineHeight() * .5);
+		c[2] = ImVec2(bitfield_pos[j].x + cx * 0.5, c[1].y);
+		color.Value.w = hightlighted_field == bit ? 0.4 : 0.2;
+		ImGui::GetWindowDrawList()->AddPolyline(c, 3, color, 0, 1.0);
+		ImGui::GetWindowDrawList()->AddLine(c[3], c[0], color);
+
+		c[2].x += cx * 0.5;
+		c[2].y = cursor.y;
+		ImGui::SetCursorScreenPos(c[2]);
+		ImGui::TextUnformatted(bit->regname);
+		if (ImGui::IsItemHovered())
+			highlighted = bit;
+		ImGui::PopStyleColor();
+
+		bitfield_pos[j].y = c[2].y;
+
+		max_x_pos = std::max(max_x_pos, c[2].x + ImGui::CalcTextSize(bit->regname).x);
+	}
+
+	/* Display field value. */
+	for (int j = 0; j < n_fields; j++) {
+		struct umr_bitfield *bit = &bitfield[j];
+
+		uint64_t mask = (1llu << (1 + (bit->stop - bit->start))) - 1;
+		uint64_t v = ((new_value ? *new_value : value) >> bit->start) & mask;
+		uint64_t v_original = (value >> bit->start) & mask;
+
+		ImColor color(get_value_color(j, v, v_original, hightlighted_field == bit));
+
+		ImGui::PushStyleColor(ImGuiCol_Text, ImU32(color));
+		ImVec2 cursor(ImGui::GetCursorScreenPos());
+		ImGui::SetCursorScreenPos(ImVec2(max_x_pos + cx, bitfield_pos[j].y));
+		ImGui::Text("0x%" PRIx64, v);
+
+		if (ImGui::IsItemHovered())
+			highlighted = bit;
+		ImGui::PopStyleColor();
+	}
+	return highlighted;
+}
+
 #include "gui/info_panel.cpp"
 #include "gui/registers_panel.cpp"
 #include "gui/power_panel.cpp"
