@@ -34,11 +34,11 @@
  *
  * Returns a vpe stream if successfully decoded.
  */
-struct umr_vpe_stream *umr_vpe_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
+struct umr_vpe_stream *umr_vpe_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_vpe_stream *ops, *ps, *prev_ps = NULL;
 	uint32_t *ostream = stream;
-
+	(void)ip_version;
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
 		asic->err_msg("[ERROR]: Out of memory\n");
@@ -99,7 +99,7 @@ struct umr_vpe_stream *umr_vpe_decode_stream(struct umr_asic *asic, int vm_parti
 				if (!asic->options.no_follow_ib) {
 					uint32_t *data = calloc(ps->ib.size, sizeof(*data));
 					if (umr_read_vram(asic, vm_partition, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0) {
-						ps->next_ib = umr_vpe_decode_stream(asic, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
+						ps->next_ib = umr_vpe_decode_stream(asic, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size, ip_version);
 						if (ps->next_ib) {
 							ps->next_ib->from.addr = from_addr + (((intptr_t)(stream - ostream)) << 2);
 							ps->next_ib->from.vmid = from_vmid;

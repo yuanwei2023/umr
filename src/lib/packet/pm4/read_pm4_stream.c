@@ -338,7 +338,7 @@ static void process_shaders(struct umr_asic *asic, int vm_partition, uint32_t vm
  * @reg_pairs: The linked list of register writes accumulated so far.
  *
  */
-static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t ib_addr, struct umr_pm4_stream *ps, struct umr_shader_reg_pair **reg_pairs)
+static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t ib_addr, struct umr_pm4_stream *ps, struct umr_shader_reg_pair **reg_pairs, int32_t ip_version)
 {
 	uint32_t n, value;
 	char *regname = NULL;
@@ -476,7 +476,7 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 				if (umr_read_vram(asic, vm_partition, tvmid, ib_addr, size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", tvmid, ib_addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, ib_addr, buf, size / 4, reg_pairs);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, ib_addr, buf, size / 4, reg_pairs, ip_version);
 					ps->ib->parent = ps;
 					ps->ib_source.addr = ib_addr;
 					ps->ib_source.vmid = tvmid;
@@ -578,7 +578,7 @@ void umr_free_pm4_stream(struct umr_pm4_stream *stream)
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t from_addr, uint32_t *stream, uint32_t nwords, struct umr_shader_reg_pair **reg_head)
+struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint64_t from_addr, uint32_t *stream, uint32_t nwords, struct umr_shader_reg_pair **reg_head, int32_t ip_version)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	uint64_t ib_addr = from_addr;
@@ -591,7 +591,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 			addr;
 	} uvd_ib;
 	struct umr_shader_reg_pair *local_pairs = NULL;
-
+	(void)ip_version;
 	// if the caller passed in NULL then just initialize a local set of register pairs
 	if (reg_head == NULL) {
 		reg_head = &local_pairs;
@@ -640,7 +640,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 
 		// decode specific packets
 		if (ps->pkttype == 3) {
-			parse_pm4(asic, vm_partition, vmid, ib_addr + 4, ps, reg_head); // +4 is to skip the PM4 header
+			parse_pm4(asic, vm_partition, vmid, ib_addr + 4, ps, reg_head, ip_version); // +4 is to skip the PM4 header
 		} else if (ps->pkttype == 0) {
 			char *name;
 			name = umr_reg_name(asic, ps->pkt0off);
@@ -676,7 +676,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 				if (umr_read_vram(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, buf, uvd_ib.size / 4, reg_head);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, buf, uvd_ib.size / 4, reg_head, ip_version);
 					ps->ib->parent = ps;
 					ps->ib_source.addr = uvd_ib.addr;
 					ps->ib_source.vmid = uvd_ib.vmid;

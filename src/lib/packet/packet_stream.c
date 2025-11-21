@@ -31,6 +31,12 @@
  * instead of calling the lower level functions directly.
  */
 
+ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t from_vmid, uint64_t from_addr,
+	uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data)
+{
+	return umr_packet_decode_buffer_ex(asic, ui, from_vmid, from_addr, stream, nwords, rt, queue_data, UMR_PACKET_IP_VERSION_AUTO);
+}
 
 /**
  * umr_packet_decode_buffer - Decode packets from a process mapped buffer
@@ -45,9 +51,9 @@
  *
  * Returns a pointer to a umr_packet_stream structure if successful.
  */
-struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						   uint32_t from_vmid, uint64_t from_addr,
-						   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data)
+struct umr_packet_stream *umr_packet_decode_buffer_ex(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t from_vmid, uint64_t from_addr,
+	uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data, int32_t ip_version)
 {
 	struct umr_packet_stream *str;
 	void *p = NULL;
@@ -61,31 +67,31 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 
 	switch (rt) {
 		case UMR_RING_PM4:
-			p = str->stream.pm4 = umr_pm4_decode_stream(asic, asic->options.vm_partition, from_vmid, from_addr, stream, nwords, queue_data);
+			p = str->stream.pm4 = umr_pm4_decode_stream(asic, asic->options.vm_partition, from_vmid, from_addr, stream, nwords, queue_data, ip_version);
 			break;
 		case UMR_RING_PM4_LITE:
-			p = str->stream.pm4 = umr_pm4_lite_decode_stream(asic, asic->options.vm_partition, from_vmid, stream, nwords);
+			p = str->stream.pm4 = umr_pm4_lite_decode_stream(asic, asic->options.vm_partition, from_vmid, stream, nwords, ip_version);
 			break;
 		case UMR_RING_SDMA:
-			p = str->stream.sdma = umr_sdma_decode_stream(asic, ui, asic->options.vm_partition, from_addr, from_vmid, stream, nwords);
+			p = str->stream.sdma = umr_sdma_decode_stream(asic, ui, asic->options.vm_partition, from_addr, from_vmid, stream, nwords, ip_version);
 			break;
 		case UMR_RING_MES:
-			p = str->stream.mes = umr_mes_decode_stream(asic, stream, nwords);
+			p = str->stream.mes = umr_mes_decode_stream(asic, stream, nwords, ip_version);
 			break;
 		case UMR_RING_VPE:
-			p = str->stream.vpe = umr_vpe_decode_stream(asic, asic->options.vm_partition, from_addr, from_vmid, stream, nwords);
+			p = str->stream.vpe = umr_vpe_decode_stream(asic, asic->options.vm_partition, from_addr, from_vmid, stream, nwords, ip_version);
 			break;
 		case UMR_RING_UMSCH:
-			p = str->stream.umsch = umr_umsch_decode_stream(asic, asic->options.vm_partition, from_addr, from_vmid, stream, nwords);
+			p = str->stream.umsch = umr_umsch_decode_stream(asic, asic->options.vm_partition, from_addr, from_vmid, stream, nwords, ip_version);
 			break;
 		case UMR_RING_HSA:
-			p = str->stream.hsa = umr_hsa_decode_stream(asic, stream, nwords);
+			p = str->stream.hsa = umr_hsa_decode_stream(asic, stream, nwords, ip_version);
 			break;
 		case UMR_RING_VCN_ENC:
-			p = str->stream.enc = umr_vcn_enc_decode_stream(asic, stream, nwords);
+			p = str->stream.enc = umr_vcn_enc_decode_stream(asic, stream, nwords, ip_version);
 			break;
 		case UMR_RING_VCN_DEC:
-			p = str->stream.pm4 = umr_vcn_dec_decode_stream(asic, from_vmid, stream, nwords);
+			p = str->stream.pm4 = umr_vcn_dec_decode_stream(asic, from_vmid, stream, nwords, ip_version);
 			break;
 		case UMR_RING_UNK:
 		default:
@@ -133,6 +139,12 @@ static void apply_start_stop(int *start, int *stop, int rptr, int wptr, int ring
 	}
 }
 
+struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data)
+{
+	return umr_packet_decode_ring_ex(asic, ui, ringname, halt_waves, start, stop, rt, queue_data, UMR_PACKET_IP_VERSION_AUTO);
+}
+
 /**
  * umr_packet_decode_ring - Decode packets from a system kernel ring
  * @asic: The ASIC model the packet decoding corresponds to
@@ -146,8 +158,8 @@ static void apply_start_stop(int *start, int *stop, int rptr, int wptr, int ring
  *
  * Returns a pointer to a umr_packet_stream structure if successful.
  */
-struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data)
+struct umr_packet_stream *umr_packet_decode_ring_ex(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data, int32_t ip_version)
 {
 	void *ps = NULL;
 	uint32_t *ringdata = NULL, ringsize = 0;
@@ -285,7 +297,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 				*start = (*start + 1) % ringsize;
 			}
 			*start = o_start;
-			ps = umr_packet_decode_buffer(asic, ui, 0, 0, lineardata, linearsize, rt, queue_data);
+			ps = umr_packet_decode_buffer_ex(asic, ui, 0, 0, lineardata, linearsize, rt, queue_data, ip_version);
 			free(lineardata);
 		}
 	}
@@ -296,6 +308,12 @@ cleanup:
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
 	return ps;
+}
+
+struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data)
+{
+	return umr_packet_decode_vm_buffer_ex(asic, ui, vmid, addr, nwords, rt, queue_data, UMR_PACKET_IP_VERSION_AUTO);
 }
 
 /**
@@ -310,8 +328,8 @@ cleanup:
  *
  * Returns a pointer to a umr_packet_stream structure if successful.
  */
-struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						      uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data)
+struct umr_packet_stream *umr_packet_decode_vm_buffer_ex(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data, int32_t ip_version)
 {
 	uint32_t *words;
 	struct umr_packet_stream *str;
@@ -326,7 +344,7 @@ struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, str
 		free(words);
 		return NULL;
 	}
-	str = umr_packet_decode_buffer(asic, ui, vmid, addr, words, nwords, rt, queue_data);
+	str = umr_packet_decode_buffer_ex(asic, ui, vmid, addr, words, nwords, rt, queue_data, ip_version);
 	free(words);
 	return str;
 }

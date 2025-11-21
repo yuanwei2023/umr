@@ -49,7 +49,7 @@ struct umr_umsch_stream {
 	struct umr_umsch_stream *next, *next_ib;
 };
 
-struct umr_umsch_stream *umr_umsch_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords);
+struct umr_umsch_stream *umr_umsch_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version);
 void umr_free_umsch_stream(struct umr_umsch_stream *stream);
 struct umr_umsch_stream *umr_umsch_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_umsch_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from_addr, uint64_t from_vmid, unsigned long opcodes, int follow);
 

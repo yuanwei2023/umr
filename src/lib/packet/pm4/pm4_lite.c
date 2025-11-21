@@ -34,14 +34,14 @@
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_pm4_lite_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords)
+struct umr_pm4_stream *umr_pm4_lite_decode_stream(struct umr_asic *asic, int vm_partition, uint32_t vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 
 	(void)asic;
 	(void)vm_partition;
 	(void)vmid;
-
+	(void)ip_version;
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
 		asic->err_msg("[ERROR]: Out of memory\n");

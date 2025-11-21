@@ -35,8 +35,8 @@ struct umr_vcn_enc_stream {
 	struct umr_vcn_enc_stream *next;
 };
 void umr_free_vcn_enc_stream(struct umr_vcn_enc_stream *stream);
-struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
-struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords);
+struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords, int32_t ip_version);
+struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version);
 int umr_vcn_decode(struct umr_asic *asic, uint32_t *p_curr, uint32_t size_in_byte, uint64_t ib_addr, uint32_t vcn_type, char ***opcode_strs);
 
 struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_vcn_enc_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, uint64_t from, uint64_t from_vmid, unsigned long opcodes, int follow);

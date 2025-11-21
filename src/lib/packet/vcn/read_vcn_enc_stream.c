@@ -98,7 +98,7 @@ void umr_free_vcn_enc_stream(struct umr_vcn_enc_stream *stream)
  *
  * Returns a VCN ENC stream if successfully decoded.
  */
-struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
+struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_vcn_enc_stream *ops, *ps, *prev_ps = NULL;
 	struct umr_vcn_cmd_message *vcn = NULL;
@@ -110,7 +110,7 @@ struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint
 		uint64_t
 			addr;
 	} uvd_ib;
-
+	(void)ip_version;
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
 		asic->err_msg("[ERROR]: Out of memory\n");

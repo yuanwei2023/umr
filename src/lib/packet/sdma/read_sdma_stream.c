@@ -25,7 +25,7 @@
 #include "umr.h"
 #include <inttypes.h>
 
-static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_stream_decode_ui *ui, uint32_t *stream, uint32_t *ostream, uint32_t nwords, uint64_t from_addr, uint32_t from_vmid, struct umr_sdma_stream *ps)
+static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_stream_decode_ui *ui, uint32_t *stream, uint32_t *ostream, uint32_t nwords, uint64_t from_addr, uint32_t from_vmid, struct umr_sdma_stream *ps, int32_t ip_version)
 {
 	(void)nwords;
 	ps->nwords = 0xFFFFFFFFUL;
@@ -124,7 +124,7 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
 			if (!asic->options.no_follow_ib) {
 				uint32_t *data = calloc(ps->ib.size, sizeof(*data));
 				if (umr_read_vram(asic, vm_partition, ps->ib.vmid, ps->ib.addr, ps->ib.size * sizeof(*data), data) == 0) {
-					ps->next_ib = umr_sdma_decode_stream(asic, ui, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size);
+					ps->next_ib = umr_sdma_decode_stream(asic, ui, vm_partition, from_addr + (((intptr_t)(stream - ostream)) << 2), ps->ib.vmid, data, ps->ib.size, ip_version);
 					if (ps->next_ib) {
 						ps->next_ib->from.addr = from_addr + (((intptr_t)(stream - ostream)) << 2);
 						ps->next_ib->from.vmid = from_vmid;
@@ -256,12 +256,12 @@ static void sized_oss1_5(struct umr_asic *asic, int vm_partition, struct umr_str
  * Returns a sdma stream if successfully decoded.
  */
 struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr_stream_decode_ui *ui, int vm_partition,
-					       uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
+					       uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_sdma_stream *ops, *ps, *prev_ps = NULL;
 	uint32_t *ostream = stream;
 	int ossmaj, ossmin;
-
+	(void)ip_version;
 	if (umr_sdma_get_ip_ver(asic, &ossmaj, &ossmin)) {
 		asic->err_msg("[BUG] Cannot determine version of OSS block for this ASIC.\n");
 		return NULL;
@@ -286,7 +286,7 @@ struct umr_sdma_stream *umr_sdma_decode_stream(struct umr_asic *asic, struct umr
 			case 4:
 			case 5:
 			case 6:
-				sized_oss1_5(asic, vm_partition, ui, stream, ostream, nwords, from_addr, from_vmid, ps);
+				sized_oss1_5(asic, vm_partition, ui, stream, ostream, nwords, from_addr, from_vmid, ps, ip_version);
 				break;
 		}
 

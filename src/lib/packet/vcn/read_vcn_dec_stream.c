@@ -179,7 +179,7 @@ static bool is_valid_PACKET0(struct umr_pm4_stream *ps, uint32_t major, uint32_t
  *
  * Returns a PM4 stream if successfully decoded.
  */
-struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords)
+struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_pm4_stream *ops, *ps, *prev_ps = NULL;
 	struct umr_vcn_cmd_message *vcn, *vcn_head = NULL;
@@ -195,7 +195,7 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t
 		uint64_t
 			addr;
 	} uvd_ib;
-
+	(void)ip_version;
 	struct {
 		int n;
 		uint32_t cmd;
@@ -329,7 +329,7 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t
 				if (umr_read_vram(asic, asic->options.vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
 				} else {
-					ps->ib = umr_vcn_dec_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4);
+					ps->ib = umr_vcn_dec_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4, ip_version);
 					ps->ib_source.addr = uvd_ib.addr;
 					ps->ib_source.vmid = uvd_ib.vmid;
 				}

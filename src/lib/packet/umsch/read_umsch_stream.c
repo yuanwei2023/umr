@@ -34,14 +34,14 @@
  *
  * Returns a UMSCH stream if successfully decoded.
  */
-struct umr_umsch_stream *umr_umsch_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords)
+struct umr_umsch_stream *umr_umsch_decode_stream(struct umr_asic *asic, int vm_partition, uint64_t from_addr, uint32_t from_vmid, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_umsch_stream *ops, *ps;
 
 	(void)from_addr;
 	(void)from_vmid;
 	(void)vm_partition;
-
+	(void)ip_version;
 	ps = ops = calloc(1, sizeof *ops);
 	if (!ps) {
 		asic->err_msg("[ERROR]: Out of memory\n");

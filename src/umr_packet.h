@@ -25,6 +25,12 @@
 #ifndef UMR_PACKET_H_
 #define UMR_PACKET_H_
 
+#define UMR_PACKET_IP_VERSION(maj, min, rev)  ((((maj) & 0xFF) << 16) | (((min) & 0xFF) << 8) | ((rev) & 0xFF))
+#define UMR_PACKET_IP_VERSION_AUTO  -1 
+#define UMR_PACKET_IP_VERSION_MAJ(v) ((v >> 16) & 0xFF)
+#define UMR_PACKET_IP_VERSION_MIN(v) ((v >> 8) & 0xFF)
+#define UMR_PACKET_IP_VERSION_REV(v) (v & 0xFF)
+
 /* ==== Packet Processor opcode decoding ====
  * These functions deal with decoding the contents of various rings/IB in various packet formats
  */
@@ -192,17 +198,28 @@ struct umr_packet_stream {
 };
 
 // decode an array of dwords into a packet stream
+struct umr_packet_stream *umr_packet_decode_buffer_ex(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t from_vmid, uint64_t from_addr,
+	uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data, int32_t ip_version);
+
 struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						   uint32_t from_vmid, uint64_t from_addr,
-						   uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
+	uint32_t from_vmid, uint64_t from_addr,
+	uint32_t *stream, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 // decode a ring file (debugfs) into a packet stream
 struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data);
+	char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data);
+
+// decode a ring file (debugfs) into a packet stream
+struct umr_packet_stream *umr_packet_decode_ring_ex(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data, int32_t ip_version);
 
 // decode a GPU mapped buffer into a packet stream
-struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
-						      uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
+struct umr_packet_stream *umr_packet_decode_vm_buffer_ex(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data, int32_t ip_version);
+
+	struct umr_packet_stream *umr_packet_decode_vm_buffer(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+	uint32_t vmid, uint64_t addr, uint32_t nwords, enum umr_ring_type rt, void *queue_data);
 
 // free a (umr) packet stream from memory
 void umr_packet_free(struct umr_packet_stream *stream);

@@ -154,11 +154,12 @@ static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *st
  *
  * Returns a pointer to a umr_hsa_stream structure, or NULL on error.
  */
-struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
+struct umr_hsa_stream *umr_hsa_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_hsa_stream *ms, *oms, *prev_ms = NULL;
 	uint32_t n;
 	uint16_t t16, *s;
+	(void)ip_version;
 
 	oms = ms = calloc(1, sizeof *ms);
 	if (!ms)

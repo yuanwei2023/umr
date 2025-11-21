@@ -38,7 +38,7 @@ struct umr_mes_stream {
 	struct umr_mes_stream *next;
 };
 
-struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords);
+struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords, int32_t ip_version);
 struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_mes_stream *stream, uint64_t ib_addr, uint32_t ib_vmid, unsigned long opcodes);
 void umr_free_mes_stream(struct umr_mes_stream *stream);
 

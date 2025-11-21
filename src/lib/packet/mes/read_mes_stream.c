@@ -146,12 +146,13 @@ static char *mes_v12_query_mes_subopcode[] = {
  *
  * Returns a pointer to a umr_mes_stream structure or NULL on error.
  */
-struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords)
+struct umr_mes_stream *umr_mes_decode_stream(struct umr_asic *asic, uint32_t *stream, uint32_t nwords, int32_t ip_version)
 {
 	struct umr_mes_stream *ms, *oms, *prev_ms = NULL;
 	uint32_t n;
 	struct umr_ip_block *ip;
 	int mes_ver_maj = 0;
+	(void)ip_version;
 
 	ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
 	if (!ip) {
