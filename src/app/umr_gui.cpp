@@ -954,7 +954,7 @@ static int run_gui(char *url)
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("Memory #b58900I#ffffffnspector", NULL, kb_shortcut(SDLK_i) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("Memory I#b58900n#ffffffspector", NULL, kb_shortcut(SDLK_n) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[6]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
