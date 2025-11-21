@@ -44,8 +44,7 @@ void umr_close_asic(struct umr_asic *asic); // call this to close a fully open a
 int umr_query_drm(struct umr_asic *asic, int field, void *ret, int size);
 int umr_query_drm_vbios(struct umr_asic *asic, int field, int type, void *ret, int size);
 
-// query the revision of an IP block based on the constructed name (not from IP discovery specifically)
-uint32_t umr_get_ip_revision(struct umr_asic *asic, const char *ipname);
+int umr_get_ip_revision(struct umr_asic *asic, const char *ipname, int *maj, int *min, int *rev);
 
 int umr_gfx_get_ip_ver(struct umr_asic *asic, int *maj, int *min);
 int umr_sdma_get_ip_ver(struct umr_asic *asic, int *maj, int *min);

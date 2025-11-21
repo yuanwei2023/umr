@@ -26,24 +26,33 @@
 #include <inttypes.h>
 
 /**
- * umr_get_ip_revision - Return the version number attached to an IPname
+ * umr_get_ip_revision - Retrieve the discoverable IP version info from a block by name partial match
  *
  * @asic: The ASIC to search for the IP block
  * @ipname: The IP name to partial match
+ * @maj: Optionally retrieve the major version (if not NULL)
+ * @min: Optionally retrieve the minor version (if not NULL)
+ * @rev: Optionally retrieve the revision version (if not NULL)
  *
- * Returns the version number attached to the IP name or 0 if not found.
+ * Returns 0 if the block was found, -1 if not.
  */
-uint32_t umr_get_ip_revision(struct umr_asic *asic, const char *ipname)
+int umr_get_ip_revision(struct umr_asic *asic, const char *ipname, int *maj, int *min, int *rev)
 {
 	int x;
-	char tmpbuf[64];
-	uint32_t revision;
 
 	for (x = 0; x < asic->no_blocks; x++) {
 		if (strstr(asic->blocks[x]->ipname, ipname)) {
-			if (sscanf(asic->blocks[x]->ipname, "%[a-z]%"SCNu32, tmpbuf, &revision) == 2)
-				return revision;
+			if (maj) {
+				*maj = asic->blocks[x]->discoverable.maj;
+			}
+			if (min) {
+				*min = asic->blocks[x]->discoverable.min;
+			}
+			if (rev) {
+				*rev = asic->blocks[x]->discoverable.rev;
+			}
+			return 0;
 		}
 	}
-	return 0;
+	return -1;
 }
