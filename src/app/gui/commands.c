@@ -703,15 +703,15 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 		}
 	}
 
-	void *result = peak_bo(asic, dmabuf_fd,
-						   *width, *height, fourcc, modifier,
-						   nplanes,
-						   offsets, pitches,
-						   raw_data, size);
+	void *error = peak_bo(asic, dmabuf_fd,
+						  *width, *height, fourcc, modifier,
+						  nplanes,
+						  offsets, pitches,
+						  raw_data, size);
 	close(dmabuf_fd);
 	close(gpu_fd);
 	close(pid_fd);
-	return result;
+	return error;
 }
 
 static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
@@ -757,15 +757,15 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 	for (size_t i = 0; i < json_array_get_count(j_pitches); i++)
 		pitches[i] = (int) json_array_get_number(j_pitches, i);
 
-	void *result = peak_bo(asic, dmabuf_fd,
-						   *width, *height, fourcc, modifier,
-						   nplanes,
-						   offsets, pitches,
-						   raw_data, size);
+	void *error = peak_bo(asic, dmabuf_fd,
+						  *width, *height, fourcc, modifier,
+						  nplanes,
+						  offsets, pitches,
+						  raw_data, size);
 	close(dmabuf_fd);
 	close(gpu_fd);
 	close(pid_fd);
-	return result;
+	return error;
 }
 
 static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_id,
