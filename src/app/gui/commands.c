@@ -2961,6 +2961,23 @@ static void waves_to_json(struct umr_asic *asic, JSON_Object *out) {
  */
 static JSON_Value *previous_framebuffers_answer = NULL;
 
+static char *get_asic_devname(struct umr_asic *asic)
+{
+	char *dev_name = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/name", asic->instance);
+	char *name = strstr(dev_name, "dev=");
+	if (!name)
+		goto error;
+	name += strlen("dev=");
+	int n = 0;
+	while (!isspace(name[n]))
+		n++;
+	name = strndup(name, n);
+
+error:
+	free(dev_name);
+	return name;
+}
+
 JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size)
 {
 	JSON_Value *answer = NULL;
@@ -3134,15 +3151,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		/* Get our ID. */
-		char *dev_name = read_file(SYSFS_PATH_DEBUG_DRI "%d/name", asic->instance);
-		dev_name = strstr(dev_name, "dev=");
-		if (!dev_name)
-			goto error;
-		dev_name += strlen("dev=");
-		int n = 0;
-		while (!isspace(dev_name[n]))
-			n++;
-		dev_name = strndup(dev_name, n);
+		char *dev_name = get_asic_devname(asic);
 
 		JSON_Array *pids = get_active_amdgpu_clients(asic);
 
