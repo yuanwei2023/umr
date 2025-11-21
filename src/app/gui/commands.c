@@ -628,10 +628,10 @@ static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
 }
 
 static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int remote_gpu_fd, unsigned kms_handle,
-				      				 int *width, int *height, void **raw_data, unsigned *size)
+									 JSON_Value *answer, void **raw_data, unsigned *size)
 {
 	uint64_t modifier;
-	int dmabuf_fd;
+	int width, height, dmabuf_fd;
 	int r, stride = 0;
 	int gpu_fd = -1;
 	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
@@ -664,7 +664,7 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 		return "Invalid metadata";
 	}
 
-	read_size_from_md(asic, metadata.data.data, width, height);
+	read_size_from_md(asic, metadata.data.data, &width, &height);
 	if (metadata.data.data_size_bytes > 11 * 4) {
 		modifier = (uint64_t)metadata.data.data[11] << 32 | metadata.data.data[10];
 	} else {
@@ -704,10 +704,14 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 	}
 
 	void *error = peak_bo(asic, dmabuf_fd,
-						  *width, *height, fourcc, modifier,
+						  width, height, fourcc, modifier,
 						  nplanes,
 						  offsets, pitches,
 						  raw_data, size);
+	if (error == NULL) {
+		json_object_set_number(json_object(answer), "width", width);
+		json_object_set_number(json_object(answer), "height", height);
+	}
 	close(dmabuf_fd);
 	close(gpu_fd);
 	close(pid_fd);
@@ -715,10 +719,10 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 }
 
 static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
-				      				    int *width, int *height, void **raw_data, unsigned *size)
+										JSON_Value *answer, void **raw_data, unsigned *size)
 {
-	int gpu_fd = -1;
-	int dmabuf_fd = -1;
+	int gpu_fd;
+	int width, height, dmabuf_fd;
 
 	int pid_fd = syscall(SYS_pidfd_open, (int) json_object_get_number(md, "pid"), 0);
 	if (pid_fd < 0)
@@ -743,8 +747,8 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 
 	unsigned fourcc = (unsigned) json_object_get_number(md, "fourcc");
 	uint64_t modifier = str_to_uint64(json_object_get_string(md, "modifier"));
-	*width = (int) json_object_get_number(md, "width");
-	*height = (int) json_object_get_number(md, "height");
+	width = (int) json_object_get_number(md, "width");
+	height = (int) json_object_get_number(md, "height");
 
 	int nplanes = (int) json_object_get_number(md, "nplanes");
 
@@ -758,10 +762,14 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 		pitches[i] = (int) json_array_get_number(j_pitches, i);
 
 	void *error = peak_bo(asic, dmabuf_fd,
-						  *width, *height, fourcc, modifier,
+						  width, height, fourcc, modifier,
 						  nplanes,
 						  offsets, pitches,
 						  raw_data, size);
+	if (error == NULL) {
+		json_object_set_number(json_object(answer), "width", width);
+		json_object_set_number(json_object(answer), "height", height);
+	}
 	close(dmabuf_fd);
 	close(gpu_fd);
 	close(pid_fd);
@@ -3945,7 +3953,6 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
 	#if CAN_IMPORT_BO
 	} else if (!strcmp(command, "peak-bo")) {
-		int width, height;
 		answer = json_value_init_object();
 
 		char *error;
@@ -3953,19 +3960,15 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			error = peak_bo_using_metadata(asic, json_object_get_number(request, "pid"),
 										   json_object_get_number(request, "gpu-fd"),
 										   json_object_get_number(request, "handle"),
-										   &width, &height, raw_data, raw_data_size);
+										   answer, raw_data, raw_data_size);
 		else if (json_object_has_value(request, "metadata"))
 			error = peak_bo_using_fb_metadata(asic,
 											  json_object(json_object_get_value(request, "metadata")),
-											  &width, &height, raw_data, raw_data_size);
+											  answer, raw_data, raw_data_size);
 		else
 			error = "Invalid peak-bo request";
 
-		if (error == NULL) {
-			json_object_set_number(json_object(answer), "width", width);
-			json_object_set_number(json_object(answer), "height", height);
-		} else {
-			printf("%s\n", error);
+		if (error) {
 			last_error = error;
 			goto error;
 		}
