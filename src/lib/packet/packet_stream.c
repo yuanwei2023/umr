@@ -102,6 +102,35 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 	return str;
 }
 
+/* apply the rules for start/stop indexing into the packet dword buffer
+ *
+ * -1,-1 means from rptr to wptr
+ * num1,num2 means literally from num1 to num2
+ * num1,-1 means from wptr - num1 to wptr
+ * -1,num1 means from rptr to rptr + num1
+ */
+static void apply_start_stop(int *start, int *stop, int rptr, int wptr, int ringsize)
+{
+	if (*start == -1 && *stop != -1) {
+			*start = rptr; // use rptr
+			*stop   = *start + *stop; // read k words from RPTR
+	} else if (*start != -1 && *stop == -1) {
+			*stop = wptr; // use wptr
+			*start = *stop - *start; // read k words before WPTR
+	} else if (*start == -1 && *stop == -1) {
+			*start = rptr;
+			*stop = wptr;
+	} else if (*start == -1) {
+			*start = rptr;
+	} else if (*stop == -1) {
+			*stop = wptr;
+	}
+
+	if (*start < 0) {
+			*start = ringsize + *start;
+	}
+}
+
 /**
  * umr_packet_decode_ring - Decode packets from a system kernel ring
  * @asic: The ASIC model the packet decoding corresponds to
@@ -119,16 +148,81 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 						char *ringname, int halt_waves, int *start, int *stop, enum umr_ring_type rt, void *queue_data)
 {
 	void *ps = NULL;
-	uint32_t *ringdata, ringsize;
+	uint32_t *ringdata = NULL, ringsize = 0;
 	int only_active = 1;
 
+	if (halt_waves && asic->options.halt_waves) {
+		strcpy(asic->options.ring_name, ringname);
+		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
+	}
+
 	if (rt == UMR_RING_GUESS) {
-		// only decode PM4 packets on certain rings
-		if (!memcmp(ringname, "gfx", 3) ||
+		if (!strcmp(ringname, "uq")) {
+			if (asic->options.user_queue.state.active) {
+				ringdata = calloc(asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size, sizeof *ringdata);
+				if (!asic->options.use_full_user_queue) {
+					if (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value == asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value) {
+						asic->err_msg("[ERROR]: The user queue's RPTR and WPTR are equal.  You can try using -O use_full_user_queue instead to read the entire queue.\n");
+						// free the buffer so we don't decode garbage
+						free(ringdata);
+						ringdata = NULL;
+						goto cleanup;
+					} else {
+						apply_start_stop(start, stop,
+							asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value,
+							asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_wptr_poll_value,
+							asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size);
+					}
+				} else {
+					// use the full queue
+					*start = 0;
+					*stop = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+				}
+				if (ringdata) {
+					// AQL RPTR/WPTR is in terms of 64-byte (16 dword) packets
+					// we need to do AQL math in 32-bit word terms because other
+					// queues are all in terms of 32-bits
+					if (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
+						*start = (*start * 16) % asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+						*stop = (*stop * 16) % asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].rb_buf_size;
+
+						// enable disasm_early_term because they don't use the same terminals as mesa
+						asic->options.disasm_early_term = 1;
+					}
+					// continue, so at this point we read the queue like a ring (allowing start > stop)
+					if (umr_read_user_queue_buffer(asic, *start, *stop, ringdata, &ringsize)) {
+						asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
+						free(ringdata);
+						ringdata = NULL;
+						goto cleanup;
+					} else {
+						switch (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type) {
+							case UMR_QUEUE_COMPUTE_PM4:
+							case UMR_QUEUE_GFX: rt = UMR_RING_PM4; break;
+							case UMR_QUEUE_COMPUTE: rt = UMR_RING_HSA; break;
+							case UMR_QUEUE_SDMA: rt = UMR_RING_SDMA; break;
+							default:
+								asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
+								free(ringdata);
+								ringdata = NULL;
+								goto cleanup;
+						}
+						ps = umr_packet_decode_buffer(asic, ui, 0, 0, ringdata, ringsize, rt, queue_data);
+						free(ringdata);
+						ringdata = NULL;
+						goto cleanup;
+					}
+				}
+			} else {
+				asic->err_msg("[ERROR]: User queue is not active, did you use a --user-queue command?\n");
+				goto cleanup;
+			}
+		} else if (!memcmp(ringname, "gfx", 3) ||
 			!memcmp(ringname, "uvd", 3) ||
 			!memcmp(ringname, "mes_kiq", 7) ||
 			!memcmp(ringname, "kiq", 3) ||
 			!memcmp(ringname, "comp", 4)) {
+			// only decode PM4 packets on certain rings
 			rt = UMR_RING_PM4;
 		} else if (!memcmp(ringname, "vcn_enc", 7) ||
 			!memcmp(ringname, "vcn_unified_", 12)) {
@@ -150,17 +244,13 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 		}
 	}
 
-	if (halt_waves && asic->options.halt_waves) {
-		strcpy(asic->options.ring_name, ringname);
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
-	}
-
 	// read ring data and reduce indeices modulo ring size
 	// since the kernel returned values might be unwrapped.
-	ringdata = asic->ring_func.read_ring_data(asic, ringname, &ringsize);
-
-	if ((*stop != -1) && (uint32_t)(*stop * 4) >= ringsize)
-		*stop = (ringsize / 4);
+	if (!ringdata) {
+		ringdata = asic->ring_func.read_ring_data(asic, ringname, &ringsize);
+		if ((*stop != -1) && (uint32_t)(*stop * 4) >= ringsize)
+			*stop = (ringsize / 4);
+	}
 
 	if (ringdata) {
 		ringsize /= 4;
@@ -171,25 +261,9 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 			only_active = 0;
 		}
 
-		if (*start == -1 && *stop != -1) {
-			*start = ringdata[0]; // use rptr
-			*stop   = *start + *stop; // read k words from RPTR
-		} else if (*start != -1 && *stop == -1) {
-			*stop = ringdata[1]; // use wptr
-			*start = *stop - *start; // read k words before WPTR
-		} else if (*start == -1 && *stop == -1) {
-			*start = ringdata[0]; // use rptr
-			*stop = ringdata[1]; // use wptr
-		} else if (*start == -1) {
-			*start = ringdata[0]; // use rptr
-		} else if (*stop == -1) {
-			*stop = ringdata[1]; // use wptr
-		}
+		apply_start_stop(start, stop, ringdata[0], ringdata[1], ringsize);
 
-		if (*start < 0) {
-			*start = ringsize + *start;
-		}
-
+		// reduce indeices modulo ring size
 		if ((uint32_t)*stop > ringsize) {
 			*stop = *stop - ringsize;
 		}
@@ -215,6 +289,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 	}
 	free(ringdata);
 
+cleanup:
 	if (halt_waves && asic->options.halt_waves)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
