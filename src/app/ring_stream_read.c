@@ -444,6 +444,7 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 	char tmpname[64], buf[256];
 	FILE *f;
 	struct ui_data *data;
+	int is_uq = 0; // TODO: right now we're doing a bit of hack where we treat non uq "rings" differently, it would be nice to unify these all properly
 
 	if (rt == UMR_RING_UNK)
 		return;
@@ -466,12 +467,24 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 		case UMR_RING_HSA:
 		case UMR_RING_VCN_ENC:
 		case UMR_RING_VCN_DEC:
-			if (ringname)
+			if (ringname) {
 				str = umr_packet_decode_ring(asic, &ui, ringname, asic->options.halt_waves, &start, &end, rt, NULL);
-			else if (words)
+			} else if (words) {
 				str = umr_packet_decode_buffer(asic, &ui, vmid, addr, words, nwords, rt, NULL);
-			else
+			} else {
 				str = umr_packet_decode_vm_buffer(asic, &ui, vmid, addr, nwords, rt, NULL);
+			}
+
+			// the vmid/addr coming into this function might be poorly initialized
+			// for instance umr_packet_decode_ring() with a user queue will determine
+			// what the address of the command submission so we circle back and copy
+			// them back out now.  These are initialized by umr_packet_decode_buffer()
+			// which is called by decode_ring() and decode_vm_buffer().
+			if (str && ringname && !memcmp(ringname, "uq", 2)) {
+				vmid = str->from_vmid;
+				addr = str->from_addr;
+				is_uq = 1;
+			}
 			break;
 		case UMR_RING_UNK:
 			asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
@@ -489,7 +502,7 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_HSA:
 			case UMR_RING_VCN_ENC:
 			case UMR_RING_VCN_DEC:
-				umr_packet_disassemble_stream(str, ringname ? (uint64_t)(start * 4) : addr, vmid, 0, 0, ~0UL, 1, 0);
+				umr_packet_disassemble_stream(str, (ringname && !is_uq) ? (uint64_t)(start * 4) : addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
 			case UMR_RING_GUESS:
 			case UMR_RING_UNK:

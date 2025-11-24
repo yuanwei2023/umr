@@ -173,6 +173,8 @@ struct umr_stream_decode_ui {
 struct umr_packet_stream {
 	struct umr_asic *asic;
 	enum umr_ring_type type;
+	uint32_t from_vmid;
+	uint64_t from_addr;
 
 	union {
 		struct umr_pm4_stream *pm4;

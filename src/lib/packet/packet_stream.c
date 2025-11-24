@@ -56,6 +56,8 @@ struct umr_packet_stream *umr_packet_decode_buffer(struct umr_asic *asic, struct
 	str->type = rt;
 	str->ui = ui;
 	str->asic = asic;
+	str->from_vmid = from_vmid;
+	str->from_addr = from_addr;
 
 	switch (rt) {
 		case UMR_RING_PM4:
@@ -207,7 +209,7 @@ struct umr_packet_stream *umr_packet_decode_ring(struct umr_asic *asic, struct u
 								ringdata = NULL;
 								goto cleanup;
 						}
-						ps = umr_packet_decode_buffer(asic, ui, 0, 0, ringdata, ringsize, rt, queue_data);
+						ps = umr_packet_decode_buffer(asic, ui, 0, asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + *start * 4, ringdata, ringsize, rt, queue_data);
 						free(ringdata);
 						ringdata = NULL;
 						goto cleanup;
