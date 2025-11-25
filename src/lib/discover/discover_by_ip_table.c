@@ -41,16 +41,19 @@
 static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_discovery_table_entry *det, struct umr_database_scan_item *nit)
 {
 	FILE *f;
-	char ipcmn[256], linebuf[512];
+	char ipcmn[256], fname[512], linebuf[512];
 	uint32_t no_regs, x;
 	struct umr_ip_block *ip;
 	int vce_present;
 	struct umr_discovery_table_entry *pdet;
 
-	snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", nit->path, nit->fname);
-	f = fopen(linebuf, "r");
+	snprintf(fname, (sizeof fname) - 1, "%s/%s", nit->path, nit->fname);
+	if (strlen(fname) == 1) {
+		return NULL;
+	}
+	f = fopen(fname, "r");
 	if (!f) {
-		asic->err_msg("Could not open file %s\n", linebuf);
+		asic->err_msg("Could not open file %s\n", fname);
 		return NULL;
 	}
 	ip = calloc(1, sizeof *ip);
@@ -60,8 +63,12 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 	}
 
 	// the first line has the number of registers
-	fgets(linebuf, sizeof(linebuf) - 1, f);
-	sscanf(linebuf, "%"SCNu32, &no_regs);
+	if (!fgets(linebuf, sizeof(linebuf) - 1, f) || sscanf(linebuf, "%"SCNu32, &no_regs) != 1) {
+		asic->err_msg("[ERROR]: Could not read first line from the IP database file %s\n", fname);
+		free(ip);
+		fclose(f);
+		return NULL;
+	}
 	ip->no_regs = no_regs;
 	ip->regs = calloc(no_regs, sizeof(*(ip->regs)));
 
@@ -154,12 +161,16 @@ static struct umr_ip_block *read_ip_block(struct umr_asic *asic, struct umr_disc
 		if (reg_fields.nobits) {
 			ip->regs[x].bits = calloc(reg_fields.nobits, sizeof(*(ip->regs[x].bits)));
 			for (y = 0; y < reg_fields.nobits; y++) {
-				fgets(linebuf, sizeof linebuf, f);
-				sscanf(linebuf, "\t%s %d %d", bit_fields.name, &bit_fields.start, &bit_fields.stop);
-				ip->regs[x].bits[y].regname = strdup(bit_fields.name);
-				ip->regs[x].bits[y].start = bit_fields.start;
-				ip->regs[x].bits[y].stop = bit_fields.stop;
-				ip->regs[x].bits[y].bitfield_print = &umr_bitfield_default;
+				if (fgets(linebuf, sizeof linebuf, f) == NULL || sscanf(linebuf, "\t%s %d %d", bit_fields.name, &bit_fields.start, &bit_fields.stop) != 3) {
+					asic->err_msg("[ERROR]: Could not parse bitfield line from file %s\n", fname);
+					fclose(f);
+					return ip;
+				} else {
+					ip->regs[x].bits[y].regname = strdup(bit_fields.name);
+					ip->regs[x].bits[y].start = bit_fields.start;
+					ip->regs[x].bits[y].stop = bit_fields.stop;
+					ip->regs[x].bits[y].bitfield_print = &umr_bitfield_default;
+				}
 			}
 		}
 		++x;

@@ -36,7 +36,7 @@ void umr_print_waves(struct umr_asic *asic)
 {
 	uint32_t x, y, thread;
 	uint64_t pgm_addr, shader_addr;
-	struct umr_wave_data *wd, *owd;
+	struct umr_wave_data *wd = NULL, *owd = NULL;
 	int first = 1, col = 0, ring_halted = 0, use_ring = 1;
 	struct umr_shaders_pgm *shader = NULL;
 	struct umr_packet_stream *stream = NULL;
@@ -46,7 +46,7 @@ void umr_print_waves(struct umr_asic *asic)
 	} ib_addr;
 	int start = -1, stop = -1;
 	int gfx_maj, gfx_min;
-	FILE *output;
+	FILE *output = NULL;
 	char *wavefront_desc;
 	int no_bits;
 	struct umr_bitfield *bits;
@@ -103,7 +103,7 @@ void umr_print_waves(struct umr_asic *asic)
 					if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
 						asic->err_msg("[ERROR]: Could not read user queue packet stream.\n");
 						free(buf);
-						return;
+						goto cleanup;
 					}
 					ib_addr.size = len;
 					// decode the stream copied from the queue
@@ -113,12 +113,14 @@ void umr_print_waves(struct umr_asic *asic)
 						case UMR_QUEUE_COMPUTE: rt = UMR_RING_HSA; break;
 						default:
 							asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
+							free(buf);
+							goto cleanup;
 					}
 					stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, rt, NULL);
 					free(buf);
 					if (!stream) {
 						asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
-						return;
+						goto cleanup;
 					}
 					// flag to the rest of the function that we're good to go.
 					use_ring = 0;
@@ -126,7 +128,7 @@ void umr_print_waves(struct umr_asic *asic)
 				}
 			} else {
 				asic->err_msg("[ERROR]: User queue is not attached, did you forget to use --user-queue on the command line?\n");
-				return;
+				goto cleanup;
 			}
 		} else if (sscanf(asic->options.ring_name, "%"SCNx32"@%"SCNx64".%"SCNx32, &ib_addr.vmid, &ib_addr.addr, &ib_addr.size) == 3) {
 			// the user can specify an IB VM address directly as vmid@addr.length
@@ -302,6 +304,9 @@ void umr_print_waves(struct umr_asic *asic)
 					case 12:
 						queue_packet_id = wd->sgprs[0x6C + 8] & ((1UL << 24) - 1);
 						break;
+					default:
+						asic->err_msg("[BUG]: Unsupported GFX major %d in printing waves when finding queue_packet_id\n", gfx_maj);
+						goto cleanup;
 				}
 
 				// look for an AQL that matches stream[idx] == rptr - queue_packet_id
@@ -367,6 +372,7 @@ void umr_print_waves(struct umr_asic *asic)
 	if (first)
 		fprintf(output, "No active waves! (or GFXOFF was not disabled)\n");
 
+cleanup:
 	wd = owd;
 	while (wd) {
 		owd = wd->next;
@@ -381,9 +387,11 @@ void umr_print_waves(struct umr_asic *asic)
 		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
 	// dump output to stdout
-	fseek(output, 0, SEEK_SET);
-	while (fgets(linebuf, sizeof linebuf, output)) {
-		fputs(linebuf, stdout);
+	if (output) {
+		fseek(output, 0, SEEK_SET);
+		while (fgets(linebuf, sizeof linebuf, output)) {
+			fputs(linebuf, stdout);
+		}
+		fclose(output);
 	}
-	fclose(output);
 }

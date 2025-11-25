@@ -83,7 +83,9 @@ int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value)
 		"/sys/class/drm/card%d/device/pp_dpm_%s", asic->instance, clock_name);
 	fd = open(name, O_RDWR);
 	if (fd) {
-		write(fd, input, input_len+1);
+		if (write(fd, input, input_len+1) < 0) {
+			asic->err_msg("[ERROR]: Could not write to clock file %s\n", name);
+		}
 		close(fd);
 		input_flag = 1;
 		ret = 0;
@@ -130,9 +132,12 @@ int umr_check_clock_performance(struct umr_asic *asic, char* clockperformance, u
 		"/sys/class/drm/card%d/device/power_dpm_force_performance_level", asic->instance);
 	fp = fopen(name, "r");
 	if (fp) {
-		fgets(clockperformance, len-1, fp);
+		if (fgets(clockperformance, len-1, fp) == NULL) {
+			asic->err_msg("[ERROR]: Could not read from clock file %s\n", name);
+		} else {
+			ret = strlen(clockperformance);
+		}
 		fclose(fp);
-		ret = strlen(clockperformance);
 	} else {
 		ret = 0;
 	}

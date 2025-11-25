@@ -208,7 +208,7 @@ struct umr_reg* umr_find_reg_data_by_ip_by_instance(struct umr_asic* asic, const
 struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asic, const char* ip, int inst, const char* regname, struct umr_ip_block **ipp)
 {
 	int i, k;
-	char origname[96], tmpregname[96], instname[16];
+	char origname[96], tmpregname[100], instname[16];
 	const char *oregname = regname;
 
 	strcpy(origname, regname);
@@ -269,8 +269,8 @@ retry:
 	// if regname starts with 'mm' search for variant with 'reg' prefix
 	// this avoids having to recode a lot of logic.
 	if (!memcmp(regname, "mm", 2)) {
-		strncpy(tmpregname, "reg", sizeof(tmpregname));
-		strncpy(tmpregname + 3, regname + 2, sizeof(tmpregname) - 3);
+		memcpy(tmpregname, "reg", 4);
+		strncpy(tmpregname + 3, regname + 2, sizeof(tmpregname) - 4);
 		regname = (const char *)tmpregname;
 		goto retry;
 	}

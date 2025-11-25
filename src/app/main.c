@@ -521,8 +521,7 @@ static void check_lockdown(void)
 	char buf[256];
 	f = fopen("/sys/kernel/security/lockdown", "r");
 	if (f) {
-		fgets(buf, sizeof buf, f);
-		if (!strstr(buf, "[none]")) {
+		if (!fgets(buf, sizeof buf, f) || !strstr(buf, "[none]")) {
 			fprintf(stderr, "[WARNING]: Kernel 'lockdown' mode was not set to [none] so umr likely won't work.\n");
 		}
 		fclose(f);
@@ -1001,8 +1000,8 @@ int main(int argc, char **argv)
 								fprintf(stderr, "[ERROR]: Invalid format for wave id! Format: \"se,sh,wgp,simd,wave\"\n");
 								return EXIT_FAILURE;
 							}
-							char num[3];
-							strncpy(num, loc_start, loc_size);
+							char num[10];
+							strncpy(num, loc_start, sizeof(num) - 1);
 							memset(num + loc_size, 0, 3 - loc_size);
 							wave_loc[j] = strtoul(num, NULL, 10);
 
@@ -1114,7 +1113,7 @@ int main(int argc, char **argv)
 								if (umr_read_user_queue_buffer(asic, start, end, buf, &len)) {
 									asic->err_msg("[ERROR]: Could not decode packet stream fetched from the user queue.");
 								} else {
-									uint32_t rt;
+									uint32_t rt = UMR_RING_UNK;
 									switch (asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type) {
 										case UMR_QUEUE_COMPUTE_PM4:
 										case UMR_QUEUE_GFX: rt = UMR_RING_PM4; break;
@@ -1123,17 +1122,19 @@ int main(int argc, char **argv)
 										default:
 											asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type, __FILE__, __LINE__);
 									}
-									// decode and diassemble the command submission packets
-									asic->std_msg("Dumping 0x%"PRIx32" words from user queue-%"PRIu64" (from word 0x%"PRIx32" to 0x%"PRIx32"):\n",
-										len,
-										asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_id,
-										start, end);
-									umr_ring_stream_present(asic,
-										NULL, 0, 0, // ring
-										0, // vmid
-										asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + start * 4, // addr
-										buf, len, // words, length
-										rt);
+									if (rt != UMR_RING_UNK) {
+										// decode and diassemble the command submission packets
+										asic->std_msg("Dumping 0x%"PRIx32" words from user queue-%"PRIu64" (from word 0x%"PRIx32" to 0x%"PRIx32"):\n",
+											len,
+											asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_id,
+											start, end);
+										umr_ring_stream_present(asic,
+											NULL, 0, 0, // ring
+											0, // vmid
+											asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + start * 4, // addr
+											buf, len, // words, length
+											rt);
+									}
 								}
 								free(buf);
 							}
@@ -1247,11 +1248,11 @@ int main(int argc, char **argv)
 					argflags[i] = 1;
 					value = 0;
 					if (asic->fd.gfxoff >= 0)
-						write(asic->fd.gfxoff, &value, sizeof(value));
+						value = write(asic->fd.gfxoff, &value, sizeof(value));
 					umr_top(asic);
 					value = 1;
 					if (asic->fd.gfxoff >= 0)
-						write(asic->fd.gfxoff, &value, sizeof(value));
+						value = write(asic->fd.gfxoff, &value, sizeof(value));
 				} else if (!strcmp(argv[i], "-mm")) {
 					if (i + 1 < argc) {
 						argflags[i] = 1;
@@ -1500,7 +1501,7 @@ int main(int argc, char **argv)
 						argflags[i+1] = 1;
 						sscanf(argv[i+1], "%"SCNu32, &value);
 						if (asic->fd.gfxoff >= 0)
-							write(asic->fd.gfxoff, &value, sizeof(value));
+							value = write(asic->fd.gfxoff, &value, sizeof(value));
 						else
 							fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
 						++i;

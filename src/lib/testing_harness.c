@@ -541,14 +541,18 @@ struct umr_test_harness *umr_create_test_harness_file(const char *fname)
 {
 	const char *script;
 	int fd;
-	off_t size;
+	size_t size;
 	struct umr_test_harness *th;
 
 	fd = open(fname, O_RDONLY);
 	size = lseek(fd, 0, SEEK_END);
 	lseek(fd, 0, SEEK_SET);
 	script = calloc(1, size + 1);
-	read(fd, (char*)script, size);
+	if ((size_t)read(fd, (char*)script, size) != size) {
+		fprintf(stderr, "[ERROR]: Could not read test harness from file %s\n", fname);
+		close(fd);
+		return NULL;
+	}
 	close(fd);
 
 	th = umr_create_test_harness(script);

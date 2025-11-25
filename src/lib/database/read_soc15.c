@@ -87,7 +87,9 @@ retry8:
 		linebuf[strlen(linebuf)-1] = 0; // chomp
 		strcpy(s->ipname, linebuf);
 		for (x = 0; x < UMR_SOC15_MAX_INST; x++) {
-			fgets(linebuf, sizeof(linebuf), f);
+			if (!fgets(linebuf, sizeof(linebuf), f)) {
+				break;
+			}
 			if ((segs = parse_segments(linebuf, &s->off[x][0])) < 8) {
 				if (segs == 0) {
 					// originally there were only 8 instances, then 32, now we support upto UMR_SOC15_MAX_SEG

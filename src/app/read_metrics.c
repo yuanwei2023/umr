@@ -52,16 +52,17 @@ int umr_print_gpu_metrics(struct umr_asic *asic, int delay)
 	do {
 		struct umr_key_value *kv;
 		int x;
-		fread(pp_data, 1, size, f);
-		kv = umr_dump_metrics(asic, pp_data, size);
-		if (!kv) {
-			r = -1;
-			goto error;
+		if (fread(pp_data, 1, size, f) == size) {
+			kv = umr_dump_metrics(asic, pp_data, size);
+			if (!kv) {
+				r = -1;
+				goto error;
+			}
+			for (x = 0; x < kv->used; x++) {
+				asic->std_msg("%-30s: %s\n", kv->keys[x].name, kv->keys[x].value);
+			}
+			free(kv);
 		}
-		for (x = 0; x < kv->used; x++) {
-			asic->std_msg("%-30s: %s\n", kv->keys[x].name, kv->keys[x].value);
-		}
-		free(kv);
 		if (delay) {
 			usleep(abs(delay) * 1000UL);
 			fseek(f, 0, SEEK_SET);

@@ -88,14 +88,21 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 	struct umr_discovery_table_entry *ip_start;
 	FILE *f;
 
-	snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", diepath, ipname);
+	memset(linebuf, 0, sizeof linebuf);
+	if (snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", diepath, ipname) < 0) {
+		fprintf(stderr, "[ERROR]: Could not construct IP discovery path for die: [%s], ipname: [%s]\n", diepath, ipname);
+		return;
+	}
 	ipdir = opendir(linebuf);
 	if (!ipdir)
 		return;
 	ip_start = *det;
 	while ((de = readdir(ipdir))) {
 		if (isdigit(de->d_name[0])) {
-			snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s/%s", diepath, ipname, de->d_name); // path to instance of ip block on given die
+			if (snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s/%s", diepath, ipname, de->d_name) < 0) { // path to instance of ip block on given die
+				closedir(ipdir);
+				return;
+			}
 			(*det)->die = die_num;
 			// base_addr list
 			snprintf(fname, (sizeof fname) - 1, "%s/base_addr", linebuf);
@@ -115,39 +122,55 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			// major
 			snprintf(fname, (sizeof fname) - 1, "%s/major", linebuf);
 			f = fopen(fname, "r");
-				fgets(databuf, sizeof databuf, f);
-				sscanf(databuf, "%d", &(*det)->maj);
-			fclose(f);
+			if (!f || fscanf(f, "%d", &(*det)->maj) != 1) {
+				fprintf(stderr, "[ERROR]: Could not read major from %s\n", fname);
+			}
+			if (f) {
+				fclose(f);
+			}
+
 			// minor
 			snprintf(fname, (sizeof fname) - 1, "%s/minor", linebuf);
 			f = fopen(fname, "r");
-				fgets(databuf, sizeof databuf, f);
-				sscanf(databuf, "%d", &(*det)->min);
-			fclose(f);
+			if (!f || fscanf(f, "%d", &(*det)->min) != 1) {
+				fprintf(stderr, "[ERROR]: Could not read minor from %s\n", fname);
+			}
+			if (f) {
+				fclose(f);
+			}
+
 			// revision
 			snprintf(fname, (sizeof fname) - 1, "%s/revision", linebuf);
 			f = fopen(fname, "r");
-				fgets(databuf, sizeof databuf, f);
-				sscanf(databuf, "%d", &(*det)->rev);
-			fclose(f);
+			if (!f || fscanf(f, "%d", &(*det)->rev) != 1) {
+				fprintf(stderr, "[ERROR]: Could not read revision from %s\n", fname);
+			}
+			if (f) {
+				fclose(f);
+			}
+
 			// instance
 			snprintf(fname, (sizeof fname) - 1, "%s/num_instance", linebuf);
 			f = fopen(fname, "r");
-				fgets(databuf, sizeof databuf, f);
-				sscanf(databuf, "%d", &(*det)->instance);
-			fclose(f);
+			if (!f || fscanf(f, "%d", &(*det)->instance) != 1) {
+				fprintf(stderr, "[ERROR]: Could not read instance number from %s\n", fname);
+			}
+			if (f) {
+				fclose(f);
+			}
+
 			// harvest
 			snprintf(fname, (sizeof fname) - 1, "%s/harvest",
 					linebuf);
 			f = fopen(fname, "r");
 			if (f) {
-				fgets(databuf, sizeof databuf, f);
-				sscanf(databuf, "%" SCNx8,
-					&(*det)->harvest);
-				if ((*det)->harvest == 0)
-						inst_mask |=
-							(1 << (*det)->instance);
-
+				if (fscanf(f, "%" SCNx8, &(*det)->harvest) != 1) {
+					fprintf(stderr, "[ERROR]: Could not read harvest from %s\n", fname);
+				} else {
+					if ((*det)->harvest == 0) {
+						inst_mask |= (1 << (*det)->instance);
+					}
+				}
 				fclose(f);
 			} else {
 				inst_mask |= (1 << (*det)->instance);

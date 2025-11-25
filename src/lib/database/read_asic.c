@@ -68,8 +68,8 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 		return NULL;
 
 	asic->err_msg = errout;
-	fgets(linebuf, sizeof linebuf, f);
-	if (sscanf(linebuf, "%s %s %d %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity, &asic_fields.is_apu) != 6) {
+
+	if (!fgets(linebuf, sizeof linebuf, f) || sscanf(linebuf, "%s %s %d %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity, &asic_fields.is_apu) != 6) {
 		asic->err_msg("[ERROR]: Invalid ASIC header line [%s]\n", linebuf);
 		free(asic);
 		return NULL;
@@ -97,8 +97,7 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 
 	for (x = 0; x < asic->no_blocks; x++) {
 		int instance;
-		fgets(linebuf, sizeof linebuf, f);
-		if (sscanf(linebuf, "%s %s %d %s", ipcmnname, ipsocname, &instance, regfile) != 4) {
+		if (!fgets(linebuf, sizeof linebuf, f) || sscanf(linebuf, "%s %s %d %s", ipcmnname, ipsocname, &instance, regfile) != 4) {
 			asic->err_msg("[ERROR]: Invalid IP header line [%s]\n", linebuf);
 			goto error;
 		}

@@ -104,12 +104,18 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 
 	ip = calloc(1, sizeof *ip);
 	if (!ip) {
+		errout("[ERROR]: Could not allocate memory for IP block\n");
 		fclose(f);
 		return NULL;
 	}
 
-	fgets(linebuf, sizeof(linebuf), f);
-	sscanf(linebuf, "%"SCNu32, &no_regs);
+	if (!fgets(linebuf, sizeof(linebuf), f) || sscanf(linebuf, "%"SCNu32, &no_regs) != 1) {
+		errout("[ERROR]: Could not read first line from IP database file [%s, %s, %s, %s, %d]\n",
+			path, filename, cmnname, soc15name, inst);
+		free(ip);
+		fclose(f);
+		return NULL;
+	}
 	ip->no_regs = no_regs;
 	ip->regs = calloc(no_regs, sizeof(*(ip->regs)));
 	ip->ipname = strdup(cmnname);
@@ -152,8 +158,11 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 		if (reg_fields.nobits) {
 			ip->regs[x].bits = calloc(reg_fields.nobits, sizeof(*(ip->regs[x].bits)));
 			for (y = 0; y < reg_fields.nobits; y++) {
-				fgets(linebuf, sizeof linebuf, f);
-				sscanf(linebuf, "\t%s %d %d", bit_fields.name, &bit_fields.start, &bit_fields.stop);
+				if (!fgets(linebuf, sizeof linebuf, f) || sscanf(linebuf, "\t%s %d %d", bit_fields.name, &bit_fields.start, &bit_fields.stop) != 3){
+					errout("[ERROR]: Could not read bitfield definition\n");
+					fclose(f);
+					return ip;
+				}
 				ip->regs[x].bits[y].regname = strdup(bit_fields.name);
 				ip->regs[x].bits[y].start = bit_fields.start;
 				ip->regs[x].bits[y].stop = bit_fields.stop;

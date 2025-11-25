@@ -107,7 +107,7 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
             }
         } else if (!strcmp(argv[x], "pci-bus-to-instxcc")) {
             if (x + 1 < argc) {
-                int y, xcc;
+                int y, xcc = -1;
                 char tmp[64];
                 strcpy(tmp, argv[x+1]);
                 if (isdigit(tmp[strlen(tmp)-1])) {

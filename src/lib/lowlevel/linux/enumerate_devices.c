@@ -65,7 +65,7 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 		if (global_options)
 			options = *global_options;
 		options.quiet = 1;
-		strncpy(options.database_path, database_path, sizeof(options.database_path));
+		strncpy(options.database_path, database_path, sizeof(options.database_path) - 1);
 		if (sscanf(de->d_name, "%04x:%02x:%02x.%01x",
 				&options.pci.domain, &options.pci.bus, &options.pci.slot,
 				&options.pci.func) == 4) {
@@ -81,7 +81,9 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 				sprintf(devicepath, "/sys/bus/pci/drivers/amdgpu/%s/device", de->d_name);
 				f = fopen(devicepath, "r");
 				if (f) {
-					fscanf(f, "%x", &((*asics)[x]->did));
+					if (fscanf(f, "%x", &((*asics)[x]->did)) != 1) {
+						errout("[ERROR]: Could not read device DID from %s\n", devicepath);
+					}
 					fclose(f);
 				} else {
 					errout("[ERROR]: Could not open 'device' file for enumeration path=<%s>\n", devicepath);

@@ -539,7 +539,7 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 {
 	uint64_t modifier;
 	int dmabuf_fd;
-	int r, stride;
+	int r, stride = 0;
 	int gpu_fd = -1;
 	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
 	if (pid_fd < 0)
@@ -2696,7 +2696,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 			int len = task_name_end - task_name_start;
 			if (len > 31)
 				len = 31;
-			strncpy(data->mapping[data->mapping_count].process_name, task_name_start, 32);
+			strncpy(data->mapping[data->mapping_count].process_name, task_name_start, sizeof(data->mapping[data->mapping_count].process_name) - 1);
 			data->mapping[data->mapping_count].process_name[len] = '\0';
 		}
 
@@ -2945,7 +2945,7 @@ static JSON_Value *previous_framebuffers_answer = NULL;
 JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size)
 {
 	JSON_Value *answer = NULL;
-	const char *last_error;
+	const char *last_error = NULL;
 	const char *command = json_object_get_string(request, "command");
 
 	if (!command) {
@@ -3111,7 +3111,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		/* Disable GFXOFF */
 		if (asic->fd.gfxoff >= 0) {
 			uint32_t value = 0;
-			write(asic->fd.gfxoff, &value, sizeof(value));
+			value = write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
 		/* Get our ID. */
@@ -3170,7 +3170,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		/* Re-enable GFXOFF */
 		if (asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
-			write(asic->fd.gfxoff, &value, sizeof(value));
+			value = write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
 		JSON_Value *fences = compare_fence_infos(
@@ -3278,7 +3278,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 0;
-			write(asic->fd.gfxoff, &value, sizeof(value));
+			value = write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
 		asic->options.verbose = 0;
@@ -3298,7 +3298,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
 			uint32_t value = 1;
-			write(asic->fd.gfxoff, &value, sizeof(value));
+			value = write(asic->fd.gfxoff, &value, sizeof(value));
 		}
 
 		if (!ring_is_halted) {
@@ -3358,7 +3358,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		/* Disable gfxoff */
 		value = 0;
 		if (asic->fd.gfxoff >= 0)
-			write(asic->fd.gfxoff, &value, sizeof(value));
+			value = write(asic->fd.gfxoff, &value, sizeof(value));
 
 		if (halt_waves)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
@@ -3464,7 +3464,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		/* Reenable gfxoff */
 		value = 1;
 		if (asic->fd.gfxoff >= 0)
-			write(asic->fd.gfxoff, &value, sizeof(value));
+			value = write(asic->fd.gfxoff, &value, sizeof(value));
 
 	} else if (strcmp(command, "power") == 0) {
 		const char *profiles[] = {

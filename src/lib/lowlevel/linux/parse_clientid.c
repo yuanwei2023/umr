@@ -139,6 +139,8 @@ static int init_gfx9_queue(struct umr_asic *asic, int x, int *init)
             *init = 1;
         }
         break;
+    default:
+        asic->err_msg("[BUG]: Unsupported queue type [%d] (%s:%d)\n", (int)asic->options.user_queue.client_info.queue[x].queue_type, __FILE__, __LINE__);
     }
     return 0;
 }
@@ -568,7 +570,7 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
 {
     int client_named = 0, use_name = 0, use_pid = 0, use_type = 0, found = 0, x;
     int gfx_maj, gfx_min;
-    uint64_t queueid, tmp;
+    uint64_t queueid = 0, tmp;
     char p[256], pp[256], str[256], path[512];
     const char *ps, *pps;
     FILE *f;
@@ -657,42 +659,43 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
     }
 
     // scan file for the target client
-    fgets(path, sizeof path, f); // skip first line
-    while (fgets(path, sizeof path, f)) {
-        if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
-            asic->options.user_queue.client_line.command, asic->options.user_queue.client_line.tgid,
-            asic->options.user_queue.client_line.dev, asic->options.user_queue.client_line.master,
-            asic->options.user_queue.client_line.a, asic->options.user_queue.client_line.uid,
-            asic->options.user_queue.client_line.magic, asic->options.user_queue.client_line.name,
-            asic->options.user_queue.client_line.id) == 9) {
-            if ((use_name && !strcmp(p, asic->options.user_queue.client_line.command)) ||
-                (use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.tgid)) ||
-                (!use_name && !use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.id))) {
-                // found the entry
-                found = 1;
-                if (!client_named) {
-                    // try to auto detect the client type
-                    FILE *cf;
-                    char buf[256], str[256];
-                    // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
-                    asic->options.user_queue.client_type = UMR_CLIENT_KGD;
-                    cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
-                    if (cf) {
-                        sprintf(str, "Process %s", asic->options.user_queue.client_line.tgid);
-                        while(fgets(buf, sizeof buf, cf)) {
-                            if (strstr(buf, str)) {
-                                asic->options.user_queue.client_type = UMR_CLIENT_KFD;
-                                break;
+    if (fgets(path, sizeof path, f)) {
+        while (fgets(path, sizeof path, f)) {
+            if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
+                asic->options.user_queue.client_line.command, asic->options.user_queue.client_line.tgid,
+                asic->options.user_queue.client_line.dev, asic->options.user_queue.client_line.master,
+                asic->options.user_queue.client_line.a, asic->options.user_queue.client_line.uid,
+                asic->options.user_queue.client_line.magic, asic->options.user_queue.client_line.name,
+                asic->options.user_queue.client_line.id) == 9) {
+                if ((use_name && !strcmp(p, asic->options.user_queue.client_line.command)) ||
+                    (use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.tgid)) ||
+                    (!use_name && !use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.id))) {
+                    // found the entry
+                    found = 1;
+                    if (!client_named) {
+                        // try to auto detect the client type
+                        FILE *cf;
+                        char buf[256], str[256];
+                        // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
+                        asic->options.user_queue.client_type = UMR_CLIENT_KGD;
+                        cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
+                        if (cf) {
+                            sprintf(str, "Process %s", asic->options.user_queue.client_line.tgid);
+                            while(fgets(buf, sizeof buf, cf)) {
+                                if (strstr(buf, str)) {
+                                    asic->options.user_queue.client_type = UMR_CLIENT_KFD;
+                                    break;
+                                }
                             }
+                            fclose(cf);
                         }
-                        fclose(cf);
                     }
+                    break;
                 }
-                break;
+            } else {
+                asic->err_msg("[ERROR]: Could not parse 'clients' file from debugfs.  Could be your kernel is too old.\n");
+                goto error;
             }
-        } else {
-            asic->err_msg("[ERROR]: Could not parse 'clients' file from debugfs.  Could be your kernel is too old.\n");
-            goto error;
         }
     }
     fclose(f);
@@ -940,51 +943,51 @@ struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
     }
 
     // scan file for the target client
-    fgets(path, sizeof path, f); // skip first line
-    while (fgets(path, sizeof path, f)) {
-        int kgd_mode = 1;
-        struct {
-            char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
-        } client_line;
+    if (fgets(path, sizeof path, f)) {
+        while (fgets(path, sizeof path, f)) {
+            int kgd_mode = 1;
+            struct {
+                char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
+            } client_line;
 
-        if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
-            client_line.command, client_line.tgid,
-            client_line.dev, client_line.master,
-            client_line.a, client_line.uid,
-            client_line.magic, client_line.name,
-            client_line.id) != 9) {
-            asic->err_msg("[ERROR]: Could not parse 'clients' file.  Could be that your kernel is too old.\n");
-            goto error;
-        }
-
-        // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
-        cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
-        if (cf) {
-            sprintf(path, "Process %s", client_line.tgid);
-            while(fgets(buf, sizeof buf, cf)) {
-                if (strstr(buf, path)) {
-                    kgd_mode = 0;
-                    break;
-                }
+            if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
+                client_line.command, client_line.tgid,
+                client_line.dev, client_line.master,
+                client_line.a, client_line.uid,
+                client_line.magic, client_line.name,
+                client_line.id) != 9) {
+                asic->err_msg("[ERROR]: Could not parse 'clients' file.  Could be that your kernel is too old.\n");
+                goto error;
             }
-            fclose(cf);
+
+            // a KFD client is one where the PID is found in kfd/mqds as "Process ${tgid}"
+            cf = fopen("/sys/kernel/debug/kfd/mqds", "r");
+            if (cf) {
+                sprintf(path, "Process %s", client_line.tgid);
+                while(fgets(buf, sizeof buf, cf)) {
+                    if (strstr(buf, path)) {
+                        kgd_mode = 0;
+                        break;
+                    }
+                }
+                fclose(cf);
+            }
+
+            // parse the client
+            sprintf(buf, "%s,client=%d,queue=0", kgd_mode ? "kgd" : "kfd", atoi(client_line.id));
+            tq = lq->prev;
+            *lq = umr_parse_clientid(asic, buf);
+            lq->prev = tq;
+
+            // advance the list
+            lq->next = calloc(1, sizeof *lq);
+            if (lq->next) {
+                lq->next->prev = lq;
+                lq = lq->next;
+            } else {
+                goto error;
+            }
         }
-
-        // parse the client
-        sprintf(buf, "%s,client=%d,queue=0", kgd_mode ? "kgd" : "kfd", atoi(client_line.id));
-        tq = lq->prev;
-        *lq = umr_parse_clientid(asic, buf);
-        lq->prev = tq;
-
-        // advance the list
-        lq->next = calloc(1, sizeof *lq);
-        if (lq->next) {
-            lq->next->prev = lq;
-            lq = lq->next;
-        } else {
-            goto error;
-        }
-
     }
     fclose(f);
 

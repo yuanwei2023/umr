@@ -176,7 +176,13 @@ struct rumr_buffer *rumr_buffer_load_file(const char *fname, char *database_path
 	}
 	buf->data += RUMR_BUFFER_PREHEADER;
 	buf->size = size;
-	fread(buf->data, 1, size, f);
+	if (fread(buf->data, 1, size, f) != size) {
+		fprintf(stderr, "[ERROR]: Could not read entire file %s in rumr_buffer_load_file()\n", fname);
+		free(buf->data - RUMR_BUFFER_PREHEADER);
+		free(buf);
+		fclose(f);
+		return NULL;
+	}
 	fclose(f);
 	buf->woffset = size;
 	return buf;

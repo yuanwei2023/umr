@@ -945,8 +945,8 @@ static void print_vp9_msg(struct umr_asic *asic, uint32_t tvmid, uint64_t addr, 
 	add_field_1(asic, tvmid, addr, &offset, "UNCOMPRESSED_HEADER_SIZE", pm->uncompressed_header_size, 32, 10, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "RESERVED", pm->reserved[0], 8, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "RESERVED", pm->reserved[1], 8, 16, pOut, pBuf);
+	add_field_1(asic, tvmid, addr, &offset, "RESERVED", pm->reserved[2], 8, 16, pOut, pBuf);
 	add_field_1(asic, tvmid, addr, &offset, "RESERVED", pm->reserved[3], 8, 16, pOut, pBuf);
-	add_field_1(asic, tvmid, addr, &offset, "RESERVED", pm->reserved[4], 8, 16, pOut, pBuf);
 	add_tail(tvmid, addr, o_offset, "VP9 MESSAGE",  pOut, pBuf);
 	COMPARE_ERROR((offset - o_offset), size);
 }

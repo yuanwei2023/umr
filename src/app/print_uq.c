@@ -104,6 +104,7 @@ void umr_print_uq_info(struct umr_asic *asic)
                 case UMR_QUEUE_SDMA: qt = UMR_MQD_ENGINE_SDMA0; break;
                 default:
                     asic->err_msg("[BUG]: Invalid queue type [%d] in --print-uq\n", (int)asic->options.user_queue.client_info.queue[x].queue_type);
+                    return;
             }
             mqd_txt = umr_mqd_decode_data(
                 qt,

@@ -643,7 +643,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			      void *dst, int write_en, struct umr_vm_pagewalk *vmdata)
 {
 	struct umr_vm_ai_state vm;
-	uint64_t start_addr, va_mask, offset_mask;
+	uint64_t start_addr, va_mask, offset_mask = 0;
 	uint32_t chunk_size;
 	int current_depth;
 

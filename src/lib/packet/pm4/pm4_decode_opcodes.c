@@ -392,6 +392,9 @@ static void load_X_reg(struct umr_asic *asic, struct umr_stream_decode_ui *ui, s
 		case 0x5F: reg_base = 0x2C00; break; // LOAD_SH_REG
 		case 0x60: reg_base = 0x2000; break; // LOAD_CONFIG_REG
 		case 0x61: reg_base = 0xA000; break; // LOAD_CONTEXT_REG
+		default:
+			asic->err_msg("[BUG]: Unhandled stream opcode %"PRIx32" in function load_X_reg().\n", stream->opcode);
+			return;
 	}
 
 	base_addr = fetch_word(asic, stream, 0) & ~2UL;
@@ -424,20 +427,26 @@ static void load_X_reg(struct umr_asic *asic, struct umr_stream_decode_ui *ui, s
 			if (!umr_read_vram(asic, asic->options.vm_partition, ib_vmid, base_addr + 4 * k, 4 * m, data)) {
 				// turn into data string
 				for (j = 0; j < m; j++) {
-					snprintf(tmpstr, sizeof tmpstr, "#%4"PRIx32":%s <= 0x%"PRIx32"\n", k + j, umr_reg_name(asic, reg_base + k + j), data[j]);
-					while (strlen(tmpstr) + strlen(str) >= str_size) {
-						char *tmp;
-						str_size += 4096;
-						tmp = realloc(str, str_size);
-						if (!tmp) {
-							asic->err_msg("[ERROR]: Out of memory\n");
-							free(data);
-							free(str);
-							return;
+					if (snprintf(tmpstr, sizeof tmpstr, "#%4"PRIx32":%s <= 0x%"PRIx32"\n", k + j, umr_reg_name(asic, reg_base + k + j), data[j]) > 0) {
+						while (strlen(tmpstr) + strlen(str) >= str_size) {
+							char *tmp;
+							str_size += 4096;
+							tmp = realloc(str, str_size);
+							if (!tmp) {
+								asic->err_msg("[ERROR]: Out of memory\n");
+								free(data);
+								free(str);
+								return;
+							}
+							str = tmp;
 						}
-						str = tmp;
+						strcat(str, tmpstr);
+					} else {
+						asic->err_msg("[ERROR]: Could not generate register assignment string\n");
+						free(data);
+						free(str);
+						return;
 					}
-					strcat(str, tmpstr);
 				}
 			}
 			free(data);
@@ -2231,7 +2240,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 {
 	uint32_t nwords, ncodes;
 	struct umr_pm4_stream *s;
-	const char *opcode_name;
+	const char *opcode_name = "UNK";
 	int maj, min;
 
 	s = stream;

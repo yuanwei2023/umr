@@ -387,7 +387,11 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 		size = ftell(infile) - 12;
 		fseek(infile, 12, SEEK_SET);
 		data = calloc(1, size);
-		fread(data, 1, size, infile);
+		if (fread(data, 1, size, infile) != size) {
+			free(data);
+			fclose(infile);
+			return NULL;
+		}
 		*nwords = size / 4;
 		fclose(infile);
 		return data;
@@ -399,7 +403,11 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 		size = ftell(infile) ;
 		fseek(infile, 0, SEEK_SET);
 		data = calloc(1, size);
-		fread(data, 1, size, infile);
+		if (fread(data, 1, size, infile) != size) {
+			free(data);
+			fclose(infile);
+			return NULL;
+		}
 		*nwords = size / 4;
 		fclose(infile);
 		return data;

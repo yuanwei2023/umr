@@ -107,9 +107,11 @@ static uint64_t read_int(char *pci_name, char *fname)
 	snprintf(buf, sizeof(buf)-1, "/sys/bus/pci/devices/%s/%s", pci_name, fname);
 	f = fopen(buf, "r");
 	if (f) {
-		fscanf(f, "%"SCNu64"\n", &n);
+		if (fscanf(f, "%"SCNu64"\n", &n) == 1) {
+			fclose(f);
+			return n;
+		}
 		fclose(f);
-		return n;
 	}
 	return 0;
 }
@@ -123,9 +125,11 @@ static uint64_t read_int_drm(int cardno, char *fname)
 	snprintf(buf, sizeof(buf)-1, "/sys/class/drm/card%d/device/%s", cardno, fname);
 	f = fopen(buf, "r");
 	if (f) {
-		fscanf(f, "%"SCNu64"\n", &n);
+		if (fscanf(f, "%"SCNu64"\n", &n) == 1) {
+			fclose(f);
+			return n;
+		}
 		fclose(f);
-		return n;
 	}
 	return 0;
 }
