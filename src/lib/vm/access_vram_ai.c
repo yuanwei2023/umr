@@ -25,6 +25,8 @@
 #include "umr.h"
 #include <inttypes.h>
 
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+
 /**
  * @file access_vram_ai.c
  * @brief VM address translation for AMD GFX9+ (AI/Vega and later) GPU architectures
@@ -203,24 +205,6 @@ struct umr_vm_ai_state {
 };
 
 /**
- * @brief Round up a value to the next power of two
- *
- * @param x The value to round up
- * @return The smallest power of two greater than or equal to x, starting from 1 GiB minimum
- *
- * @details This function rounds up the given value to the next power of two, with a minimum
- *          value of 1 GiB (2^30). It is used to normalize VM space sizes for address calculations.
- */
-static uint64_t round_up_pot(uint64_t x)
-{
-	uint64_t y = 1;
-	while (y < x) {
-		y <<= 1;
-	}
-	return y;
-}
-
-/**
  * @brief Calculate the log2 of the VM space size
  *
  * @param page_table_start_addr The lowest address in the VM space
@@ -234,13 +218,31 @@ static uint64_t round_up_pot(uint64_t x)
  */
 static uint64_t log2_vm_size(uint64_t page_table_start_addr, uint64_t page_table_end_addr)
 {
-	/* Find the highest bit set to get an estimate for log2(size) */
-	uint64_t size_of_vm_bytes = round_up_pot(page_table_end_addr - page_table_start_addr + VM_PAGE_SIZE);
-	uint32_t vm_bits = 0;
-	while (size_of_vm_bytes >>= 1) {
-		vm_bits++;
+	// Get total number of bytes in VM space.
+	uint64_t size_of_vm_bytes = page_table_end_addr - page_table_start_addr;
+
+	// page_table_end_addr is inclusive of the last page. To get true size of VM space,
+	// add one more page.
+	if (size_of_vm_bytes > UINT64_MAX - VM_PAGE_SIZE) {
+		// Overflow case. It's 64 bits.
+		return 64;
+	} else {
+		size_of_vm_bytes += VM_PAGE_SIZE;
 	}
-	return vm_bits;
+
+	if (size_of_vm_bytes <= 1) {
+		return 0;
+	}
+
+	// Subtract 1 to achieve ceiling of log2 when checking highest bit instead of floor.
+	size_of_vm_bytes -= 1;
+	uint64_t num_leading_zeros = 0;
+	while (size_of_vm_bytes > 0) {
+		size_of_vm_bytes >>= 1;
+		num_leading_zeros++;
+	}
+
+	return num_leading_zeros;
 }
 
 /**
@@ -333,7 +335,7 @@ static void print_base(struct umr_vm_ai_state *vm)
 	vm->asic->mem_funcs.vm_message("BASE");
 	vm->asic->mem_funcs.vm_message("=0x%016" PRIx64 ", VA=0x%012" PRIx64,
 			vm->pde.pde_entry,
-			vm->va_tally + vm->page_table.page_table_start_addr);
+			vm->page_table.page_table_start_addr);
 	print_pde_fields(vm, vm->pde.pde_fields);
 }
 
@@ -359,7 +361,7 @@ static void print_pde(struct umr_vm_ai_state *vm, const char *indentation)
 	} else {
 		vm->asic->mem_funcs.vm_message("PDE%d", vm->page_table.page_table_depth - vm->pde.pde_cnt);
 	}
-	vm->asic->mem_funcs.vm_message("@{0x%" PRIx64 "/%" PRIx64
+	vm->asic->mem_funcs.vm_message("@{0x%" PRIx64 "/0x%" PRIx64
 			"}=0x%016" PRIx64 ", VA=0x%012" PRIx64,
 			vm->pde.addr,
 			vm->pde.pde_idx,
@@ -539,13 +541,21 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation)
  * - ptb_mask: Bitmask for extracting PTE index within PTB
  * - pte_page_mask: Bitmask for extracting page offset within a single PTE's coverage
  */
-static void prepare_pde_to_pte(struct umr_vm_ai_state *vm)
+static void prepare_pde_to_pte(struct umr_vm_ai_state *vm, int current_depth, uint64_t total_vm_bits)
 {
 	vm->page_table.pde0_block_fragment_size = vm->pde.pde_fields.frag_size;
 
-	vm->pte.log2_ptb_entries = (VM_PDB_ENTRY_BITS + (vm->page_table.page_table_block_size - vm->page_table.pde0_block_fragment_size));
+	uint64_t start_bit = vm->page_table.pde0_block_fragment_size + VM_PAGE_SIZE_BITS;
+	uint64_t end_bit = vm->page_table.page_table_block_size + VM_2MB_BLOCK_BITS;
+
+	if (current_depth != 0) {
+		start_bit = MIN(VM_PDB_ENTRY_BITS * (current_depth - 1) + vm->page_table.page_table_block_size + VM_2MB_BLOCK_BITS, (uint64_t)total_vm_bits);
+		end_bit = MIN(VM_PDB_ENTRY_BITS * current_depth + vm->page_table.page_table_block_size + VM_2MB_BLOCK_BITS, (uint64_t)total_vm_bits);
+	}
+
+	vm->pte.log2_ptb_entries = end_bit - start_bit;
 	vm->pte.ptb_mask = (1ULL << vm->pte.log2_ptb_entries) - 1;
-	vm->pte.pte_page_mask = (1ULL << (vm->page_table.pde0_block_fragment_size + VM_PAGE_SIZE_BITS)) - 1;
+	vm->pte.pte_page_mask = (1ULL << start_bit) - 1;
 }
 
 /**
@@ -1054,10 +1064,11 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				* so let's copy it over and jump ship
 				*/
 				vm.pte.pte_entry = vm.pde.pde_entry;
-				vm.pte.pte_idx = 0;
+				vm.pte.pte_idx = vm.pde.pde_idx;
+				vm.pte.addr = vm.pde.addr;
 				vm.pde.pde_was_pte = 1;
 				/* we're done decoding PDEs let's get ready to decode a PTE */
-				prepare_pde_to_pte(&vm);
+				prepare_pde_to_pte(&vm, current_depth, total_vm_bits);
 				goto pde_is_pte;
 			}
 
@@ -1090,7 +1101,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 
 		/* At this point we traversed all the default PDE levels and are
 		 * ready to process a PTE or PTE-Further so let's get ready to decode a PTE */
-		prepare_pde_to_pte(&vm);
+		prepare_pde_to_pte(&vm, current_depth, total_vm_bits);
 
 		/*
 		 * If we fall through to here, we are pointing into PTB, so pull out
@@ -1135,17 +1146,21 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 
 			if (vm.pde.pde_fields.pte) {
 				/*
-				 * We are in here because we're in PDE0 with P bit. So we don't want
-				 * to skip the 9 bits from PDB0.
+				 * We are in here because we're in PDE{N} with P bit. N is current_depth - 1.
+				 *
+				 * vm.page_table.page_table_block_size + VM_2MB_BLOCK_BITS is the coverage of PTB.
+				 *
+				 * Each level above PTB (in this case, N + 1 levels) adds an additional 9 bits
+				 * of coverage of the block the PDE-as-PTE is in.
 				 */
-				bits_to_use += VM_PDB_ENTRY_BITS;
+				bits_to_use = MIN(VM_PDB_ENTRY_BITS * current_depth + vm.page_table.page_table_block_size + VM_2MB_BLOCK_BITS, (uint64_t)total_vm_bits);
 
 				/*
-				 * If the P bit is set, we are coming from PDE0, thus this entry
-				 * covers the whole page_table_block_size, instead of the PDE0.BFS.
-				 * So we want to ignore those bits in the address.
+				 * We are in here because we're in PDE{N} with P bit. N is current_depth - 1.
+				 *
+				 * In this case the coverage of the entry is just the coverage of a PDE{N}.
 				 */
-				lower_bits_to_ignore += vm.page_table.page_table_block_size;
+				lower_bits_to_ignore = MIN(VM_PDB_ENTRY_BITS * (current_depth - 1) + vm.page_table.page_table_block_size + VM_2MB_BLOCK_BITS, (uint64_t)total_vm_bits);
 			} else {
 				/*
 				 * If we are at an actual PTE, then based on PDE0.BFS, we want to ignore
@@ -1259,7 +1274,8 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			offset_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.pte.pte_block_fragment_size)) - 1;
 		}
 
-		start_addr = vm.asic->mem_funcs.gpu_bus_to_cpu_address(vm.asic, vm.pte.pte_fields.page_base_addr) + (address & offset_mask);
+		uint64_t page_start_addr = vm.asic->mem_funcs.gpu_bus_to_cpu_address(vm.asic, vm.pte.pte_fields.page_base_addr);
+		start_addr = page_start_addr + (address & offset_mask);
 		if (vm.vmdata) {
 			vm.vmdata->pte_idx = vm.pte.pte_idx;
 			vm.vmdata->pte_va_mask = vm.va_tally + vm.page_table.page_table_start_addr;
@@ -1275,11 +1291,13 @@ next_page:
 		 * If the size requested goes beyond the current page boundary
 		 * then limit the chunk size to the page boundary.
 		 */
-		if (((start_addr & vm.pte.pte_page_mask) + size) & ~vm.pte.pte_page_mask) {
-			chunk_size = (1 + vm.pte.pte_page_mask) - (start_addr & vm.pte.pte_page_mask);
+		uint64_t page_end_addr = page_start_addr + vm.pte.pte_page_mask + 1;
+		if (start_addr + size > page_end_addr) {
+			chunk_size = page_end_addr - start_addr;
 		} else {
 			chunk_size = size;
 		}
+
 		if (vm.asic->options.verbose) {
 			if (vm.pte.pte_fields.system == 1) {
 				if (vm.vmdata) {
@@ -1301,7 +1319,7 @@ next_page:
 				}
 				vm.asic->mem_funcs.vm_message(
 					"%s Computed address we will read from: %s:%" PRIx64
-					" (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes from a %" PRIu32 " byte page)\n",
+					" (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes from a %" PRIu64 " byte page)\n",
 					&indentation[VM_INDENTATION_BASE - (vm.pde.pde_cnt * VM_INDENTATION_PER_LEVEL) - VM_INDENTATION_PER_LEVEL],
 					"vram",
 					start_addr,

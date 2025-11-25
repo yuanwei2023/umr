@@ -180,6 +180,38 @@ enum TEST_RESULT test_can_read_from_vm_memory_direct20(struct umr_asic* asic)
     return TEST_SUCCESS;
 }
 
+// VMID2 read on a GFX12 device with PDE2-as-PTE
+enum TEST_RESULT test_can_read_from_vm_memory_direct21(struct umr_asic* asic)
+{
+    uint64_t read_data = 0;
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|2, 0xFFFFFFFFFFF0, sizeof(read_data), &read_data));
+    ASSERT_EQ(read_data, 0x0706050403020100);
+    return TEST_SUCCESS;
+}
+
+// VMID2 read on a GFX12 device across PDE2-as-PTE boundary
+enum TEST_RESULT test_can_read_from_vm_memory_direct22(struct umr_asic* asic)
+{
+    uint64_t read_data[2] = {0};
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|2, 0xFF7FFFFFFFF8, sizeof(read_data), &read_data));
+    ASSERT_EQ(read_data[0], 0x0706050403020100);
+    ASSERT_EQ(read_data[1], 0x0F0E0D0C0B0A0908);
+    return TEST_SUCCESS;
+}
+
+// VMID2 read on a GFX12 device with page address not aligned with page size.
+// The read crosses a "page size" aligned address which is not actually a page
+// boundary because the page itself is no aligned on a page size boundary. Expect
+// only one read to be made since there is no true page boundary.
+enum TEST_RESULT test_can_read_from_vm_memory_direct23(struct umr_asic* asic)
+{
+    uint64_t read_data[2] = {0};
+    ASSERT_SUCCESS(umr_read_vram(asic, -1, UMR_GFX_HUB|2, 0xCFF8, sizeof(read_data), &read_data));
+    ASSERT_EQ(read_data[0], 0x0706050403020100);
+    ASSERT_EQ(read_data[1], 0x0F0E0D0C0B0A0908);
+return TEST_SUCCESS;
+}
+
 DEFINE_TESTS(vm_tests)
 #if 0
 TEST(test_can_read_from_vm_memory_direct1, "direct_vm_test1.envdef", "raven1"),
@@ -205,5 +237,8 @@ TEST(test_can_read_from_vm_memory_direct17, "direct_vm_test17.envdef", "gfx11_vm
 TEST(test_can_read_from_vm_memory_direct18, "direct_vm_test18.envdef", "aldebaran"),
 TEST(test_can_read_from_vm_memory_direct19, "direct_vm_test19.envdef", "navi48_vm_test"),
 TEST(test_can_read_from_vm_memory_direct20, "direct_vm_test20.envdef", "navi48_vm_test"),
+TEST(test_can_read_from_vm_memory_direct21, "direct_vm_test21.envdef", "navi48_vm_test"),
+TEST(test_can_read_from_vm_memory_direct22, "direct_vm_test22.envdef", "navi48_vm_test"),
+TEST(test_can_read_from_vm_memory_direct23, "direct_vm_test23.envdef", "navi48_vm_test"),
 #endif
 END_TESTS(vm_tests);

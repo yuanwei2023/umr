@@ -560,46 +560,55 @@ struct umr_test_harness *umr_create_test_harness_file(const char *fname)
 	return th;
 }
 
+static int access_ram(struct umr_test_harness_ram_blocks *rb, char *name, uint64_t address, uint32_t size, void *dst, int write_en)
+{
+	struct umr_test_harness_ram_blocks *orb = rb;
+
+	// try to find first block that covers the range
+	while (size) {
+		int found = 0;
+		rb = orb;
+		while (rb) {
+			uint32_t chunk_size;
+			if (rb->base_address <= address && (rb->base_address + rb->size) > address) {
+				// this address is inside the block
+				found = 1;
+				chunk_size = size;
+				if (((address + chunk_size) - rb->base_address) > rb->size) {
+					// only use what is left in this chunk
+					chunk_size = rb->size - (address - rb->base_address);
+				}
+				if (!write_en)
+					memcpy(dst, &rb->contents[address - rb->base_address], chunk_size);
+				else
+					memcpy(&rb->contents[address - rb->base_address], dst, chunk_size);
+				address += chunk_size;
+				size -= chunk_size;
+				dst = ((char *)dst + chunk_size);
+			}
+			if (found) {
+				break;
+			}
+			rb = rb->next;
+		}
+		if (!found) {
+			fprintf(stderr, "[ERROR]: %s 0x%"PRIx64 " not found in test harness\n", name, address);
+			return -1;
+		}
+	}
+	return 0;
+}
+
 static int access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
 {
 	struct umr_test_harness *th = asic->mem_funcs.data;
-	struct umr_test_harness_ram_blocks *rb = &th->sysram;
-
-	// try to find first block that covers the range
-	while (rb) {
-		if (rb->base_address <= address &&
-			((rb->base_address + rb->size) >= (address + size))) {
-				if (!write_en)
-					memcpy(dst, &rb->contents[address - rb->base_address], size);
-				else
-					memcpy(&rb->contents[address - rb->base_address], dst, size);
-				return 0;
-			}
-		rb = rb->next;
-	}
-	fprintf(stderr, "[ERROR]: System address 0x%"PRIx64 " not found in test harness\n", address);
-	return -1;
+	return access_ram(&th->sysram, "System memory", address, size, dst, write_en);
 }
 
 static int access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t size, void *data, int write_en)
 {
 	struct umr_test_harness *th = asic->mem_funcs.data;
-	struct umr_test_harness_ram_blocks *rb = &th->vram;
-
-	// try to find first block that covers the range
-	while (rb) {
-		if (rb->base_address <= address &&
-			((rb->base_address + rb->size) >= (address + size))) {
-				if (!write_en)
-					memcpy(data, &rb->contents[address - rb->base_address], size);
-				else
-					memcpy(&rb->contents[address - rb->base_address], data, size);
-				return 0;
-			}
-		rb = rb->next;
-	}
-	fprintf(stderr, "[ERROR]: VRAM address 0x%"PRIx64 " not found in test harness\n", address);
-	return -1;
+	return access_ram(&th->vram, "Video memory", address, size, data, write_en);
 }
 
 static uint64_t gpu_bus_to_cpu_address(struct umr_asic *asic, uint64_t dma_addr)
