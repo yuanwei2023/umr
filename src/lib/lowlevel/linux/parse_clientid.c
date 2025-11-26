@@ -769,18 +769,33 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                     if (fscanf(f, "queue_type: %"SCNu32"\nmqd_gpu_address: %"SCNx64,
                         &queue_type,
                         &asic->options.user_queue.client_info.queue[total_queues].mqd_gpu_address) == 2) {
-                        if (umr_read_vram(asic, asic->options.vm_partition, 0,
-                                asic->options.user_queue.client_info.queue[total_queues].mqd_gpu_address, 512*4,
-                                &asic->options.user_queue.client_info.queue[total_queues].mqd_words) < 0) {
-                            asic->err_msg("[ERROR]: Could not read the MQD from memory for %s\n", path);
-                        }
-                        asic->options.user_queue.client_info.queue[total_queues].queue_id = queueno;
+                        int mqd_type = -1;
+
                         switch (queue_type) {
-                            case 0: asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_GFX; break;
-                            case 1: asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_COMPUTE; break;
-                            case 2: asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_SDMA; break;
+                            case 0:
+                                asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_GFX;
+                                mqd_type = UMR_MQD_ENGINE_GFX;
+                                break;
+                            case 1:
+                                asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_COMPUTE;
+                                mqd_type = UMR_MQD_ENGINE_COMPUTE;
+                                break;
+                            case 2:
+                                asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_SDMA;
+                                mqd_type = UMR_MQD_ENGINE_SDMA0;
+                                break;
                             default:
                                 asic->err_msg("[BUG]: Unsupported client queue type [%"PRIu32"]\n", queue_type);
+                        }
+                        asic->options.user_queue.client_info.queue[total_queues].queue_id = queueno;
+                        if (mqd_type != -1) {
+                            asic->options.user_queue.client_info.queue[total_queues].mqd_size = umr_mqd_decode_size(mqd_type, asic->family);
+                            if (umr_read_vram(asic, asic->options.vm_partition, 0,
+                                    asic->options.user_queue.client_info.queue[total_queues].mqd_gpu_address,
+                                    asic->options.user_queue.client_info.queue[total_queues].mqd_size*4,
+                                    &asic->options.user_queue.client_info.queue[total_queues].mqd_words) < 0) {
+                                asic->err_msg("[ERROR]: Could not read the MQD from memory for %s\n", path);
+                            }
                         }
                         ++total_queues;
                     } else {
@@ -813,14 +828,20 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                                     ++total_queues;
                                     asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_COMPUTE;
                                     asic->options.user_queue.client_info.queue[total_queues].queue_id = total_queues;
+                                    asic->options.user_queue.client_info.queue[total_queues].mqd_size = umr_mqd_decode_size(UMR_MQD_ENGINE_COMPUTE, asic->family);
                                 } else if (!memcmp(line, "  SDMA", 6)) {
                                     ++total_queues;
                                     asic->options.user_queue.client_info.queue[total_queues].queue_type = UMR_QUEUE_SDMA;
                                     asic->options.user_queue.client_info.queue[total_queues].queue_id = total_queues;
-                                } else if (sscanf(line, "%"SCNx32": %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32,
+                                    asic->options.user_queue.client_info.queue[total_queues].mqd_size = umr_mqd_decode_size(UMR_MQD_ENGINE_SDMA0, asic->family);
+                                } else if (total_queues >= 0 && sscanf(line, "%"SCNx32": %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32" %"SCNx32,
                                     &t[0], &t[1], &t[2], &t[3], &t[4], &t[5], &t[6], &t[7], &t[8]) == 9) {
                                     // store the line of data in the mqd struct
-                                    memcpy(&asic->options.user_queue.client_info.queue[total_queues].mqd_words[t[0]/4], &t[1], 32);
+                                    if (((t[0]/4)+7) >= UMR_MAX_MQD_SIZE) {
+                                        asic->err_msg("[BUG]: Reading MQD from KFD 'mqds' file resulted in offset (%"PRIu32") beyond UMR_MAX_MQD_SIZE\n", t[0]/4);
+                                    } else {
+                                        memcpy(&asic->options.user_queue.client_info.queue[total_queues].mqd_words[t[0]/4], &t[1], 32);
+                                    }
                                 } else {
                                     break;
                                 }

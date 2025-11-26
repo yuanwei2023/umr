@@ -3212,7 +3212,12 @@ uint32_t umr_mqd_decode_size(enum umr_mqd_engine_sel eng, enum chipfamily fam)
 					z = m[y].offset;
 				}
 			}
-			return z + 1;
+			++z;
+			if (z > UMR_MAX_MQD_SIZE) {
+				fprintf(stderr, "[BUG]: MQD buffer for %d:%d is larger (%"PRIu32") than UMR_MAX_MQD_SIZE (%d)\n", eng, fam, z, UMR_MAX_MQD_SIZE);
+				return UMR_MAX_MQD_SIZE;
+			}
+			return z;
 		}
 	}
 	return 0;

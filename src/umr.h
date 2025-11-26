@@ -42,6 +42,8 @@
 #endif
 
 #define UMR_MAX_MQD_QUEUES 32
+// max # of dwords in a MQD buffer read
+#define UMR_MAX_MQD_SIZE 2048
 
 /* SQ_CMD halt/resume */
 enum umr_sq_cmd_halt_resume {
@@ -120,6 +122,7 @@ enum chipfamily {
 	FAMILY_NV,    // NAVI1X, NAVI2X
 	FAMILY_GFX11,
 	FAMILY_GFX12,
+	FAMILY_GFX12_1, // used by 12.1 GFX ASICs
 
 	FAMILY_NPI, // reserves for new devices that are not public yet
 	FAMILY_CONFIGURE,
@@ -320,7 +323,8 @@ struct umr_user_queue {
 			enum umr_queue_type queue_type;
 			uint32_t queue_id;
 			uint64_t mqd_gpu_address;
-			uint32_t mqd_words[512];
+			uint32_t mqd_words[UMR_MAX_MQD_SIZE];
+			uint32_t mqd_size;
 			// submission information (where to find packets)
 			uint64_t
 				hqd_base_addr, // base address of submission IB

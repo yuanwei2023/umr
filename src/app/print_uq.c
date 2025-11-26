@@ -88,14 +88,15 @@ void umr_print_uq_info(struct umr_asic *asic)
             asic->std_msg(
                 "\tHQD state:\n\t\thqd_base_addr: 0x%"PRIx64"\n\t\thqd_rptr_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\t"
                 "rb_wptr_poll_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\thqd_active: 0x%"PRIx64"\n\t\trb_buf_size: 0x%"PRIx64
-                "\n\n\tMQD Contents:\n",
+                "\n\n\tMQD Contents (%"PRIu32" words):\n",
                 asic->options.user_queue.client_info.queue[x].hqd_base_addr,
                 asic->options.user_queue.client_info.queue[x].hqd_rptr_addr,
                 asic->options.user_queue.client_info.queue[x].hqd_rptr_value,
                 asic->options.user_queue.client_info.queue[x].rb_wptr_poll_addr,
                 asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value,
                 asic->options.user_queue.client_info.queue[x].hqd_active,
-                asic->options.user_queue.client_info.queue[x].rb_buf_size);
+                asic->options.user_queue.client_info.queue[x].rb_buf_size,
+                asic->options.user_queue.client_info.queue[x].mqd_size);
 
             switch (asic->options.user_queue.client_info.queue[x].queue_type) {
 		        case UMR_QUEUE_COMPUTE_PM4:
