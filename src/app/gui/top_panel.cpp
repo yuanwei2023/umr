@@ -187,9 +187,8 @@ public:
 
 					if (v1 && v2 && delta_ns > 0) {
 						if (!client_legend_done) {
-							JSON_Object *app = json_object(json_object_get_value(fde, "app"));
-							ImGui::Text("%d:%s", (int)json_object_get_number(app, "pid"),
-												 json_object_get_string(app, "app"));
+							ImGui::Text("%d:%s", (int)json_object_get_number(fde, "pid"),
+												 json_object_get_string(fde, "command"));
 							client_legend_done = true;
 						}
 						ImGui::Indent();
@@ -197,8 +196,11 @@ public:
 						ImGui::SameLine();
 						ImGui::ProgressBar((float)delta_ns / dt, ImVec2(avail.x / 3, 0));
 						ImGui::SameLine();
-						ImGui::Text("drm-client-id: %s, fd: %d",
-							client_id, (int) json_object_get_number(fds, "fd"));
+						ImGui::Text("drm-client-id: %s", client_id);
+						if (json_object_has_value(fds, "drm-client-name")) {
+							ImGui::SameLine();
+							ImGui::Text("drm-client-name: %s", json_object_get_string(fds, "drm-client-name"));
+						}
 						ImGui::Unindent();
 					}
 				}

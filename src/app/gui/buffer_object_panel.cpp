@@ -30,10 +30,7 @@ public:
 	BufferObjectPanel(struct umr_asic *asic) : Panel(asic), last_answer_gem_info(NULL),
 											   last_answer_peak_bo(NULL), texture_id(0),
 											   raw_data(NULL), zoom_to_fit(true),
-											   last_error_peak_bo(NULL), zoom(1),
-											   only_display_pinned_bo(false) {
-
-	}
+											   last_error_peak_bo(NULL), zoom(1) { }
 	~BufferObjectPanel() {
 		if (last_answer_gem_info)
 			json_value_free(json_object_get_wrapping_value(last_answer_gem_info));
@@ -99,8 +96,6 @@ public:
 			last_command = 0;
 		}
 		ImGui::SameLine();
-		ImGui::Checkbox("Only #3097a1pinned buffers", &only_display_pinned_bo);
-		ImGui::SameLine();
 		ImGui::Checkbox("Zoom to fit", &zoom_to_fit);
 		if (!zoom_to_fit) {
 			ImGui::SliderFloat("Zoom", &zoom, 0.1, 10, "%.1f");
@@ -118,88 +113,93 @@ public:
 		ImGui::TextUnformatted("Buffer Object from pid");
 		ImGui::PopStyleColor();
 		bool display_help = true;
-		JSON_Array *apps = json_object_get_array(last_answer_gem_info, "pids");
+		JSON_Array *apps = json_object_get_array(last_answer_gem_info, "apps");
 		for (int i = 0; i < json_array_get_count(apps); i++) {
-			JSON_Value *_app = json_array_get_value(apps, i);
-			if (json_value_get_type(_app) == JSONNull)
-				continue;
+			JSON_Object *app = json_array_get_object(apps, i);
+			JSON_Array *clients = json_object_get_array(app, "clients");
 
-			JSON_Object *app = json_object(_app);
-			JSON_Array *bos = json_object_get_array(app, "bos");
+			char label[256];
+			ImGui::PushID(i);
+			sprintf(label, "%s (%d)", json_object_get_string(app, "command"),
+									  (int)json_object_get_number(app, "pid"));
 
-			int bo_count = 0;
-			for (int j = 0; j < json_array_get_count(bos); j++) {
-				JSON_Value *_bo = json_array_get_value(bos, j);
-				if (json_value_get_type(_bo) == JSONNull)
-					continue;
-				JSON_Object *bo = json_object(_bo);
-				if (only_display_pinned_bo && !json_object_get_boolean(bo, "pinned"))
-					continue;
-				bo_count++;
-			}
-			if (bo_count == 0)
-				continue;
-
-			if (display_help) {
-				ImGui::Indent();
-				ImGui::Text("(handle, resolution, format, sw)");
-				ImGui::Unindent();
-			}
 			display_help = false;
 
-			ImGui::PushID(i);
-			char label[256];
-			sprintf(label, "%s (%d)", json_object_get_string(app, "command"), (int)json_object_get_number(app, "pid"));
-
-			if (bo_count <= 5)
-				ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-
 			if (ImGui::TreeNodeEx(label)) {
-				for (int j = 0; j < json_array_get_count(bos); j++) {
-					JSON_Value *_bo = json_array_get_value(bos, j);
-					if (json_value_get_type(_bo) == JSONNull)
-						continue;
-					JSON_Object *bo = json_object(_bo);
-					bool pinned = json_object_get_boolean(bo, "pinned");
-					if (only_display_pinned_bo && !pinned)
-						continue;
-					ImGui::PushID(j);
-					if (displayed_bo == bo) {
-						ImGui::Unindent();
-						ImGui::Bullet();
-						ImGui::Indent();
+				for (int j = 0; j < json_array_get_count(clients); j++) {
+					JSON_Value *client = json_array_get_value(clients, j);
+
+					ImGui::Indent();
+					ImGui::Text("drm-client: %d",
+						(int)json_object_get_number(json_object(client), "drm-client-id"));
+					if (json_object_has_value(json_object(client), "drm-client-name")) {
 						ImGui::SameLine();
+						ImGui::TextUnformatted(json_object_get_string(json_object(client), "drm-client-name"));
 					}
+					ImGui::Unindent();
 
-					ImGui::Text("%s0x%05x",
-						pinned ? "#3097a1" : "#dbde79",
-						(int) json_object_get_number(bo, "handle"));
-					ImGui::SameLine();
+					if (json_value_get_type(client) == JSONNull)
+						continue;
 
-					char img_label[512];
-					snprintf(img_label, sizeof(img_label),
-						"%dx%d",
-						(int) json_object_get_number(bo, "width"),
-						(int) json_object_get_number(bo, "height"));
-					int l = strlen(img_label);
-					ImGui::Text("%*s", (int)sizeof("resolution"), img_label);
-					ImGui::SameLine();
-					ImGui::Text("%*d", (int)sizeof("format"), (int) json_object_get_number(bo, "format"));
-					ImGui::SameLine();
-					ImGui::Text("%*d", (int)sizeof("sw"), (int) json_object_get_number(bo, "swizzle"));
-					ImGui::SameLine();
+					JSON_Array *bos = json_object_get_array(json_object(client), "bos");
 
-					/* Hack the cursor position to get the button text aligned with the label. */
-					ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().FramePadding.y);
-					if (ImGui::Button("View >")) {
-						if (texture_id) {
-							glDeleteTextures(1, &texture_id);
-							texture_id = 0;
+					int bo_count = 0;
+					for (int k = 0; k < json_array_get_count(bos); k++) {
+						JSON_Value *_bo = json_array_get_value(bos, k);
+						if (json_value_get_type(_bo) == JSONNull)
+							continue;
+						JSON_Object *bo = json_object(_bo);
+						bo_count++;
+					}
+					if (bo_count == 0)
+						continue;
+
+					ImGui::PushID(j);
+					for (int k = 0; k < json_array_get_count(bos); k++) {
+						JSON_Value *_bo = json_array_get_value(bos, k);
+						if (json_value_get_type(_bo) == JSONNull)
+							continue;
+						JSON_Object *bo = json_object(_bo);
+						ImGui::PushID(k);
+
+						if (displayed_bo == bo) {
+							ImGui::Unindent();
+							ImGui::Bullet();
+							ImGui::Indent();
+							ImGui::SameLine();
 						}
-						send_peak_bo_command(json_object_get_number(app, "pid"),
-											 json_object_get_number(bo, "handle"),
-											 json_object_get_number(bo, "gpu-fd"));
-						displayed_bo = bo;
+
+						ImGui::Text("%s0x%05x",
+							"#dbde79",
+							(int) json_object_get_number(bo, "handle"));
+						ImGui::SameLine();
+
+						char img_label[512];
+						snprintf(img_label, sizeof(img_label),
+							"%dx%d",
+							(int) json_object_get_number(bo, "width"),
+							(int) json_object_get_number(bo, "height"));
+						int l = strlen(img_label);
+						ImGui::Text("%*s", (int)sizeof("resolution"), img_label);
+						ImGui::SameLine();
+						ImGui::Text("%*d", (int)sizeof("format"), (int) json_object_get_number(bo, "format"));
+						ImGui::SameLine();
+						ImGui::Text("%*d", (int)sizeof("sw"), (int) json_object_get_number(bo, "swizzle"));
+						ImGui::SameLine();
+
+						/* Hack the cursor position to get the button text aligned with the label. */
+						ImGui::SetCursorPosY(ImGui::GetCursorPosY() - ImGui::GetStyle().FramePadding.y);
+						if (ImGui::Button("View >")) {
+							if (texture_id) {
+								glDeleteTextures(1, &texture_id);
+								texture_id = 0;
+							}
+							send_peak_bo_command(json_object_get_number(app, "pid"),
+												json_object_get_number(bo, "handle"),
+												json_object_get_number(bo, "gpu-fd"));
+							displayed_bo = bo;
+						}
+						ImGui::PopID();
 					}
 					ImGui::PopID();
 				}
@@ -358,5 +358,4 @@ private:
 	bool zoom_to_fit;
 	float zoom;
 	char *last_error_peak_bo;
-	bool only_display_pinned_bo;
 };

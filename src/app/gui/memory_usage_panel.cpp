@@ -38,14 +38,10 @@
 
 
 const char *mem_type_title[] = {
-	"Unknown",
+	"UNKNOWN",
 	"RAM",
 	"GTT",
 	"VRAM",
-	"GDS",
-	"GWS",
-	"OA",
-	"DOORBELL"
 };
 
 namespace Enum {
@@ -100,7 +96,7 @@ static void draw_rectangle(const ImVec2& bl, const ImVec2& tr, const ImColor& c1
 
 class MemoryUsagePanel : public Panel {
 public:
-	MemoryUsagePanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), last_vm_read(10), autorefresh(0.5) {
+	MemoryUsagePanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL), last_vm_read(10), autorefresh(1) {
 		got_first_drm_counters = false;
 		show_gtt = true;
 		show_vram = true;
@@ -268,21 +264,55 @@ private:
 	}
 
 	struct mem_data {
-		mem_data(uint64_t size = 0, uint8_t mt = 255, bool v = false) :
-				 bo_size(size), app_index(0), memory_type(mt),
-				 cpu_access(false), pinned(false), visible(v) {}
+		mem_data(JSON_Object *bo) {
+			bo_size = json_object_get_number(bo, "size");
+			handle = json_object_get_number(bo, "handle");
+			can_be_viewed = json_object_get_number(bo, "has_metadata");
+
+			JSON_Object *att = json_object_get_object(bo, "attributes");
+			memory_type = 0;
+			for (int i = 0; i < ARRAY_SIZE(mem_type_title); i++) {
+				if (json_object_get_number(att, mem_type_title[i])) {
+					memory_type = i;
+					break;
+				}
+			}
+			this->attr = json_object(json_value_deep_copy(json_object_get_wrapping_value(att)));
+		}
+		mem_data& operator=(const mem_data& d) {
+			_copy(d);
+			return *this;
+		}
+		mem_data(const mem_data& d) {
+			_copy(d);
+		}
+		void _copy(const mem_data& d) {
+			this->bo_size = d.bo_size;
+			this->can_be_viewed = d.can_be_viewed;
+			this->app_index = d.app_index;
+			this->fd_index = d.fd_index;
+			this->handle = d.handle;
+			this->memory_type = d.memory_type;
+			this->attr = json_object(json_value_deep_copy(json_object_get_wrapping_value(d.attr)));
+		}
+		~mem_data() {
+			json_value_free(json_object_get_wrapping_value(attr));
+		}
+
 		uint64_t bo_size;
 		uint32_t app_index;
 		uint32_t fd_index;
-		uint8_t memory_type;
-		bool cpu_access;
-		bool pinned;
-		bool visible;
+		uint32_t handle;
+		uint16_t memory_type;
+		bool can_be_viewed;
+		JSON_Object *attr;
 	};
 	struct mem_file {
 		mem_file() : total(0) {}
-		std::string name;
+		std::string drm_client_name;
 		uint64_t total;
+		uint32_t drm_client_id;
+		uint32_t gpu_fd;
 	};
 	struct mem_app {
 		mem_app() : total(0), num_bos(0) {}
@@ -304,7 +334,7 @@ private:
 	};
 	std::vector<mem_app_snapshot> memory_usage_snapshots;
 	int current_snapshot_index = -1;
-	bool show_mem_type[8];
+	bool show_mem_type[ARRAY_SIZE(mem_type_title)];
 	float zoom = 1.0;
 
 	void prepare_memory_usage_data(JSON_Object *data) {
@@ -313,27 +343,29 @@ private:
 		mem_app_snapshot snapshot;
 		auto &memory_usage_data = snapshot.bos;
 
-		JSON_Array *pids = json_object_get_array(data, "pids");
-		for (int i = 0; i < json_array_get_count(pids); i++) {
+		JSON_Array *apps = json_object_get_array(data, "apps");
+		for (int i = 0; i < json_array_get_count(apps); i++) {
 			uint64_t total = 0;
-			JSON_Object *o = json_object(json_array_get_value(pids, i));
-			uint32_t pid = json_object_get_number(o, "pid");
+			JSON_Object *app = json_object(json_array_get_value(apps, i));
+			uint32_t pid = json_object_get_number(app, "pid");
 
-			struct mem_app app;
-			app.pid = pid;
-			const char *name = json_object_get_string(o, "process");
+			struct mem_app app_stat;
+			app_stat.pid = pid;
+			const char *name = json_object_get_string(app, "command");
 			if (name)
-				app.name = name;
+				app_stat.name = name;
 
-			JSON_Array* fds = json_object_get_array(o, "fds");
-			for (size_t j = 0; j < json_array_get_count(fds); j++) {
-				JSON_Object *fd = json_object(json_array_get_value(fds, j));
-				JSON_Array* bos = json_object_get_array(fd, "bos");
+			JSON_Array* clients = json_object_get_array(app, "clients");
+			for (size_t j = 0; j < json_array_get_count(clients); j++) {
+				JSON_Object *client = json_object(json_array_get_value(clients, j));
+				JSON_Array* bos = json_object_get_array(client, "bos");
 
 				struct mem_file file;
-				file.name = json_object_get_string(fd, "command");
-				if (file.name.empty())
-					file.name = app.name;
+				const char *drm_client_name = json_object_get_string(client, "drm-client-name");
+				if (drm_client_name)
+					file.drm_client_name = drm_client_name;
+				file.drm_client_id = json_object_get_number(client, "drm-client-id");
+				file.gpu_fd = json_object_get_number(client, "gpu-fd");
 
 				const int bo_count = json_array_get_count(bos);
 				for (int k = 0; k < bo_count; k++) {
@@ -350,34 +382,25 @@ private:
 						exported_ino.push_back(ino);
 					}
 
-					struct mem_data m(json_object_get_number(bo, "size"),
-									  json_object_get_number(bo, "placement"),
-									  json_object_get_number(bo, "visible"));
+					struct mem_data m(bo);
 					m.app_index = i;
 					m.fd_index = j;
-					m.cpu_access = json_object_get_number(bo, "cpu");
-					m.pinned = json_object_get_boolean(bo, "pinned");
 					memory_usage_data.push_back(m);
 
-					if (m.memory_type <= 3) {
-						snapshot.used_mem_type[m.memory_type] += m.bo_size;
-						file.total += m.bo_size;
-						app.total += m.bo_size;
-						app.num_bos += 1;
-					}
+					snapshot.used_mem_type[m.memory_type] += m.bo_size;
+					file.total += m.bo_size;
+					app_stat.total += m.bo_size;
+					app_stat.num_bos += 1;
 				}
-				app.per_fd.push_back(file);
+				app_stat.per_fd.push_back(file);
 			}
 
-			snapshot.apps.push_back(app);
+			snapshot.apps.push_back(app_stat);
 		}
 
 		std::sort(memory_usage_data.begin(), memory_usage_data.end(), [this](const struct mem_data& a, const struct mem_data& b) {
-			/* Order like this: GTT, Visible VRAM, VRAM */
 			if (a.memory_type != b.memory_type)
 				return a.memory_type < b.memory_type;
-			if (a.memory_type == 1 && a.visible != b.visible)
-				return a.visible > b.visible;
 			return a.bo_size > b.bo_size;
 		});
 
@@ -389,17 +412,19 @@ private:
 		float max_s = 0;
 		const float s = ImGui::GetFontSize();
 		const float px = ImGui::GetStyle().FramePadding.x;
+		char label[128];
 
 		for (size_t i = 0; i < snapshot->apps.size(); i++) {
 			const auto& app = snapshot->apps[i];
+			sprintf(label, "%s (%d)", app.name.c_str(), app.pid);
 			max_s = std::max(max_s,
-				ImGui::CalcTextSize(app.name.c_str()).x +
+				ImGui::CalcTextSize(label).x +
 				ImGui::CalcTextSize(format_bo_size(app.total)).x);
 
 			for (size_t j = 0; j < app.per_fd.size(); j++) {
 				const auto& fd = app.per_fd[j];
 				max_s = std::max(max_s,
-					px + px + ImGui::CalcTextSize(fd.name.c_str()).x +
+					px + px + ImGui::CalcTextSize(fd.drm_client_name.c_str()).x +
 					ImGui::CalcTextSize(format_bo_size(fd.total)).x);
 			}
 		}
@@ -433,13 +458,18 @@ private:
 
 			bool no_per_fd = snapshot->apps[i].pid == 0 ||
 							 app.per_fd.size() == 1;
-			if (no_per_fd)
+
+			if (no_per_fd) {
 				draw_rect_at_cursor(0, s, col, app.highlight, col);
+			} else {
+				ImColor c(col);
+				c.Value.w = 0.5;
+				draw_rect_at_cursor(0, s, c, app.highlight, c);
+			}
 
 			if (!app.name.empty())
-				ImGui::TextUnformatted(snapshot->apps[i].name.c_str());
-			else
-				ImGui::Text("pid-%d", snapshot->apps[i].pid);
+				ImGui::Text("%s (%d)", snapshot->apps[i].name.c_str(),
+				snapshot->apps[i].pid);
 			ImGui::SameLine();
 
 			/* Right Align. */
@@ -455,15 +485,17 @@ private:
 				const auto& fd = app.per_fd[j];
 				draw_rect_at_cursor(s, s, col, app.highlight,
 									palette[(app.pid + 1 + j) % ARRAY_SIZE(palette)]);
-				if (!fd.name.empty()) {
+				if (!fd.drm_client_name.empty()) {
 					char cmp[256];
-					const char *fd_name = fd.name.c_str();
+					const char *fd_name = fd.drm_client_name.c_str();
 					snprintf(cmp, sizeof(cmp), "%s/", snapshot->apps[i].name.c_str());
 					size_t l = strlen(snapshot->apps[i].name.c_str());
 					/* If the fd_name starts with "app_name/" skip it. */
 					if (strncmp(fd_name, cmp, l + 1) == 0)
 						fd_name += l + 1;
 					ImGui::TextUnformatted(fd_name);
+				} else {
+					ImGui::Text("drm-client-id: %d", fd.drm_client_id);
 				}
 				ImGui::SameLine();
 
@@ -611,13 +643,13 @@ private:
 		const auto &memory_usage_data = snapshot->bos;
 
 		int start_bo_index = 0;
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < ARRAY_SIZE(mem_type_title); i++) {
 			if (!show_mem_type[i] || total_per_cat[i] == 0)
 				continue;
 
 			/* Determine how much space this category can use. */
 			uint64_t total_considered_memory = 0;
-			for (int j = i; j < 4; j++)
+			for (int j = i; j < ARRAY_SIZE(mem_type_title); j++)
 				total_considered_memory += show_mem_type[j] ? total_per_cat[j] : 0;
 			float r = total_per_cat[i] / (float) total_considered_memory;
 
@@ -759,18 +791,10 @@ private:
 			if (ImGui::IsMouseHoveringRect(corner1, corner2))
 				ImGui::SetTooltip("App : %s\nFd  : %s\nSize: %s",
 								  app.name.empty() ? "" : app.name.c_str(),
-								  app.per_fd[fd_idx].name.empty() ? "" : app.per_fd[fd_idx].name.c_str(),
+								  app.per_fd[fd_idx].drm_client_name.empty() ? "" : app.per_fd[fd_idx].drm_client_name.c_str(),
 								  format_bo_size(snapshot.bos[begin].bo_size));
 			if (snapshot.apps[app_idx].highlight)
 				ImGui::GetWindowDrawList()->AddRect(corner1, corner2, IM_COL32_WHITE);
-			if (size.x > 20 && size.y > 20) {
-				if (snapshot.bos[begin].cpu_access)
-					ImGui::GetWindowDrawList()->AddCircleFilled(
-						ImVec2(corner2.x - 10, corner1.y + 10), 5, ImColor(1.0f, 1.0f, 1.0f, 0.5f));
-				if (snapshot.bos[begin].pinned)
-					ImGui::GetWindowDrawList()->AddCircleFilled(
-						ImVec2(corner1.x + 10, corner1.y + 10), 5, ImColor(0.0f, 0.0f, 0.0f, 0.5f));
-			}
 		} else if (size.x * size.y < 50) {
 			/* Area is too small. Draw a single rect. */
 			ImVec2 corner1(base.x + padding.x, base.y + padding.y);

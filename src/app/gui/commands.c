@@ -46,6 +46,7 @@
 #include <xf86drm.h>
 #include <amdgpu.h>
 #include <xf86drmMode.h>
+#include <sys/mman.h>
 #endif
 #include <assert.h>
 #include <GLES2/gl2.h>
@@ -228,6 +229,17 @@ static char *read_file(const char *format, ...) {
 	return _read_file(path, &buffer, &buffer_size);
 }
 
+static char *read_file_n(const char *format, unsigned *buffer_size, ...) {
+	static char *buffer = NULL;
+	char path[PATH_MAX];
+	va_list args;
+	va_start (args, buffer_size);
+	if (vsprintf(path, format, args) < 0)
+		return NULL;
+	va_end (args);
+	return _read_file(path, &buffer, buffer_size);
+}
+
 static char * read_file_a(const char *format, ...) {
 	char *buffer = NULL;
 	unsigned buffer_size = 0;
@@ -274,26 +286,8 @@ static char **parse_lines(char *content, unsigned *line_count) {
 	return lines;
 }
 
-static int find_pid_by_command_name(DIR *d, const char *process_name) {
-	struct dirent *ent;
-	struct stat fstat;
-	unsigned pid = 0;
-	while ((ent = readdir(d))) {
-		if (fstatat(dirfd(d), ent->d_name, &fstat, 0) < 0)
-			continue;
-		if (S_ISDIR(fstat.st_mode)) {
-			char *command = read_file_a("/proc/%s/comm", ent->d_name);
-			if (command && strncmp(command, process_name, strlen(process_name)) == 0) {
-				pid = atoi(ent->d_name);
-				free(command);
-				break;
-			}
-			free(command);
-		}
-	}
-	return pid;
-}
-
+static uint32_t get_tgid_for_tid(uint32_t tid);
+static int get_pid_name(int pid, char process_name[32]);
 static void parse_drm_clients(struct umr_asic *asic, JSON_Array * clients);
 static bool parse_fdinfo_entry(const char *content, const char *dev_id, bool limit_to_drm_engines, JSON_Object *out);
 
@@ -397,70 +391,50 @@ static bool check_bo_metadata(uint32_t gpu_fd, uint32_t bo_handle, struct drm_am
 		   md_version > 2 && (md_flags & 1u);
 }
 
-static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
-							       unsigned *bo_handles, unsigned *bo_sizes,
-							       int bo_count, int *res, int *gpu_fds,
-							       int *formats, int *swizzles)
+struct bo_info {
+	uint32_t handle;
+	uint64_t size;
+	uint64_t tiling_info;
+	uint64_t alloc_flags;
+	int width, height;
+	uint32_t format;
+	uint32_t swizzle;
+};
+
+static void check_peak_bo_metadata(struct umr_asic *asic, int gpu_fd, int bo_count, struct bo_info *bos_info)
 {
 	int r;
-	int gpu_fd = -1;
-	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
-	int *remote_gpu_fds = alloca(128 * sizeof(int));
 
-	memset(res, 0, bo_count * 2 * sizeof(int));
+	for (int j = 0; j < bo_count; j++) {
+		struct drm_amdgpu_gem_op gem_op = { 0 };
+		struct drm_amdgpu_gem_create_in bo_info = { 0 };
 
-	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fds, 128, NULL);
-	if (remote_gpu_fds_count == 0)
-		return;
+		/* Validate size. */
+		gem_op.handle = bos_info[j].handle;
+		gem_op.op = AMDGPU_GEM_OP_GET_GEM_CREATE_INFO;
+		gem_op.value = (uintptr_t)&bo_info;
 
-	for (int i = 0; i < remote_gpu_fds_count; i++) {
-		gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, remote_gpu_fds[i], 0);
-		if (gpu_fd < 0)
+		r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_OP,
+								&gem_op, sizeof(gem_op));
+
+		if (r || bo_info.bo_size != bos_info[j].size)
 			continue;
 
-		for (int j = 0; j < bo_count; j++) {
-			struct drm_amdgpu_gem_op gem_op = { 0 };
-			struct drm_amdgpu_gem_create_in bo_info = { 0 };
+		/* Check metadata. */
+		struct drm_amdgpu_gem_metadata metadata;
+		if (!check_bo_metadata(gpu_fd, bos_info[j].handle, &metadata))
+			continue;
 
-			if (res[2 * j])
-				continue;
+		bos_info[j].alloc_flags = bo_info.domain_flags;
+		bos_info[j].tiling_info = metadata.data.tiling_info;
+		read_size_from_md(asic, metadata.data.data, &bos_info[j].width, &bos_info[j].height);
+		bos_info[j].swizzle = metadata.data.tiling_info & 0x1f;
 
-			/* Validate size. */
-			gem_op.handle = bo_handles[j];
-			gem_op.op = AMDGPU_GEM_OP_GET_GEM_CREATE_INFO;
-			gem_op.value = (uintptr_t)&bo_info;
-
-			r = drmCommandWriteRead(gpu_fd, DRM_AMDGPU_GEM_OP,
-									&gem_op, sizeof(gem_op));
-
-			if (r || bo_info.bo_size != bo_sizes[j])
-				continue;
-
-			/* Check metadata. */
-			struct drm_amdgpu_gem_metadata metadata;
-			if (!check_bo_metadata(gpu_fd, bo_handles[j], &metadata))
-				continue;
-
-			uint32_t md_version = metadata.data.data[0] & 0xffff;
-			uint32_t md_flags = metadata.data.data[0] >> 16;
-			if (!metadata.data.data_size_bytes ||
-				 md_version <= 1 ||
-				 (md_version > 2 && !(md_flags & 1u)))
-				continue;
-
-			read_size_from_md(asic, metadata.data.data, &res[2 * j], &res[2 * j + 1]);
-			gpu_fds[j] = remote_gpu_fds[i];
-			swizzles[j] = metadata.data.tiling_info & 0x1f;
-
-			if (asic->family < FAMILY_NV)
-				formats[j] = (metadata.data.data[2 + 1] >> 20) & 0x3f;
-			else
-				formats[j] = (metadata.data.data[2 + 1] >> 20) & 0x1FF;
-		}
-
-		close(gpu_fd);
+		if (asic->family < FAMILY_NV)
+			bos_info[j].format = (metadata.data.data[2 + 1] >> 20) & 0x3f;
+		else
+			bos_info[j].format = (metadata.data.data[2 + 1] >> 20) & 0x1FF;
 	}
-	close(pid_fd);
 }
 
 static char * peak_bo(struct umr_asic *asic, int dmabuf_fd,
@@ -634,6 +608,7 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 	int width, height, dmabuf_fd;
 	int r, stride = 0;
 	int gpu_fd = -1;
+
 	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
 	if (pid_fd < 0)
 		return "SYS_pidfd_open failed";
@@ -684,7 +659,7 @@ static char * peak_bo_using_metadata(struct umr_asic *asic, unsigned pid, int re
 		unsigned format = (metadata.data.data[2 + 1] >> 20) & 0x1FF;
 		if (format >= 50 && format <= 55) /* GFX10_FORMAT_2_10_10_10_* */
 			fourcc = DRM_FORMAT_XRGB2101010;
-		else if (format == 1)
+		else if (format >= 1 && format <= 6)
 			fourcc = DRM_FORMAT_R8;
 	}
 
@@ -1276,9 +1251,10 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 	char fd_info_path[1024], fd_info[4096], lbl[64];
 	DIR *dir;
 	struct dirent *entry;
+	int app_pid = (int)json_object_get_number(pid, "pid");
 
 	/* Parse the /proc/$fd tree, and find amdgpu's fd. */
-	sprintf(fd_info_path, "/proc/%d/fdinfo", (int)json_object_get_number(pid, "pid"));
+	sprintf(fd_info_path, "/proc/%d/fdinfo", app_pid);
 
 	dir = opendir(fd_info_path);
 	if (!dir)
@@ -1291,6 +1267,7 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 		JSON_Value *fdinfo = json_value_init_object();
 		int64_t n = time_ns();
 
+		unsigned long gpu_fd = strtol(entry->d_name, NULL, 10);
 		if (!parse_fdinfo_entry(read_file(fd_info), dev_id, true, json_object(fdinfo))) {
 			json_value_free(fdinfo);
 			continue;
@@ -1298,16 +1275,9 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 
 		sprintf(lbl, "%ld", (long)json_object_get_number(json_object(fdinfo), "drm-client-id"));
 		json_object_set_number(json_object(fdinfo), "ts", n);
-		json_object_set_value(json_object(fdinfo), "app", json_value_deep_copy(json_object_get_wrapping_value(pid)));
-		if (json_object_has_value(json_object(fdinfo), "drm-client-name")) {
-			char name[1024];
-			snprintf(name, 1023, "%s|%s",
-				json_object_dotget_string(json_object(fdinfo), "app.app"),
-				json_object_get_string(json_object(fdinfo), "drm-client-name"));
-			json_object_dotset_string(json_object(fdinfo), "app.app", name);
-		}
-		json_object_set_number(json_object(fdinfo), "fd", strtol(entry->d_name, NULL, 10));
-
+		json_object_set_string(json_object(fdinfo), "command", json_object_get_string(pid, "app"));
+		json_object_set_number(json_object(fdinfo), "pid", app_pid);
+		json_object_set_number(json_object(fdinfo), "gpu-fd", gpu_fd);
 		json_object_set_value(json_object(container), lbl, fdinfo);
 	}
 	
@@ -1415,275 +1385,9 @@ JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
 	return pids;
 }
 
-JSON_Array *parse_vm_info(const char *content)
+JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info)
 {
-	JSON_Array *pids = json_array(json_value_init_array());
-
-	const char *ptr = content;
-	while (ptr) {
-		unsigned pid;
-		char *next_pid = strstr(ptr, "pid:");
-		if (!next_pid)
-			break;
-		char *next_space = strchr(next_pid, '\t');
-		ptr = next_space + 1;
-
-		if (sscanf(next_pid, "pid:%u", &pid) == 1) {
-			/* Do we already know about this pid? */
-			JSON_Object *p = NULL;
-			for (size_t i = 0; i < json_array_get_count(pids); i++) {
-				JSON_Object *q = json_object(json_array_get_value(pids, i));
-				if (json_object_get_number(q, "pid") == pid) {
-					p = q;
-					break;
-				}
-			}
-			if (p == NULL) {
-				p = json_object(json_value_init_object());
-				json_array_append_value(pids, json_object_get_wrapping_value(p));
-				json_object_set_number(p, "pid", pid);
-
-				char *cmd = read_file("/proc/%d/comm", pid);
-				if (cmd && strlen(cmd))
-					json_object_set_string_with_len(p, "process", cmd, strlen(cmd) - 1);
-				json_object_set_value(p, "fds", json_value_init_array());
-			}
-
-			ptr = next_space + 1 + strlen("Process:");
-			next_space = strchr(ptr, ' ');
-			int len = next_space - ptr;
-
-			JSON_Object *fd = json_object(json_value_init_object());
-			json_array_append_value(json_array(json_object_get_value(p, "fds")),
-											json_object_get_wrapping_value(fd));
-			json_object_set_string_with_len(fd, "command", ptr, len);
-			JSON_Array *bos = json_array(json_value_init_array());
-			json_object_set_value(fd, "bos", json_array_get_wrapping_value(bos));
-
-			ptr = next_space + 1;
-			const char *categories[] = { "Idle", "Evicted", "Relocated", "Moved", "Invalidated", "Done" };
-			char *cat_ptrs[ARRAY_SIZE(categories)];
-
-			for (size_t i = 0; ptr && i < ARRAY_SIZE(categories); i++) {
-				cat_ptrs[i] = strstr(ptr, categories[i]);
-				ptr = cat_ptrs[i];
-				if (ptr == NULL)
-					return NULL;
-			}
-
-			uint64_t pid_total = 0;
-			for (size_t i = 0; i < ARRAY_SIZE(cat_ptrs); i++) {
-				ptr = cat_ptrs[i];
-
-				/* Consume all chars until next line */
-				while (*ptr != '\n')
-					ptr++;
-				ptr++;
-
-				while (ptr) {
-					if (ptr && strstr(ptr, "pid:") == ptr)
-						break;
-
-					char *end_of_line = strchr(ptr, '\n');
-					char *id;
-
-					if (i < (ARRAY_SIZE(cat_ptrs) - 1) && end_of_line >= cat_ptrs[i+1])
-						break;
-
-					if (end_of_line) {
-						id = memmem(ptr, end_of_line - ptr, "0x", 2);
-						end_of_line += 1;
-					} else {
-						id = strstr(ptr, "0x");
-					}
-
-					if (id) {
-						id += 11;
-						while (*id == ' ')
-							id++;
-						char *b = strstr(id, "byte");
-
-						/* Parse size */
-						uint64_t sz;
-						sscanf(id, "%lu byte", &sz);
-						ptr = b + 5;
-
-						JSON_Value *bo = json_value_init_object();
-						json_object_set_number(json_object(bo), "size", sz);
-						pid_total += sz;
-
-						int placement = 0; /* unknown */
-						if (strncmp(ptr, "CPU", strlen("CPU")) == 0)
-							placement = 1;
-						else if (strncmp(ptr, "GTT", strlen("GTT")) == 0)
-							placement = 2;
-						else if (strncmp(ptr, "VRAM", strlen("VRAM")) == 0)
-							placement = 3;
-						else if (strncmp(ptr, "GDS", strlen("GDS")) == 0)
-							placement = 4;
-						else if (strncmp(ptr, "GWS", strlen("GWS")) == 0)
-							placement = 5;
-						else if (strncmp(ptr, "OA", strlen("OA")) == 0)
-							placement = 6;
-						else if (strncmp(ptr, "DOORBELL", strlen("DOORBELL")) == 0)
-							placement = 7;
-
-						json_object_set_number(json_object(bo), "placement", placement);
-
-						if (memmem(ptr, end_of_line - ptr, " CPU_ACCESS_REQUIRED", strlen(" CPU_ACCESS_REQUIRED")))
-							json_object_set_number(json_object(bo), "cpu", 1);
-						if (memmem(ptr, end_of_line - ptr, " pin count", strlen(" pin count")) == NULL)
-							json_object_set_boolean(json_object(bo), "pinned", false);
-						if (memmem(ptr, end_of_line - ptr, " VISIBLE", strlen(" VISIBLE")))
-							json_object_set_number(json_object(bo), "visible", 1);
-						char *exported_as = memmem(ptr, end_of_line - ptr, "exported as", strlen("exported as"));
-						if (exported_as) {
-							char *end = exported_as + strlen("exported as ");
-							uint32_t ino;
-							if (sscanf(end, "ino:%u", &ino) == 1)
-								json_object_set_number(json_object(bo), "ino", ino);
-						}
-
-						json_array_append_value(bos, bo);
-						ptr = end_of_line + 1;
-					} else {
-						ptr = end_of_line;
-					}
-				}
-			}
-			json_object_set_number(fd, "total", pid_total);
-		}
-	}
-	return pids;
-}
-
-struct pid_exported {
-	unsigned pid;
-	int num_exported;
-	char *process_name;
-	char **exported;
-};
-
-static void cleanup_pids_mapping(struct pid_exported *pids_mapping,
-								 uint32_t num_pids_mapping)
-{
-	for (uint32_t i = 0; i < num_pids_mapping; i++) {
-		for (int j = 0; j < pids_mapping[i].num_exported; j++)
-			free(pids_mapping[i].exported[j]);
-		free(pids_mapping[i].process_name);
-		free(pids_mapping[i].exported);
-	}
-	free(pids_mapping);
-}
-
-static uint32_t get_ino_to_pid_mapping(struct umr_asic *asic,
-									   struct pid_exported **out_pids_mapping)
-{
-	/* fd ownership can be confusing; for instance XWayland will appear as the owner
-	 * of all bo instead of the real application.
-	 * Try to map bo to the real pid by matching the "exported as XXXX" strings from
-	 * amdgpu_gem_info and amdgpu_vm_info
-	 */
-	const char *content = read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_vm_info", asic->instance);
-	int current_pid = 0;
-	struct pid_exported *pids_mapping = NULL;
-	int num_pids_mapping = 0;
-
-	while (content) {
-		char *next_pid = strstr(content, "pid:");
-
-		/* The file first prints the pid + command name, then the BOs.
-		 * So we enter the BOs parsing loop only if we already got the
-		 * application information.
-		 */
-		if (current_pid != 0) {
-			char *next_exported_as;
-			while ((next_exported_as = strstr(content, "exported as"))) {
-				if (next_exported_as && (next_exported_as < next_pid || next_pid == NULL)) {
-					/* 2 formats: "exported as xxxxxxxxxxxxxxxxx"
-					 *            "exported as ino:xxxxxxxx"
-					 */
-					char *end = next_exported_as + strlen("exported as ");
-
-					int pid_n = num_pids_mapping - 1;
-
-					/* Don't associate BOs to Xwayland. It should only own the ones
-					 * it created.
-					 */
-					if (strcmp(pids_mapping[pid_n].process_name, "Xwayland") != 0) {
-						while (*end && !isspace(*end)) end++;
-						char *txt = strndup(next_exported_as, end - next_exported_as);
-
-						int n = pids_mapping[pid_n].num_exported++;
-						pids_mapping[pid_n].exported = realloc(pids_mapping[pid_n].exported,
-															   (n + 1) * sizeof(char*));
-						pids_mapping[pid_n].exported[n] = txt;
-					}
-
-					content = end;
-				} else {
-					break;
-				}
-			}
-		}
-
-		/* Find and parse the next application header, the format is:
-		 * pid:1018540     Process:glxgears ----------
-		 * pid:0   Process: ----------
-		 */
-		if (!next_pid)
-			break;
-		char *next_space = strchr(next_pid, '\t');
-		content = next_space + 1;
-		if (sscanf(next_pid, "pid:%d", &current_pid) != 1)
-			break;
-
-		char *process = strstr(content, "Process:");
-		char *process_name = NULL;
-		process += strlen("Process:");
-		char *end = process;
-		while (!isspace(*end)) end++;
-
-		if (end != process) {
-			process_name = strndup(process, end - process);
-			/* The kernel pid can be the thread id so translate it into a pid. */
-			DIR *d = opendir("/proc");
-			if (d) {
-				int pid;
-				while ((pid = find_pid_by_command_name(d, process_name))) {
-					/* If this is the right pid, the following folder should
-					 * exist.
-					 */
-					char pid_path[512];
-					struct stat statbuf;
-					sprintf(pid_path, "/proc/%d/task/%d", pid, current_pid);
-					if (stat(pid_path, &statbuf) == 0) {
-						current_pid = pid;
-						break;
-					}
-				}
-				closedir(d);
-			}
-		}
-
-		/* Store the information so we can associate the next BOs correctly. */
-		if (current_pid) {
-			pids_mapping = realloc(pids_mapping, (num_pids_mapping + 1) * sizeof(struct pid_exported));
-			pids_mapping[num_pids_mapping].pid = current_pid;
-			pids_mapping[num_pids_mapping].process_name = process_name;
-			pids_mapping[num_pids_mapping].num_exported = 0;
-			pids_mapping[num_pids_mapping].exported = NULL;
-			num_pids_mapping++;
-		}
-	}
-
-	*out_pids_mapping = pids_mapping;
-	return num_pids_mapping;
-}
-
-JSON_Array *parse_gem_info(char *content, struct pid_exported *pids_exp, int num_pids_mapping)
-{
-	JSON_Array *pids = json_array(json_value_init_array());
+	JSON_Array *apps = json_array(json_value_init_array());
 
 	unsigned nlines = 0;
 	char **lines = parse_lines(content, &nlines);
@@ -1694,26 +1398,58 @@ JSON_Array *parse_gem_info(char *content, struct pid_exported *pids_exp, int num
 			return NULL;
 		}
 		const char *cursor = lines[i] + 3;
+
+		if (is_vm_info) {
+			if (*cursor != ':')
+				return NULL;
+			cursor++;
+		}
 		while (isspace(*cursor)) cursor++;
 
 		unsigned pid;
 		sscanf(cursor, "%u", &pid);
 
-		cursor = strstr(cursor, "command");
-		cursor += strlen("command");
-		while (isspace(*cursor)) cursor++;
+		/* vm_info uses the tid, not the pid. */
+		if (is_vm_info)
+			pid = get_tgid_for_tid(pid);
 
-		JSON_Object *app = json_object(json_value_init_object());
-		json_object_set_number(app, "pid", pid);
+		/* Do we already know about this pid? */
+		JSON_Object *p = NULL;
+		for (size_t j = 0; j < json_array_get_count(apps); j++) {
+			JSON_Object *q = json_object(json_array_get_value(apps, i));
+			if (json_object_get_number(q, "pid") == pid) {
+				p = q;
+				break;
+			}
+		}
 
-		char *end = strchr(cursor, ':');
-		json_object_set_string_with_len(app, "command", cursor, end - cursor);
-		cursor = end + 1;
+		if (p == NULL) {
+			p = json_object(json_value_init_object());
+			json_object_set_number(p, "pid", pid);
 
+			/* Set the main process command based on the real comm, and fallback
+			 * on the value we parsed if it fails.
+			 */
+			char *cmd = read_file("/proc/%d/comm", pid);
+			if (cmd && strlen(cmd)) {
+				json_object_set_string_with_len(p, "command", cmd, strlen(cmd) - 1);
+			} else {
+				const char *cmd_prefix = is_vm_info ? "Process:" : "command ";
+				const char *cmd_end = is_vm_info ? " ----------" : ":";
+				cursor = strstr(cursor, cmd_prefix);
+				if (cursor == NULL)
+					return NULL;
+				cursor += strlen(cmd_prefix);
+				char *end = strstr(cursor, cmd_end);
+				json_object_set_string_with_len(p, "command", cursor, end - cursor);
+			}
+			json_object_set_value(p, "clients", json_value_init_array());
+		}
+
+		JSON_Object *client = json_object(json_value_init_object());
 		JSON_Array *bos = json_array(json_value_init_array());
-		json_object_set_value(app, "bos", json_array_get_wrapping_value(bos));
+		json_object_set_value(client, "bos", json_array_get_wrapping_value(bos));
 
-		int pid_overriden = 0;
 		/* Now parse lines belonging to this pid */
 		for (i = i + 1; i < nlines; i++) {
 			/* Break if we're starting a new one. */
@@ -1722,74 +1458,279 @@ JSON_Array *parse_gem_info(char *content, struct pid_exported *pids_exp, int num
 
 			cursor = lines[i];
 
-			unsigned kms_handle, size, pinned;
-			sscanf(cursor, "0x%x", &kms_handle);
+			unsigned kms_handle;
+			long unsigned size;
+			if (sscanf(cursor, "0x%x", &kms_handle) != 1)
+				continue;
+
 			cursor += strlen("0x00000000:");
 			while (isspace(*cursor)) cursor++;
 
-			sscanf(cursor, "%u", &size);
-
-			pinned = strstr(cursor, "pin count") != NULL;
+			sscanf(cursor, "%" PRIu64, &size);
 
 			JSON_Object *bo = json_object(json_value_init_object());
 			json_object_set_number(bo, "handle", kms_handle);
 			json_object_set_number(bo, "size", size);
-			if (!pinned)
-				json_object_set_boolean(bo, "pinned", false);
 			json_array_append_value(bos, json_object_get_wrapping_value(bo));
 
-			if (strstr(cursor, " GTT"))
-				json_object_set_number(bo, "gtt", 1);
-			if (strstr(cursor, " CPU_ACCESS_REQUIRED"))
-				json_object_set_number(bo, "cpu", 1);
-			if (strstr(cursor, " VISIBLE"))
-				json_object_set_number(bo, "visible", 1);
+			/* Parse attributes. */
+			const char *attributes[] = {
+				" pin count %lu", " GTT", " CPU_ACCESS_REQUIRED", " VRAM_CLEARED",
+				" VRAM", " CPU_GTT_USWC", " exported as ino:%lu", " VRAM VISIBLE",
+				" NONE", " DOORBELL", " CPU", " UNKNOWN", " imported from ino:%lu",
+				" EXPLICIT_SYNC", " VM_ALWAYS_VALID", " VRAM_CONTIGUOUS",
+				" NO_CPU_ACCESS"
+			};
+			const size_t len = strlen(lines[i]);
+			JSON_Object *attr = json_object(json_value_init_object());
+			for (size_t j = 0; j < ARRAY_SIZE(attributes); j++) {
+				const int attr_len = strlen(attributes[j]);
+				char *pct = strchr(attributes[j], '%');
 
-			char *exported_as = strstr(cursor, "exported as");
-			if (exported_as) {
-				char *end = exported_as + strlen("exported as ");
-				uint32_t ino;
-				if (sscanf(end, "ino:%u", &ino) == 1)
-					json_object_set_number(bo, "ino", ino);
+				char *found = memmem(lines[i], len, attributes[j],
+									 pct ? (pct - attributes[j]) : attr_len);
 
-				if (pid_overriden == 0) {
-					while (*end && !isspace(*end)) end++;
-					char *txt = strndup(exported_as, end - exported_as);
-
-					/* Now look for a match. */
-					int matches_found = 0;
-					for (int j = 0; j < num_pids_mapping && !pid_overriden; j++) {
-						for (int k = 0; k < pids_exp[j].num_exported; k++) {
-							if (strcmp(txt, pids_exp[j].exported[k]) == 0) {
-								matches_found++;
-							}
+				if (found) {
+					if (pct) {
+						unsigned long v;
+						if (sscanf(found, attributes[j], &v) == 1) {
+							char attr_name[64] = {0};
+							strncpy(attr_name, attributes[j] + 1, pct - attributes[j] - 2);
+							json_object_set_number(attr, attr_name, v);
 						}
-					}
-					if (matches_found == 1) {
-						for (int j = 0; j < num_pids_mapping && !pid_overriden; j++) {
-							for (int k = 0; k < pids_exp[j].num_exported; k++) {
-								if (strcmp(txt, pids_exp[j].exported[k]) == 0) {
-									json_object_set_number(app, "pid", pids_exp[j].pid);
-									json_object_set_string(app, "command", pids_exp[j].process_name);
-									pid_overriden = 1;
-									break;
-								}
-							}
-						}
+					} else {
+						/* Make sure we match the whole word. */
+						char *end = found + attr_len;
+						if (*end == '\0' || *end == ' ')
+							json_object_set_number(attr, attributes[j] + 1, 1);
 					}
 				}
 			}
+			json_object_set_value(bo, "attributes", json_object_get_wrapping_value(attr));
+			if (json_object_has_value(attr, "exported as ino"))
+				json_object_set_number(bo, "ino", json_object_get_number(attr, "exported as ino"));
 		}
 
-		if (json_object_get_count(app))
-			json_array_append_value(pids, json_object_get_wrapping_value(app));
+		if (json_array_get_count(bos)) {
+			json_array_append_value(apps, json_object_get_wrapping_value(p));
+			json_array_append_value(json_array(json_object_get_value(p, "clients")),
+									json_object_get_wrapping_value(client));
+		}
 	}
 
 	free(lines);
 
-	return pids;
+	return apps;
 }
 
+static bool assign_gpu_fd_to_clients(struct umr_asic *asic, int pid, JSON_Array *clients)
+{
+	int gpu_fds[1024], pid_gpu_fds[1024] = {0}, client_ids[1024];
+	int n_exported, n_validated, r, dmabuf;
+	size_t i, j, k, gpu_fds_count;
+	struct stat st_buf;
+	size_t successful_clients = 0;
+	uint32_t ino, handle;
+	struct drm_amdgpu_gem_metadata metadata;
+
+	int pid_fd = syscall(SYS_pidfd_open, pid, 0);
+	if (pid_fd < 0)
+		return false;
+
+	/* Get all the open fd (drm client) for this pid. */
+	gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name,
+								   gpu_fds, ARRAY_SIZE(gpu_fds), client_ids);
+	if (gpu_fds_count == 0) {
+		close(pid_fd);
+		return false;
+	}
+
+	/* If extra_md is found within env variable, we'll check BOs for
+	 * metatada.
+	 */
+	unsigned n = 0;
+	char *buf = read_file_n("/proc/%d/environ", &n, pid);
+	bool has_extra_md = memmem(buf, n, "extra_md", strlen("extra_md"));
+
+	if (gpu_fds_count == 1 && json_array_get_count(clients) == 1 && !has_extra_md) {
+		JSON_Object *client = json_array_get_object(clients, 0);
+		json_object_set_number(client, "gpu-fd", gpu_fds[0]);
+		json_object_set_number(client, "drm-client-id", client_ids[0]);
+		close(pid_fd);
+		return true;
+	}
+
+	/* Now iterate on the clients list we got from gem_info. */
+	for (j = 0; j < json_array_get_count(clients); j++) {
+		JSON_Object *client = json_array_get_object(clients, j);
+		JSON_Array * bos = json_object_get_array(client, "bos");
+
+		for (i = 0; i < gpu_fds_count; i++) {
+			if (j == 0)
+				pid_gpu_fds[i] = syscall(SYS_pidfd_getfd, pid_fd, gpu_fds[i], 0);
+
+			if (pid_gpu_fds[i] < 0)
+				continue;
+
+			n_exported = n_validated = 0;
+
+			for (k = 0; k < json_array_get_count(bos); k++) {
+				JSON_Object * bo = json_array_get_object(bos, k);
+				if (!json_object_has_value(bo, "ino")) {
+					if (has_extra_md) {
+						handle = json_object_get_number(bo, "handle");
+						goto check_md;
+					}
+					continue;
+				}
+
+				n_exported++;
+
+				/* Re-exporting a bo should return the same inode number */
+				ino = json_object_get_number(bo, "ino");
+				handle = json_object_get_number(bo, "handle");
+
+				r = drmPrimeHandleToFD(pid_gpu_fds[i], handle,
+										DRM_CLOEXEC | DRM_RDWR, &dmabuf);
+				if (r)
+					break;
+
+				r = fstat(dmabuf, &st_buf);
+				close(dmabuf);
+
+				if (r || st_buf.st_ino != ino)
+					break;
+
+				n_validated++;
+
+				check_md:
+				if (check_bo_metadata(pid_gpu_fds[i], handle, &metadata))
+					json_object_set_number(bo, "has_metadata", 1);
+			}
+
+			/* This gpu_fd validated all the exported BO. */
+			if (n_exported == n_validated) {
+				json_object_set_number(client, "gpu-fd", gpu_fds[i]);
+				json_object_set_number(client, "drm-client-id", client_ids[i]);
+				close(pid_gpu_fds[i]);
+				pid_gpu_fds[i] = -1;
+				successful_clients++;
+				break;
+			}
+		}
+	}
+	for (i = 0; i < gpu_fds_count; i++)
+		close(pid_gpu_fds[i]);
+	close(pid_fd);
+
+	return successful_clients == json_array_get_count(clients);
+}
+
+static void postprocess_gem_info(struct umr_asic *asic, JSON_Array *apps, JSON_Array *apps_from_vm)
+{
+	size_t i, j, k;
+
+	size_t max_drm_client_id_to_vm_apps = 8;
+	int64_t *drm_client_id_to_vm_apps =
+		malloc(sizeof(int64_t) * 2 * max_drm_client_id_to_vm_apps);
+	size_t n_drm_client_id_to_vm_apps = 0;
+	for (i = 0; i < json_array_get_count(apps_from_vm); i++) {
+		JSON_Object *vm_app = json_array_get_object(apps_from_vm, i);
+
+		int gpu_fds[1024], drm_clients_id[1024];
+		uint32_t pid = json_object_get_number(vm_app, "pid");
+		int gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name,
+										   gpu_fds, ARRAY_SIZE(gpu_fds),
+										   drm_clients_id);
+		for (int j = 0; j < gpu_fds_count; j++) {
+			bool found = false;
+			for (k = 0; k < n_drm_client_id_to_vm_apps && !found; k++) {
+				if (drm_client_id_to_vm_apps[2 * k] == drm_clients_id[j])
+					found = true;
+			}
+			if (!found) {
+				drm_client_id_to_vm_apps[2 * n_drm_client_id_to_vm_apps] = drm_clients_id[j];
+				drm_client_id_to_vm_apps[2 * n_drm_client_id_to_vm_apps + 1] = i;
+				n_drm_client_id_to_vm_apps++;
+
+				if (n_drm_client_id_to_vm_apps == max_drm_client_id_to_vm_apps) {
+					max_drm_client_id_to_vm_apps *= 2;
+					drm_client_id_to_vm_apps = realloc(drm_client_id_to_vm_apps,
+													   sizeof(int64_t) * 2 * max_drm_client_id_to_vm_apps);
+				}
+			}
+		}
+	}
+
+	/* The goal here is to find the real app pid and the gpu fd owning the buffers.
+	 * amdgpu_gem_info and amdgpu_vm_info both have deficiencies:
+	 *   - amdgpu_gem_info:
+	 *       * pro: reports the BO handle
+	 *       * con: the pid/app name might be incorrect
+	 *   - amdgpu_vm_info:
+	 *       * pro: report the precise tid
+	 *       * con: the handle is just an index
+	 *
+	 * So the idea here is to use the exported buffers as the source of truth:
+	 * we want to find the pid/fd that have all of them (and not more).
+	*/
+	for (i = 0; i < json_array_get_count(apps); i++) {
+		JSON_Object *app = json_array_get_object(apps, i);
+		JSON_Array *clients = json_object_get_array(app, "clients");
+
+		int pid = json_object_get_number(app, "pid");
+
+		if (!assign_gpu_fd_to_clients(asic, pid, clients))
+			continue;
+
+		for (k = 0; k < json_array_get_count(clients); k++) {
+			JSON_Object *client = json_array_get_object(clients, k);
+
+			/* So far so good. Now check if vm_info gave us a better hint of who's the actual user
+			 * of the drm-client-id for this fd.
+			 */
+			int64_t drm_client_id = json_object_get_number(client, "drm-client-id");
+			for (j = 0; drm_client_id && j < n_drm_client_id_to_vm_apps; j++) {
+				if (drm_client_id_to_vm_apps[2 * j] == drm_client_id) {
+					JSON_Object *vm_app = json_array_get_object(apps_from_vm, drm_client_id_to_vm_apps[2 * j + 1]);
+					int p = json_object_get_number(vm_app, "pid");
+					if (p != pid) {
+						json_object_set_number(app, "pid", json_object_get_number(vm_app, "pid"));
+						json_object_set_string(app, "command", json_object_get_string(vm_app, "command"));
+						assign_gpu_fd_to_clients(asic, p, clients);
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	free(drm_client_id_to_vm_apps);
+}
+
+JSON_Array *get_bo_infos(struct umr_asic *asic) {
+	/* We're going to parse both gem_info and vm_info. */
+	char *data_gem_info = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_gem_info", asic->instance);
+	if (!data_gem_info)
+		return NULL;
+
+	char *data_vm_info = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_vm_info", asic->instance);
+	if (!data_vm_info) {
+		free(data_gem_info);
+		return NULL;
+	}
+
+	JSON_Array *apps_gem_info = parse_buffer_object_info(data_gem_info, false);
+	JSON_Array *apps_vm_info = parse_buffer_object_info(data_vm_info, true);
+
+	postprocess_gem_info(asic, apps_gem_info, apps_vm_info);
+
+	json_value_free(json_array_get_wrapping_value(apps_vm_info));
+	free(data_gem_info);
+	free(data_vm_info);
+
+	return apps_gem_info;
+}
 
 enum sensor_maps {
 	SENSOR_IDENTITY = 0,
@@ -2963,11 +2904,6 @@ static void waves_to_json(struct umr_asic *asic, JSON_Object *out) {
 		umr_packet_free(stream);
 }
 
-/* We need to remember this one so we can close any dmabuf that
- * we created.
- */
-static JSON_Value *previous_framebuffers_answer = NULL;
-
 static char *get_asic_devname(struct umr_asic *asic)
 {
 	char *dev_name = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/name", asic->instance);
@@ -3161,14 +3097,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		char *dev_name = get_asic_devname(asic);
 
 		JSON_Array *pids = get_active_amdgpu_clients(asic);
-
 		/* Read fdinfo for each client. */
 		JSON_Value *start = json_value_init_object();
 		for (size_t i = 0; i < json_array_get_count(pids); i++) {
 			JSON_Object *pid = json_object(json_array_get_value(pids, i));
 			read_fdinfo(start, pid, dev_name);
 		}
-
 		char *content_before =
 			read_file_a(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_fence_info", asic->instance);
 
@@ -3782,12 +3716,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_object_set_value(json_object(answer), names[i], m);
 		}
 
-		char *data = read_file_a(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_vm_info", asic->instance);
-		if (data) {
-			JSON_Array *pids = parse_vm_info(data);
-			json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
-			free(data);
-		}
+		json_object_set_value(json_object(answer), "apps",  json_array_get_wrapping_value(get_bo_infos(asic)));
 	} else if (!strcmp(command, "drm-counters")) {
 		uint64_t values[3] = { 0 };
 		umr_query_drm(asic, 0x0f /* AMDGPU_INFO_NUM_BYTES_MOVED */, &values[0], sizeof(values[0]));
@@ -3881,75 +3810,83 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			pthread_mutex_unlock(&__sensor_data->mtx);
 		}
 	} else if (!strcmp(command, "gem-info")) {
-		if (previous_framebuffers_answer) {
-			JSON_Array *fbs = json_array(previous_framebuffers_answer);
-			for (size_t i = 0; i < json_array_get_count(fbs); i++) {
-				JSON_Object *fb = json_object(json_array_get_value(fbs, i));
-				JSON_Object *md = json_object_get_object(fb, "metadata");
-				if (md) {
-					int dmabuf = json_object_get_number(md, "dmabuf_fd");
-					close(dmabuf);
-				}
-			}
-			json_value_free(previous_framebuffers_answer);
-			previous_framebuffers_answer = NULL;
-		}
-
-		struct pid_exported *pids_mapping = NULL;
-		uint32_t num_pids_mapping = get_ino_to_pid_mapping(asic, &pids_mapping);
-
 		answer = json_value_init_object();
-		JSON_Array *pids = parse_gem_info(
-			read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_gem_info", asic->instance),
-			pids_mapping, num_pids_mapping);
-
-		cleanup_pids_mapping(pids_mapping, num_pids_mapping);
+		JSON_Array *apps = get_bo_infos(asic);
 
 		#if CAN_IMPORT_BO
-		for (unsigned i = 0; i < json_array_get_count(pids); i++) {
-			JSON_Object *app = json_object(json_array_get_value(pids, i));
-			JSON_Array *bos = json_object_get_array(app, "bos");
-			unsigned *bo_handles = alloca(sizeof(unsigned) * json_array_get_count(bos));
-			unsigned *bo_sizes = alloca(sizeof(unsigned) * json_array_get_count(bos));
-			int *bo_res = alloca(sizeof(int) * 2 * json_array_get_count(bos));
-			int *gpu_fds = alloca(sizeof(int) * json_array_get_count(bos));
-			int *formats = alloca(sizeof(int) * json_array_get_count(bos));
-			int *swizzles = alloca(sizeof(int) * json_array_get_count(bos));
-			for (unsigned j = 0; j < json_array_get_count(bos); j++) {
-				JSON_Object *bo = json_object(json_array_get_value(bos, j));
-				bo_handles[j] = json_object_get_number(bo, "handle");
-				bo_sizes[j] = json_object_get_number(bo, "size");
-			}
-
-			check_peak_bo_metadata(asic, json_object_get_number(app, "pid"),
-								   bo_handles, bo_sizes, json_array_get_count(bos),
-								   bo_res, gpu_fds, formats, swizzles);
-
-			/* Remove invalid bo. */
-			unsigned null_count = 0;
-			for (unsigned j = 0; j < json_array_get_count(bos); j++) {
-				if (bo_res[2 * j]) {
-					JSON_Object *bo = json_object(json_array_get_value(bos, j));
-					json_object_set_number(bo, "width", bo_res[2 * j]);
-					json_object_set_number(bo, "height", bo_res[2 * j + 1]);
-					json_object_set_number(bo, "gpu-fd", gpu_fds[j]);
-					json_object_set_number(bo, "format", formats[j]);
-					json_object_set_number(bo, "swizzle", swizzles[j]);
-				} else {
-					json_array_replace_null(bos, j);
-					null_count++;
+		for (unsigned i = 0; i < json_array_get_count(apps);) {
+			JSON_Object *app = json_array_get_object(apps, i);
+			JSON_Array *clients = json_object_get_array(app, "clients");
+			bool has_non_null = false;
+			for (unsigned j = 0; j < json_array_get_count(clients);) {
+				JSON_Object *client = json_array_get_object(clients, j);
+				int gpu_fd = (int)json_object_get_number(client, "gpu-fd");
+				if (gpu_fd == 0) {
+					json_array_remove(clients, j);
+					continue;
 				}
+
+				int client_fd = syscall(SYS_pidfd_open, (int)json_object_get_number(app, "pid"), 0);
+
+				if (client_fd < 0) {
+					json_array_remove(clients, j);
+					continue;
+				}
+
+				int client_gpu_fd = syscall(SYS_pidfd_getfd, client_fd, gpu_fd, 0);
+				if (client_gpu_fd < 0) {
+					json_array_remove(clients, j);
+					close(client_fd);
+					continue;
+				}
+
+				JSON_Array *bos = json_object_get_array(client, "bos");
+				struct bo_info *bos_info = calloc(json_array_get_count(bos), sizeof(*bos_info));
+				for (unsigned j = 0; j < json_array_get_count(bos); j++) {
+					JSON_Object *bo = json_object(json_array_get_value(bos, j));
+					bos_info[j].handle = json_object_get_number(bo, "handle");
+					bos_info[j].size = json_object_get_number(bo, "size");
+				}
+
+				check_peak_bo_metadata(asic, client_gpu_fd, json_array_get_count(bos), bos_info);
+
+				/* Remove invalid bo. */
+				for (unsigned k = 0, l = 0; k < json_array_get_count(bos); l++) {
+					if (bos_info[l].width && bos_info[l].height) {
+						JSON_Object *bo = json_array_get_object(bos, k);
+						json_object_set_number(bo, "width", bos_info[l].width);
+						json_object_set_number(bo, "height", bos_info[l].height);
+						json_object_set_number(bo, "format", bos_info[l].format);
+						json_object_set_number(bo, "swizzle", bos_info[l].swizzle);
+						json_object_set_number(bo, "tiling", bos_info[l].tiling_info);
+						json_object_set_number(bo, "alloc_flags", bos_info[l].alloc_flags);
+						k++;
+					} else {
+						json_array_remove(bos, k);
+					}
+				}
+				if (json_array_get_count(bos) == 0) {
+					json_array_remove(clients, j);
+				} else {
+					has_non_null = true;
+					j++;
+				}
+				free(bos_info);
+
+				close(client_gpu_fd);
+				close(client_fd);
 			}
-			if (null_count == json_array_get_count(bos))
-				json_array_replace_null(pids, i);
+			if (has_non_null)
+				i++;
+			else
+				json_array_remove(apps, i);
 		}
 		#endif
 
-		json_object_set_value(json_object(answer), "pids", json_array_get_wrapping_value(pids));
+		json_object_set_value(json_object(answer), "apps", json_array_get_wrapping_value(apps));
 
 		char *content = read_file(SYSFS_PATH_DEBUG_DRI "%d/framebuffer", asic->instance);
 		JSON_Array *framebuffers = parse_kms_framebuffer_sysfs_file(asic, content);
-		previous_framebuffers_answer = json_value_deep_copy(json_array_get_wrapping_value(framebuffers));
 		json_object_set_value(json_object(answer), "framebuffers", json_array_get_wrapping_value(framebuffers));
 	#if CAN_IMPORT_BO
 	} else if (!strcmp(command, "peak-bo")) {

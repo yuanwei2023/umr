@@ -1,10 +1,10 @@
 #include "test_framework.h"
 #include "parson.h"
+#include <stdbool.h>
 
 extern void parse_sysfs_clock_file(char *content, int *min, int *max);
 extern JSON_Value *compare_fence_infos(const char *before, const char *after);
-extern JSON_Array *parse_vm_info(const char *content);
-extern JSON_Array *parse_gem_info(char *content, void *pids, unsigned n);
+extern JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info);
 extern JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *content);
 extern JSON_Object *parse_kms_state_sysfs_file(const char *content);
 extern JSON_Object *parse_pp_features_sysfs_file(const char *content);
@@ -72,61 +72,7 @@ static enum TEST_RESULT test_parse_fence_info(__attribute__((unused)) struct umr
     return TEST_SUCCESS;
 }
 
-static enum TEST_RESULT test_parse_vm_info(__attribute__((unused)) struct umr_asic* asic)
-{
-    const char *content =
-        "pid:0\tProcess: ----------\n"
-        "\tIdle BOs:\n"
-        "\tEvicted BOs:\n"
-        "\t\t0x00000000:         4096 byte  GTT CPU_GTT_USWC VRAM_CONTIGUOUS\n"
-        "\n"
-        "\tRelocated BOs:\n"
-        "\tMoved BOs:\n"
-        "\tInvalidated BOs:\n"
-        "\tDone BOs:\n"
-        "\tTotal idle size:                   0\tobjs:\t0\n"
-        "\tTotal evicted size:             4096\tobjs:\t1\n"
-        "\tTotal relocated size:              0\tobjs:\t0\n"
-        "\tTotal moved size:                  0\tobjs:\t0\n"
-        "\tTotal invalidated size:            0\tobjs:\t0\n"
-        "\tTotal done size:                   0\tobjs:\t0\n"
-        "pid:3140\tProcess:GeckoMain ----------\n"
-        "\tIdle BOs:\n"
-        "\t\t0x00000000:         4096 byte VRAM CPU_GTT_USWC VRAM_CONTIGUOUS\n"
-        "\n"
-        "\t\t0x00000001:         4096 byte   GTT exported as 000000000a49a273 NO_CPU_ACCESS CPU_GTT_USWC 	write fence:detached-driver signaled-timeline seq 94397 signalled\n"
-        "\twrite fence:detached-driver signaled-timeline seq 2 signalled\n"
-        "\n"
-        "\tEvicted BOs:\n"
-        "\tRelocated BOs:\n"
-        "\tMoved BOs:\n"
-        "\tInvalidated BOs:\n"
-        "\tDone BOs:\n"
-        "\t\t0x00000001:      2097152 byte  GTT CPU_ACCESS_REQUIRED CPU_GTT_USWC\n"
-        "\n"
-        "\tTotal idle size:                8192\tobjs:\t2\n"
-        "\tTotal evicted size:                0\tobjs:\t0\n"
-        "\tTotal relocated size:              0\tobjs:\t0\n"
-        "\tTotal moved size:                  0\tobjs:\t0\n"
-        "\tTotal invalidated size:            0\tobjs:\t0\n"
-        "\tTotal done size:             2097152\tobjs:\t1\n";
-
-    const char *names[] = { "", "GeckoMain" };
-    int pids[] = { 0, 3140 };
-    JSON_Array *out = parse_vm_info(content);
-    ASSERT_EQ(json_array_get_count(out), 2);
-    for (int i = 0; i < 2; i++) {
-        JSON_Object *v = json_object(json_array_get_value(out, i));
-        JSON_Object *fd = json_object(
-            json_array_get_value(json_object_get_array(v, "fds"), 0));
-        ASSERT_STR_EQ(json_object_get_string(fd, "command"), names[i]);
-        ASSERT_EQ(json_object_get_number(v, "pid"), pids[i]);
-    }
-    json_value_free(json_array_get_wrapping_value(out));
-    return TEST_SUCCESS;
-}
-
-static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_asic* asic)
+static enum TEST_RESULT test_parse_buffer_object_info(__attribute__((unused)) struct umr_asic* asic)
 {
     char *content = strdup(
         "pid    44961 command Xwayland:\n"
@@ -143,16 +89,19 @@ static enum TEST_RESULT test_parse_gem_info(__attribute__((unused)) struct umr_a
         "\t\t\t\t0x00000006:         4096 byte  GTT CPU_ACCESS_REQUIRED\n"
         "\t\t\t\t0x00000007:         4096 byte  GTT CPU_ACCESS_REQUIRED\n");
 
-    unsigned pids[] = { 44961, 44961, 47113 };
-    const char *names[] = { "Xwayland", "Xwayland", "firefox" };
-    unsigned counts[] = { 0, 1, 7 };
-    JSON_Array *out = parse_gem_info(content, NULL, 0);
-    ASSERT_EQ(json_array_get_count(out), 3);
-    for (int i = 0; i < 3; i++) {
+    unsigned pids[] = { 44961, 47113 };
+    const char *names[] = { "Xwayland", "firefox" };
+    unsigned counts[] = { 1, 7 };
+    JSON_Array *out = parse_buffer_object_info(content, false);
+    ASSERT_EQ(json_array_get_count(out), 2);
+    for (int i = 0; i < 2; i++) {
+        JSON_Array *clients;
         JSON_Object *v = json_object(json_array_get_value(out, i));
         ASSERT_STR_EQ(json_object_get_string(v, "command"), names[i]);
         ASSERT_EQ(json_object_get_number(v, "pid"), pids[i]);
-        ASSERT_EQ(json_array_get_count(json_object_get_array(v, "bos")), counts[i]);
+        clients = json_object_get_array(v, "clients");
+        ASSERT_EQ(json_array_get_count(clients), 1);
+        ASSERT_EQ(json_array_get_count(json_object_get_array(json_object(json_array_get_value(clients, 0)), "bos")), counts[i]);
     }
     json_value_free(json_array_get_wrapping_value(out));
     free(content);
@@ -483,8 +432,7 @@ static enum TEST_RESULT test_parse_sysfs_pp_features2(__attribute__((unused)) st
 DEFINE_TESTS(server_tests)
 TEST(test_parse_sysfs_clock_file, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_fence_info, "navi_reg_only.envdef", "navi10"),
-TEST(test_parse_vm_info, "navi_reg_only.envdef", "navi10"),
-TEST(test_parse_gem_info, "navi_reg_only.envdef", "navi10"),
+TEST(test_parse_buffer_object_info, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_framebuffer, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_state, "navi_reg_only.envdef", "navi10"),
 TEST(test_parse_sysfs_pp_features, "navi_reg_only.envdef", "navi10"),
