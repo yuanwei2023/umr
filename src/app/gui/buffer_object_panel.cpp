@@ -236,7 +236,7 @@ public:
 		ImGui::Indent();
 		ImGui::Text("(appname  id    resolution)");
 		JSON_Array *fbs = json_object_get_array(last_answer_gem_info, "framebuffers");
-		for (int i = 0; i < json_array_get_count(apps); i++) {
+		for (int i = 0; i < json_array_get_count(fbs); i++) {
 			JSON_Object *fb = json_object(json_array_get_value(fbs, i));
 			if (json_object_has_value(fb, "metadata") == 0)
 				continue;
