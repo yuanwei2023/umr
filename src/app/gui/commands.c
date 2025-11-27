@@ -294,7 +294,7 @@ static int find_pid_by_command_name(DIR *d, const char *process_name) {
 	return pid;
 }
 
-#if CAN_IMPORT_BO
+static void parse_drm_clients(struct umr_asic *asic, JSON_Array * clients);
 static bool parse_fdinfo_entry(const char *content, const char *dev_id, bool limit_to_drm_engines, JSON_Object *out);
 
 static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int max_fd, int *drm_client_ids) {
@@ -367,6 +367,7 @@ static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int m
 	return num_fds;
 }
 
+#if CAN_IMPORT_BO
 static void read_size_from_md(struct umr_asic *asic, unsigned *metadata,
 							  int *width, int *height)
 {
@@ -718,6 +719,7 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 				      				    int *width, int *height, void **raw_data, unsigned *size)
 {
 	int gpu_fd = -1;
+	int dmabuf_fd = -1;
 
 	int pid_fd = syscall(SYS_pidfd_open, (int) json_object_get_number(md, "pid"), 0);
 	if (pid_fd < 0)
@@ -727,6 +729,17 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 	if (gpu_fd < 0) {
 		close(pid_fd);
 		return "Failed to import GPU fd";
+	}
+	drmModeFB2Ptr fb2 = drmModeGetFB2(gpu_fd, (int) json_object_get_number(md, "fb_id"));
+	if (fb2 == NULL) {
+		close(gpu_fd);
+		close(pid_fd);
+		return "drmModeGetFB2 failed";
+	}
+	if (drmPrimeHandleToFD(gpu_fd, fb2->handles[0], DRM_CLOEXEC, &dmabuf_fd)) {
+		close(gpu_fd);
+		close(pid_fd);
+		return "dmabuf creation failed";
 	}
 
 	unsigned fourcc = (unsigned) json_object_get_number(md, "fourcc");
@@ -745,18 +758,19 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 	for (size_t i = 0; i < json_array_get_count(j_pitches); i++)
 		pitches[i] = (int) json_array_get_number(j_pitches, i);
 
-	void *result = peak_bo(asic, (int) json_object_get_number(md, "dmabuf_fd"),
+	void *result = peak_bo(asic, dmabuf_fd,
 						   *width, *height, fourcc, modifier,
 						   nplanes,
 						   offsets, pitches,
 						   raw_data, size);
+	close(dmabuf_fd);
 	close(gpu_fd);
 	close(pid_fd);
 	return result;
 }
 
 static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_id,
-									int *remote_gpu_fd, int *dmabuf_fd,
+									int *remote_gpu_fd,
 						  		    unsigned *width, unsigned *height,
 						  		    unsigned *fourcc, uint64_t *modifier,
 						  		    unsigned *nplanes,
@@ -784,11 +798,6 @@ static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_
 		return "drmModeGetFB2 failed";
 	}
 
-	if (drmPrimeHandleToFD(gpu_fd, fb2->handles[0], DRM_CLOEXEC, dmabuf_fd)) {
-		close(gpu_fd);
-		close(pid_fd);
-		return "dmabuf creation failed";
-	}
 	/* Close the handle to not leak it. */
 	drmCloseBufferHandle(gpu_fd, fb2->handles[0]);
 	*width = fb2->width;
@@ -920,9 +929,23 @@ static int parse_kms_field(const char **content, const char *field, const char *
 }
 
 JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *content) {
+	JSON_Array* drm_card_clients = NULL;
 	JSON_Array *out = json_array(json_value_init_array());
 	const char *next_framebuffer = strstr(content, "framebuffer[");
-	DIR *d = asic ? opendir("/proc") : NULL;
+
+	if (asic) {
+		drm_card_clients = json_array(json_value_init_array());
+		parse_drm_clients(asic, drm_card_clients);
+		/* Remove the render-only clients. */
+		for (size_t n = 0; n < json_array_get_count(drm_card_clients);) {
+			JSON_Object *client = json_array_get_object(drm_card_clients, n);
+			if (json_object_get_number(client, "dev") >= 128 || json_object_get_number(client, "tgid") == getpid()) {
+				json_array_remove(drm_card_clients, n);
+			} else {
+				n++;
+			}
+		}
+	}
 
 	while (next_framebuffer) {
 		if (!next_framebuffer)
@@ -936,24 +959,24 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 
 		parse_kms_field(&content, "allocated by", "allocated by", KMS_STRING, fb);
 		#if CAN_IMPORT_BO
-		/* The kernel only gives us an application name but we really need a pid.
-		 * Try to find the application by parsing /proc/$fd/comm
+		/* The kernel only gives us a thread-name but we really need a pid. Instead
+		 * of parsing all of /proc/xxx/task/yyy to figure out the tgid, we'll check
+		 * amongst the primary clients, which one has the framebuffer.
 		 */
-		if (d) {
-			const char *comm = json_object_get_string(fb, "allocated by");
-			rewinddir(d);
-			int pid = find_pid_by_command_name(d, comm);
+		if (asic) {
+			for (size_t n = 0; n < json_array_get_count(drm_card_clients); n++) {
+				JSON_Object *client = json_array_get_object(drm_card_clients, n);
+				uint32_t pid = json_object_get_number(client, "tgid");
 
-			if (pid) {
-				int gpu_fd, dmabuf_fd;
+				int gpu_fd;
 				unsigned width, height, fourcc, nplanes;
 				unsigned offsets[3], pitches[3];
 				uint64_t modifier;
-				if (get_bo_md_using_fb_id(asic, pid, id, &gpu_fd, &dmabuf_fd, &width, &height,
+				if (get_bo_md_using_fb_id(asic, pid, id, &gpu_fd, &width, &height,
 										  &fourcc, &modifier, &nplanes, offsets, pitches) == NULL) {
 					JSON_Object *md = json_object(json_value_init_object());
+					json_object_set_number(md, "fb_id", id);
 					json_object_set_number(md, "pid", pid);
-					json_object_set_number(md, "dmabuf_fd", dmabuf_fd);
 					json_object_set_number(md, "gpu-fd", gpu_fd);
 					json_object_set_number(md, "width", width);
 					json_object_set_number(md, "height", height);
@@ -970,6 +993,7 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 					json_object_set_value(md, "pitches", str);
 					json_object_set_value(fb, "metadata", json_object_get_wrapping_value(md));
 				}
+				break;
 			}
 		}
 		#endif
@@ -1016,9 +1040,7 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 		json_array_append_value(out, json_object_get_wrapping_value(fb));
 	}
 
-	if (d)
-		closedir(d);
-
+	json_value_free(json_array_get_wrapping_value(drm_card_clients));
 	return out;
 }
 
