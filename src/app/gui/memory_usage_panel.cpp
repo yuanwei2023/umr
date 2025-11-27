@@ -52,6 +52,38 @@ namespace Enum {
 	};
 }
 
+const uint16_t visible_icon[] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 1, 1, 1, 1, 0, 0,
+	0, 1, 0, 0, 0, 0, 1, 0,
+	1, 1, 0, 1, 1, 0, 1, 1,
+	1, 0, 0, 1, 1, 0, 0, 1,
+	0, 1, 0, 0, 0, 0, 1, 0,
+	0, 0, 1, 1, 1, 1, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+};
+const uint16_t pinned_icon[] = {
+	0, 0, 0, 0, 0, 0, 0, 0,
+	0, 1, 1, 1, 1, 1, 1, 0,
+	0, 1, 0, 0, 0, 0, 1, 0,
+	0, 1, 1, 0, 0, 1, 1, 0,
+	0, 0, 1, 1, 1, 1, 0, 0,
+	0, 0, 0, 1, 1, 0, 0, 0,
+	0, 0, 0, 1, 1, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+};
+const uint16_t shared_icon[] = {
+	0, 0, 0, 0, 0, 1, 1, 1,
+	0, 0, 0, 0, 0, 1, 0, 1,
+	0, 0, 0, 0, 1, 1, 1, 1,
+	0, 0, 0, 1, 1, 0, 0, 0,
+	1, 1, 1, 1, 0, 0, 0, 0,
+	1, 0, 1, 0, 0, 0, 0, 0,
+	1, 1, 1, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0,
+};
+
+const uint16_t *icons_bitmap[3] = { visible_icon, pinned_icon, shared_icon };
 static void draw_rect_at_cursor(float x_off, int size, ImColor col, bool outline, ImColor col2) {
 	ImVec2 base = ImGui::GetCursorScreenPos();
 	base.x += x_off;
@@ -107,6 +139,7 @@ public:
 		show_mem_type[2] = true;
 		show_mem_type[3] = true;
 		autorefresh_enabled = true;
+		memset(icons, 0, sizeof(icons));
 	}
 	~MemoryUsagePanel() {
 		if (last_answer)
@@ -158,6 +191,9 @@ public:
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
+		if (icons[0] == 0)
+			init_icons();
+
 		if (can_send_request) {
 			if (!last_answer || (autorefresh_enabled && last_vm_read > autorefresh)) {
 				send_memory_usage_command();
@@ -277,6 +313,8 @@ private:
 					break;
 				}
 			}
+			shared = json_object_has_value(att, "exported as ino");
+			pinned = json_object_has_value(att, "pin count");
 			this->attr = json_object(json_value_deep_copy(json_object_get_wrapping_value(att)));
 		}
 		mem_data& operator=(const mem_data& d) {
@@ -289,6 +327,8 @@ private:
 		void _copy(const mem_data& d) {
 			this->bo_size = d.bo_size;
 			this->can_be_viewed = d.can_be_viewed;
+			this->pinned = d.pinned;
+			this->shared = d.shared;
 			this->app_index = d.app_index;
 			this->fd_index = d.fd_index;
 			this->handle = d.handle;
@@ -304,7 +344,7 @@ private:
 		uint32_t fd_index;
 		uint32_t handle;
 		uint16_t memory_type;
-		bool can_be_viewed;
+		bool can_be_viewed, pinned, shared;
 		JSON_Object *attr;
 	};
 	struct mem_file {
@@ -716,8 +756,9 @@ private:
 			ImVec2 r2(base.x + box_width - hbox_spacing, base.y);
 
 			if (ImGui::IsMouseHoveringRect(r1, r2)) {
-				current_snapshot_index = i;
 				if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					current_snapshot_index = i;
+				if (ImGui::IsMouseClicked(ImGuiMouseButton_Right))
 					layout = Enum::LayoutHistory;
 			}
 
@@ -726,7 +767,6 @@ private:
 
 			base.x -= box_width;
 		}
-
 
 		ImGui::SetCursorScreenPos(below_graph);
 		ImGui::Text("Show: ");
@@ -776,6 +816,7 @@ private:
 		const ImVec2 padding(1.0, 1.0);
 		
 		if (begin == end) {
+			const float icon_size = ImGui::GetFontSize();
 			ImVec2 corner1(base.x + padding.x, base.y + padding.y);
 			ImVec2 corner2(corner1.x + size.x - 2 * padding.x,
 						   corner1.y + size.y - 2 * padding.y);
@@ -788,11 +829,59 @@ private:
 			draw_rectangle(corner1, corner2,
 						   palette[app.pid % ARRAY_SIZE(palette)],
 						   palette[(app.pid + (use_subcolor ? (1 + fd_idx): 0)) % ARRAY_SIZE(palette)]);
-			if (ImGui::IsMouseHoveringRect(corner1, corner2))
-				ImGui::SetTooltip("App : %s\nFd  : %s\nSize: %s",
-								  app.name.empty() ? "" : app.name.c_str(),
-								  app.per_fd[fd_idx].drm_client_name.empty() ? "" : app.per_fd[fd_idx].drm_client_name.c_str(),
-								  format_bo_size(snapshot.bos[begin].bo_size));
+
+			const ImVec2 icon_padding = ImGui::GetStyle().FramePadding;
+			if (size.x > (icon_size + icon_padding.x) && size.y > (icon_size + icon_padding.y)) {
+				ImGui::PushClipRect(corner1, corner2, true);
+				float icon_base_x = corner1.x + icon_padding.x;
+				float icon_base_y = corner1.y + icon_padding.y;
+				if (snapshot.bos[begin].can_be_viewed) {
+					ImGui::GetWindowDrawList()->AddImage(
+						(ImTextureID) (intptr_t) icons[0],
+						ImVec2(icon_base_x, icon_base_y), ImVec2(icon_base_x + icon_size, icon_base_y + icon_size));
+					icon_base_x += icon_size + icon_padding.x;
+				}
+				if (snapshot.bos[begin].pinned) {
+					ImGui::GetWindowDrawList()->AddImage(
+						(ImTextureID) (intptr_t) icons[1],
+						ImVec2(icon_base_x, icon_base_y), ImVec2(icon_base_x + icon_size, icon_base_y + icon_size));
+					icon_base_x += icon_size + icon_padding.x;
+				}
+				if (snapshot.bos[begin].shared) {
+					ImGui::GetWindowDrawList()->AddImage(
+						(ImTextureID) (intptr_t) icons[2],
+						ImVec2(icon_base_x, icon_base_y), ImVec2(icon_base_x + icon_size, icon_base_y + icon_size));
+					icon_base_x += icon_size + icon_padding.x;
+				}
+				ImGui::PopClipRect();
+			}
+
+			if (ImGui::IsMouseHoveringRect(corner1, corner2)) {
+				ImGui::BeginTooltip();
+				ImGui::Text("App: %s, PID: %d", app.name.empty() ? "" : app.name.c_str(), app.pid);
+				ImGui::Text("drm-client-id: %d", app.per_fd[fd_idx].drm_client_id);
+				if (!app.per_fd[fd_idx].drm_client_name.empty())
+					ImGui::Text("drm-client-name: %s", app.per_fd[fd_idx].drm_client_name.c_str());
+				ImGui::Text("Size: %s", format_bo_size(snapshot.bos[begin].bo_size));
+				ImGui::SetMouseCursor(snapshot.bos[begin].can_be_viewed ? ImGuiMouseCursor_Hand : ImGuiMouseCursor_Arrow);
+				if (snapshot.bos[begin].handle) {
+					ImGui::Text("Handle: %d", snapshot.bos[begin].handle);
+					if (snapshot.bos[begin].can_be_viewed && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+						JSON_Value *req = json_value_init_object();
+						json_object_set_string(json_object(req), "command", "peak-bo");
+						json_object_set_number(json_object(req), "pid", app.pid);
+						json_object_set_number(json_object(req), "handle", snapshot.bos[begin].handle);
+						json_object_set_number(json_object(req), "gpu-fd", app.per_fd[fd_idx].gpu_fd);
+						send_request(req);
+						goto_tab(SDLK_o);
+					}
+				}
+				JSON_Object *attr = snapshot.bos[begin].attr;
+				for (size_t i = 0; i < json_object_get_count(attr); i++)
+					ImGui::Text("%s: %d", json_object_get_name(attr, i), (int)json_number(json_object_get_value_at(attr, i)));
+
+				ImGui::EndTooltip();
+			}
 			if (snapshot.apps[app_idx].highlight)
 				ImGui::GetWindowDrawList()->AddRect(corner1, corner2, IM_COL32_WHITE);
 		} else if (size.x * size.y < 50) {
@@ -848,6 +937,17 @@ private:
 		}
 	}
 
+	void init_icons() {
+		glGenTextures(ARRAY_SIZE(icons), icons);
+		for (int i = 0; i < ARRAY_SIZE(icons); i++) {
+			glBindTexture(GL_TEXTURE_2D, icons[i]);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 8, 8, 0,
+						 GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, icons_bitmap[i]);
+			}
+	}
+
 private:
 	JSON_Object *last_answer;
 	float drm_counters[NUM_DRM_COUNTERS * NUM_DRM_COUNTERS_VALUES];
@@ -858,6 +958,8 @@ private:
 	bool show_gtt, show_vram, show_free_memory;
 	float drm_counters_min[NUM_DRM_COUNTERS];
 	int drm_counters_offset;
+
+	GLuint icons[ARRAY_SIZE(icons_bitmap)];
 
 	Enum::Layout layout = Enum::LayoutHistory;
 };
