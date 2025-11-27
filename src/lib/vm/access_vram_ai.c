@@ -1081,17 +1081,8 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			}
 
 			if (!vm.pde.pde_fields.valid) {
-				if (pdst)
-					goto invalid_page;
-				/*
-				* jump to next page if in
-				* vm-decode mode
-				*/
-				vm.pte.pte_fields.prt = 0;
-				vm.pte.pte_fields.valid = 0;
-				vm.pte.pte_fields.system = 0;
-				start_addr = address & VM_PAGE_OFFSET_MASK; /* grab page offset so we can advance to next page */
-				goto next_page;
+				// always bail decoding if the PDE is marked invalid
+				goto invalid_page;
 			}
 
 			/* for the next round the address we're decoding is the phys address in the currently decoded PDE */
@@ -1286,7 +1277,6 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			vm.vmdata->pte_start_addr = start_addr;
 		}
 
-next_page:
 		/* Compute the chunk size we can access from this page.
 		 * If the size requested goes beyond the current page boundary
 		 * then limit the chunk size to the page boundary.
@@ -1365,6 +1355,10 @@ next_page:
 	return 0;
 
 invalid_page:
-	vm.asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx32 "@%" PRIx64 "\n", vmid, address);
+	if (vm.asic->options.user_queue.state.active) {
+		vm.asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx64 " from user queue '%s'n", address, vm.asic->options.user_queue.clientid);
+	} else {
+		vm.asic->mem_funcs.vm_message("[ERROR]: No valid mapping for %d@0x%" PRIx64 "\n", vmid, address);
+	}
 	return -1;
 }
