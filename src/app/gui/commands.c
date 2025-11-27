@@ -295,31 +295,76 @@ static int find_pid_by_command_name(DIR *d, const char *process_name) {
 }
 
 #if CAN_IMPORT_BO
-static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int max_fd) {
-	char folder[512];
-	sprintf(folder, "/proc/%d/fdinfo", pid);
+static bool parse_fdinfo_entry(const char *content, const char *dev_id, bool limit_to_drm_engines, JSON_Object *out);
+
+static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int max_fd, int *drm_client_ids) {
+	char folder[PATH_MAX], node[512];
+	struct stat statbuf;
+	__ino_t render_ino, card_ino;
+	int i;
+	sprintf(folder, "/proc/%d/fd", pid);
 
 	int num_fds = 0;
 
+	int dirfd = open(folder, O_DIRECTORY);
+	if (dirfd < 0)
+		return 0;
+
+	/* Find the ino of the render/card nodes. */
+	sprintf(node, "/dev/dri/by-path/pci-%s-render", pci_name);
+	if (stat(node, &statbuf) < 0)
+		return 0;
+	render_ino = statbuf.st_ino;
+	sprintf(node, "/dev/dri/by-path/pci-%s-card", pci_name);
+	if (stat(node, &statbuf) < 0)
+		return 0;
+	card_ino = statbuf.st_ino;
+
 	DIR *d = opendir(folder);
-	/* I'm not sure it's useful to try all the fd. */
 	if (d) {
 		struct dirent *entry;
+		drm_client_ids = drm_client_ids ? drm_client_ids : malloc(max_fd * sizeof(int));
 		while ((entry = readdir(d))) {
-			char *content = read_file_a("%s/%s", folder, entry->d_name);
-			if (strstr(content, pci_name) && strstr(content, "amdgpu")) {
-				result[num_fds++] = atoi(entry->d_name);
-				free(content);
+			int r = fstatat(dirfd, entry->d_name, &statbuf, 0);
+
+			if (r)
+				continue;
+
+			/* Find if this fd points to the GPU nodes. */
+			if (statbuf.st_ino == card_ino || statbuf.st_ino == render_ino) {
+				JSON_Object *fdinfo = json_object(json_value_init_object());
+				/* Filter out fd pointing out to the same drm-client-id. */
+				char *fdinfoc = read_file_a("/proc/%d/fdinfo/%s", pid, entry->d_name);
+
+				if (!parse_fdinfo_entry(fdinfoc, pci_name, true, fdinfo)) {
+					free(fdinfoc);
+					json_value_free(json_object_get_wrapping_value(fdinfo));
+					continue;
+				}
+
+				int drm_client_id = json_object_get_number(fdinfo, "drm-client-id");
+				free(fdinfoc);
+				json_value_free(json_object_get_wrapping_value(fdinfo));
+
+				for (i = 0; i < num_fds; i++) {
+					if (drm_client_ids[i] == drm_client_id) {
+						break;
+					}
+				}
+
+				if (i == num_fds) {
+					drm_client_ids[num_fds] = drm_client_id;
+					result[num_fds++] = atoi(entry->d_name);
+				}
+
 				if (num_fds == max_fd)
 					break;
-			} else {
-				free(content);
 			}
 		}
 		closedir(d);
-		return num_fds;
 	}
-	return 0;
+	close(dirfd);
+	return num_fds;
 }
 
 static void read_size_from_md(struct umr_asic *asic, unsigned *metadata,
@@ -346,7 +391,7 @@ static void check_peak_bo_metadata(struct umr_asic *asic, unsigned pid,
 
 	memset(res, 0, bo_count * 2 * sizeof(int));
 
-	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fds, 128);
+	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fds, 128, NULL);
 	if (remote_gpu_fds_count == 0)
 		return;
 
@@ -722,7 +767,7 @@ static char * get_bo_md_using_fb_id(struct umr_asic *asic, unsigned pid, int fb_
 	if (pid_fd < 0)
 		return "SYS_pidfd_open failed";
 
-	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fd, 1);
+	int remote_gpu_fds_count = find_amdgpu_fd(pid, asic->options.pci.name, remote_gpu_fd, 1, NULL);
 	if (remote_gpu_fds_count == 0)
 		return "Couldn't find amdgpu fd";
 
