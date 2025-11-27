@@ -723,7 +723,7 @@ static char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 	if (pid_fd < 0)
 		return "SYS_pidfd_open failed";
 
-	gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, (int) json_object_get_number(md, "gpu_fd"), 0);
+	gpu_fd = syscall(SYS_pidfd_getfd, pid_fd, (int) json_object_get_number(md, "gpu-fd"), 0);
 	if (gpu_fd < 0) {
 		close(pid_fd);
 		return "Failed to import GPU fd";
@@ -953,8 +953,8 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 										  &fourcc, &modifier, &nplanes, offsets, pitches) == NULL) {
 					JSON_Object *md = json_object(json_value_init_object());
 					json_object_set_number(md, "pid", pid);
-					json_object_set_number(md, "gpu_fd", gpu_fd);
 					json_object_set_number(md, "dmabuf_fd", dmabuf_fd);
+					json_object_set_number(md, "gpu-fd", gpu_fd);
 					json_object_set_number(md, "width", width);
 					json_object_set_number(md, "height", height);
 					json_object_set_number(md, "fourcc", fourcc);
@@ -3894,7 +3894,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 					JSON_Object *bo = json_object(json_array_get_value(bos, j));
 					json_object_set_number(bo, "width", bo_res[2 * j]);
 					json_object_set_number(bo, "height", bo_res[2 * j + 1]);
-					json_object_set_number(bo, "gpu_fd", gpu_fds[j]);
+					json_object_set_number(bo, "gpu-fd", gpu_fds[j]);
 					json_object_set_number(bo, "format", formats[j]);
 					json_object_set_number(bo, "swizzle", swizzles[j]);
 				} else {
@@ -3921,7 +3921,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		char *error;
 		if (json_object_has_value(request, "handle"))
 			error = peak_bo_using_metadata(asic, json_object_get_number(request, "pid"),
-										   json_object_get_number(request, "gpu_fd"),
+										   json_object_get_number(request, "gpu-fd"),
 										   json_object_get_number(request, "handle"),
 										   &width, &height, raw_data, raw_data_size);
 		else if (json_object_has_value(request, "metadata"))

@@ -198,7 +198,7 @@ public:
 						}
 						send_peak_bo_command(json_object_get_number(app, "pid"),
 											 json_object_get_number(bo, "handle"),
-											 json_object_get_number(bo, "gpu_fd"));
+											 json_object_get_number(bo, "gpu-fd"));
 						displayed_bo = bo;
 					}
 					ImGui::PopID();
@@ -336,7 +336,7 @@ private:
 		json_object_set_string(json_object(req), "command", "peak-bo");
 		json_object_set_number(json_object(req), "pid", pid);
 		json_object_set_number(json_object(req), "handle", handle);
-		json_object_set_number(json_object(req), "gpu_fd", gpu_fd);
+		json_object_set_number(json_object(req), "gpu-fd", gpu_fd);
 		send_request(req);
 	}
 
