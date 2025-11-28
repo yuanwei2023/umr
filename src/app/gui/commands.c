@@ -725,6 +725,7 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 		json_object_set_number(json_object(fdinfo), "ts", n);
 		json_object_set_string(json_object(fdinfo), "command", json_object_get_string(pid, "app"));
 		json_object_set_number(json_object(fdinfo), "pid", app_pid);
+		json_object_set_number(json_object(fdinfo), "tgid", get_tgid_for_tid(app_pid));
 		json_object_set_number(json_object(fdinfo), "gpu-fd", gpu_fd);
 		json_object_set_value(json_object(container), lbl, fdinfo);
 	}

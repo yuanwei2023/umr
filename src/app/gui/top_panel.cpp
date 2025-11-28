@@ -178,29 +178,31 @@ public:
 				const int engines = json_object_get_count(fds);
 				for (size_t k = 0; k < engines; k++) {
 					const char *name = json_object_get_name(fds, k);
-					if (strcmp(name, "ts") == 0 || strcmp(name, "app") == 0 || strcmp(name, "fd") == 0)
+					if (strstr(name, "drm-engine") != name)
 						continue;
 					uint64_t v1 = json_number(json_object_get_value_at(fds, k));
 					uint64_t v2 = json_number(json_object_get_value_at(fde, k));
 
 					uint64_t delta_ns = v2 - v1;
 
-					if (v1 && v2 && delta_ns > 0) {
+					if (v1 && v2) {
 						if (!client_legend_done) {
-							ImGui::Text("%d:%s", (int)json_object_get_number(fde, "pid"),
-												 json_object_get_string(fde, "command"));
+							ImGui::Text("pid: %d tid: %d command: %s drm-client-id: %s",
+								(int)json_object_get_number(fde, "tgid"),
+								(int)json_object_get_number(fde, "pid"),
+								json_object_get_string(fde, "command"),
+								client_id);
+							if (json_object_has_value(fds, "drm-client-name")) {
+								ImGui::SameLine();
+								ImGui::Text("drm-client-name: %s", json_object_get_string(fds, "drm-client-name"));
+							}
 							client_legend_done = true;
 						}
 						ImGui::Indent();
-						ImGui::Text("%8s", name);
+
+						ImGui::Text("%*s", (int)strlen("compute"), name + strlen("drm-engine-"));
 						ImGui::SameLine();
 						ImGui::ProgressBar((float)delta_ns / dt, ImVec2(avail.x / 3, 0));
-						ImGui::SameLine();
-						ImGui::Text("drm-client-id: %s", client_id);
-						if (json_object_has_value(fds, "drm-client-name")) {
-							ImGui::SameLine();
-							ImGui::Text("drm-client-name: %s", json_object_get_string(fds, "drm-client-name"));
-						}
 						ImGui::Unindent();
 					}
 				}
