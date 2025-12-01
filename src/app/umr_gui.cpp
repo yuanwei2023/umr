@@ -326,6 +326,9 @@ void force_redraw() {
 	SDL_PushEvent(&evt);
 }
 
+extern const char *devcoredump_file;
+extern struct umr_asic *asics[16];
+
 static struct Link lnk;
 static pthread_cond_t cond;
 static bool done;
@@ -341,7 +344,10 @@ struct AsicData {
 		options.vm_partition = -1;
 		options.no_follow_loadx = 1;
 
-		if (ip_discovery_dump && strlen(ip_discovery_dump)) {
+		if (devcoredump_file) {
+			/* Use exactly the asic initialized from the devcoredump. */
+			asic = asics[0];
+		} else if (ip_discovery_dump && strlen(ip_discovery_dump)) {
 			struct umr_test_harness *th = umr_create_test_harness(ip_discovery_dump);
 
 			options.test_log = 1;
@@ -733,8 +739,11 @@ static int run_gui(char *url)
 	if (url) {
 		struct stat statbuf;
 		int r = stat(url, &statbuf);
-		if (r == 0 && S_ISDIR(statbuf.st_mode)) {
-			replay = true;
+		if (r == 0) {
+			if (S_ISDIR(statbuf.st_mode))
+				replay = true;
+			else
+				devcoredump_file = url;
 		} else {
 			lnk.cf = rumr_get_cf(url, &lnk.addr);
 			if (lnk.cf == NULL) {
@@ -1024,7 +1033,7 @@ static int run_gui(char *url)
 			}
 		}
 
-		const bool can_send_request = pending_request.empty();
+		const bool can_send_request = pending_request.empty() && !replay && !devcoredump_file;
 		for (int i = 0; i < asics.size(); i++) {
 			AsicData &data = *asics[i];
 
@@ -1047,7 +1056,7 @@ static int run_gui(char *url)
 			}
 
 			struct umr_wave_data wd;
-			ImGui::BeginDisabled(umr_wave_data_init(data.asic, &wd) < 0);
+			ImGui::BeginDisabled(umr_wave_data_init(data.asic, &wd) < 0 || devcoredump_file);
 			if (ImGui::BeginTabItem("#b58900W#ffffffaves", NULL, kb_shortcut(SDLK_w) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[7]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
@@ -1056,10 +1065,11 @@ static int run_gui(char *url)
 			ImGui::EndDisabled();
 
 			if (ImGui::BeginTabItem("Rin#b58900g#ffffffs", NULL, kb_shortcut(SDLK_g) ? ImGuiTabItemFlags_SetSelected : 0)) {
-				data.panels[3]->display(dt, avail, can_send_request);
+				data.panels[3]->display(dt, avail, can_send_request || devcoredump_file);
 				ImGui::EndTabItem();
 			}
 
+			ImGui::BeginDisabled(devcoredump_file);
 			if (ImGui::BeginTabItem("#b58900P#ffffffower", NULL, kb_shortcut(SDLK_p) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[2]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
@@ -1095,15 +1105,18 @@ static int run_gui(char *url)
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
+			ImGui::EndDisabled();
 
 			ImGui::EndTabBar();
 			ImGui::EndTabItem();
 		}
+		ImGui::BeginDisabled(asics.empty() || asics[0]->asic->options.is_devcoredump);
 		if (ImGui::BeginTabItem("Activity", NULL)) {
 			if (activity_panel->display(dt, avail, can_send_request))
 				need_auto_refresh = -1;
 			ImGui::EndTabItem();
 		}
+		ImGui::EndDisabled();
 		ImGui::EndTabBar();
 
 		if (replay) {

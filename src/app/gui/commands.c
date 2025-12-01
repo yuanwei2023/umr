@@ -1520,6 +1520,7 @@ static void ring_done(struct umr_stream_decode_ui *ui) {
 struct umr_asic *asics[16] = {0};
 char *ip_discovery_dumps[16] = {0};
 int *ring_kernel_pid[16] = {0};
+const char *devcoredump_file = NULL;
 
 void init_asics(void) {
 	struct umr_options opt;
@@ -1533,42 +1534,66 @@ void init_asics(void) {
 	opt.scanblock = "";
 	opt.vm_partition = -1;
 	/* Allocate a buffer to pass ip discovery info to the client. */
-	char *ip_discovery_dump = calloc(1, 100000);
-	opt.test_log_fd = fmemopen(ip_discovery_dump, 100000, "w");
-	if (!opt.test_log_fd)
-		opt.force_asic_file = 1;
-	else
-		opt.test_log = 1;
+	char *ip_discovery_dump = NULL;
 
-	if (umr_enumerate_device_list(printf, database_path, &opt, &enum_asics, &asic_count, 1) < 0) {
-		exit(0);
+	if (!devcoredump_file) {
+		ip_discovery_dump = calloc(1, 100000);
+		opt.test_log_fd = fmemopen(ip_discovery_dump, 100000, "w");
+		if (!opt.test_log_fd)
+			opt.force_asic_file = 1;
+		else
+			opt.test_log = 1;
+
+		if (umr_enumerate_device_list(printf, database_path, &opt, &enum_asics, &asic_count, 1) < 0) {
+			exit(0);
+		}
+		fflush(opt.test_log_fd);
+	} else {
+		opt.force_asic_file = 1;
+		opt.no_kernel = 1;
+		asic_count = 1;
+		enum_asics = malloc(sizeof(*enum_asics));
 	}
 
-	fflush(opt.test_log_fd);
 	char *asic_discovery_data = ip_discovery_dump;
 
 	for (int i = 0; i < asic_count; i++) {
 		asics[i] = enum_asics[i];
 
-		/* Assign linux callbacks */
-		asics[i]->ring_func.read_ring_data = umr_read_ring_data;
+		if (!devcoredump_file) {
+			/* Assign linux callbacks */
+			asics[i]->ring_func.read_ring_data = umr_read_ring_data;
 
-		asics[i]->mem_funcs.vm_message = dummy_printf;
-		asics[i]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
-		asics[i]->mem_funcs.access_sram = umr_access_sram;
+			asics[i]->mem_funcs.vm_message = dummy_printf;
+			asics[i]->mem_funcs.gpu_bus_to_cpu_address = umr_vm_dma_to_phys;
+			asics[i]->mem_funcs.access_sram = umr_access_sram;
 
-		asics[i]->shader_disasm_funcs.disasm = umr_shader_disasm;
+			asics[i]->shader_disasm_funcs.disasm = umr_shader_disasm;
 
-		if (asics[i]->options.use_pci == 0)
-			asics[i]->mem_funcs.access_linear_vram = umr_access_linear_vram;
-		else
-			asics[i]->mem_funcs.access_linear_vram = umr_access_vram_via_mmio;
+			if (asics[i]->options.use_pci == 0)
+				asics[i]->mem_funcs.access_linear_vram = umr_access_linear_vram;
+			else
+				asics[i]->mem_funcs.access_linear_vram = umr_access_vram_via_mmio;
 
-		asics[i]->reg_funcs.read_reg = umr_read_reg;
-		asics[i]->reg_funcs.write_reg = umr_write_reg;
+			asics[i]->reg_funcs.read_reg = umr_read_reg;
+			asics[i]->reg_funcs.write_reg = umr_write_reg;
 
-		asics[i]->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
-		asics[i]->wave_funcs.get_wave_status = umr_get_wave_status;
+			asics[i]->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
+			asics[i]->wave_funcs.get_wave_status = umr_get_wave_status;
+
+			asics[i]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
+			asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
+		} else {
+			if (umr_prepare_devcoredump(&opt, devcoredump_file, printf)) {
+				printf("[ERROR] Empty devcoredump file (%s)\n", devcoredump_file);
+				exit(0);
+			}
+			asics[i] = umr_discover_asic_by_devcoredump(&opt, printf);
+			if (!asics[i]) {
+				printf("[ERROR] Unable to load asic from devcoredump file: %s", devcoredump_file);
+				exit(0);
+			}
+		}
 
 		/* Default shader options */
 		if (asics[i]->family <= FAMILY_VI) {
@@ -1581,35 +1606,35 @@ void init_asics(void) {
 		asics[i]->options.shader_enable.enable_ls_shader   = 1;
 		asics[i]->options.shader_enable.enable_comp_shader = 1;
 
-		asics[i]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
-		asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
-
 		asics[i]->err_msg = printf;
 
 		if (asics[i]->family > FAMILY_VI)
 			asics[i]->options.shader_enable.enable_es_ls_swap = 1;
 
 		umr_scan_config(asics[i], 1);
-		if (asics[i]->fd.drm < 0) {
-			char devname[PATH_MAX];
-			sprintf(devname, "/dev/dri/card%d", asics[i]->instance);
-			asics[i]->fd.drm = open(devname, O_RDWR);
-		}
 
-		if (opt.test_log_fd) {
-			const char *separator = "-----\n";
-			if (asic_discovery_data == NULL) {
-				printf("Unexpected discovery buffer:\n'%s'\n", ip_discovery_dump);
-				exit(0);
+		if (!devcoredump_file) {
+			if (asics[i]->fd.drm < 0) {
+				char devname[PATH_MAX];
+				sprintf(devname, "/dev/dri/card%d", asics[i]->instance);
+				asics[i]->fd.drm = open(devname, O_RDWR);
 			}
-			char *next_asic = strstr(asic_discovery_data, separator);
-			assert(next_asic);
 
-			if (asics[i]->was_ip_discovered)
-				ip_discovery_dumps[i] =
-					strndup(asic_discovery_data, next_asic - asic_discovery_data);
+			if (opt.test_log_fd) {
+				const char *separator = "-----\n";
+				if (asic_discovery_data == NULL) {
+					printf("Unexpected discovery buffer:\n'%s'\n", ip_discovery_dump);
+					exit(0);
+				}
+				char *next_asic = strstr(asic_discovery_data, separator);
+				assert(next_asic);
 
-			asic_discovery_data = next_asic + strlen(separator);
+				if (asics[i]->was_ip_discovered)
+					ip_discovery_dumps[i] =
+						strndup(asic_discovery_data, next_asic - asic_discovery_data);
+
+				asic_discovery_data = next_asic + strlen(separator);
+			}
 		}
 		asics[i]->options.test_log = false;
 		asics[i]->options.test_log_fd = 0;
@@ -2411,8 +2436,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_object_set_value(json_object(as), "firmwares", fws);
 
 			/* Discover the rings */
-			{
-				JSON_Value *rings = json_value_init_array();
+			JSON_Value *rings = json_value_init_array();
+			if (!asics[i]->options.is_devcoredump) {
 				char fname[256];
 				struct dirent *dir;
 				sprintf(fname, SYSFS_PATH_DEBUG_DRI "%d/", asics[i]->instance);
@@ -2425,8 +2450,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 					}
 					closedir(d);
 				}
-				json_object_set_value(json_object(as), "rings", rings);
+			} else {
+				for (int j = 0; j < asics[i]->options.devcoredump.no_ring_dumps; j++)
+					json_array_append_string(json_array(rings),
+											 asics[i]->options.devcoredump.ring_dumps[j].ring_name);
 			}
+			json_object_set_value(json_object(as), "rings", rings);
 
 			/* PCIe link speed/width */
 			{
@@ -2739,10 +2768,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		strcpy(asic->options.ring_name, ring_name);
 
 		/* Disable gfxoff */
-		umr_gfxoff_write(asic, 0);
+		if (!asic->options.is_devcoredump) {
+			umr_gfxoff_write(asic, 0);
 
-		if (halt_waves)
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
+			if (halt_waves)
+				umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
+		}
 
 		struct ring_decoding_data data;
 		data.ibs = json_array(json_value_init_array());
@@ -2756,10 +2787,13 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		answer = json_value_init_object();
 
-		const char *fence_info = read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_fence_info", asic->instance);
-		JSON_Array *signaled_fences = get_rings_last_signaled_fences(fence_info, ring_name);
+		JSON_Array *signaled_fences = NULL;
+		if (!asic->options.is_devcoredump) {
+			const char *fence_info = read_file(SYSFS_PATH_DEBUG_DRI "%d/amdgpu_fence_info", asic->instance);
+			signaled_fences = get_rings_last_signaled_fences(fence_info, ring_name);
+		}
 
-		ring_data = umr_read_ring_data(asic, ring_name, &ringsize);
+		ring_data = asic->ring_func.read_ring_data(asic, ring_name, &ringsize);
 		/* read pointers */
 		ringsize /= 4;
 		rptr = ring_data[0] % ringsize;
@@ -2840,10 +2874,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		json_object_set_number(json_object(answer), "last_signaled_fence",
 		json_object_get_number(json_object(json_array_get_value(signaled_fences, 0)), "value"));
 
-		if (halt_waves)
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
-		/* Reenable gfxoff */
-		umr_gfxoff_write(asic, 1);
+		if (!asic->options.is_devcoredump) {
+			if (halt_waves)
+				umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+			/* Reenable gfxoff */
+			umr_gfxoff_write(asic, 1);
+		}
 	} else if (strcmp(command, "power") == 0) {
 		const char *profiles[] = {
 			"auto",

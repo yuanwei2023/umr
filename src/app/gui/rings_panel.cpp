@@ -26,7 +26,10 @@
 
 static const char * get_ring_name(JSON_Array *rings, int idx) {
 	assert(idx >= 0 && idx < json_array_get_count(rings));
-	return json_array_get_string(rings, idx) + strlen("amdgpu_ring_");
+	const char *ring = json_array_get_string(rings, idx);
+	if (strncmp(ring, "amdgpu_ring_", strlen("amdgpu_ring_")) == 0)
+		return ring + strlen("amdgpu_ring_");
+	return ring;
 }
 
 static void _start_ib(struct umr_stream_decode_ui *, uint64_t, uint32_t, uint64_t, uint32_t, uint32_t, int) {
@@ -165,7 +168,7 @@ public:
 			max_w = std::max(max_w, ImGui::CalcTextSize(get_ring_name(rings, i)).x);
 		}
 		ImGui::SetNextItemWidth(max_w + padding * 2 + ImGui::GetFrameHeight());
-		if (ImGui::BeginCombo("", json_array_get_string(rings, current_item) + strlen("amdgpu_ring_"))) {
+		if (ImGui::BeginCombo("", get_ring_name(rings, current_item))) {
 			for (size_t i = 0; i < json_array_get_count(rings); i++) {
 				const char *ring_name = get_ring_name(rings, i);
 				ImGui::BeginDisabled(strstr(ring_name, "jpeg"));

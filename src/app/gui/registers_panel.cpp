@@ -166,6 +166,35 @@ public:
 		pinned->reg->value = pinned->new_value = json_object_get_number(json_object(answer), "value");
 	}
 
+	bool filter_reg(const struct umr_reg *reg) {
+		/* For devcoredump, hide all registers not present in the dump. */
+		if (asic->options.is_devcoredump) {
+			uint64_t addr = reg->addr;
+			int k;
+
+			for (k = 0; k < asic->options.devcoredump.no_registers; k++) {
+				if (asic->options.devcoredump.registers[k].addr == addr)
+					break;
+			}
+			if (k == asic->options.devcoredump.no_registers)
+				return false;
+		}
+
+		if (filter[0] != '\0' && !fuzzy_match_simple(filter, skip_register_prefix(reg->regname)))
+			return false;
+
+		if (field_filter[0] != '\0') {
+			for (int k = 0; k < reg->no_bits; k++) {
+				if (reg->bits[k].regname &&
+					 fuzzy_match_simple(field_filter, reg->bits[k].regname))
+					return true;
+			}
+			return false;
+		}
+
+		return true;
+	}
+
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		const float gui_scale = get_gui_scale();
 		double min_ts = 0, max_ts = 0;
@@ -192,21 +221,13 @@ public:
 		for (int i = 0; i < (int) asic->no_blocks; i++) {
 			unsigned matching = 0;
 			struct umr_ip_block *b = asic->blocks[i];
-			if (filter[0] != '\0' || field_filter[0] != '\0') {
+
+			if (b->no_regs == 0)
+				continue;
+			if (filter[0] != '\0' || field_filter[0] != '\0' || asic->options.is_devcoredump) {
 				for (int j = 0; j < b->no_regs; j++) {
-					if (filter[0] != '\0' && !fuzzy_match_simple(filter, skip_register_prefix(b->regs[j].regname))) {
-						continue;
-					} else if (field_filter[0] != '\0') {
-						for (int k = 0; k < b->regs[j].no_bits; k++) {
-							if (b->regs[j].bits[k].regname &&
-								  fuzzy_match_simple(field_filter, b->regs[j].bits[k].regname)) {
-								matching++;
-								break;
-							}
-						}
-					} else {
+					if (filter_reg(&b->regs[j]))
 						matching++;
-					}
 				}
 				sprintf(details, "%d/%d matches", matching, b->no_regs);
 			} else {
@@ -219,22 +240,9 @@ public:
 					for (int k = 0; k < (int) pinned_registers.size() && !pinned; k++)
 						pinned = pinned_registers[k].reg == &b->regs[j];
 
-					if (filter[0] != '\0' && !fuzzy_match_simple(filter, skip_register_prefix(b->regs[j].regname)))
+					if (!filter_reg(&b->regs[j]))
 						continue;
 
-					if (field_filter[0] != '\0') {
-						bool show = false;
-						for (int k = 0; k < b->regs[j].no_bits; k++) {
-							if (b->regs[j].bits[k].regname &&
-								  fuzzy_match_simple(field_filter, b->regs[j].bits[k].regname)) {
-								show = true;
-								break;
-							}
-						}
-
-						if (!show)
-							continue;
-					}
 					at_least_one = true;
 					if (pinned) {
 						ImGui::TextUnformatted(skip_register_prefix(b->regs[j].regname));
@@ -560,7 +568,7 @@ private:
 			ImGui::EndDisabled();
 
 			ImGui::SameLine();
-			ImGui::BeginDisabled(active_tracking == ALL_REGISTERS);
+			ImGui::BeginDisabled(active_tracking == ALL_REGISTERS || !can_send_request);
 			if (ImGui::Button(active_tracking == reg ? "Untrack" : "Track")) {
 				if (active_tracking) {
 					send_stop_register_tracking();
