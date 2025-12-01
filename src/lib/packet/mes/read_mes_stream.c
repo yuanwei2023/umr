@@ -957,15 +957,15 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				break;
 			case 20: // MES_SCH_API_INV_TLBS
 				if (mes_ver_maj >= 12) {
+					uint32_t tmp;
 					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "api_completion_fence_value", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_sel", fetch_word(asic, stream, i), NULL, 16, 8); ++i;
-					if (pack8 && !(i&1)) ++i;
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "flush_type", fetch_word(asic, stream, i), NULL, 16, 8); ++i;
-					if (pack8 && !(i&1)) ++i;
-					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_sel_id", fetch_word(asic, stream, i), NULL, 16, 16); ++i;
-					if (pack8 && !(i&1)) ++i;
+					tmp = fetch_word(asic, stream, i);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_sel", BITS(tmp, 0, 8), NULL, 16, 8);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "flush_type", BITS(tmp, 8, 16), NULL, 16, 8);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_sel_id", BITS(tmp, 16, 32), NULL, 16, 16);
+					++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "hub_id", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 					if (pack8 && !(i&1)) ++i;
 					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "inv_range_va_start", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
