@@ -234,7 +234,8 @@ static void add_shader(struct umr_stream_decode_ui *ui, struct umr_asic *asic, u
 		}
 	}
 	if (umr_vm_disasm_to_str(asic, asic->options.vm_partition, shader->vmid, shader->addr, 0, shader->size, 0, &str)) {
-		asic->err_msg("[ERROR]: Failed to disassemble shader at 0x%"PRIx32"@0x%"PRIx64"\n", shader->vmid, shader->addr);
+		if (!asic->options.is_devcoredump)
+			asic->err_msg("[ERROR]: Failed to disassemble shader at 0x%"PRIx32"@0x%"PRIx64"\n", shader->vmid, shader->addr);
 		goto end;
 	}
 	fprintf(data->stack[data->sp].f, "\nShader program:\n");

@@ -364,6 +364,18 @@ struct umr_user_queue {
 	struct umr_user_queue *next, *prev;
 };
 
+struct umr_devcoredump_ring_data {
+    char ring_name[32];
+    uint32_t rptr, wptr, size;
+    uint32_t *data;
+};
+
+struct devcoredump_reg {
+	uint32_t addr;
+	int8_t me, pipe, queue, mec, instance;
+	uint32_t value;
+};
+
 struct umr_options {
 	int forced_instance,
 		instance,
@@ -404,7 +416,8 @@ struct umr_options {
 	    trap_unsorted_db,
 		filter_shader_registers,
 		use_full_user_queue,
-		aql_heuristic;
+		aql_heuristic,
+		is_devcoredump;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {
@@ -451,8 +464,23 @@ struct umr_options {
 		char name[32];
 	} pci;
 
-	FILE *test_log_fd;
-	struct umr_test_harness *th;
+	struct {
+		FILE *test_log_fd;
+		struct umr_test_harness *th;
+	};
+	struct {
+		char **data;
+		uint32_t n_lines;
+
+		/* ring dump. */
+		int no_ring_dumps;
+		struct umr_devcoredump_ring_data* ring_dumps;
+
+		/* register values. */
+		int no_registers;
+		struct devcoredump_reg *registers;
+
+	} devcoredump;
 
 	// is this a rumr client?
 	int rumr_active;
@@ -815,3 +843,9 @@ struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic);
 void umr_user_queue_free(struct umr_user_queue *uq);
 
 #endif
+
+/* amdgpu devcoredump support. */
+int umr_prepare_devcoredump(struct umr_options *options, const char *file, umr_err_output errout);
+struct umr_discovery_table_entry *umr_devcoredump_parse_ip_discovery(struct umr_options *options, int *nblocks);
+struct umr_asic *umr_discover_asic_by_devcoredump(struct umr_options *options, umr_err_output errout);
+void umr_free_devcoredump(struct umr_asic *asic);

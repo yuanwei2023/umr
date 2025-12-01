@@ -152,7 +152,8 @@ struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream(struct umr_asic *asic, uint
 				uint32_t *buf;
 				buf = calloc(1, uvd_ib.size);
 				if (umr_read_vram(asic, asic->options.vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, (void *)buf) < 0) {
-					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
+					if (!asic->options.is_devcoredump)
+						asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
 					free(buf);
 				} else {
 					ps->vcn = vcn = calloc(1, sizeof(struct umr_vcn_cmd_message));
@@ -231,7 +232,8 @@ static struct umr_vcn_cmd_message *retrieve_decode_buffer(struct umr_asic *asic,
 				uint32_t size = sizeof(rvcn_dec_message_header_t);
 				rvcn_dec_message_header_t *mh = calloc(1, size);
 				if (umr_read_vram(asic, asic->options.vm_partition, nvcn->vmid, nvcn->addr, size, mh) < 0) {
-					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", nvcn->vmid, nvcn->addr);
+					if (!asic->options.is_devcoredump)
+						asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", nvcn->vmid, nvcn->addr);
 					free(mh);
 					free(nvcn);
 					return NULL;
@@ -246,7 +248,8 @@ static struct umr_vcn_cmd_message *retrieve_decode_buffer(struct umr_asic *asic,
 						rvcn_dec_message_index_t *pi = calloc(1, size_ex); /* all other messages exept the first one */
 						total_size += size_ex;
 						if (umr_read_vram(asic, asic->options.vm_partition, nvcn->vmid, nvcn->addr + mh->header_size, size_ex, pi) < 0) {
-							asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", nvcn->vmid, nvcn->addr);
+							if (!asic->options.is_devcoredump)
+								asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", nvcn->vmid, nvcn->addr);
 							free(pi);
 							free(mh);
 							free(nvcn);

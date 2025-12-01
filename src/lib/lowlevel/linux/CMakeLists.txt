@@ -1,6 +1,7 @@
 add_library(umrlow
   parse_clientid.c
   build_discovery_entry_table.c
+  devcoredump.c
   discover.c
   enumerate_devices.c
   mmio.c

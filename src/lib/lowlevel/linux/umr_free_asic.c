@@ -34,5 +34,7 @@ void umr_free_asic(struct umr_asic *asic)
 		pci_device_unmap_range(asic->pci.pdevice, asic->pci.mem, asic->pci.pdevice->regions[asic->pci.region].size);
 		pci_system_cleanup();
 	}
+	if (asic->options.is_devcoredump)
+		umr_free_devcoredump(asic);
 	umr_free_asic_blocks(asic);
 }

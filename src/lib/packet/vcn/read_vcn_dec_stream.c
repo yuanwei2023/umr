@@ -300,7 +300,8 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t
 								vcn->type = 0;
 								vcn->from = (stream - ostream  - 1) * 4;  /* back 1 dwords to mmUVD_GPCOM_VCPU_DATA1 */
 								if (umr_read_vram(asic, asic->options.vm_partition, vcn->vmid, vcn->addr, size, mh) < 0) {
-									asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", vcn->vmid, vcn->addr);
+									if (!asic->options.is_devcoredump)
+										asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", vcn->vmid, vcn->addr);
 									free(vcn);
 								} else {
 									vcn->size = mh->total_size < mh->header_size ? mh->header_size : mh->total_size;
@@ -331,7 +332,8 @@ struct umr_pm4_stream *umr_vcn_dec_decode_stream(struct umr_asic *asic, uint32_t
 				void *buf;
 				buf = calloc(1, uvd_ib.size);
 				if (umr_read_vram(asic, asic->options.vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
-					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
+					if (!asic->options.is_devcoredump)
+						asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
 				} else {
 					ps->ib = umr_vcn_dec_decode_stream(asic, uvd_ib.vmid, buf, uvd_ib.size / 4, ip_version);
 					ps->ib_source.addr = uvd_ib.addr;

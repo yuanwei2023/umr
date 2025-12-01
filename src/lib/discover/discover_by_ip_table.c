@@ -298,6 +298,8 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 	if (options->test_log && !options->test_log_fd) {
 		// import the table from the test harness log file
 		det = import_det_from_log(options, &numblocks);
+	} else if (options->devcoredump.data) {
+		det = umr_devcoredump_parse_ip_discovery(options, &numblocks);
 	} else {
 		// import the table from the sysfs tree
 		det = umr_parse_ip_discovery(options->instance, &numblocks, errout);
