@@ -226,13 +226,13 @@ static const struct {
 	{ "UNK", 0, 0 }, // b5
 	{ "UNK", 0, 0 }, // b6
 	{ "UNK", 0, 0 }, // b7
-	{ "PKT3_SET_CONTEXT_REG_PAIRS", 12, 0 }, // b8
+	{ "PKT3_SET_CONTEXT_REG_PAIRS", 11, 0 }, // b8
 	{ "PKT3_SET_CONTEXT_REG_PAIRS_PACKED", 11, 0 }, // b9
-	{ "PKT3_SET_SH_REG_PAIRS", 12, 0 }, // ba
+	{ "PKT3_SET_SH_REG_PAIRS", 11, 0 }, // ba
 	{ "PKT3_SET_SH_REG_PAIRS_PACKED", 11, 0 }, // bb
 	{ "PKT3_SET_SH_REG_PAIRS_PACKED", 12, 0 }, // bc
 	{ "PKT3_SET_SH_REG_PAIRS_PACKED_N", 11, 0 }, // bd
-	{ "PKT3_SET_UCONFIG_REG_PAIRS", 12, 0 }, // be
+	{ "PKT3_SET_UCONFIG_REG_PAIRS", 11, 0 }, // be
 	{ "UNK", 0, 0 }, // bf
 	{ "UNK", 0, 0 }, // c0
 	{ "UNK", 0, 0 }, // c1
@@ -1865,12 +1865,30 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 				}
 			}
 			break;
+		case 0xB8: // SET_CONTEXT_REG_PAIRS
+		case 0xBA: // SET_SH_REG_PAIRS
+		case 0xBE: // SET_UCONFIG_REG_PAIRS
+			{
+				uint32_t offset = 0, n, m;
+
+				switch (stream->opcode) {
+					case 0xB8: offset = 0xA000; break;
+					case 0xBA: offset = 0x2C00; break;
+					case 0xBE: offset = 0xC000; break;
+				}
+
+				for (m = n = 0; n < stream->n_words; n += 2, ++m) {
+					ui->add_field(ui, ib_addr + 4 + 8 * m, ib_vmid, "REG_OFFSET", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
+					ui->add_field(ui, ib_addr + 8 + 8 * m, ib_vmid, "REG_DATA", fetch_word(asic, stream, n+1), NULL, 16, 32);
+				}
+			}
+			break;
 		case 0xB9: // SET_CONTEXT_REG_PAIRS_PACKED
 		case 0xBB:
 		case 0xBC:
 		case 0xBD: // SET_SH_REG_PAIRS_PACKED(_N)
 			{
-				uint32_t offset, n, m;
+				uint32_t offset = 0, n, m;
 
 				switch (stream->opcode) {
 					case 0xB9: offset = 0xA000; break;
@@ -2172,24 +2190,6 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 8, ib_vmid, "DIM_Y", BITS(fetch_word(asic, stream, 1), 0, 16), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 12, ib_vmid, "DIM_Z", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, 3), NULL, 16, 32);
-			break;
-		case 0xB8: // SET_CONTEXT_REG_PAIRS
-		case 0xBA: // SET_SH_REG_PAIRS
-		case 0xBE: // SET_UCONFIG_REG_PAIRS
-			{
-				uint32_t offset, n, m;
-
-				switch (stream->opcode) {
-					case 0xB8: offset = 0xA000; break;
-					case 0xBA: offset = 0x2C00; break;
-					case 0xBE: offset = 0xC000; break;
-				}
-
-				for (m = n = 0; n < stream->n_words; n += 2, ++m) {
-					ui->add_field(ui, ib_addr + 4 + 8 * m, ib_vmid, "REG_OFFSET", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
-					ui->add_field(ui, ib_addr + 8 + 8 * m, ib_vmid, "REG_DATA", fetch_word(asic, stream, n+1), NULL, 16, 32);
-				}
-			}
 			break;
 		case 0xEF: // UPDATE_DB_SUMMARIZER_TIMEOUTS
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "REG_VALUE", fetch_word(asic, stream, 0), NULL, 16, 32);
