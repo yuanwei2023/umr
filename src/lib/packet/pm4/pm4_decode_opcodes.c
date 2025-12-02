@@ -36,7 +36,11 @@ static char *op_84_cntr_sel[] = { "invalid", "ce", "cs", "ce and cs" };
 static char *op_7a_index_str[] = { "default", "prim_type", "index_type", "num_instance", "multi_vgt_param", "reserved", "reserved", "reserved",
 								   NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 static char *op_b0_input_mode[] = {"direct" /*00*/, "indirect" /*01*/, "indirect_multi" /*02*/, NULL};
-static char *op_b0_sub_opcode[] = {"DispatchNodes" /*00*/, "GraphScheduler" /*01*/, "CondExecStateHash" /*02*/};
+static char *op_b0_sub_opcode[64] = {"DispatchNodes" /*00*/, "GraphScheduler" /*01*/, "CondExecStateHash" /*02*/};
+static char* op_b4_op_type[] = { "draw" /*00*/, "draw_index" /*01*/, "dispatch" /*02*/,"dispatch_mesh" /*03*/, "dispatch_rays" /*04*/,
+								 "dispatch_taskmesh" /*05*/, NULL, NULL,};
+static char* op_b4_scatter_mode[] = { "cs/gs/ps_only" /*00*/, "ps_gs" /*01*/, "ps_gs_hs" /*02*/,
+									  NULL, NULL, NULL, NULL, NULL};
 
 static const struct {
 	const char *name;
@@ -219,10 +223,10 @@ static const struct {
 	{ "UNK", 0, 0 }, // ae
 	{ "UNK", 0, 0 }, // af
 	{ "PKT3_DISPATCH_NODES", 10, 0 }, // b0
-	{ "UNK", 0, 0 }, // b1
+	{ "PKT3_EVENT_WRITE_ZPASS", 11, 0 }, // b1
 	{ "UNK", 0, 0 }, // b2
 	{ "UNK", 0, 0 }, // b3
-	{ "UNK", 0, 0 }, // b4
+	{ "PKT3_EXECUTE_INDIRECT_V2", 11, 0 }, // b4
 	{ "UNK", 0, 0 }, // b5
 	{ "UNK", 0, 0 }, // b6
 	{ "UNK", 0, 0 }, // b7
@@ -1906,6 +1910,232 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 					ui->add_field(ui, ib_addr + 16 + 12 * m, ib_vmid, "REG_DATA1", fetch_word(asic, stream, n+2), NULL, 16, 32);
 				}
 			}
+			break;
+		case 0xb1: // EVENT_WRITE_ZPASS
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 0), 3, 32) << 3, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_HI", fetch_word(asic, stream, 1), NULL, 16, 32);
+			break;
+		case 0xb4: // EXECUTE_INDIRECT_V2
+		{
+			uint32_t userdata_dw_count = BITS(fetch_word(asic, stream, 0), 1, 6);
+			uint32_t num_spill_regs = BITS(fetch_word(asic, stream, 0), 8, 10);
+			uint32_t init_mem_copy_count = BITS(fetch_word(asic, stream, 0), 10, 13);
+			uint32_t build_srd_count = BITS(fetch_word(asic, stream, 0), 13, 16);
+			uint32_t update_mem_copy_count = BITS(fetch_word(asic, stream, 0), 16, 19);
+			uint32_t operation = BITS(fetch_word(asic, stream, 0), 19, 22);
+			uint32_t userdata_scatter_mode = BITS(fetch_word(asic, stream, 0), 23, 26);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "COUNT_INDIRECT_ENABLE", BITS(fetch_word(asic, stream, 0), 0, 1), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "USERDATA_DW_COUNT", userdata_dw_count, NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "COMMAND_INDEX_ENABLE", BITS(fetch_word(asic, stream, 0), 6, 7), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "USERDATA_GFX_REGISTER_ENABLE", BITS(fetch_word(asic, stream, 0), 7, 8), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "NUM_SPILL_REGS", num_spill_regs, NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "INIT_MEM_COPY_COUNT", init_mem_copy_count, NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "BUILD_SRD_COUNT", build_srd_count, NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "UPDATE_MEM_COPY_COUNT", update_mem_copy_count, NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "OPERATION", operation, op_b4_op_type[operation], 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "FETCH_INDEX_ATTRIBUTES", BITS(fetch_word(asic, stream, 0), 22, 23), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "USERDATA_SCATTER_MODE", userdata_scatter_mode, op_b4_scatter_mode[userdata_scatter_mode], 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "VERTEX_OFFSET_MODE_ENABLED", BITS(fetch_word(asic, stream, 0), 29, 30), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "VERTEX_BOUNDS_CHECK_ENABLE", BITS(fetch_word(asic, stream, 0), 30, 31), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "THREAD_TRACE_ENABLE", BITS(fetch_word(asic, stream, 0), 31, 32), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 8, ib_vmid, "COUNT_ADDR_LO", BITS(fetch_word(asic, stream, 1), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 12, ib_vmid, "COUNT_ADDR_HI", BITS(fetch_word(asic, stream, 2), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 16, ib_vmid, "MAX_COUNT", fetch_word(asic, stream, 3), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 20, ib_vmid, "STRIDE", fetch_word(asic, stream, 4), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 24, ib_vmid, "DATA_ADDR_LO", BITS(fetch_word(asic, stream, 5), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "DATA_ADDR_HI", BITS(fetch_word(asic, stream, 6), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 28, ib_vmid, "INDEX_ATTRIBUTES_OFFSET", BITS(fetch_word(asic, stream, 6), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "USERDATA_GFX_REGISTER", BITS(fetch_word(asic, stream, 7), 0, 8), umr_reg_name(asic, BITS(fetch_word(asic, stream, 7), 0, 8) + 0x2C00), 16, 32);
+			ui->add_field(ui, ib_addr + 32, ib_vmid, "USERDATA_OFFSET", BITS(fetch_word(asic, stream, 7), 16, 32), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 36, ib_vmid, "SPILL_TABLE_ADDR_LO", BITS(fetch_word(asic, stream, 8), 2, 32) << 2, NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 40, ib_vmid, "SPILL_TABLE_ADDR_HI", BITS(fetch_word(asic, stream, 9), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 44, ib_vmid, "VB_TABLE_SIZE", BITS(fetch_word(asic, stream, 10), 0, 16), NULL, 16, 32);
+			ui->add_field(ui, ib_addr + 44, ib_vmid, "SPILL_TABLE_STRIDE", BITS(fetch_word(asic, stream, 10), 16, 32), NULL, 16, 32);
+
+			uint32_t shader_type = BITS(stream->header, 1, 2); // Extract shader type from header (0=GFX, 1=Compute)
+			{
+				if (!shader_type) { // Graphics shader
+					uint32_t spill_graphics_reg0 = BITS(fetch_word(asic, stream, 11), 0, 8);
+					uint32_t spill_graphics_reg1 = BITS(fetch_word(asic, stream, 11), 8, 16);
+					uint32_t spill_graphics_reg2 = BITS(fetch_word(asic, stream, 11), 16, 24);
+					char* spill_graphics_reg0_name = num_spill_regs > 0 ? (umr_reg_name(asic, spill_graphics_reg0 + 0x2C00)) : NULL;
+					char* spill_graphics_reg1_name = num_spill_regs > 1 ? (umr_reg_name(asic, spill_graphics_reg1 + 0x2C00)) : NULL;
+					char* spill_graphics_reg2_name = num_spill_regs > 2 ? (umr_reg_name(asic, spill_graphics_reg2 + 0x2C00 + 0x100)) : NULL; // HS
+					ui->add_field(ui, ib_addr + 48, ib_vmid, "SPILL_GRAPHICS_REG0", spill_graphics_reg0, spill_graphics_reg0_name, 16, 32);
+					ui->add_field(ui, ib_addr + 48, ib_vmid, "SPILL_GRAPHICS_REG1", spill_graphics_reg1, spill_graphics_reg1_name, 16, 32);
+					ui->add_field(ui, ib_addr + 48, ib_vmid, "SPILL_GRAPHICS_REG2", spill_graphics_reg2, spill_graphics_reg2_name, 16, 32);
+				} else { // Compute shader
+					uint32_t spill_compute_reg0 = BITS(fetch_word(asic, stream, 11), 0, 16);
+					uint32_t spill_compute_reg1 = BITS(fetch_word(asic, stream, 11), 16, 32);
+					char* spill_compute_reg0_name = num_spill_regs > 0 ? (umr_reg_name(asic, spill_compute_reg0 + 0x2C00)) : NULL;
+					char* spill_compute_reg1_name = num_spill_regs > 1 ? (umr_reg_name(asic, spill_compute_reg1 + 0x2C00)) : NULL;
+					ui->add_field(ui, ib_addr + 48, ib_vmid, "SPILL_COMPUTE_REG0", spill_compute_reg0, spill_compute_reg0_name, 16, 32);
+					ui->add_field(ui, ib_addr + 48, ib_vmid, "SPILL_COMPUTE_REG1", spill_compute_reg1, spill_compute_reg1_name, 16, 32);
+				}
+			}
+			
+			// Variable data sections
+			{
+				uint32_t var_word_offset = 12;
+
+				// INIT_MEMCPY data (format: {src_offset0, src_offset1, dst_offset0, dst_offset1, size0, size1} per structure)
+				uint32_t init_memcpy_total_dwords = ((init_mem_copy_count + 1) / 2) * 3; // Each structure is 3 dwords
+				uint32_t init_memcpy_pair_count = init_mem_copy_count / 2;
+				uint32_t init_memcpy_remain = init_mem_copy_count % 2;
+				uint32_t n = var_word_offset;
+				// process full packed structures (each has two entries)
+				for (uint32_t i = 0; i < init_memcpy_pair_count && n + 2 < stream->n_words; ++i, n += 3) {
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "InitMemCopySrcOffset0", BITS(fetch_word(asic, stream, n), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "InitMemCopySrcOffset1", BITS(fetch_word(asic, stream, n), 16, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "InitMemCopyDstOffset0", BITS(fetch_word(asic, stream, n + 1), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "InitMemCopyDstOffset1", BITS(fetch_word(asic, stream, n + 1), 16, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 3) * 4, ib_vmid, "InitMemCopySize0", BITS(fetch_word(asic, stream, n + 2), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 3) * 4, ib_vmid, "InitMemCopySize1", BITS(fetch_word(asic, stream, n + 2), 16, 32), NULL, 16, 32);
+				}
+				// process remaining single entry (if any)
+				if (init_memcpy_remain && n + 2 < stream->n_words) {
+				    ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "InitMemCopySrcOffset0", BITS(fetch_word(asic, stream, n), 0, 16), NULL, 16, 32);
+				    ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "InitMemCopyDstOffset0", BITS(fetch_word(asic, stream, n + 1), 0, 16), NULL, 16, 32);
+				    ui->add_field(ui, ib_addr + (n + 3) * 4, ib_vmid, "InitMemCopySize0", BITS(fetch_word(asic, stream, n + 2), 0, 16), NULL, 16, 32);
+				}
+				var_word_offset += init_memcpy_total_dwords;
+				
+				// UPDATE_MEMCPY data (format: {src_offset0, src_offset1, dst_offset0, dst_offset1, size0, size1} per structure)
+				uint32_t update_memcpy_total_dwords = ((update_mem_copy_count + 1) / 2) * 3; // Each structure is 3 dwords
+				uint32_t update_memcpy_pair_count = update_mem_copy_count / 2;
+				uint32_t update_memcpy_remain = update_mem_copy_count % 2;
+				n = var_word_offset;
+				// process full packed structures (each has two entries)
+				for (uint32_t i = 0; i < update_memcpy_pair_count && n + 2 < stream->n_words; ++i, n += 3) {
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "UpdateMemCopySrcOffset0", BITS(fetch_word(asic, stream, n), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "UpdateMemCopySrcOffset1", BITS(fetch_word(asic, stream, n), 16, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "UpdateMemCopyDstOffset0", BITS(fetch_word(asic, stream, n + 1), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "UpdateMemCopyDstOffset1", BITS(fetch_word(asic, stream, n + 1), 16, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 3) * 4, ib_vmid, "UpdateMemCopySize0", BITS(fetch_word(asic, stream, n + 2), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 3) * 4, ib_vmid, "UpdateMemCopySize1", BITS(fetch_word(asic, stream, n + 2), 16, 32), NULL, 16, 32);
+				}
+				// process remaining single entry (if any)
+				if (update_memcpy_remain && n + 2 < stream->n_words) {
+				    ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "UpdateMemCopySrcOffset0", BITS(fetch_word(asic, stream, n), 0, 16), NULL, 16, 32);
+				    ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "UpdateMemCopyDstOffset0", BITS(fetch_word(asic, stream, n + 1), 0, 16), NULL, 16, 32);
+				    ui->add_field(ui, ib_addr + (n + 3) * 4, ib_vmid, "UpdateMemCopySize0", BITS(fetch_word(asic, stream, n + 2), 0, 16), NULL, 16, 32);
+				}
+				var_word_offset += update_memcpy_total_dwords;
+				
+				// BUILD_SRD data (format: {src_offset0, src_offset1, dst_offset0, dst_offset1} per structure)
+				uint32_t build_srd_total_dwords = ((build_srd_count + 1) / 2) * 2; // Each structure is 2 dwords
+				uint32_t build_srd_pair_count = build_srd_count / 2;
+				uint32_t build_srd_remain = build_srd_count % 2;
+				n = var_word_offset;
+				for (uint32_t i = 0; i < build_srd_pair_count && n + 1 < stream->n_words; ++i, n += 2) {
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "BuildSrdSrcOffset0", BITS(fetch_word(asic, stream, n), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "BuildSrdSrcOffset1", BITS(fetch_word(asic, stream, n), 16, 32), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "BuildSrdDstOffset0", BITS(fetch_word(asic, stream, n + 1), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "BuildSrdDstOffset1", BITS(fetch_word(asic, stream, n + 1), 16, 32), NULL, 16, 32);
+				}
+				if (build_srd_remain && n + 1 < stream->n_words) {
+					ui->add_field(ui, ib_addr + (n + 1) * 4, ib_vmid, "BuildSrdSrcOffset0", BITS(fetch_word(asic, stream, n), 0, 16), NULL, 16, 32);
+					ui->add_field(ui, ib_addr + (n + 2) * 4, ib_vmid, "BuildSrdDstOffset0", BITS(fetch_word(asic, stream, n + 1), 0, 16), NULL, 16, 32);
+				}
+				var_word_offset += build_srd_total_dwords;
+				
+				// USERDATA section - variable size based on scatter mode and count
+				uint32_t user_data_dwords = userdata_scatter_mode + 1;
+				if (shader_type && userdata_scatter_mode == 0) { // cs_only mode for compute shader
+					user_data_dwords *= (userdata_dw_count + 1) / 2; // Compute mode calculation
+					uint32_t pair_count  = userdata_dw_count / 2;
+					uint32_t remain      = userdata_dw_count % 2;
+					for (uint32_t i = 0; i < pair_count; ++i) {
+						if (var_word_offset + i < stream->n_words) {
+							uint32_t userdata_word = fetch_word(asic, stream, var_word_offset + i);
+							ui->add_field(ui, ib_addr + (var_word_offset + i + 1) * 4, ib_vmid, "USERDATA_COMPUTE_REG0", BITS(userdata_word, 0, 16), umr_reg_name(asic, BITS(userdata_word, 0, 16) + 0x2C00), 16, 32);
+							ui->add_field(ui, ib_addr + (var_word_offset + i + 1) * 4, ib_vmid, "USERDATA_COMPUTE_REG1", BITS(userdata_word, 16, 32), umr_reg_name(asic, BITS(userdata_word, 16, 32) + 0x2C00), 16, 32);
+						}
+					}
+					if (remain) {
+						if (var_word_offset + pair_count < stream->n_words) {
+							uint32_t userdata_word = fetch_word(asic, stream, var_word_offset + pair_count);
+							ui->add_field(ui, ib_addr + (var_word_offset + pair_count + 1) * 4, ib_vmid, "USERDATA_COMPUTE_REG0", BITS(userdata_word, 0, 16), umr_reg_name(asic, BITS(userdata_word, 0, 16) + 0x2C00), 16, 32);
+						}
+					}
+				} else {
+					user_data_dwords *= (userdata_dw_count + 3) / 4;
+					uint32_t quad_count  = userdata_dw_count / 4;
+					uint32_t remains     = userdata_dw_count % 4;
+					uint32_t dword_steps = userdata_scatter_mode + 1;
+
+					// Maximum arrays we support
+					uint32_t max_arrays = (userdata_scatter_mode > 1) ? 3 : (userdata_scatter_mode > 0 ? 2 : 1);
+
+					// Loop through each array based on scatter_mode
+					for (uint32_t arr = 0; arr < max_arrays; ++arr) {
+					    // Full quads
+					    for (uint32_t i = 0; i < quad_count; ++i) {
+					        uint32_t word_idx = var_word_offset + (i * dword_steps) + arr;
+					        if (word_idx < stream->n_words) {
+					            uint32_t userdata_word = fetch_word(asic, stream, word_idx);
+					            for (uint32_t b = 0; b < 4; ++b) {
+					                char name[32];
+					                snprintf(name, sizeof(name), "USERDATA_GRAPHICS_REG%u", b);
+									uint32_t reg_offset = BITS(userdata_word, b * 8, b * 8 + 8) + 0x2C00;
+									if (arr == 2) { // if last one HS, add 0x100
+										reg_offset += 0x100;
+									}
+					                ui->add_field(ui, ib_addr + (word_idx + 1) * 4, ib_vmid, name, reg_offset, umr_reg_name(asic, reg_offset), 16, 32);
+					            }
+					        }
+					    }
+					    // Remaining bytes
+					    if (remains > 0) {
+					        uint32_t word_idx = var_word_offset + (quad_count * dword_steps) + arr;
+					        if (word_idx < stream->n_words) {
+					            uint32_t userdata_word = fetch_word(asic, stream, word_idx);
+					            for (uint32_t b = 0; b < remains; ++b) {
+					                char name[32];
+					                snprintf(name, sizeof(name), "USERDATA_GRAPHICS_REG%u", b);
+									uint32_t reg_offset = BITS(userdata_word, b * 8, b * 8 + 8);
+									if (arr == 2) { // if last one HS, add 0x100
+										reg_offset += 0x100;
+									}
+					                ui->add_field(ui, ib_addr + (word_idx + 1) * 4, ib_vmid, name, reg_offset, umr_reg_name(asic, reg_offset), 16, 32);
+					            }
+					        }
+					    }
+					}
+				}
+				var_word_offset += user_data_dwords;
+				
+				// OP data (3 dwords) - structure depends on operation type
+				if (var_word_offset < stream->n_words) {
+					ui->add_field(ui, ib_addr + (var_word_offset + 1) * 4, ib_vmid, "OFFSET", fetch_word(asic, stream, var_word_offset), NULL, 16, 32);
+				}
+				if (var_word_offset + 1 < stream->n_words) {
+					if (operation == 0 || operation == 1) { // Draw or DrawIndexed
+						const char* vertex_field_name = (operation == 0) ? "START_VERTEX_LOC" : "BASE_VERTEX_LOC";
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, vertex_field_name, BITS(fetch_word(asic, stream, var_word_offset + 1), 0, 8), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "START_INST_LOC", BITS(fetch_word(asic, stream, var_word_offset + 1), 8, 16), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "COMMAND_INDEX_LOC", BITS(fetch_word(asic, stream, var_word_offset + 1), 16, 24), NULL, 16, 32);
+					} else if (operation == 2 || operation == 4) { // Dispatch or Dispatch_Rays
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "COMMAND_INDEX_LOC", BITS(fetch_word(asic, stream, var_word_offset + 1), 16, 32), NULL, 16, 32);
+					} else if (operation == 3) { // Dispatch_Mesh (Dispatch_TaskMesh)
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "XYZ_DIM_LOC", BITS(fetch_word(asic, stream, var_word_offset + 1), 0, 8), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "RING_ENTRY_LOC", BITS(fetch_word(asic, stream, var_word_offset + 1), 8, 16), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "COMMAND_INDEX_LOC", BITS(fetch_word(asic, stream, var_word_offset + 1), 16, 24), NULL, 16, 32);
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "XYZ_DIM_ENABLE", BITS(fetch_word(asic, stream, var_word_offset + 1), 24, 25), NULL, 10, 32);
+						ui->add_field(ui, ib_addr + (var_word_offset + 2) * 4, ib_vmid, "LINEAR_DISPATCH_ENABLE", BITS(fetch_word(asic, stream, var_word_offset + 1), 25, 26), NULL, 10, 32);
+					}
+				}
+				if (var_word_offset + 2 < stream->n_words) {
+					if (operation == 0 || operation == 1) { // Draw or DrawIndexed
+						ui->add_field(ui, ib_addr + (var_word_offset + 3) * 4, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, var_word_offset + 2), "VGT_DRAW_INITIATOR", 16, 32);
+					} else if (operation == 2 || operation == 4) { // Dispatch or Dispatch_Rays
+						ui->add_field(ui, ib_addr + (var_word_offset + 3) * 4, ib_vmid, "DISPATCH_INITIATOR", fetch_word(asic, stream, var_word_offset + 2), "COMPUTE_DISPATCH_INITIATOR", 16, 32);
+					} else if (operation == 3) { // Dispatch_Mesh 
+						ui->add_field(ui, ib_addr + (var_word_offset + 3) * 4, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, var_word_offset + 2), "DISPATCH_MESH_INITIATOR", 16, 32);
+					}
+				}
+			}
+		}
 			break;
 		default:
 			decode_pkt3_gfx10(asic, ui, stream, ib_addr, ib_vmid);
