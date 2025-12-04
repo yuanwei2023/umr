@@ -2439,22 +2439,17 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			last_error = "unknown register";
 			goto error;
 		}
-		unsigned count = 1;
-		if (json_object_has_value(request, "count"))
-			count = json_object_get_number(request, "count");
-
-		answer = json_value_init_object();
-		if (count == 1) {
-			unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
-			json_object_set_number(json_object(answer), "value", value);
-		} else {
-			JSON_Value *values = json_value_init_array();
-			for (unsigned i = 0; i < count; i++) {
-				unsigned v = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
-				json_array_append_number(json_array(values), v);
-			}
-			json_object_set_value(json_object(answer), "value", values);
+		if (json_object_has_value(request, "pipe")) {
+			asic->options.use_bank = 2;
+			asic->options.bank.srbm.me = json_object_get_number(request, "me");
+			asic->options.bank.srbm.pipe = json_object_get_number(request, "pipe");
+			asic->options.bank.srbm.queue = json_object_get_number(request, "queue");
 		}
+		answer = json_value_init_object();
+		unsigned value = umr_read_reg_by_name_by_ip(asic, (char*) json_object_get_string(request, "block"), r->regname);
+		json_object_set_number(json_object(answer), "value", value);
+		asic->options.use_bank = 0;
+		asic->options.bank.srbm.me = asic->options.bank.srbm.pipe = asic->options.bank.srbm.queue = 0;
 	} else if (strcmp(command, "accumulate") == 0) {
 		JSON_Array *regs = json_object_get_array(request, "registers");
 		const int num_reg = json_array_get_count(regs);
@@ -2564,13 +2559,20 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		answer = json_value_init_object();
-
+		if (json_object_has_value(request, "pipe")) {
+			asic->options.use_bank = 2;
+			asic->options.bank.srbm.me = json_object_get_number(request, "me");
+			asic->options.bank.srbm.pipe = json_object_get_number(request, "pipe");
+			asic->options.bank.srbm.queue = json_object_get_number(request, "queue");
+		}
 		char *block = (char*) json_object_get_string(request, "block");
 		unsigned value = json_object_get_number(request, "value");
 		if (umr_write_reg_by_name_by_ip(asic, block, r->regname, value)) {
 			value = umr_read_reg_by_name_by_ip(asic, block, r->regname);
 		}
 		json_object_set_number(json_object(answer), "value", value);
+		asic->options.use_bank = 0;
+		asic->options.bank.srbm.me = asic->options.bank.srbm.pipe = asic->options.bank.srbm.queue = 0;
 	} else if (strcmp(command, "vm-read") == 0 || strcmp(command, "vm-decode") == 0) {
 		uint64_t address = json_object_get_number(request, "address");
 		JSON_Value *vmidv = json_object_get_value(request, "vmid");

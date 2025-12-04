@@ -254,7 +254,22 @@ public:
 		ImGui::BeginChild("filters", ImVec2(3 * avail.x / 4, drawable_area.get_top_row_height()), false,
 			ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_HorizontalScrollbar);
 
-		ImGui::BeginDisabled(active_tracking != NULL && active_tracking != ALL_REGISTERS);
+		const float wc = ImGui::CalcTextSize("queue xxx +/-").x;
+		ImGui::Checkbox("Banking", &bank_sel.on);
+		ImGui::SameLine();
+		ImGui::BeginDisabled(!bank_sel.on);
+		ImGui::SetNextItemWidth(wc);
+		ImGui::InputInt("me(c)", &bank_sel.me, 1);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(wc);
+		ImGui::InputInt("pipe", &bank_sel.pipe, 1);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(wc);
+		ImGui::InputInt("queue", &bank_sel.queue, 1);
+		ImGui::SameLine();
+		ImGui::EndDisabled();
+
+		ImGui::BeginDisabled((active_tracking != NULL && active_tracking != ALL_REGISTERS) || !can_send_request);
 		if (ImGui::Button(active_tracking != ALL_REGISTERS ? "Track All Writes" : "Untrack")) {
 			if (active_tracking) {
 				send_stop_register_tracking();
@@ -525,12 +540,10 @@ private:
 		}
 
 		if (pinned) {
-			ImGui::BeginDisabled(!can_send_request);
 			ImGui::SameLine();
 			if (ImGui::Button("Read")) {
 				send_read_reg_command(pinned);
 			}
-			ImGui::EndDisabled();
 
 			ImGui::BeginDisabled(!can_send_request || value == pinned->new_value);
 			ImGui::SameLine();
@@ -582,6 +595,11 @@ private:
 		json_object_set_string(json_object(req), "command", "read");
 		json_object_set_string(json_object(req), "block", pinned->blk->ipname);
 		json_object_set_string(json_object(req), "register", pinned->reg->regname);
+		if (bank_sel.on) {
+			json_object_set_number(json_object(req), "me", bank_sel.me);
+			json_object_set_number(json_object(req), "pipe", bank_sel.pipe);
+			json_object_set_number(json_object(req), "queue", bank_sel.queue);
+		}
 		send_request(req);
 	}
 
@@ -591,6 +609,11 @@ private:
 		json_object_set_string(json_object(req), "block", pinned->blk->ipname);
 		json_object_set_string(json_object(req), "register", pinned->reg->regname);
 		json_object_set_number(json_object(req), "value", value);
+		if (bank_sel.on) {
+			json_object_set_number(json_object(req), "me", bank_sel.me);
+			json_object_set_number(json_object(req), "pipe", bank_sel.pipe);
+			json_object_set_number(json_object(req), "queue", bank_sel.queue);
+		}
 		send_request(req);
 	}
 
@@ -616,4 +639,11 @@ private:
 	std::vector<RegisterEvent> events;
 
 	DrawableArea drawable_area;
+
+	struct {
+		bool on;
+		int me;
+		int pipe;
+		int queue;
+	} bank_sel;
 };
