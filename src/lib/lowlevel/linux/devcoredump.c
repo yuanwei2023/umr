@@ -24,7 +24,18 @@
 #include <assert.h>
 #include <ctype.h>
 
-static char **parse_lines(char *content, size_t len, unsigned *line_count) {
+static void *checked_realloc(void *ptr, size_t new_size, umr_err_output errout)
+{
+	void *new_ptr = realloc(ptr, new_size);
+	if (new_ptr == NULL) {
+		free(ptr);
+		errout("[ERROR] Memory allocation failed (size=%u)\n", new_size);
+	}
+	return new_ptr;
+}
+
+
+static char **parse_lines(char *content, size_t len, unsigned *line_count, umr_err_output errout) {
 	unsigned n_lines = 0, max_lines = 0;
 	char **lines = NULL, *line, *nextline;
 
@@ -46,7 +57,9 @@ static char **parse_lines(char *content, size_t len, unsigned *line_count) {
 
 		if (n_lines == max_lines) {
 			max_lines = max_lines ? (max_lines * 2) : 16;
-			lines = realloc(lines, max_lines * sizeof(*lines));
+			lines = checked_realloc(lines, max_lines * sizeof(*lines), errout);
+			if (!lines)
+				return NULL;
 		}
 		lines[n_lines++] = line;
 		line = nextline ? nextline + 1 : NULL;
@@ -184,7 +197,7 @@ static int umr_parse_devcoredump_ip_dump(struct umr_asic *asic, size_t n)
 				if (reg) {
 					if (no_registers == max_registers) {
 						max_registers = max_registers ? (max_registers * 2) : 64;
-						registers = realloc(registers, max_registers * sizeof(*registers));
+						registers = checked_realloc(registers, max_registers * sizeof(*registers), asic->err_msg);
 						if (!registers)
 							goto error;
 					}
@@ -253,8 +266,9 @@ static int umr_parse_devcoredump_rings(struct umr_asic *asic, size_t n)
 			line += strlen(ring_prefix);
 			asic->options.devcoredump.no_ring_dumps += 1;
 			asic->options.devcoredump.ring_dumps =
-				realloc(asic->options.devcoredump.ring_dumps,
-						sizeof(struct umr_devcoredump_ring_data) * asic->options.devcoredump.no_ring_dumps);
+				checked_realloc(asic->options.devcoredump.ring_dumps,
+						sizeof(struct umr_devcoredump_ring_data) * asic->options.devcoredump.no_ring_dumps,
+						asic->err_msg);
 			if (!asic->options.devcoredump.ring_dumps)
 				goto error;
 			ring = &asic->options.devcoredump.ring_dumps[asic->options.devcoredump.no_ring_dumps - 1];
@@ -571,10 +585,8 @@ struct umr_asic *umr_discover_asic_by_devcoredump(struct umr_options *options, u
 	snprintf(buf, sizeof(buf), "amd%04" PRIx64, (uint64_t)did);
 
 	asic = umr_discover_asic_by_discovery_table(buf, options, errout);
-	if (!asic || umr_attach_devcoredump(asic)) {
-		errout("[ERROR] Failed to init asic from devcoredump (%p)\n", asic);
+	if (!asic || umr_attach_devcoredump(asic))
 		return NULL;
-	}
 
 	asic->did = did;
 	asic->err_msg = errout;
@@ -612,7 +624,7 @@ int umr_prepare_devcoredump(struct umr_options *options, const char *file, umr_e
 	}
 	close(fd);
 
-	options->devcoredump.data = parse_lines(content, stats.st_size, &options->devcoredump.n_lines);
+	options->devcoredump.data = parse_lines(content, stats.st_size, &options->devcoredump.n_lines, errout);
 
 	if (!options->devcoredump.data || !options->devcoredump.n_lines) {
 		free(content);
