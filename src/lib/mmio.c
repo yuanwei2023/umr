@@ -54,7 +54,15 @@ uint64_t umr_read_reg_by_name(struct umr_asic *asic, char *name)
  */
 uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
 {
-	return umr_read_reg_by_name_by_ip_by_instance(asic, ip, -1, name);
+	int instance = -1;
+	char *p;
+
+	if (ip) {
+		p = strstr(ip, "{");
+		if (!p || sscanf(p, "{%d}", &instance) != 1)
+			instance = -1;
+	}
+	return umr_read_reg_by_name_by_ip_by_instance(asic, ip, instance, name);
 }
 
 /**
