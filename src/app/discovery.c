@@ -28,7 +28,7 @@ int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream)
 {
 	int ret;
 	uint32_t size;
-	void *table = NULL;
+	uint8_t *table = NULL;
 
 	if (!umr_discovery_table_is_supported(asic)) {
 		asic->err_msg("umr discovery table is not supported\n");
@@ -40,25 +40,23 @@ int umr_dump_discovery_table_info(struct umr_asic *asic, FILE *stream)
 		return ret;
 
 	if (size) {
-		table = calloc(1, size);
+		table = calloc(size, sizeof *table);
 		if (!table)
 			return -1;
 	}
 
-	ret = umr_discovery_read_table(asic, table, &size);
-	if (ret)
-		return ret;
+	ret = umr_discovery_read_table(asic, (void*)table, &size);
+	if (ret) {
+		goto error;
+	}
 
-	ret = umr_discovery_verify_table(asic, table);
-	if (ret)
-		return ret;
+	ret = umr_discovery_verify_table(asic, (void*)table);
+	if (ret) {
+		goto error;
+	}
 
-	ret = umr_discovery_dump_table(asic, table, stream);
-	if (ret)
-		return ret;
-
-	if (table)
-		free(table);
-
+	ret = umr_discovery_dump_table(asic, (void*)table, stream);
+error:
+	free(table);
 	return ret;
 }
