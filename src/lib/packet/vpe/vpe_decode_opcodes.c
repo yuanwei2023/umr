@@ -358,7 +358,7 @@ struct umr_vpe_stream *umr_vpe_decode_stream_opcodes(struct umr_asic *asic, stru
 		if (stream->invalid)
 			break;
 
-		ib_addr += (1 + stream->nwords) * 4;
+		ib_addr += (1ULL + stream->nwords) * 4ULL;
 		stream = stream->next;
 	}
 	ui->done(ui);
