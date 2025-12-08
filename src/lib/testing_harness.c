@@ -539,23 +539,35 @@ error:
  */
 struct umr_test_harness *umr_create_test_harness_file(const char *fname)
 {
-	const char *script;
+	const char *script = NULL;
 	int fd;
-	size_t size;
-	struct umr_test_harness *th;
+	int size;
+	struct umr_test_harness *th = NULL;
 
 	fd = open(fname, O_RDONLY);
-	size = lseek(fd, 0, SEEK_END);
-	lseek(fd, 0, SEEK_SET);
-	script = calloc(1, size + 1);
-	if ((size_t)read(fd, (char*)script, size) != size) {
-		fprintf(stderr, "[ERROR]: Could not read test harness from file %s\n", fname);
-		close(fd);
+	if (fd == -1) {
+		fprintf(stderr, "[ERROR]: Could not open test harness file %s\n", fname);
 		return NULL;
+	}
+	size = lseek(fd, 0, SEEK_END);
+	if (size > 0) {
+		if (lseek(fd, 0, SEEK_SET) != -1) {
+			script = calloc(size + 1, sizeof *script);
+			if (!script || read(fd, (char*)script, size) != size) {
+				fprintf(stderr, "[ERROR]: Could not read test harness from file %s\n", fname);
+				free((void*)script);
+				close(fd);
+				return NULL;
+			}
+		} else {
+			fprintf(stderr, "[ERROR]: Could not seek in test harness file %s\n", fname);
+		}
 	}
 	close(fd);
 
-	th = umr_create_test_harness(script);
+	if (script) {
+		th = umr_create_test_harness(script);
+	}
 	free((void*)script);
 	return th;
 }
@@ -697,8 +709,9 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 	// is stored in DWORD addresses
 	qaddr = addr >> 2;
 
-	if (type != REG_MMIO)
+	if (type != REG_MMIO) {
 		return -1;
+	}
 
 	// are we reading from SQ_IND_DATA or MM_DATA?
 	if (qaddr == umr_find_reg(asic, "mmSQ_IND_DATA")) {
@@ -747,7 +760,7 @@ static int write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum 
 
 static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *dst)
 {
-	uint64_t addr, nr, x;
+	uint64_t addr, nr = 0, x;
 	struct umr_test_harness *th = asic->reg_funcs.data;
 	struct umr_test_harness_mmio_blocks *mm;
 
@@ -756,7 +769,7 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID") << 12) |
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID") << 20) |
 				((((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID") << 2) |
-				  (uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID")) << 28) |
+				 (uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID")) << 28) |
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID") << 36);
 
 		nr = umr_wave_data_num_of_sgprs(asic, wd);
@@ -768,8 +781,6 @@ static int read_sgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID") << 36) |
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID") << 44);
 		nr = umr_wave_data_num_of_sgprs(asic, wd);
-	} else {
-		return -1;
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
@@ -811,13 +822,13 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 {
 	struct umr_test_harness *th = asic->reg_funcs.data;
 	struct umr_test_harness_mmio_blocks *mm;
-	uint64_t addr, nr, x;
+	uint64_t addr, nr = 0, x;
 	unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 registers
 
 	// reading VGPR is not supported on pre GFX9 devices
-	if (asic->family < FAMILY_AI)
+	if (asic->family < FAMILY_AI) {
 		return -1;
-
+	}
 
 	if (asic->family >= FAMILY_NV) {
 		addr =  (0ULL << 60) |
@@ -828,7 +839,7 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID") << 36) |
 				((uint64_t)thread << 52);
 
-		nr = (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
+		nr = ((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
 	} else if (asic->family < FAMILY_NV) {
 		addr =  (0ULL << 60) |
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SE_ID") << 12) |
@@ -837,9 +848,7 @@ static int read_vgprs(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t 
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "WAVE_ID") << 36) |
 				((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID", "SIMD_ID") << 44) |
 				((uint64_t)thread << 52);
-		nr = (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
-	} else {
-		return -1;
+		nr = ((uint64_t)umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE") + 1) << granularity;
 	}
 
 	// grab upto 'nr' words into dst[0..nr-1]
