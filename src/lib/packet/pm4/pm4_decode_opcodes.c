@@ -413,7 +413,7 @@ static void load_X_reg(struct umr_asic *asic, struct umr_stream_decode_ui *ui, s
 
 		if (!asic->options.no_follow_loadx) {
 			str_size = 4096;
-			str = calloc(1, str_size);
+			str = calloc(str_size, sizeof *str);
 			if (!str) {
 				asic->err_msg("[ERROR]: Out of memory");
 				return;
@@ -479,7 +479,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "COMMENT_PACKET_TYPE", pkttype, NULL, 10, 32);
 				switch (pkttype) {
 					case 7:
-						str = calloc(1, 1 + pktlen * 4 - 12);
+						str = calloc(1 + pktlen * 4 - 12, sizeof *str);
 						if (str) {
 							memcpy(str, &stream->words[3], pktlen * 4 - 12);
 							ui->add_field(ui, ib_addr + 12, ib_vmid, "COMMENT_STRING", 0, str, 0, 0);
