@@ -41,7 +41,7 @@ struct rumr_buffer *rumr_buffer_init(void)
 	if (!buf)
 		return NULL;
 	buf->size = 1024;
-	buf->data = (uint8_t*)calloc(1, buf->size + RUMR_BUFFER_PREHEADER);
+	buf->data = calloc(buf->size + RUMR_BUFFER_PREHEADER, sizeof buf->data[0]);
 	if (!buf->data) {
 		free(buf);
 		return NULL;
@@ -156,34 +156,56 @@ void rumr_buffer_free(struct rumr_buffer *buf)
  */
 struct rumr_buffer *rumr_buffer_load_file(const char *fname, char *database_path)
 {
-	struct rumr_buffer *buf;
+	struct rumr_buffer *buf = NULL;
 	uint32_t size;
-	FILE *f;
+	FILE *f = NULL;
 
 	f = umr_database_open(database_path, (char *) fname, 1);
-	if (!f)
+	if (!f) {
+		fprintf(stderr, "[ERROR]: Could not open buffer file %s\n", fname);
 		return NULL;
-	fseek(f, 0, SEEK_END);
+	}
+	if (fseek(f, 0, SEEK_END) < 0) {
+		fprintf(stderr, "[ERROR]: Could not seek in buffer file %s\n", fname);
+		fclose(f);
+		return NULL;
+	}
 	size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	buf = calloc(1, sizeof *buf);
-	buf->data = calloc(1, size + RUMR_BUFFER_PREHEADER);
-	if (!buf->data) {
-		free(buf);
+	if (size > 0) {
+		if (fseek(f, 0, SEEK_SET) != -1) {
+			buf = calloc(1, sizeof *buf);
+			if (!buf) {
+				fclose(f);
+				fprintf(stderr, "[ERROR]: out of memory loading rumr buffer file\n");
+				return NULL;
+			}
+			buf->data = calloc(size + RUMR_BUFFER_PREHEADER, sizeof buf->data[0]);
+			if (!buf->data) {
+				free(buf);
+				fclose(f);
+				fprintf(stderr, "[ERROR]: out of memory loading rumr buffer file\n");
+				return NULL;
+			}
+			buf->data += RUMR_BUFFER_PREHEADER;
+			buf->size = size;
+			if (fread(buf->data, 1, size, f) != size) {
+				fprintf(stderr, "[ERROR]: Could not read entire file %s in rumr_buffer_load_file()\n", fname);
+				free(buf->data - RUMR_BUFFER_PREHEADER);
+				free(buf);
+				fclose(f);
+				return NULL;
+			}
+			fclose(f);
+			buf->woffset = size;
+			return buf;
+		} else {
+			fclose(f);
+			fprintf(stderr, "[ERROR]: Could not seek while loading rumr buffer file\n");
+			return NULL;
+		}
+	} else {
 		fclose(f);
+		fprintf(stderr, "[ERROR]: rumr buffer file is zero bytes long\n");
 		return NULL;
 	}
-	buf->data += RUMR_BUFFER_PREHEADER;
-	buf->size = size;
-	if (fread(buf->data, 1, size, f) != size) {
-		fprintf(stderr, "[ERROR]: Could not read entire file %s in rumr_buffer_load_file()\n", fname);
-		free(buf->data - RUMR_BUFFER_PREHEADER);
-		free(buf);
-		fclose(f);
-		return NULL;
-	}
-	fclose(f);
-	buf->woffset = size;
-	return buf;
 }
