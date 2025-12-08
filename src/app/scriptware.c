@@ -191,5 +191,9 @@ void umr_handle_scriptware(umr_err_output errout, char *database_path, char **ar
             }
         }
    }
+   for (x = 0; x < no_asics; x++) {
+        umr_free_asic(devices[x]);
+   }
+   free(devices);
 }
  
