@@ -27,8 +27,7 @@ void umr_gfxoff_read(struct umr_asic *asic)
 {
 	uint32_t value = 0xff;
 	if (strcmp(asic->asicname, "renoir") == 0) {
-		lseek(asic->fd.gfxoff, 0, SEEK_SET);
-		if (read(asic->fd.gfxoff, &value, sizeof(uint32_t)) < 0) {
+		if (lseek(asic->fd.gfxoff, 0, SEEK_SET) == -1 || read(asic->fd.gfxoff, &value, sizeof(uint32_t)) != sizeof(uint32_t)) {
 			asic->err_msg("[ERROR]: Could not read from GFXOFF status\n");
 		} else {
 			printf("gfxoff status : %s \n", (value == 0)?"enable":"disable");
