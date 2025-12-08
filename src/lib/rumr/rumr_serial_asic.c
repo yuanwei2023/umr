@@ -255,9 +255,17 @@ int rumr_save_serialized_asic(struct umr_asic *asic, struct rumr_buffer *buf)
 
 	sprintf(fname, "0x%"PRIx32".sasic", (uint32_t)asic->did);
 	f = fopen(fname, "wb");
-	fwrite(buf->data, 1, buf->woffset, f);
-	fclose(f);
-	return 0;
+	if (f) {
+		int r = 0;
+		if (fwrite(buf->data, 1, buf->woffset, f) != buf->woffset) {
+			asic->err_msg("[ERROR]: Could not write entire serialized asic to disk\n");
+			r = -1;
+		}
+		fclose(f);
+		return r;
+	}
+	asic->err_msg("[ERROR]: Could not open serialized asic file %s\n", fname);
+	return -1;
 }
 
 /**
