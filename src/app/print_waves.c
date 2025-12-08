@@ -116,6 +116,7 @@ void umr_print_waves(struct umr_asic *asic)
 							free(buf);
 							goto cleanup;
 					}
+					ib_addr.addr = asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_base_addr + start * 4ULL;
 					stream = umr_packet_decode_buffer(asic, NULL, 0, ib_addr.addr, buf, ib_addr.size, rt, NULL);
 					free(buf);
 					if (!stream) {
@@ -278,7 +279,8 @@ void umr_print_waves(struct umr_asic *asic)
 					BLUE, shader->vmid, RST,
 					YELLOW, (unsigned long long)shader->addr, RST,
 					BLUE, shader->size, RST);
-			} else if (	asic->options.user_queue.state.active &&
+			} else if (stream &&
+						asic->options.user_queue.state.active &&
 						asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
 				// if !shader and compute_AQL mode, then try using queue_packet_id) to look up the AQL packet and find the RSRC regs from there
 				uint32_t queue_packet_id, x;
