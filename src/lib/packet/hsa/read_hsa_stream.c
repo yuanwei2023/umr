@@ -121,6 +121,10 @@ static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *st
 				break;
 			}
 		}
+		if (i == asic->no_blocks) {
+			asic->err_msg("[BUG]: Did not find GFX block in function parse_kernel_object()\n");
+			return;
+		}
 	}
 
 	// create shader object to attach to stream
@@ -134,7 +138,7 @@ static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *st
 	umr_free_shader_reg_pairs(reg_pair);
 
 	// copy the kernarg
-	stream->kernel_dispatch.kernarg_data = calloc(1, stream->kernel_dispatch.kernarg_size);
+	stream->kernel_dispatch.kernarg_data = calloc(stream->kernel_dispatch.kernarg_size, sizeof stream->kernel_dispatch.kernarg_data[0]);
 	if (stream->kernel_dispatch.kernarg_data) {
 		if (umr_read_vram(asic, asic->options.vm_partition, 0,
 				stream->kernel_dispatch.kernarg_va, stream->kernel_dispatch.kernarg_size,
@@ -424,9 +428,8 @@ void umr_free_hsa_stream(struct umr_hsa_stream *stream)
  */
 struct umr_shaders_pgm *umr_find_shader_in_hsa_stream(struct umr_asic *asic, struct umr_hsa_stream *stream, unsigned vmid, uint64_t addr)
 {
-	struct umr_shaders_pgm *p, *pp;
+	struct umr_shaders_pgm *p = NULL, *pp;
 
-	p = NULL;
 	while (stream) {
 		// compare shader if any
 		if (stream->shader) {
@@ -444,9 +447,6 @@ struct umr_shaders_pgm *umr_find_shader_in_hsa_stream(struct umr_asic *asic, str
 			if (p) {
 				break;
 			}
-		}
-		if (p) {
-			break;
 		}
 		stream = stream->next;
 	}
