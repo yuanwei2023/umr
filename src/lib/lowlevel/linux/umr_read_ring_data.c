@@ -40,8 +40,9 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 {
 	int fd;
 	uint32_t r;
-	void *ring_data;
+	uint8_t *ring_data = NULL;
 	char fname[128];
+	int32_t ls;
 
 	if (asic->options.test_log && !asic->options.test_log_fd) {
 		return umr_test_harness_get_ring_data(asic, ringsize);
@@ -56,10 +57,15 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 		}
 
 		/* determine file size */
-		*ringsize = lseek(fd, 0, SEEK_END) - 12;
-		lseek(fd, 0, SEEK_SET);
+		ls = lseek(fd, 0, SEEK_END) - 12;
+		if (ls < 0 || lseek(fd, 0, SEEK_SET) == -1) {
+			asic->err_msg("[ERROR]: Could not seek in debugfs ring file %s\n", fname);
+			close(fd);
+			return NULL;
+		}
+		*ringsize = ls;
 
-		ring_data = calloc(1, *ringsize + 12);
+		ring_data = calloc(*ringsize + 12, sizeof *ring_data);
 		if (!ring_data) {
 			close(fd);
 			asic->err_msg("[ERROR]: Out of memory\n");
@@ -74,7 +80,7 @@ void *umr_read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *ringsi
 
 		// store in test vector if open
 		if (asic->options.test_log && asic->options.test_log_fd) {
-			uint32_t *rd = ring_data, x;
+			uint32_t *rd = (uint32_t*)ring_data, x;
 			fprintf(asic->options.test_log_fd, "RINGDATA = { ");
 			for (x = 0; x < (*ringsize + 12); x += 4) {
 				if (x) {
