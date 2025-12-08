@@ -27,7 +27,7 @@
 
 int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *regname)
 {
-	int r, i, j, k, count = 0, noipreg = 1;
+	int r, i, j, k, count = 0, ipreg = 0;
 	uint64_t scale;
 	char regname_copy[256], ipname_esc[256], ipnametmp[256], *p;
 	uint32_t v32;
@@ -42,23 +42,29 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 
 	memset(ipname_esc, 0, sizeof ipname_esc);
 	for (i = r = 0; ipname[r]; r++) {
-		if (ipname[r] == '{') { ipname_esc[i++] = '\\'; ipname_esc[i++] = '{'; }
-		else if (ipname[r] == '}') { ipname_esc[i++] = '\\'; ipname_esc[i++] = '}'; }
-		else ipname_esc[i++] = ipname[r];
+		if (ipname[r] == '{') {
+			ipname_esc[i++] = '\\'; ipname_esc[i++] = '{';
+		} else if (ipname[r] == '}') {
+			ipname_esc[i++] = '\\'; ipname_esc[i++] = '}';
+		} else {
+			ipname_esc[i++] = ipname[r];
+		}
 	}
 
 	if (strcmp(ipname, "*")) {
+		// matching only specific IP blocks
 		if (regcomp(&ip_regex, ipname_esc, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
 			fprintf(stderr, "[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
 			return -1;
 		}
-		noipreg = 0;
+		ipreg = 1;
 	}
 
 	if (regcomp(&reg_regex, regname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
 		fprintf(stderr, "[ERROR]: Failed to compile register regex for [%s]\n", regname);
-		if (!noipreg)
+		if (ipreg) {
 			regfree(&ip_regex);
+		}
 		return -1;
 	}
 
@@ -71,7 +77,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	/* scan them all in order */
 	if (!asicname[0] || !strcmp(asicname, "*") || !strcmp(asicname, asic->asicname)) {
 		for (i = 0; i < asic->no_blocks; i++) {
-			if (!ipname[0] || ipname[0] == '*' || !regexec(&ip_regex, asic->blocks[i]->ipname, 0, NULL, 0)) {
+			if (!ipreg || !regexec(&ip_regex, asic->blocks[i]->ipname, 0, NULL, 0)) {
 				for (j = 0; j < asic->blocks[i]->no_regs; j++) {
 					if (!regname[0] || !strcmp(regname, "*") ||
 					    !regexec(&reg_regex, asic->blocks[i]->regs[j].regname, 0, NULL, 0)) {
@@ -133,7 +139,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 
 	r = 0;
 error:
-	if (!noipreg)
+	if (ipreg)
 		regfree(&ip_regex);
 	regfree(&reg_regex);
 	return r;
