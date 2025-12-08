@@ -373,44 +373,72 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 {
 	FILE *infile;
 	char buf[128];
-	uint32_t  *data, x;
+	uint32_t *data = NULL, x;
 
 	infile = fopen(filename, "rb");
 	if (!infile) {
-		asic->err_msg("Cannot open IB file");
+		asic->err_msg("[ERROR]: Cannot open IB file %s\n", filename);
 		return NULL;
 	}
 
 	if (strstr(filename, ".ring")) {
 		uint32_t size;
 		fseek(infile, 0, SEEK_END);
-		size = ftell(infile) - 12;
-		fseek(infile, 12, SEEK_SET);
-		data = calloc(1, size);
-		if (fread(data, 1, size, infile) != size) {
-			free(data);
+		if (ftell(infile) > 12) {
+			size = ftell(infile) - 12;
+			if (fseek(infile, 12, SEEK_SET) != -1) {
+				data = calloc(size / sizeof(*data), sizeof *data);
+				if (!data || fread(data, 1, size, infile) != size) {
+					asic->err_msg("[ERROR]: Could not load contents of IB file %s to memory\n", filename);
+					free(data);
+					fclose(infile);
+					return NULL;
+				}
+				*nwords = size / 4;
+				fclose(infile);
+				return data;
+			} else {
+				asic->err_msg("[ERROR]: Could not seek to ring contents in file %s\n", filename);
+				fclose(infile);
+				return NULL;
+			}
+		} else {
+			asic->err_msg("[ERROR]: IB file %s is too small\n", filename);
 			fclose(infile);
 			return NULL;
 		}
-		*nwords = size / 4;
-		fclose(infile);
-		return data;
 	}
 
 	if (strstr(filename, ".bin")) {
 		uint32_t size;
 		fseek(infile, 0, SEEK_END);
-		size = ftell(infile) ;
-		fseek(infile, 0, SEEK_SET);
-		data = calloc(1, size);
-		if (fread(data, 1, size, infile) != size) {
-			free(data);
+		size = ftell(infile);
+		if (size > 0) {
+			if (fseek(infile, 0, SEEK_SET) == -1) {
+				asic->err_msg("[ERROR]: Could not seek in IB file %s\n", filename);
+				fclose(infile);
+				return NULL;
+			}
+			data = calloc(size / sizeof(*data), sizeof *data);
+			if (!data) {
+				asic->err_msg("[ERROR]: Out of memory loading IB file %s\n", filename);
+				fclose(infile);
+				return NULL;
+			}
+			if (fread(data, 1, size, infile) != size) {
+				asic->err_msg("[ERROR]: Could not load entire IB file %s\n", filename);
+				free(data);
+				fclose(infile);
+				return NULL;
+			}
+			*nwords = size / 4;
+			fclose(infile);
+			return data;
+		} else {
+			asic->err_msg("[ERROR]: IB file %s is empty\n", filename);
 			fclose(infile);
 			return NULL;
 		}
-		*nwords = size / 4;
-		fclose(infile);
-		return data;
 	}
 
 	data = calloc(1024, sizeof(*data));
@@ -419,7 +447,6 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return NULL;
 	}
-
 
 	x = 0;
 	while (fgets(buf, sizeof(buf)-1, infile) != NULL) {
@@ -454,13 +481,19 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 	struct ui_data *data;
 	int is_uq = 0; // TODO: right now we're doing a bit of hack where we treat non uq "rings" differently, it would be nice to unify these all properly
 
-	if (rt == UMR_RING_UNK)
+	if (rt == UMR_RING_UNK) {
+		asic->err_msg("[BUG]: Unknown ring type (%d) passed to ring stream present()\n", rt);
 		return;
+	}
 
 	// print decode str
 	ui = umr_ui;
 	ui.rt = rt;
-	data = ui.data = calloc(1, sizeof(struct ui_data));
+	data = ui.data = calloc(1, sizeof *data);
+	if (!data) {
+		asic->err_msg("[ERROR]: Out of memory in umr_ring_stream_present()\n");
+		return;
+	}
 	data->sp = -1;
 	data->asic = asic;
 
@@ -494,8 +527,8 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 				is_uq = 1;
 			}
 			break;
-		case UMR_RING_UNK:
-			asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
+		default:
+			asic->err_msg("[BUG]: Unknown ring type (%d) passed to ring stream present()\n", rt);
 			break;
 	}
 
@@ -512,20 +545,23 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_VCN_DEC:
 				umr_packet_disassemble_stream(str, (ringname && !is_uq) ? (uint64_t)(start * 4) : addr, vmid, 0, 0, ~0UL, 1, 0);
 				break;
-			case UMR_RING_GUESS:
-			case UMR_RING_UNK:
-				asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
+			default:
+				asic->err_msg("[BUG]: Unknown ring type (%d) passed to ring stream present() at disassemble stage\n", rt);
 				break;
 		}
 
 		for (x = 0; x < data->no; x++) {
 			sprintf(tmpname, "/tmp/umr_ring_out.%d", x);
 			f = fopen(tmpname, "r");
-			while (fgets(buf, sizeof buf, f)) {
-				printf("%s", buf);
+			if (f) {
+				while (fgets(buf, sizeof buf, f)) {
+					printf("%s", buf);
+				}
+				fclose(f);
+			} else {
+				asic->err_msg("[ERROR]: Could not read -RS temp file %s\n", tmpname);
 			}
-			fclose(f);
-			remove(tmpname);
+			(void)remove(tmpname);
 		}
 
 		switch (str->type) {
@@ -540,9 +576,8 @@ void umr_ring_stream_present(struct umr_asic *asic, char *ringname, int start, i
 			case UMR_RING_VCN_DEC:
 				umr_packet_free(str);
 				break;
-			case UMR_RING_GUESS:
-			case UMR_RING_UNK:
-				asic->err_msg("[BUG]: Unknown ring type passed to ring stream present()\n");
+			default:
+				asic->err_msg("[BUG]: Unknown ring type (%d) passed to ring stream present() at free packets\n", rt);
 				break;
 		}
 
@@ -573,7 +608,7 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 		memset(from, 0, sizeof from);
 		memset(to, 0, sizeof to);
 		if (sscanf(ringpath, "%[a-z0-9._][%[.0-9]:%[.0-9]]", ringname, from, to) < 1) {
-			printf("Invalid ringpath\n");
+			asic->err_msg("[ERROR]: Invalid ringpath specified to the -RS command\n");
 			return;
 		}
 
@@ -621,7 +656,7 @@ void umr_read_ring_stream(struct umr_asic *asic, char *ringpath)
 	}
 
 	if (enable_decoder < 0 || enable_decoder >= (int)(sizeof(rts)/sizeof(rts[0]))) {
-		fprintf(stderr, "[BUG]: Unknown ring type for [%s]\n", ringname);
+		asic->err_msg("[BUG]: Unknown ring type for [%s]\n", ringpath);
 	} else {
 		umr_ring_stream_present(asic, nwords ? NULL : ringname, start, end, vmid, addr, words, nwords, rts[enable_decoder]);
 	}
