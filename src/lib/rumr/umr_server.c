@@ -382,7 +382,7 @@ int rumr_server_loop(struct rumr_server_state *state)
 
 	// sanity check
 		// only accept packets from clients
-		if (header & 0) {
+		if (header & 1) {
 			state->log_msg("[ERROR]: Packet header must not set SERVER bit\n");
 			return -1;
 		}
