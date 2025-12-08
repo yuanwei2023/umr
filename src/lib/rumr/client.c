@@ -497,7 +497,7 @@ static void *read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *rin
 	uint32_t *pkt = (uint32_t*)&linebuf[0];
 	struct rumr_buffer *buf;
 	struct rumr_client_state *state = asic->ring_func.data;
-	void *ret;
+	uint8_t *ret;
 
 	memset(linebuf, 0, sizeof linebuf);
 	strncpy(linebuf, ringname, (sizeof linebuf) - 1);
@@ -508,7 +508,7 @@ static void *read_ring_data(struct umr_asic *asic, char *ringname, uint32_t *rin
 	}
 
 	*ringsize = rumr_buffer_read_uint32(buf);
-	ret = calloc(1, *ringsize + 12);
+	ret = calloc(*ringsize + 12, sizeof *ret);
 	rumr_buffer_read_data(buf, ret, *ringsize + 12); // 12 bytes for RPTR/WPTR/RPTR(cache)
 	rumr_buffer_free(buf);
 	return ret;
