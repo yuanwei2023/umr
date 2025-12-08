@@ -37,17 +37,21 @@ int umr_print_vbios_info(struct umr_asic *asic)
 		asic->fd.drm = open(fname, O_RDWR);
 	}
 
-	r = umr_query_drm_vbios(asic, AMDGPU_INFO_VBIOS, AMDGPU_INFO_VBIOS_INFO,
-			&vbios_info, sizeof(vbios_info));
-	if (r)
+	if (asic->fd.drm != -1) {
+		r = umr_query_drm_vbios(asic, AMDGPU_INFO_VBIOS, AMDGPU_INFO_VBIOS_INFO,
+				&vbios_info, sizeof(vbios_info));
+		if (!r) {
+			asic->std_msg("vbios name          : %s\n", vbios_info.name);
+			asic->std_msg("vbios pn            : %s\n", vbios_info.vbios_pn);
+			asic->std_msg("vbios version       : %d\n", vbios_info.version);
+			asic->std_msg("vbios ver_str       : %s\n", vbios_info.vbios_ver_str);
+			asic->std_msg("vbios date          : %s\n", vbios_info.date);
+		}
+		close(asic->fd.drm);
+		asic->fd.drm = -1;
 		return r;
-
-	printf("vbios name          : %s\n", vbios_info.name);
-	printf("vbios pn            : %s\n", vbios_info.vbios_pn);
-	printf("vbios version       : %d\n", vbios_info.version);
-	printf("vbios ver_str       : %s\n", vbios_info.vbios_ver_str);
-	printf("vbios date          : %s\n", vbios_info.date);
-
-	close(asic->fd.drm);
-	return 0;
+	} else {
+		asic->err_msg("[ERROR]: Could not open DRM file to read VBIOS info\n");
+		return -1;
+	}
 }
