@@ -220,8 +220,8 @@ VMID and the upper 8 bits indicate the which VM space to use.
 For instance, 0x107 would specify the 7'th VMID on the MM hub.
 
 
-.IP "--vm-decode, -vm vmid@<address> <num_of_pages>"
-Decode page mappings at a specified address (in hex) from the VMID specified.
+.IP "--vm-decode, -vm vmid@<address>"
+Decode a page mapping at a specified address (in hex) from the VMID specified.
 The VMID can be specified in hexadecimal (with leading '0x') or in decimal.
 Implies '-O verbose' for the duration of the command so does not require it
 to be manually specified.
