@@ -59,16 +59,15 @@ int umr_kfd_topo_get_pci_busaddr(int node, char *busaddr)
 
 void umr_dump_runlists(struct umr_asic *asic, int node)
 {
-	FILE *rls;
-	unsigned char *rlsbuf;
+	FILE *rls = NULL;
+	unsigned char *rlsbuf = NULL;
 	char linebuf[256];
 	uint32_t linenums[9], rlssize, rlsofs;
 	int nv, x, words;
 
 	rlsofs = 0;
 	rlssize = 4096;
-	rlsbuf = calloc(1, rlssize);
-
+	rlsbuf = calloc(rlssize, sizeof *rlsbuf);
 	if (!rlsbuf) {
 		asic->err_msg("[ERROR]: Out of memory\n");
 		return;
@@ -93,6 +92,7 @@ void umr_dump_runlists(struct umr_asic *asic, int node)
 							if (!t) {
 								asic->err_msg("[ERROR]: Out of memory\n");
 								free(rlsbuf);
+								fclose(rls);
 								return;
 							}
 							rlssize += 4096;
