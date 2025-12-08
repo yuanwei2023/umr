@@ -643,6 +643,11 @@ static int umr_scan_wave_simd(struct umr_asic *asic, uint32_t se, uint32_t sh, u
 	uint32_t wave, wave_limit;
 	int r;
 
+	if (!gfxip) {
+		asic->err_msg("[BUG]: could not find 'gfx' block in umr_scan_wave_simd()\n");
+		return -1;
+	}
+
 	if (gfxip->discoverable.maj <= 9)
 		wave_limit = 10;
 	else if (gfxip->discoverable.maj == 10 && gfxip->discoverable.min != 3)
