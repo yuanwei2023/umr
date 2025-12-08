@@ -425,53 +425,60 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 		// dump SOC15 contents first
 		snprintf(buf, sizeof(buf), "%s.soc15", asic->asicname);
 		fexp = fopen(buf, "w");
-		pexp_data = &exp_data;
-		while (pexp_data && pexp_data->det && strlen(pexp_data->det->ipname)) {
-			if (!pexp_data->soc15) {
-				fprintf(fexp, "%s\n", pexp_data->det->ipname);
-				ppexp = pexp_data;
-				z = 0;
-				do {
-					if (!ppexp->soc15 && !strcmp(pexp_data->det->ipname, ppexp->det->ipname)) {
-						ppexp->soc15 = 1;
-						fprintf(fexp, "\t");
-						for (x = 0; x < 32; x++) {
-							fprintf(fexp, "0x%08" PRIx64 " ", ppexp->det->segments[x]);
+		if (!fexp) {
+			asic->err_msg("[ERROR]: Could not open SOC15 file to export model: %s\n", buf);
+		} else {
+			pexp_data = &exp_data;
+			while (pexp_data && pexp_data->det && strlen(pexp_data->det->ipname)) {
+				if (!pexp_data->soc15) {
+					fprintf(fexp, "%s\n", pexp_data->det->ipname);
+					ppexp = pexp_data;
+					z = 0;
+					do {
+						if (!ppexp->soc15 && !strcmp(pexp_data->det->ipname, ppexp->det->ipname)) {
+							ppexp->soc15 = 1;
+							fprintf(fexp, "\t");
+							for (x = 0; x < 32; x++) {
+								fprintf(fexp, "0x%08" PRIx64 " ", ppexp->det->segments[x]);
+							}
+							fprintf(fexp, "\n");
+							++z;
 						}
-						fprintf(fexp, "\n");
-						++z;
-					}
-					ppexp = ppexp->next;
-				} while (ppexp);
+						ppexp = ppexp->next;
+					} while (ppexp);
 
-				// at this point we've output Z of 32 rows, so zero out the rest
-				for (; z < 32; z++) {
-					fprintf(fexp, "\t0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 ");
-					fprintf(fexp, "0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 ");
-					fprintf(fexp, "0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 ");
-					fprintf(fexp, "0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000\n");
+					// at this point we've output Z of 32 rows, so zero out the rest
+					for (; z < 32; z++) {
+						fprintf(fexp, "\t0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 ");
+						fprintf(fexp, "0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 ");
+						fprintf(fexp, "0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 ");
+						fprintf(fexp, "0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000 0x00000000\n");
+					}
 				}
+				pexp_data = pexp_data->next;
 			}
-			pexp_data = pexp_data->next;
+			fclose(fexp);
 		}
-		fclose(fexp);
 
 		// output ASIC data
 		snprintf(buf, sizeof(buf), "%s.asic", asic->asicname);
 		fexp = fopen(buf, "w");
-		pexp_data = &exp_data;
-
-		// NOTE: we default to FAMILY_NV, VGPR=2, APU=0
-		fprintf(fexp, "%s %s.soc15 %d %d 2 0\n", asic->asicname, asic->asicname, FAMILY_NV, asic->no_blocks);
-		for (x = 0; x < asic->no_blocks; x++) {
-			fprintf(fexp, "%s %s %d %s/%s\n",
-				asic->blocks[x]->ipname,
-				pexp_data->det->ipname,
-				asic->blocks[x]->discoverable.instance,
-				pexp_data->nit->path, pexp_data->nit->fname);
-			pexp_data = pexp_data->next;
+		if (!fexp) {
+			asic->err_msg("[ERROR]: Could not open ASIC file to export model: %s\n", buf);
+		} else {
+			pexp_data = &exp_data;
+			// NOTE: we default to FAMILY_NV, VGPR=2, APU=0
+			fprintf(fexp, "%s %s.soc15 %d %d 2 0\n", asic->asicname, asic->asicname, FAMILY_NV, asic->no_blocks);
+			for (x = 0; x < asic->no_blocks; x++) {
+				fprintf(fexp, "%s %s %d %s/%s\n",
+					asic->blocks[x]->ipname,
+					pexp_data->det->ipname,
+					asic->blocks[x]->discoverable.instance,
+					pexp_data->nit->path, pexp_data->nit->fname);
+				pexp_data = pexp_data->next;
+			}
+			fclose(fexp);
 		}
-		fclose(fexp);
 
 		// free memory
 		pexp_data = exp_data.next;
@@ -481,7 +488,6 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 			pexp_data = ppexp;
 		}
 	}
-
 done:
 	det = pdet;
 	while (det) {
