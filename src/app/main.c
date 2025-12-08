@@ -73,7 +73,7 @@ static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
 	*addr = arg;
 
 	if (!memcmp(arg, "tcp://", 6)) {
-		cf = calloc(1, sizeof rumr_tcp_funcs);
+		cf = calloc(1, sizeof *cf);
 		*cf = rumr_tcp_funcs;
 		cf->log_msg = err_printf;
 		*addr = &arg[6];
@@ -400,8 +400,8 @@ static void do_help(void)
 	"\n\t\t2 - VC0 hub"
 	"\n\t\t3 - VC1 hub"
 	"\n\n\tFor instance, 0x107 would specify the 7'th VMID on the MM hub.\n"
-	"\n\t--vm-decode, -vm vmid@<address> <num_of_pages>"
-		"\n\t\tDecode page mappings at a specified address (in hex) from the VMID specified."
+	"\n\t--vm-decode, -vm vmid@<address>"
+		"\n\t\tDecode a page mapping at a specified address (in hex) from the VMID specified."
 		"\n\t\tThe VMID can be specified in hexadecimal (with leading '0x') or in decimal."
 		"\n\t\tImplies '-O verbose' for the duration of the command so does not require it"
 		"\n\t\tto be manually specified.\n");
@@ -1264,14 +1264,13 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--vm-decode") || !strcmp(argv[i], "-vm")) {
-					if (i + 2 < argc) {
+					if (i + 1 < argc) {
 						uint64_t address;
-						uint32_t size, vmid;
+						uint32_t vmid;
 						int overbose;
 
 						argflags[i] = 1;
 						argflags[i+1] = 1;
-						argflags[i+2] = 1;
 
 						overbose = asic->options.verbose;
 						asic->options.verbose = 1;
@@ -1289,18 +1288,16 @@ int main(int argc, char **argv)
 							fprintf(stderr, "[WARNING]: VMID > 15 is likely a typo on the command line (did you forget to add 0x?)\n");
 						}
 
-						sscanf(argv[i+2], "%"SCNx32, &size);
-
 						// imply user hub if hub name specified
 						if (asic->options.hub_name[0])
 							vmid |= UMR_USER_HUB;
 
-						umr_read_vram(asic, asic->options.vm_partition, vmid, address, 0x1000UL * size, NULL);
-						i += 2;
+						(void)umr_read_vram(asic, asic->options.vm_partition, vmid, address, 4UL, NULL);
+						i += 1;
 
 						asic->options.verbose = overbose;
 					} else {
-						fprintf(stderr, "[ERROR]: --vm-decode requires two parameters\n");
+						fprintf(stderr, "[ERROR]: --vm-decode requires one parameter\n");
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "-vr") || !strcmp(argv[i], "--vm-read")) {
