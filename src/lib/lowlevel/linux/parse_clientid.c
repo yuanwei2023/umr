@@ -693,6 +693,7 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                     break;
                 }
             } else {
+                fclose(f);
                 asic->err_msg("[ERROR]: Could not parse 'clients' file from debugfs.  Could be your kernel is too old.\n");
                 goto error;
             }
@@ -862,10 +863,10 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                             asic->options.user_queue.client_info.queue[queueno].mqd_words[44];
                     }
                 }
+                fclose(f);
             } else {
                 asic->err_msg("[ERROR]: Could not open /sys/kernel/debug/kfd/mqds\n");
             }
-            fclose(f);
         }
     } else {
         asic->err_msg("[ERROR]: The client '%s' was not found for this device.\n", asic->options.user_queue.clientid);
