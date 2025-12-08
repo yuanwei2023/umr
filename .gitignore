@@ -1,3 +1,6 @@
+# scan tool output
+covdb/
+
 # build artifacts
 .cache/
 .gitlab-ci-local/
