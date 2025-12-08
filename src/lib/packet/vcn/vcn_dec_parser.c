@@ -543,7 +543,7 @@ void umr_vcn_dec_decode_unified_ring(struct umr_asic *asic, struct umr_vcn_cmd_m
 		};
 		p_curr += ib_size / 4 - 2;
 	}
-	if (pOut)
+	if (pOut && vcn)
 		fprintf(pOut, "\nDone Decoding VCN message at 0x%" PRIx32 "@0x%" PRIx64 "\n", vcn->vmid, vcn->addr);
 }
 
