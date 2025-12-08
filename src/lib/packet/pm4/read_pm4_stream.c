@@ -461,22 +461,19 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 			if (!asic->options.no_follow_ib || follow_chained_ib) {
 				uint64_t ib_addr;
 				uint32_t tvmid, size;
-				void *buf;
-				ib_addr = (fetch_word(asic, ps, 0) & ~3ULL) | ((uint64_t)(fetch_word(asic, ps, 1) & 0xFFFF) << 32);
+				uint8_t *buf = NULL;
 
-				// abort if the IB is >8 MB in size which is very likely just garbage data
+				ib_addr = ((uint64_t)fetch_word(asic, ps, 0) & ~3ULL) | ((uint64_t)(fetch_word(asic, ps, 1) & 0xFFFFULL) << 32ULL);
 				size = (fetch_word(asic, ps, 2) & ((1UL << 20) - 1)) * 4;
-				if (size > (1024UL * 1024UL * 8UL))
-					break;
-
 				tvmid = (fetch_word(asic, ps, 2) >> 24) & 0xF;
-				if (!tvmid)
+				if (!tvmid) {
 					tvmid = vmid;
-				buf = calloc(1, size);
-				if (umr_read_vram(asic, vm_partition, tvmid, ib_addr, size, buf) < 0) {
+				}
+				buf = calloc(size, sizeof *buf);
+				if (!buf || umr_read_vram(asic, vm_partition, tvmid, ib_addr, size, (void*)buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", tvmid, ib_addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, ib_addr, buf, size / 4, reg_pairs, ip_version);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, ib_addr, (void*)buf, size / 4, reg_pairs, ip_version);
 					ps->ib->parent = ps;
 					ps->ib_source.addr = ib_addr;
 					ps->ib_source.vmid = tvmid;
@@ -671,12 +668,12 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 
 			// we have everything we need to point to an IB
 			if (!asic->options.no_follow_ib && uvd_ib.n == 15) {
-				void *buf;
-				buf = calloc(1, uvd_ib.size);
-				if (umr_read_vram(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, buf) < 0) {
+				uint8_t *buf = NULL;
+				buf = calloc(uvd_ib.size, sizeof *buf);
+				if (!buf || umr_read_vram(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, uvd_ib.size, (void*)buf) < 0) {
 					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", uvd_ib.vmid, uvd_ib.addr);
 				} else {
-					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, buf, uvd_ib.size / 4, reg_head, ip_version);
+					ps->ib = umr_pm4_decode_stream(asic, vm_partition, uvd_ib.vmid, uvd_ib.addr, (void*)buf, uvd_ib.size / 4, reg_head, ip_version);
 					ps->ib->parent = ps;
 					ps->ib_source.addr = uvd_ib.addr;
 					ps->ib_source.vmid = uvd_ib.vmid;
@@ -689,7 +686,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream(struct umr_asic *asic, int vm_parti
 		// advance stream
 		nwords -= 1 + ps->n_words;
 		stream += 1 + ps->n_words;
-		ib_addr += 4 * (1 + ps->n_words);
+		ib_addr += 4ULL * (1 + ps->n_words);
 		if (nwords) {
 			ps->next = calloc(1, sizeof(*ps));
 			prev_ps = ps;
