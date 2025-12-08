@@ -343,7 +343,7 @@ struct umr_vcn_enc_stream *umr_vcn_enc_decode_stream_opcodes(struct umr_asic *as
 			ui->add_vcn(ui, asic, stream->vcn);
 		}
 
-		ib_addr += (1 + stream->nwords) * 4;
+		ib_addr += (1ULL + stream->nwords) * 4ULL;
 		stream = stream->next;
 	}
 
@@ -2423,7 +2423,7 @@ static void vcn_enc_decode_ib_v1(struct umr_asic *asic, struct umr_vcn_cmd_messa
 				if (pOut) {
 					fprintf(pOut, "[ERROR] FIXME Unknown type[0x%08x] size[0x%08x] for VCN v%d_%d_%d\n",
 						ib_type, ib_size, ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
-					if (ib_type == 0xFFFFFFFF || ib_size == 0xFFFFFFFF) {
+					if (vcn && ((ib_type == 0xFFFFFFFF) || (ib_size == 0xFFFFFFFF))) {
 						dump_ib(asic, vcn, p_curr, p_end - p_curr, pOut);
 						fprintf(pOut, "[ERROR] Invalid data received [%"PRIu32"] bytes not handled for VCN v%d_%d_%d\n",
 							(uint32_t)((p_end - p_curr) * 4), ip->discoverable.maj, ip->discoverable.min, ip->discoverable.rev);
