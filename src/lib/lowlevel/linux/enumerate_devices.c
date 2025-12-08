@@ -57,7 +57,7 @@ int umr_enumerate_device_list(umr_err_output errout, const char *database_path, 
 		return -1;
 	}
 
-	*asics = calloc(256, sizeof *asics); // allocate enough pointers for upto 128 devices
+	*asics = calloc(256, sizeof **asics); // allocate enough pointers for upto 256 devices
 
 	x = 0;
 	while (x < 256 && (de  = readdir(dir))) {
