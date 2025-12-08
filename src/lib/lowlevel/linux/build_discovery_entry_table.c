@@ -78,30 +78,32 @@ static void set_ip_logical_inst(struct umr_discovery_table_entry *first,
  * @param diepath   Buffer to store the path to the die. This should be pre-allocated by the caller.
  * @param ipname    Name of the IP (Intellectual Property) to be added to the discovery table.
  */
-static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num, int *nblocks, char *diepath, char *ipname)
+static int add_ip_instances(struct umr_discovery_table_entry **det, int die_num, int *nblocks, char *diepath, char *ipname, umr_err_output errout)
 {
 	DIR *ipdir;
 	char linebuf[512], fname[1024], databuf[256];
 	struct dirent *de;
-	int x;
+	int x, r = -1;
 	uint32_t inst_mask = 0;
 	struct umr_discovery_table_entry *ip_start;
 	FILE *f;
 
 	memset(linebuf, 0, sizeof linebuf);
 	if (snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s", diepath, ipname) < 0) {
-		fprintf(stderr, "[ERROR]: Could not construct IP discovery path for die: [%s], ipname: [%s]\n", diepath, ipname);
-		return;
+		errout("[ERROR]: Could not construct IP discovery path for die: [%s], ipname: [%s]\n", diepath, ipname);
+		return -1;
 	}
 	ipdir = opendir(linebuf);
-	if (!ipdir)
-		return;
+	if (!ipdir) {
+		errout("[ERROR]: Could not open IP discovery path %s [%s], [%s]\n", linebuf, diepath, ipname);
+		return -1;
+	}
 	ip_start = *det;
 	while ((de = readdir(ipdir))) {
 		if (isdigit(de->d_name[0])) {
 			if (snprintf(linebuf, (sizeof linebuf) - 1, "%s/%s/%s", diepath, ipname, de->d_name) < 0) { // path to instance of ip block on given die
-				closedir(ipdir);
-				return;
+				errout("[ERROR]: Could not create ip path for [%s], [%s], [%s]\n", diepath, ipname, de->d_name);
+				goto error;
 			}
 			(*det)->die = die_num;
 			// base_addr list
@@ -115,15 +117,19 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 					++x;
 				}
 			} else {
-				fprintf(stderr, "[ERROR]: Can't open [%s]\n", fname);
-				exit(-1);
+				errout("[ERROR]: Can't open [%s]\n", fname);
+				goto error;
 			}
 			fclose(f);
 			// major
 			snprintf(fname, (sizeof fname) - 1, "%s/major", linebuf);
 			f = fopen(fname, "r");
 			if (!f || fscanf(f, "%d", &(*det)->maj) != 1) {
-				fprintf(stderr, "[ERROR]: Could not read major from %s\n", fname);
+				errout("[ERROR]: Could not read major from %s\n", fname);
+				if (f) {
+					fclose(f);
+				}
+				goto error;
 			}
 			if (f) {
 				fclose(f);
@@ -133,7 +139,11 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			snprintf(fname, (sizeof fname) - 1, "%s/minor", linebuf);
 			f = fopen(fname, "r");
 			if (!f || fscanf(f, "%d", &(*det)->min) != 1) {
-				fprintf(stderr, "[ERROR]: Could not read minor from %s\n", fname);
+				errout("[ERROR]: Could not read minor from %s\n", fname);
+				if (f) {
+					fclose(f);
+				}
+				goto error;
 			}
 			if (f) {
 				fclose(f);
@@ -143,7 +153,11 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			snprintf(fname, (sizeof fname) - 1, "%s/revision", linebuf);
 			f = fopen(fname, "r");
 			if (!f || fscanf(f, "%d", &(*det)->rev) != 1) {
-				fprintf(stderr, "[ERROR]: Could not read revision from %s\n", fname);
+				errout("[ERROR]: Could not read revision from %s\n", fname);
+				if (f) {
+					fclose(f);
+				}
+				goto error;
 			}
 			if (f) {
 				fclose(f);
@@ -153,19 +167,26 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			snprintf(fname, (sizeof fname) - 1, "%s/num_instance", linebuf);
 			f = fopen(fname, "r");
 			if (!f || fscanf(f, "%d", &(*det)->instance) != 1) {
-				fprintf(stderr, "[ERROR]: Could not read instance number from %s\n", fname);
+				errout("[ERROR]: Could not read instance number from %s\n", fname);
+				if (f) {
+					fclose(f);
+				}
+				goto error;
 			}
 			if (f) {
 				fclose(f);
 			}
 
 			// harvest
-			snprintf(fname, (sizeof fname) - 1, "%s/harvest",
-					linebuf);
+			snprintf(fname, (sizeof fname) - 1, "%s/harvest", linebuf);
 			f = fopen(fname, "r");
 			if (f) {
 				if (fscanf(f, "%" SCNx8, &(*det)->harvest) != 1) {
-					fprintf(stderr, "[ERROR]: Could not read harvest from %s\n", fname);
+					errout("[ERROR]: Could not read harvest from %s\n", fname);
+					if (f) {
+						fclose(f);
+					}
+					goto error;
 				} else {
 					if ((*det)->harvest == 0) {
 						inst_mask |= (1 << (*det)->instance);
@@ -182,15 +203,18 @@ static void add_ip_instances(struct umr_discovery_table_entry **det, int die_num
 			// add next
 			(*det)->next = calloc(1, sizeof **det);
 			if (!(*det)->next) {
-				closedir(ipdir);
-				return;
+				errout("[ERROR]: Out of memory in add_ip_instances()\n");
+				goto error;
 			}
 			*det = (*det)->next;
 			++(*nblocks);
 		}
 	}
-	closedir(ipdir);
 	set_ip_logical_inst(ip_start, *det, inst_mask);
+	r = 0;
+error:
+	closedir(ipdir);
+	return r;
 }
 
 /* Dir structure
@@ -226,17 +250,19 @@ struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblo
 	DIR *top = NULL, *die = NULL;
 	char linebuf[512];
 	struct umr_discovery_table_entry *pdet = NULL, *det = NULL;
-	struct dirent *de;
+	struct dirent *de = NULL;
 	int die_num;
 
 	snprintf(linebuf, (sizeof linebuf) - 1, "/sys/class/drm/card%d/device/ip_discovery/die", instance);
 	top = opendir(linebuf);
 	if (!top) {
+		errout("[ERROR]: Could not open IP discovery root %s\n", linebuf);
 		return NULL;
 	}
 
 	pdet = det = calloc(1, sizeof *det);
 	if (!det) {
+		errout("[ERROR]: Out of memory initializing IP discovery parser\n");
 		closedir(top);
 		return NULL;
 	}
@@ -254,8 +280,10 @@ struct umr_discovery_table_entry *umr_parse_ip_discovery(int instance, int *nblo
 				goto error;
 			}
 			while ((de = readdir(die))) {
-				if (isalpha(de->d_name[0])) {
-					add_ip_instances(&det, die_num, nblocks, linebuf, de->d_name);
+				if (isalpha(de->d_name[0]) && isupper(de->d_name[0])) {
+					if (add_ip_instances(&det, die_num, nblocks, linebuf, de->d_name, errout)) {
+						goto error;
+					}
 				}
 			}
 			closedir(die);
