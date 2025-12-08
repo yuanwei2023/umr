@@ -191,25 +191,29 @@ void umr_power(struct umr_asic *asic)
 	struct timespec req;
 	char fname[64];
 
-	initscr();
-	start_color();
-	cbreak();
-	nodelay(stdscr, 1);
-	noecho();
-
-	init_pair(1, COLOR_GREEN, COLOR_BLACK);
-	init_pair(2, COLOR_YELLOW, COLOR_BLACK);
-	init_pair(3, COLOR_RED, COLOR_BLACK);
-
-	// setup loop, fix refresh rate 1 second
-	req.tv_sec = 1;
-	req.tv_nsec = 0;
-
-	while (!quit) {
+	if (asic->fd.sensors == -1) {
 		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_sensors", asic->instance);
 		asic->fd.sensors = open(fname, O_RDWR);
-		if (asic->fd.sensors) {
-			for ( i = 0; p_info[i].regname != NULL; i++){
+	}
+
+	if (asic->fd.sensors == -1) {
+		asic->err_msg("[ERROR]: Could not open amdgpu_sensors file\n");
+	} else {
+		initscr();
+		start_color();
+		cbreak();
+		nodelay(stdscr, 1);
+		noecho();
+
+		init_pair(1, COLOR_GREEN, COLOR_BLACK);
+		init_pair(2, COLOR_YELLOW, COLOR_BLACK);
+		init_pair(3, COLOR_RED, COLOR_BLACK);
+
+		// setup loop, fix refresh rate 1 second
+		req.tv_sec = 1;
+		req.tv_nsec = 0;
+		while (!quit) {
+			for ( i = 0; p_info[i].regname != NULL; i++) {
 				size = 4;
 				p_info[i].value = 0;
 				gpu_power_data[0] = 0;
@@ -219,24 +223,22 @@ void umr_power(struct umr_asic *asic)
 					p_info[i].value = parse_sensor_value(p_info[i].map, p_info[i].value);
 				}
 			}
-			close(asic->fd.sensors);
-		} else {
-			printf("failed to open amdgpu_sensors!");
-			break;
-		}
 
-		nanosleep(&req, NULL);
-		move(0, 0);
-		clear();
+			nanosleep(&req, NULL);
+			move(0, 0);
+			clear();
 
-		power_print(asic);
+			power_print(asic);
 
-		if ((i = wgetch(stdscr)) != ERR) {
-			if (i == 'q') {
-				quit = 1;
+			if ((i = wgetch(stdscr)) != ERR) {
+				if (i == 'q') {
+					quit = 1;
+				}
 			}
+			refresh();
 		}
-		refresh();
+		close(asic->fd.sensors);
+		asic->fd.sensors = -1;
+		endwin();
 	}
-	endwin();
 }
