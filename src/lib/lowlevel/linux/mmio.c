@@ -285,7 +285,7 @@ uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type)
 
 	// apply context banking
 	if ((mmio_addr >= (0xA000*4)) && (mmio_addr < (0xB000*4)))
-		addr += asic->options.context_reg_bank * 0x1000;
+		addr += (uint64_t)asic->options.context_reg_bank * 0x1000ULL;
 
 	switch (type) {
 		case REG_SMN:
@@ -378,7 +378,7 @@ int umr_write_reg(struct umr_asic *asic, uint64_t addr, uint32_t value, enum reg
 
 	// apply context banking
 	if ((mmio_addr >= (0xA000*4)) && (mmio_addr < (0xB000*4)))
-		addr += asic->options.context_reg_bank * 0x1000;
+		addr += (uint64_t)asic->options.context_reg_bank * 0x1000ULL;
 
 	switch (type) {
 		case REG_SMN:
