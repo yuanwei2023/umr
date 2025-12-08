@@ -103,7 +103,9 @@ int umr_linux_read_gpr_gprwave_raw(struct umr_asic *asic, int v_or_s,
 	if (r)
 		return r;
 
-	lseek(asic->fd.gprwave, offset, SEEK_SET);
+	if (lseek(asic->fd.gprwave, offset, SEEK_SET) == -1) {
+		return -1;
+	}
 	return read(asic->fd.gprwave, dst, size);
 }
 
@@ -284,10 +286,13 @@ int umr_get_wave_status_raw(struct umr_asic *asic, unsigned se, unsigned sh, uns
 		if (r)
 			return r;
 
-		lseek(asic->fd.gprwave, 0, SEEK_SET);
+		if (lseek(asic->fd.gprwave, 0, SEEK_SET) == -1) {
+			return -1;
+		}
 		r = read(asic->fd.gprwave, buf, 64*4);
-		if (r < 0)
+		if (r < 0) {
 			return r;
+		}
 	} else {
 		asic->err_msg("[ERROR]:  Your kernel is too old the amdgpu_gprwave file is now required.\n");
 		return -1;
