@@ -58,8 +58,7 @@ uint64_t umr_vm_dma_to_phys(struct umr_asic *asic, uint64_t dma_addr)
 		// older kernels had a iova debugfs file which would return
 		// an address given a seek to a given address this has been
 		// removed in newer kernels
-		lseek(asic->fd.iova, dma_addr & ~0xFFFULL, SEEK_SET);
-		if (read(asic->fd.iova, &phys, 8) != 8) {
+		if (lseek(asic->fd.iova, dma_addr & ~0xFFFULL, SEEK_SET) == -1 || read(asic->fd.iova, &phys, 8) != 8) {
 			asic->err_msg("[ERROR]: Could not read from debugfs iova file for address %" PRIx64 "\n", dma_addr);
 			return 0;
 		}
@@ -75,14 +74,19 @@ static int umr_access_sram_via_iomem(struct umr_asic *asic, uint64_t address, ui
 {
 	uint32_t r;
 
-	lseek(asic->fd.iomem, address, SEEK_SET);
+	if (lseek(asic->fd.iomem, address, SEEK_SET) == -1) {
+		asic->err_msg("[ERROR]: Could not seek in iomem debugfs file\n");
+		return -1;
+	}
 	if (write_en == 0) {
 		memset(dst, 0xFF, size);
 		if ((r = read(asic->fd.iomem, dst, size)) != size) {
+			asic->err_msg("[ERROR]: Could not read from iomem debugfs file\n");
 			return -1;
 		}
 	} else {
 		if ((r = write(asic->fd.iomem, dst, size)) != size) {
+			asic->err_msg("[ERROR]: Could not write to iomem debugfs file\n");
 			return -1;
 		}
 	}
@@ -97,13 +101,18 @@ static int umr_access_sram_via_hmm(struct umr_asic *asic, uint64_t address, uint
 
 	sprintf(name, "/proc/%d/mem", asic->options.user_queue.client_info.proc_info.pid);
 	fd = open(name, O_RDWR);
-	if (write_en) {
-		s = pwrite(fd, dst, size, address);
+	if (fd != -1) {
+		if (write_en) {
+			s = pwrite(fd, dst, size, address);
+		} else {
+			s = pread(fd, dst, size, address);
+		}
+		close(fd);
+		return (s == size) ? 0 : -1;
 	} else {
-		s = pread(fd, dst, size, address);
+		asic->err_msg("[ERROR]: Could not open process mem file %s\n", name);
+		return -1;
 	}
-	close(fd);
-	return (s == size) ? 0 : -1;
 }
 
 /**
@@ -165,7 +174,10 @@ error:
  */
 int umr_access_linear_vram(struct umr_asic *asic, uint64_t address, uint32_t size, void *data, int write_en)
 {
-	lseek(asic->fd.vram, address, SEEK_SET);
+	if (lseek(asic->fd.vram, address, SEEK_SET) == -1) {
+		asic->err_msg("[ERROR]: Could not seek in vram debugfs file\n");
+		return -1;
+	}
 	if (write_en == 0) {
 		if (read(asic->fd.vram, data, size) != size) {
 			asic->err_msg("[ERROR]: Could not read from VRAM at address 0x%" PRIx64 "\n", address);
