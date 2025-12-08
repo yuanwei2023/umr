@@ -26,8 +26,8 @@
 
 int umr_print_gpu_metrics(struct umr_asic *asic, int delay)
 {
-	FILE *f;
-	uint8_t *pp_data;
+	FILE *f = NULL;
+	uint8_t *pp_data = NULL;
 	uint32_t size;
 	char pp_name[128];
 	int r;
@@ -35,15 +35,25 @@ int umr_print_gpu_metrics(struct umr_asic *asic, int delay)
 	snprintf(pp_name, sizeof(pp_name), "/sys/class/drm/card%d/device/gpu_metrics", asic->instance);
 	f = fopen(pp_name, "rb");
 	if (!f) {
-		fprintf(stderr, "[ERROR]:  Cannot open gpu_metrics file %s\n", pp_name);
+		asic->err_msg("[ERROR]:  Cannot open gpu_metrics file %s\n", pp_name);
 		return -1;
 	}
-	fseek(f, 0, SEEK_END);
+	if (fseek(f, 0, SEEK_END) < 0) {
+		asic->err_msg("[ERROR]:  Cannot seek in gpu_metrics debugfs file\n");
+		fclose(f);
+		return -1;
+	}
 	size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	pp_data = calloc(1, size);
-	if (!pp_data) {
-		fprintf(stderr, "[ERROR]: Out of memory\n");
+	if (size > 0) {
+		fseek(f, 0, SEEK_SET);
+		pp_data = calloc(size, sizeof *pp_data);
+		if (!pp_data) {
+			asic->err_msg("[ERROR]: Out of memory\n");
+			fclose(f);
+			return -1;
+		}
+	} else {
+		asic->err_msg("[ERROR]: Could not seek in gpu_metrics file\n");
 		fclose(f);
 		return -1;
 	}
@@ -62,13 +72,13 @@ int umr_print_gpu_metrics(struct umr_asic *asic, int delay)
 				asic->std_msg("%-30s: %s\n", kv->keys[x].name, kv->keys[x].value);
 			}
 			free(kv);
-		}
-		if (delay) {
-			usleep(abs(delay) * 1000UL);
-			fseek(f, 0, SEEK_SET);
-			if (delay > 0) {
-				delay = -delay;
+			if (delay) {
+				usleep(abs(delay) * 1000UL);
+				fseek(f, 0, SEEK_SET);
 			}
+		} else {
+			asic->err_msg("[ERROR]: Could not access gpu_metrics file\n");
+			goto error;
 		}
 	} while (delay);
 error:
