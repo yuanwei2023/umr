@@ -32,9 +32,8 @@ int umr_read_sensor(struct umr_asic *asic, int sensor, void *dst, int *size)
 	int r;
 
 	// multiply sensor index by 4 to get byte address
-	lseek(asic->fd.sensors, sensor*4, SEEK_SET);
-	r = read(asic->fd.sensors, dst, *size);
-	if (r != *size) {
+	if (lseek(asic->fd.sensors, sensor*4, SEEK_SET) == -1 || (r = read(asic->fd.sensors, dst, *size)) != *size) {
+		asic->err_msg("[ERROR]: Could not seek or read from sensors debugfs file\n");
 		return -1;
 	}
 	*size = r;
