@@ -50,9 +50,9 @@ ipcmnname, ipsocname, instance, regfile
 struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filename, umr_err_output errout)
 {
 	char linebuf[256], cmnname[256], soc15fname[256], ipcmnname[256], ipsocname[256], regfile[256];
-	struct umr_asic *asic;
-	struct umr_soc15_database *soc15;
-	FILE *f;
+	struct umr_asic *asic = NULL;
+	struct umr_soc15_database *soc15 = NULL;
+	FILE *f = NULL;
 	int x;
 	struct {
 		int family, numblocks, vgpr_granularity, is_apu;
@@ -60,17 +60,22 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 
 	f = umr_database_open(options->database_path, filename, 0);
 	if (!f) {
+		errout("[ERROR]: Could not open asic file %s\n", filename);
 		return NULL;
 	}
 
 	asic = calloc(1, sizeof *asic);
-	if (!asic)
+	if (!asic) {
+		errout("[ERROR]: Out of memory reading ASIC file\n");
+		fclose(f);
 		return NULL;
+	}
 
 	asic->err_msg = errout;
 
 	if (!fgets(linebuf, sizeof linebuf, f) || sscanf(linebuf, "%s %s %d %d %d %d", cmnname, soc15fname, &asic_fields.family, &asic_fields.numblocks, &asic_fields.vgpr_granularity, &asic_fields.is_apu) != 6) {
 		asic->err_msg("[ERROR]: Invalid ASIC header line [%s]\n", linebuf);
+		fclose(f);
 		free(asic);
 		return NULL;
 	}
