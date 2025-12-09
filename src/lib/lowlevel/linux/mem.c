@@ -81,12 +81,10 @@ static int umr_access_sram_via_iomem(struct umr_asic *asic, uint64_t address, ui
 	if (write_en == 0) {
 		memset(dst, 0xFF, size);
 		if ((r = read(asic->fd.iomem, dst, size)) != size) {
-			asic->err_msg("[ERROR]: Could not read from iomem debugfs file\n");
 			return -1;
 		}
 	} else {
 		if ((r = write(asic->fd.iomem, dst, size)) != size) {
-			asic->err_msg("[ERROR]: Could not write to iomem debugfs file\n");
 			return -1;
 		}
 	}
