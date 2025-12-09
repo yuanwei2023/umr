@@ -42,7 +42,7 @@ struct umr_asic *umr_discover_asic_by_name(struct umr_options *options, char *na
 	asic = NULL;
 	sprintf(tmpname, "%s.asic", name);
 
-	if (options->force_asic_file) {
+	if (options->force_asic_file || options->is_virtual) {
 		asic = umr_database_read_asic(options, tmpname, errout);
 		if (!asic) {
 			asic = umr_discover_asic_by_discovery_table(name, options, errout);
