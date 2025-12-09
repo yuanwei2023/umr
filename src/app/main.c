@@ -40,6 +40,7 @@
 #endif
 
 static char *program_name;
+static char program_path[512];
 
 /* Get the base address of the executable from /proc/self/maps
  * This is needed for PIE executables where backtrace() returns
@@ -47,16 +48,19 @@ static char *program_name;
 static unsigned long get_executable_base_address(void)
 {
     FILE *f = fopen("/proc/self/maps", "r");
+    char line[512];
+    unsigned long base = 0;
+
     if (!f)
         return 0;
 
-    char line[512];
-    unsigned long base = 0;
     while (fgets(line, sizeof(line), f)) {
         /* Look for the line containing the executable path */
         if (strstr(line, program_name)) {
+			unsigned long top, flags, maj, min, x;
+			char perms[16];
             /* Parse the start address from the first field (format: "start-end perms ...") */
-            if (sscanf(line, "%lx-", &base) == 1) {
+            if (sscanf(line, "%lx-%lx %s %lx %lx:%lx %lx %s", &base, &top, perms, &flags, &maj, &min, &x, program_path) == 8) {
                 fclose(f);
                 return base;
             }
@@ -87,9 +91,9 @@ static void print_backtrace(FILE *out)
         unsigned long file_offset = base_addr ? (addr - base_addr) : addr;
 
         /* Build a command line: addr2line -e <exe> -f -C <offset> */
-        char cmd[256];
+        char cmd[1024];
         snprintf(cmd, sizeof(cmd), "addr2line -i -e %s -f -C 0x%lx",
-                 program_name,        /* set earlier to argv[0] */
+                 program_path,        /* set earlier to argv[0] */
                  file_offset);
 
         /* Run the command and capture its output */
