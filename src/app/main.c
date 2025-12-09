@@ -28,6 +28,116 @@
 #include <time.h>
 #include <stdarg.h>
 
+#define _GNU_SOURCE         /* for backtrace_symbols_fd */
+#include <execinfo.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <dlfcn.h>          /* for dladdr()   */
+#ifdef __cplusplus
+#include <cxxabi.h>         /* for __cxa_demangle */
+#endif
+
+static char *program_name;
+
+/* Get the base address of the executable from /proc/self/maps
+ * This is needed for PIE executables where backtrace() returns
+ * runtime addresses but addr2line expects file offsets. */
+static unsigned long get_executable_base_address(void)
+{
+    FILE *f = fopen("/proc/self/maps", "r");
+    if (!f)
+        return 0;
+
+    char line[512];
+    unsigned long base = 0;
+    while (fgets(line, sizeof(line), f)) {
+        /* Look for the line containing the executable path */
+        if (strstr(line, program_name)) {
+            /* Parse the start address from the first field (format: "start-end perms ...") */
+            if (sscanf(line, "%lx-", &base) == 1) {
+                fclose(f);
+                return base;
+            }
+        }
+    }
+    fclose(f);
+    return 0;
+}
+
+static void print_backtrace(FILE *out)
+{
+    void *buf[64];
+    int size = backtrace(buf, (int)sizeof(buf)/sizeof(buf[0]));
+    char **symbols = backtrace_symbols(buf, size);
+    if (!symbols) {
+        fprintf(out, "  backtrace_symbols() failed\n");
+        return;
+    }
+
+    /* Get the base address for PIE executables */
+    unsigned long base_addr = get_executable_base_address();
+
+    for (int i = 0; i < size; ++i) {
+        /* Get the raw address from backtrace */
+        unsigned long addr = (unsigned long)buf[i];
+
+        /* For PIE executables, subtract the base address to get the file offset */
+        unsigned long file_offset = base_addr ? (addr - base_addr) : addr;
+
+        /* Build a command line: addr2line -e <exe> -f -C <offset> */
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "addr2line -i -e %s -f -C 0x%lx",
+                 program_name,        /* set earlier to argv[0] */
+                 file_offset);
+
+        /* Run the command and capture its output */
+        FILE *p = popen(cmd, "r");
+        if (p) {
+            char func[256] = {0};
+            char fileline[256] = {0};
+            if (fgets(func, sizeof(func), p) && fgets(fileline, sizeof(fileline), p)) {
+				/* Trim newlines */
+				func[strcspn(func, "\n")] = '\0';
+				fileline[strcspn(fileline, "\n")] = '\0';
+				fprintf(out, "  #%02d %s at %s\n", i, func, fileline);
+			}
+            pclose(p);
+        } else {
+            fprintf(out, "  #%02d %s\n", i, symbols[i]);
+        }
+    }
+    free(symbols);
+}
+
+/* -------------------------------------------------------------
+   Signal handler that prints a stack trace and aborts
+   ------------------------------------------------------------- */
+static void sigsegv_handler(int sig, siginfo_t *si, void *unused)
+{
+    (void)sig; (void)si; (void)unused;
+    fprintf(stderr, "\n*** Caught signal %d (segfault) ***\n", sig);
+    fprintf(stderr, "Stack trace (most recent call first):\n");
+    print_backtrace(stderr);
+    _exit(1);          /* async‑signal‑safe exit */
+}
+
+/* -------------------------------------------------------------
+   Install the handler (call early in main())
+   ------------------------------------------------------------- */
+static void install_segv_handler(void)
+{
+    struct sigaction sa;
+    sa.sa_sigaction = sigsegv_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+    if (sigaction(SIGSEGV, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+}
+
 static int quit;
 
 void sigint(int signo)
@@ -49,6 +159,9 @@ static int std_printf(const char *fmt, ...)
 	r = vfprintf(stdout, fmt, ap);
 	fflush(stdout);
 	va_end(ap);
+	if (strstr(fmt, "[BUG]") || strstr(fmt, "[ERROR]")) {
+		print_backtrace(stderr);
+	}
 	return r;
 }
 
@@ -59,11 +172,13 @@ static int err_printf(const char *fmt, ...)
 
 	if (!options.verbose && strstr(fmt, "[VERBOSE]"))
 		return 0;
-
 	va_start(ap, fmt);
 	r = vfprintf(stderr, fmt, ap);
 	fflush(stderr);
 	va_end(ap);
+	if (strstr(fmt, "[BUG]") || strstr(fmt, "[ERROR]")) {
+		print_backtrace(stderr);
+	}
 	return r;
 }
 
@@ -537,6 +652,8 @@ int main(int argc, char **argv)
 	struct rumr_client_state client_st;
 	char *argflags;
 
+	program_name = argv[0];
+	install_segv_handler();
 	check_lockdown();
 
 #if UMR_GUI
