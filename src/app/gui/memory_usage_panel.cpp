@@ -691,6 +691,10 @@ private:
 			uint64_t total_considered_memory = 0;
 			for (int j = i; j < ARRAY_SIZE(mem_type_title); j++)
 				total_considered_memory += show_mem_type[j] ? total_per_cat[j] : 0;
+
+			if (!total_considered_memory)
+				continue;
+
 			float r = total_per_cat[i] / (float) total_considered_memory;
 
 			ImVec2 cat_size, remain_base, remain_size;
@@ -920,19 +924,21 @@ private:
 				}
 			}
 
-			float ratio = closest / (float)total;
+			if (total) {
+				float ratio = closest / (float)total;
 
-			assert(cut >= begin && cut <= end);
-			ImVec2 size_left, base_right, size_right;
-			update_bbox(base, size, ratio, size_left, base_right, size_right);
+				assert(cut >= begin && cut <= end);
+				ImVec2 size_left, base_right, size_right;
+				update_bbox(base, size, ratio, size_left, base_right, size_right);
 
-			if (end == begin + 1) {
-				draw_treemap(snapshot, begin, begin, base, size_left);
-				draw_treemap(snapshot, end, end, base_right, size_right);
-			} else {
-				assert(cut != end);
-				draw_treemap(snapshot, begin, cut, base, size_left);
-				draw_treemap(snapshot, cut + 1, end, base_right, size_right);
+				if (end == begin + 1) {
+					draw_treemap(snapshot, begin, begin, base, size_left);
+					draw_treemap(snapshot, end, end, base_right, size_right);
+				} else {
+					assert(cut != end);
+					draw_treemap(snapshot, begin, cut, base, size_left);
+					draw_treemap(snapshot, cut + 1, end, base_right, size_right);
+				}
 			}
 		}
 	}

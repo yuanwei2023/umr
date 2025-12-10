@@ -529,9 +529,7 @@ char * peak_bo_using_fb_metadata(struct umr_asic *asic, JSON_Object *md,
 		json_object_set_number(json_object(answer), "width", width);
 		json_object_set_number(json_object(answer), "height", height);
 	}
-	close(dmabuf_fd);
-	close(gpu_fd);
-	close(pid_fd);
+
 	return error;
 }
 

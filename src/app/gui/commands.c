@@ -179,6 +179,7 @@ static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int m
 	char folder[PATH_MAX], node[512];
 	struct stat statbuf;
 	__ino_t render_ino, card_ino;
+	bool drm_client_ids_owned = drm_client_ids == NULL;
 	int i;
 	sprintf(folder, "/proc/%d/fd", pid);
 
@@ -191,11 +192,11 @@ static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int m
 	/* Find the ino of the render/card nodes. */
 	sprintf(node, "/dev/dri/by-path/pci-%s-render", pci_name);
 	if (stat(node, &statbuf) < 0)
-		return 0;
+		goto out;
 	render_ino = statbuf.st_ino;
 	sprintf(node, "/dev/dri/by-path/pci-%s-card", pci_name);
 	if (stat(node, &statbuf) < 0)
-		return 0;
+		goto out;
 	card_ino = statbuf.st_ino;
 
 	DIR *d = opendir(folder);
@@ -241,6 +242,9 @@ static int find_amdgpu_fd(unsigned pid, const char *pci_name, int *result, int m
 		}
 		closedir(d);
 	}
+out:
+	if (drm_client_ids_owned)
+		free(drm_client_ids);
 	close(dirfd);
 	return num_fds;
 }
@@ -443,7 +447,7 @@ JSON_Array *parse_kms_framebuffer_sysfs_file(struct umr_asic *asic, const char *
 
 		JSON_Value *layers = json_value_init_array();
 		content = strstr(content, "layers:");
-		next_framebuffer = strstr(content, "framebuffer[");
+		next_framebuffer = content ? strstr(content, "framebuffer[") : NULL;
 		int layer_id = 0;
 		while (content) {
 			JSON_Value *layer = json_value_init_object();
@@ -666,7 +670,7 @@ static bool parse_fdinfo_entry(const char *content, const char *dev_id, bool lim
 
 		while (cm && isspace(*cm))
 			cm++;
-		if (!cm) {
+		if (*cm == '\0') {
 			free(key_name);
 			continue;
 		}
@@ -844,13 +848,16 @@ JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info)
 	for (unsigned i = 0; i < nlines;) {
 		if (strncmp(lines[i], "pid", 3) != 0) {
 			printf("Incorrect line start %d '%s'. Aborting\n", i, lines[i]);
+			free(lines);
 			return NULL;
 		}
 		const char *cursor = lines[i] + 3;
 
 		if (is_vm_info) {
-			if (*cursor != ':')
+			if (*cursor != ':') {
+				free(lines);
 				return NULL;
+			}
 			cursor++;
 		}
 		while (isspace(*cursor)) cursor++;
@@ -886,8 +893,10 @@ JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info)
 				const char *cmd_prefix = is_vm_info ? "Process:" : "command ";
 				const char *cmd_end = is_vm_info ? " ----------" : ":";
 				cursor = strstr(cursor, cmd_prefix);
-				if (cursor == NULL)
+				if (cursor == NULL) {
+					free(lines);
 					return NULL;
+				}
 				cursor += strlen(cmd_prefix);
 				char *end = strstr(cursor, cmd_end);
 				json_object_set_string_with_len(p, "command", cursor, end - cursor);
@@ -1586,7 +1595,8 @@ void init_asics(void) {
 	}
 	free(enum_asics);
 
-	fclose(opt.test_log_fd);
+	if (opt.test_log_fd)
+		fclose(opt.test_log_fd);
 	free(ip_discovery_dump);
 }
 
@@ -1897,7 +1907,7 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 			return false;
 		}
 		fcntl(fileno(data->tracing_pipe_fd), F_SETFL, O_NONBLOCK);
-		data->mapping = calloc(8, sizeof(struct activity_capture_data));
+		data->mapping = calloc(8, sizeof(struct pid_tgid_mapping));
 		data->mapping_count = 0;
 		data->mapping_capacity = 8;
 		data->client_names = mode == 1;
@@ -2104,7 +2114,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 	while (cursor && *cursor == ' ') cursor++;
 
 	/* Push this to client. */
-	int s = eol ? (eol - cursor) : (int)strlen(cursor);
+	int s = eol - cursor;
 
 	if (s == 0)
 		return false;
@@ -2409,8 +2419,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 
 			/* If this asic has been discovered through ip_discovery, send the dump to the client
-			 * so it can recreate it.
-			 */
+			* so it can recreate it.
+			*/
 			if (asics[i]->was_ip_discovered && ip_discovery_dumps[i]) {
 				int len = strlen(ip_discovery_dumps[i]);
 				json_object_set_number(json_object(as), "ip_discovery_offset", *raw_data_size);
@@ -2875,13 +2885,12 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			{"AVG_GPU",  0, AMDGPU_PP_SENSOR_GPU_POWER, SENSOR_WAIT },
 			{"GPU_LOAD", 0, AMDGPU_PP_SENSOR_GPU_LOAD, SENSOR_IDENTITY },
 			{"MEM_LOAD", 0, AMDGPU_PP_SENSOR_MEM_LOAD, SENSOR_IDENTITY },
-			{NULL, 0, 0, 0},
 		};
 		answer = json_value_init_object();
 		if (asic->fd.sensors) {
 			uint32_t gpu_power_data[32];
 			JSON_Array *values = json_array(json_value_init_array());
-			for (int i = 0; p_info[i].regname; i++){
+			for (int i = 0; i < (int)ARRAY_SIZE(p_info); i++){
 				int size = 4;
 				p_info[i].value = 0;
 				gpu_power_data[0] = 0;

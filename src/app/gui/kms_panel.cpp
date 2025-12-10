@@ -443,7 +443,7 @@ public:
 		ImGui::EndTable();
 
 		/* Draw the planes -> crtc lines */
-		for (auto it: crtc_from_planes) {
+		for (const auto &it: crtc_from_planes) {
 			int crtc = it.first;
 			ImVec4 frame = crtc_frames[crtc];
 			ImU32 col = crtc_colors[crtc];

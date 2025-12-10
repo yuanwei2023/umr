@@ -364,14 +364,14 @@ struct AsicData {
 			asic = umr_discover_asic_by_did(&options, did, printf, &tryipdiscovery);
 		}
 
-		if (strlen(asic->options.pci.name) == 0)
-			strncpy(asic->options.pci.name, json_object_get_string(answer, "pci_name"),
-					  sizeof(asic->options.pci.name));
-
 		if (!asic) {
 			fprintf(stderr, "Failed to create asic, aborting.\n");
 			abort();
 		}
+
+		if (strlen(asic->options.pci.name) == 0)
+			strncpy(asic->options.pci.name, json_object_get_string(answer, "pci_name"),
+					  sizeof(asic->options.pci.name));
 
 		asic->instance = instance;
 

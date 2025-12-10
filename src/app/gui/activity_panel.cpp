@@ -420,18 +420,18 @@ struct DrmSchedJob {
 					break;
 
 				for (int i = job_index - 1; i >= 0; i--) {
-					const DrmSchedJob *j = jobs[i];
+					const DrmSchedJob *sj = jobs[i];
 
 					/* Only consider jobs running on the same hw queue. */
-					if (timeline != j->execute_timeline)
+					if (timeline != sj->execute_timeline)
 						continue;
 
 					/* Events that end before we start aren't relevant. */
-					if (j->end_ts() <= this_hw_submit_ts)
+					if (sj->end_ts() <= this_hw_submit_ts)
 						break;
 
-					if (j == 0 || (j->end_ts() > _hw_exec_ts))
-						_hw_exec_ts = j->end_ts();
+					if (j == 0 || (sj->end_ts() > _hw_exec_ts))
+						_hw_exec_ts = sj->end_ts();
 				}
 			}
 		}
@@ -2128,7 +2128,7 @@ private:
 		int total_in_bucket = 0;
 
 		highlight_by_duration.min = highlight_by_duration.max = 0;
-		for (int i = 0; i < n_buckets; i++) {
+		for (int i = 0; i < n_buckets && largest_value; i++) {
 			const float left = hist_pos.x + i * full_bucket_w  + i * bucket_spacing;
 			const float right = left + full_bucket_w;
 
