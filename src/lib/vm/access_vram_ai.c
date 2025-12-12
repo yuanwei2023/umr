@@ -1356,7 +1356,7 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 
 invalid_page:
 	if (vm.asic->options.user_queue.state.active) {
-		vm.asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx64 " from user queue '%s'n", address, vm.asic->options.user_queue.clientid);
+		vm.asic->mem_funcs.vm_message("[ERROR]: No valid mapping for 0x%" PRIx64 " from user queue '%s'\n", address, vm.asic->options.user_queue.clientid);
 	} else {
 		vm.asic->mem_funcs.vm_message("[ERROR]: No valid mapping for %d@0x%" PRIx64 "\n", vmid, address);
 	}
