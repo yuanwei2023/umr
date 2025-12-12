@@ -672,7 +672,6 @@ int main(int argc, char **argv)
 
 	program_name = get_basename(argv[0]);
 	install_segv_handler();
-	print_backtrace(stderr);
 	check_lockdown();
 
 #if UMR_GUI
