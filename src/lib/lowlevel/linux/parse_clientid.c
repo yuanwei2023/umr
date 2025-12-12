@@ -93,7 +93,10 @@ static int init_gfx9_queue(struct umr_asic *asic, int x, int *init)
             asic->options.user_queue.client_info.queue[x].rb_wptr_poll_value %= asic->options.user_queue.client_info.queue[x].rb_buf_size;
             asic->options.user_queue.client_info.queue[x].hqd_rptr_value %= asic->options.user_queue.client_info.queue[x].rb_buf_size;
 
-            // TODO: use AQL_CONTROL to see if we need to use say USER_QUEUE_COMPUTE_PM4 ...
+            // Detect PM4 based queues
+            if ((mqdwords[181] & 1) == 0) {
+                asic->options.user_queue.client_info.queue[x].queue_type = UMR_QUEUE_COMPUTE_PM4;
+            }
 
             // TODO: ctx_save support?
 
@@ -225,7 +228,10 @@ static int init_gfx10_queue(struct umr_asic *asic, int x, int *init)
 
             // GFX10 compute queue
 
-            // TODO: use AQL_CONTROL to see if we need to use say USER_QUEUE_COMPUTE_PM4 ...
+            // Detect PM4 based queues
+            if ((mqdwords[181] & 1) == 0) {
+                asic->options.user_queue.client_info.queue[x].queue_type = UMR_QUEUE_COMPUTE_PM4;
+            }
 
             // TODO: ctx_save support?
 
@@ -357,7 +363,10 @@ static int init_gfx11_queue(struct umr_asic *asic, int x, int *init)
 
             // GFX11 compute queue
 
-            // TODO: use AQL_CONTROL to see if we need to use say USER_QUEUE_COMPUTE_PM4 ...
+            // Detect PM4 based queues
+            if ((mqdwords[181] & 1) == 0) {
+                asic->options.user_queue.client_info.queue[x].queue_type = UMR_QUEUE_COMPUTE_PM4;
+            }
 
             // TODO: ctx_save support?
 
@@ -488,7 +497,10 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
 
             // GFX12 compute queue
 
-            // TODO: use AQL_CONTROL to see if we need to use say USER_QUEUE_COMPUTE_PM4 ...
+            // Detect PM4 based queues
+            if ((mqdwords[181] & 1) == 0) {
+                asic->options.user_queue.client_info.queue[x].queue_type = UMR_QUEUE_COMPUTE_PM4;
+            }
 
             // TODO: ctx_save support?
 
