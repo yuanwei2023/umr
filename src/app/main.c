@@ -70,6 +70,20 @@ static unsigned long get_executable_base_address(void)
     return 0;
 }
 
+static char *get_basename(char *comm)
+{
+	char *p = strstr(comm, "/");
+	if (p) {
+		++p;
+		while (strstr(p, "/")) {
+			p = strstr(p, "/") + 1;
+		}
+		return p;
+	} else {
+		return comm;
+	}
+}
+
 static void print_backtrace(FILE *out)
 {
     void *buf[64];
@@ -656,8 +670,9 @@ int main(int argc, char **argv)
 	struct rumr_client_state client_st;
 	char *argflags;
 
-	program_name = argv[0];
+	program_name = get_basename(argv[0]);
 	install_segv_handler();
+	print_backtrace(stderr);
 	check_lockdown();
 
 #if UMR_GUI
