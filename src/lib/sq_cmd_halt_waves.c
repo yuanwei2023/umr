@@ -30,8 +30,7 @@ static struct umr_reg *find_sq_cmd(struct umr_asic *asic)
 	if (asic->family == FAMILY_SI)
 		return 0;
 
-	struct umr_reg *reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition,
-						  asic->family >= FAMILY_GFX11 ? "regSQ_CMD" : "mmSQ_CMD");
+	struct umr_reg *reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmSQ_CMD");
 	if (!reg)
 		asic->err_msg("[BUG]: Cannot find SQ_CMD register in umr_sq_cmd_halt_waves()\n");
 	return reg;
