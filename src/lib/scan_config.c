@@ -181,176 +181,182 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 {
 	FILE *f;
 	char fname[256];
-	int r;
+	int r, maj, min;
+
+	r = umr_gfx_get_ip_ver(asic, &maj, &min);
+	if (asic->options.no_kernel && r) {
+		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		return -1;
+	}
 
 	if (asic->options.no_kernel) {
-		struct umr_ip_block *ip;
-
-		ip = umr_find_ip_block(asic, "gfx", asic->options.vm_partition);
-		if (!ip) {
-			asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
+		r = -1;
+		asic->family = FAMILY_CONFIGURE;
+	} else {
+		// don't read config if virtual and not using a test vector
+		if (!asic->options.test_log && asic->options.is_virtual)
 			return -1;
+
+		// read memory sizes
+		asic->config.gtt_size = read_int(asic->options.pci.name, "mem_info_gtt_total");
+		asic->config.vis_vram_size = read_int(asic->options.pci.name, "mem_info_vis_vram_total");
+		asic->config.vram_size = read_int(asic->options.pci.name, "mem_info_vram_total");
+
+		// try to read xgmi info
+		asic->config.xgmi.device_id = read_int_drm(asic->instance, "xgmi_device_id");
+		if (xgmi_scan && asic->config.xgmi.device_id) {
+			int x, y;
+
+			asic->config.xgmi.hive_id = read_int_drm(asic->instance, "xgmi_hive_info/xgmi_hive_id");
+			for (x =  0; x < UMR_MAX_XGMI_DEVICES; x++) {
+				char buf[64];
+				snprintf(buf, sizeof(buf)-1, "xgmi_hive_info/node%d/xgmi_device_id", x+1);
+				asic->config.xgmi.nodes[x].node_id = read_int_drm(asic->instance, buf);
+			}
+
+			// now map instances to node ids
+			for (x = 0; asic->config.xgmi.nodes[x].node_id; x++) {
+				for (y = 0; y < UMR_MAX_XGMI_DEVICES; y++) {
+					uint64_t z;
+					z = read_int_drm(y, "xgmi_device_id");
+					if (z == asic->config.xgmi.nodes[x].node_id) {
+						asic->config.xgmi.nodes[x].instance = y;
+						break;
+					}
+				}
+			}
+
+			// now load all of the devices other than this one ...
+			for (x = 0; asic->config.xgmi.nodes[x].node_id; x++) {
+				if (asic->instance != asic->config.xgmi.nodes[x].instance) {
+					struct umr_options options;
+					memset(&options, 0, sizeof options);
+					options.instance = asic->config.xgmi.nodes[x].instance;
+					options.verbose = asic->options.verbose;
+					options.use_colour = asic->options.use_colour;
+					asic->config.xgmi.nodes[x].asic = umr_discover_asic(&options, asic->err_msg);
+				} else {
+					asic->config.xgmi.nodes[x].asic = asic;
+				}
+			}
+			asic->options.use_xgmi = 1;
+		}
+		// read vbios version
+		snprintf(fname, sizeof(fname)-1, "/sys/bus/pci/devices/%s/vbios_version", asic->options.pci.name);
+		f = fopen(fname, "r");
+		if (f) {
+			if (fgets(asic->config.vbios_version, sizeof(asic->config.vbios_version)-1, f))
+				asic->config.vbios_version[strlen(asic->config.vbios_version)-1] = 0; // remove newline...
+			fclose(f);
 		}
 
-		switch (ip->discoverable.maj) {
+		/* process FW block */
+		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_firmware_info", asic->instance);
+		f = fopen(fname, "r");
+		if (!f)
+			goto gca_config;
+		r = 0;
+		memset(&asic->config.fw, 0, sizeof asic->config.fw);
+		while (r < UMR_MAX_FW && fgets(fname, sizeof(fname)-1, f)) {
+			char *p;
+			fname[strlen(fname)-1] = 0;
+			p = strstr(fname, "feature");
+			if (p) {
+				char t1[64];
+				p[-1] = 0;
+				strcpy(asic->config.fw[r].name, fname);
+				if (sscanf(p, "feature version: %[0-9x], firmware version: 0x%" SCNx32 "\n", t1, &asic->config.fw[r].firmware_version) == 2) {
+					if (memcmp(t1, "0x", 2)) {
+						sscanf(t1, "%"SCNu32, &asic->config.fw[r].feature_version);
+					} else {
+						sscanf(t1, "%"SCNx32, &asic->config.fw[r].feature_version);
+					}
+					++r;
+				}
+			}
+		}
+		fclose(f);
+
+		/* process GFX block */
+	gca_config:
+		if (asic->options.test_log && !asic->options.test_log_fd) {
+			// grab from test harness instead of system
+			umr_test_harness_get_config_data(asic, (uint8_t *)asic->config.data);
+		} else {
+			// grab from system
+			snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gca_config", asic->instance);
+			f = fopen(fname, "rb");
+			if (!f)
+				return -1;
+			r = fread(asic->config.data, 1, sizeof(asic->config.data), f);
+			fclose(f);
+			if (r < 0)
+				return -1;
+
+			// store in test vector if open
+			if (asic->options.test_log && asic->options.test_log_fd) {
+				int x;
+				uint8_t *d = (uint8_t *)asic->config.data;
+				fprintf(asic->options.test_log_fd, "GCACONFIG = { ");
+				for (x = 0; x < r; x++) {
+					fprintf(asic->options.test_log_fd, "%02"PRIx8, d[x]);
+				}
+				fprintf(asic->options.test_log_fd, " }\n");
+			}
+		}
+
+		umr_scan_config_gca_data(asic);
+		r = 0;
+		asic->was_ip_discovered = 1;
+	}
+
+	if (asic->family == FAMILY_CONFIGURE) {
+		switch (maj) {
 			case 6:
 				asic->family = FAMILY_CIK;
-				asic->config.gfx.family = 0;
+				if (!asic->was_ip_discovered) {
+					asic->config.gfx.family = 0;
+				}
 				break;
 			case 7:
 				asic->family = FAMILY_SI;
-				asic->config.gfx.family = 120;
+				if (!asic->was_ip_discovered) {
+					asic->config.gfx.family = 120;
+				}
 				break;
 			case 8:
 				asic->family = FAMILY_VI;
-				asic->config.gfx.family = 130;
+				if (!asic->was_ip_discovered) {
+					asic->config.gfx.family = 130;
+				}
 				break;
 			case 9:
 				asic->family = FAMILY_AI;
-				asic->config.gfx.family = 141;
+				if (!asic->was_ip_discovered) {
+					asic->config.gfx.family = 141;
+				}
 				break;
 			case 10:
 				asic->family = FAMILY_NV;
-				asic->config.gfx.family = 143;
+				if (!asic->was_ip_discovered) {
+					asic->config.gfx.family = 143;
+				}
 				break;
 			case 11:
 				asic->family = FAMILY_GFX11;
-				asic->config.gfx.family = 145;
+				if (!asic->was_ip_discovered) {
+					asic->config.gfx.family = 145;
+				}
 				break;
 			case 12:
-				asic->family = FAMILY_GFX12;
+				if (min == 1) {
+					asic->family = FAMILY_GFX12_1;
+				} else {
+					asic->family = FAMILY_GFX12;
+				}
 				break;
 		}
-
-		return -1;
 	}
 
-	// don't read config if virtual and not using a test vector
-	if (!asic->options.test_log && asic->options.is_virtual)
-		return -1;
-
-	// read memory sizes
-	asic->config.gtt_size = read_int(asic->options.pci.name, "mem_info_gtt_total");
-	asic->config.vis_vram_size = read_int(asic->options.pci.name, "mem_info_vis_vram_total");
-	asic->config.vram_size = read_int(asic->options.pci.name, "mem_info_vram_total");
-
-	// try to read xgmi info
-	asic->config.xgmi.device_id = read_int_drm(asic->instance, "xgmi_device_id");
-	if (xgmi_scan && asic->config.xgmi.device_id) {
-		int x, y;
-
-		asic->config.xgmi.hive_id = read_int_drm(asic->instance, "xgmi_hive_info/xgmi_hive_id");
-		for (x =  0; x < UMR_MAX_XGMI_DEVICES; x++) {
-			char buf[64];
-			snprintf(buf, sizeof(buf)-1, "xgmi_hive_info/node%d/xgmi_device_id", x+1);
-			asic->config.xgmi.nodes[x].node_id = read_int_drm(asic->instance, buf);
-		}
-
-		// now map instances to node ids
-		for (x = 0; asic->config.xgmi.nodes[x].node_id; x++) {
-			for (y = 0; y < UMR_MAX_XGMI_DEVICES; y++) {
-				uint64_t z;
-				z = read_int_drm(y, "xgmi_device_id");
-				if (z == asic->config.xgmi.nodes[x].node_id) {
-					asic->config.xgmi.nodes[x].instance = y;
-					break;
-				}
-			}
-		}
-
-		// now load all of the devices other than this one ...
-		for (x = 0; asic->config.xgmi.nodes[x].node_id; x++) {
-			if (asic->instance != asic->config.xgmi.nodes[x].instance) {
-				struct umr_options options;
-				memset(&options, 0, sizeof options);
-				options.instance = asic->config.xgmi.nodes[x].instance;
-				options.verbose = asic->options.verbose;
-				options.use_colour = asic->options.use_colour;
-				asic->config.xgmi.nodes[x].asic = umr_discover_asic(&options, asic->err_msg);
-			} else {
-				asic->config.xgmi.nodes[x].asic = asic;
-			}
-		}
-		asic->options.use_xgmi = 1;
-	}
-	// read vbios version
-	snprintf(fname, sizeof(fname)-1, "/sys/bus/pci/devices/%s/vbios_version", asic->options.pci.name);
-	f = fopen(fname, "r");
-	if (f) {
-		if (fgets(asic->config.vbios_version, sizeof(asic->config.vbios_version)-1, f))
-			asic->config.vbios_version[strlen(asic->config.vbios_version)-1] = 0; // remove newline...
-		fclose(f);
-	}
-
-	/* process FW block */
-	snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_firmware_info", asic->instance);
-	f = fopen(fname, "r");
-	if (!f)
-		goto gca_config;
-	r = 0;
-	memset(&asic->config.fw, 0, sizeof asic->config.fw);
-	while (r < UMR_MAX_FW && fgets(fname, sizeof(fname)-1, f)) {
-		char *p;
-		fname[strlen(fname)-1] = 0;
-		p = strstr(fname, "feature");
-		if (p) {
-			char t1[64];
-			p[-1] = 0;
-			strcpy(asic->config.fw[r].name, fname);
-			if (sscanf(p, "feature version: %[0-9x], firmware version: 0x%" SCNx32 "\n", t1, &asic->config.fw[r].firmware_version) == 2) {
-				if (memcmp(t1, "0x", 2)) {
-					sscanf(t1, "%"SCNu32, &asic->config.fw[r].feature_version);
-				} else {
-					sscanf(t1, "%"SCNx32, &asic->config.fw[r].feature_version);
-				}
-				++r;
-			}
-		}
-	}
-	fclose(f);
-
-	/* process GFX block */
-gca_config:
-	if (asic->options.test_log && !asic->options.test_log_fd) {
-		// grab from test harness instead of system
-		umr_test_harness_get_config_data(asic, (uint8_t *)asic->config.data);
-	} else {
-		// grab from system
-		snprintf(fname, sizeof(fname)-1, "/sys/kernel/debug/dri/%d/amdgpu_gca_config", asic->instance);
-		f = fopen(fname, "rb");
-		if (!f)
-			return -1;
-		r = fread(asic->config.data, 1, sizeof(asic->config.data), f);
-		fclose(f);
-		if (r < 0)
-			return -1;
-
-		// store in test vector if open
-		if (asic->options.test_log && asic->options.test_log_fd) {
-			int x;
-			uint8_t *d = (uint8_t *)asic->config.data;
-			fprintf(asic->options.test_log_fd, "GCACONFIG = { ");
-			for (x = 0; x < r; x++) {
-				fprintf(asic->options.test_log_fd, "%02"PRIx8, d[x]);
-			}
-			fprintf(asic->options.test_log_fd, " }\n");
-		}
-	}
-
-	umr_scan_config_gca_data(asic);
-
-	if (asic->family == FAMILY_CONFIGURE) {
-		asic->was_ip_discovered = 1;
-		if (asic->config.gfx.family >= 145) {
-			asic->family = FAMILY_GFX11;
-		} else if (asic->config.gfx.family >= 143) {
-			asic->family = FAMILY_NV;
-		} else if (asic->config.gfx.family >= 141) {
-			asic->family = FAMILY_AI;
-		} else {
-			asic->family = FAMILY_VI;
-		}
-	}
-
-	return 0;
+	return r;
 }
