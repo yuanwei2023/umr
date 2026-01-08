@@ -69,6 +69,7 @@ uint64_t umr_read_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name)
 int umr_write_reg_by_name_by_ip(struct umr_asic *asic, char *ip, char *name, uint64_t value);
 
 // slice a full register into bits (shifted into LSB)
+uint64_t umr_bitslice_range(int start, int stop, uint64_t regvalue);
 uint64_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_reg_quiet(struct umr_asic *asic, struct umr_reg *reg, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_reg_by_name(struct umr_asic *asic, char *regname, char *bitname, uint64_t regvalue);

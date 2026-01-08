@@ -377,6 +377,20 @@ static uint32_t fetch_word(struct umr_asic *asic, struct umr_pm4_stream *stream,
 	}
 }
 
+static void emit_bitfields(struct umr_asic *asic, struct umr_stream_decode_ui *ui,
+                           uint64_t ib_addr, uint32_t ib_vmid,
+                           uint64_t reg_addr, uint32_t value)
+{
+	struct umr_reg *reg = umr_find_reg_by_addr(asic, reg_addr, NULL);
+	if (reg) {
+		int i;
+		for (i = 0; i < reg->no_bits; i++) {
+			uint32_t bf_value = (uint32_t)umr_bitslice_range(reg->bits[i].start, reg->bits[i].stop, value);
+			ui->add_field(ui, ib_addr, ib_vmid, reg->bits[i].regname, bf_value, NULL, 16, 32);
+		}
+	}
+}
+
 static void decode_pkt0(struct umr_asic *asic, struct umr_stream_decode_ui *ui, struct umr_pm4_stream *stream, uint64_t ib_addr, uint32_t ib_vmid)
 {
 	uint32_t n;
@@ -735,6 +749,9 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", fetch_word(asic, stream, n), umr_reg_name(asic, addr), 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 4 + 4 * n, ib_vmid, addr, fetch_word(asic, stream, n));
+					}
 					addr += 1;
 				}
 			}
@@ -745,6 +762,9 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", fetch_word(asic, stream, n), umr_reg_name(asic, addr), 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 4 + 4 * n, ib_vmid, addr, fetch_word(asic, stream, n));
+					}
 					addr += 1;
 				}
 			}
@@ -755,6 +775,9 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", fetch_word(asic, stream, n), umr_reg_name(asic, addr), 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 4 + 4 * n, ib_vmid, addr, fetch_word(asic, stream, n));
+					}
 					addr += 1;
 				}
 			}
@@ -765,6 +788,9 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				uint32_t n;
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", fetch_word(asic, stream, n), umr_reg_name(asic, addr), 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 4 + 4 * n, ib_vmid, addr, fetch_word(asic, stream, n));
+					}
 					addr += 1;
 				}
 			}
@@ -776,6 +802,9 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", BITS(fetch_word(asic, stream, 0), 28, 32), op_7a_index_str[BITS(fetch_word(asic, stream, 0), 28, 32)], 10, 32);
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, "REG", fetch_word(asic, stream, n), umr_reg_name(asic, addr), 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 4 + 4 * n, ib_vmid, addr, fetch_word(asic, stream, n));
+					}
 					addr += 1;
 				}
 			}
@@ -823,6 +852,9 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 				ui->add_field(ui, ib_addr + 4, ib_vmid, "INDEX", BITS(fetch_word(asic, stream, 0), 28, 32), NULL, 10, 32);
 				for (n = 1; n < stream->n_words; n++) {
 					ui->add_field(ui, ib_addr + 4 + 4 * n, ib_vmid, umr_reg_name(asic, addr), fetch_word(asic, stream, n), NULL, 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 4 + 4 * n, ib_vmid, addr, fetch_word(asic, stream, n));
+					}
 					addr += 1;
 				}
 			}
@@ -1884,6 +1916,9 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 				for (m = n = 0; n < stream->n_words; n += 2, ++m) {
 					ui->add_field(ui, ib_addr + 4 + 8 * m, ib_vmid, "REG_OFFSET", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
 					ui->add_field(ui, ib_addr + 8 + 8 * m, ib_vmid, "REG_DATA", fetch_word(asic, stream, n+1), NULL, 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 8 + 8 * m, ib_vmid, offset + BITS(fetch_word(asic, stream, n+0), 0, 16), fetch_word(asic, stream, n+1));
+					}
 				}
 			}
 			break;
@@ -1907,7 +1942,13 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET0", BITS(fetch_word(asic, stream, n+0), 0, 16), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 0, 16)), 16, 32);
 					ui->add_field(ui, ib_addr + 8 + 12 * m, ib_vmid, "REG_OFFSET1", BITS(fetch_word(asic, stream, n+0), 16, 32), umr_reg_name(asic, offset + BITS(fetch_word(asic, stream, n+0), 16, 32)), 16, 32);
 					ui->add_field(ui, ib_addr + 12 + 12 * m, ib_vmid, "REG_DATA0", fetch_word(asic, stream, n+1), NULL, 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 12 + 12 * m, ib_vmid, offset + BITS(fetch_word(asic, stream, n+0), 0, 16), fetch_word(asic, stream, n+1));
+					}
 					ui->add_field(ui, ib_addr + 16 + 12 * m, ib_vmid, "REG_DATA1", fetch_word(asic, stream, n+2), NULL, 16, 32);
+					if (asic->options.bitfields) {
+						emit_bitfields(asic, ui, ib_addr + 16 + 12 * m, ib_vmid, offset + BITS(fetch_word(asic, stream, n+0), 16, 32), fetch_word(asic, stream, n+2));
+					}
 				}
 			}
 			break;

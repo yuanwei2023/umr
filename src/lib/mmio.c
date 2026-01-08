@@ -183,12 +183,22 @@ uint64_t umr_bitslice_reg_quiet(struct umr_asic *asic, struct umr_reg *reg, char
 	(void)asic;
 	for (i = 0; i < reg->no_bits; i++) {
 		if (!strcmp(bitname, reg->bits[i].regname)) {
-			regvalue >>= reg->bits[i].start;
-			regvalue &= (1ULL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
-			return regvalue;
+			return umr_bitslice_range(reg->bits[i].start, reg->bits[i].stop, regvalue);
 		}
 	}
 	return 0xFFFFFFFFULL;
+}
+
+/**
+ * umr_bitslice_range - Extract bits from a value given start/stop positions
+ *
+ * Returns the bits from @regvalue between @start and @stop (inclusive).
+ */
+uint64_t umr_bitslice_range(int start, int stop, uint64_t regvalue)
+{
+	regvalue >>= start;
+	regvalue &= (1ULL << (stop - start + 1)) - 1;
+	return regvalue;
 }
 
 /**
@@ -208,9 +218,7 @@ uint64_t umr_bitslice_reg(struct umr_asic *asic, struct umr_reg *reg, char *bitn
 	int i;
 	for (i = 0; i < reg->no_bits; i++) {
 		if (!strcmp(bitname, reg->bits[i].regname)) {
-			regvalue >>= reg->bits[i].start;
-			regvalue &= (1ULL << (reg->bits[i].stop - reg->bits[i].start + 1)) - 1;
-			return regvalue;
+			return umr_bitslice_range(reg->bits[i].start, reg->bits[i].stop, regvalue);
 		}
 	}
 	asic->err_msg("[BUG]: Bitfield [%s] not found in reg [%s] on asic [%s]\n", bitname, reg->regname, asic->asicname);
