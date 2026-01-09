@@ -308,54 +308,119 @@ static const struct {
 	char *name;
 	unsigned event_no;
 } vgt_event_tags[] = {
-	{ "SAMPLE_STREAMOUTSTATS1", 1 },
-	{ "SAMPLE_STREAMOUTSTATS2", 2 },
-	{ "SAMPLE_STREAMOUTSTATS3", 3 },
-	{ "CACHE_FLUSH_TS", 4 },
-	{ "CACHE_FLUSH", 6 },
-	{ "CS_PARTIAL_FLUSH", 7 },
-	{ "VGT_STREAMOUT_RESET", 10 },
-	{ "END_OF_PIPE_INCR_DE", 11 },
-	{ "END_OF_PIPE_IB_END", 12 },
-	{ "RST_PIX_CNT", 13 },
-	{ "VS_PARTIAL_FLUSH", 15 },
-	{ "PS_PARTIAL_FLUSH", 16 },
-	{ "CACHE_FLUSH_AND_INV_TS_EVENT", 20 },
-	{ "ZPASS_DONE", 21 },
-	{ "CACHE_FLUSH_AND_INV_EVENT", 22 },
-	{ "PERFCOUNTER_START", 23 },
-	{ "PERFCOUNTER_STOP", 24 },
-	{ "PIPELINESTAT_START", 25 },
-	{ "PIPELINESTAT_STOP", 26 },
-	{ "PERFCOUNTER_SAMPLE", 27 },
-	{ "SAMPLE_PIPELINESTAT", 30 },
-	{ "SAMPLE_STREAMOUTSTATS", 32 },
-	{ "RESET_VTX_CNT", 33 },
-	{ "VGT_FLUSH", 36 },
-	{ "BOTTOM_OF_PIPE_TS", 40 },
-	{ "DB_CACHE_FLUSH_AND_INV", 42 },
-	{ "FLUSH_AND_INV_DB_DATA_TS", 43 },
-	{ "FLUSH_AND_INV_DB_META", 44 },
-	{ "FLUSH_AND_INV_CB_DATA_TS", 45 },
-	{ "FLUSH_AND_INV_CB_META", 46 },
-	{ "CS_DONE", 47 },
-	{ "PS_DONE", 48 },
-	{ "FLUSH_AND_INV_CB_PIXEL_DATA", 49 },
-	{ "THREAD_TRACE_START", 51 },
-	{ "THREAD_TRACE_STOP", 52 },
-	{ "THREAD_TRACE_FLUSH", 54 },
-	{ "THREAD_TRACE_FINISH", 55 },
+	{ "SAMPLE_STREAMOUTSTATS1", 0x1 },
+	{ "SAMPLE_STREAMOUTSTATS2", 0x2 },
+	{ "SAMPLE_STREAMOUTSTATS3", 0x3 },
+	{ "CACHE_FLUSH_TS", 0x4 },
+	{ "CONTEXT_DONE", 0x5 },
+	{ "CACHE_FLUSH", 0x6 },
+	{ "CS_PARTIAL_FLUSH", 0x7 },
+	{ "VGT_STREAMOUT_SYNC", 0x8 },
+	{ "SET_FE_ID", 0x9 },
+	{ "VGT_STREAMOUT_RESET", 0xa },
+	{ "END_OF_PIPE_INCR_DE", 0xb },
+	{ "END_OF_PIPE_IB_END", 0xc },
+	{ "RST_PIX_CNT", 0xd },
+	{ "BREAK_BATCH", 0xe },
+	{ "VS_PARTIAL_FLUSH", 0xf },
+	{ "PS_PARTIAL_FLUSH", 0x10 },
+	{ "FLUSH_HS_OUTPUT", 0x11 },
+	{ "FLUSH_DFSM", 0x12 },
+	{ "RESET_TO_LOWEST_VGT", 0x13 },
+	{ "CACHE_FLUSH_AND_INV_TS_EVENT", 0x14 },
+	{ "ZPASS_DONE", 0x15 },
+	{ "CACHE_FLUSH_AND_INV_EVENT", 0x16 },
+	{ "PERFCOUNTER_START", 0x17 },
+	{ "PERFCOUNTER_STOP", 0x18 },
+	{ "PIPELINESTAT_START", 0x19 },
+	{ "PIPELINESTAT_STOP", 0x1a },
+	{ "PERFCOUNTER_SAMPLE", 0x1b },
+	{ "SAMPLE_PIPELINESTAT", 0x1e },
+	{ "SO_VGTSTREAMOUT_FLUSH", 0x1f },
+	{ "SAMPLE_STREAMOUTSTATS", 0x20 },
+	{ "RESET_VTX_CNT", 0x21 },
+	{ "BLOCK_CONTEXT_DONE", 0x22 },
+	{ "CS_CONTEXT_DONE", 0x23 },
+	{ "VGT_FLUSH", 0x24 },
+	{ "TGID_ROLLOVER", 0x25 },
+	{ "SQ_NON_EVENT", 0x26 },
+	{ "SC_SEND_DB_VPZ", 0x27 },
+	{ "BOTTOM_OF_PIPE_TS", 0x28 },
+	{ "FLUSH_SX_TS", 0x29 },
+	{ "DB_CACHE_FLUSH_AND_INV", 0x2a },
+	{ "FLUSH_AND_INV_DB_DATA_TS", 0x2b },
+	{ "FLUSH_AND_INV_DB_META", 0x2c },
+	{ "FLUSH_AND_INV_CB_DATA_TS", 0x2d },
+	{ "FLUSH_AND_INV_CB_META", 0x2e },
+	{ "CS_DONE", 0x2f },
+	{ "PS_DONE", 0x30 },
+	{ "FLUSH_AND_INV_CB_PIXEL_DATA", 0x31 },
+	{ "SX_CB_RAT_ACK_REQUEST", 0x32 },
+	{ "THREAD_TRACE_START", 0x33 },
+	{ "THREAD_TRACE_STOP", 0x34 },
+	{ "THREAD_TRACE_MARKER", 0x35 },
+	{ "THREAD_TRACE_FLUSH", 0x36 },
+	{ "THREAD_TRACE_FINISH", 0x37 },
+	{ "PIXEL_PIPE_STAT_CONTROL", 0x38 },
+	{ "PIXEL_PIPE_STAT_DUMP", 0x39 },
+	{ "PIXEL_PIPE_STAT_RESET", 0x3a },
+	{ "CONTEXT_SUSPEND", 0x3b },
+	{ "OFFCHIP_HS_DEALLOC", 0x3c },
+	{ "ENABLE_NGG_PIPELINE", 0x3d },
+	{ "ENABLE_LEGACY_PIPELINE", 0x3e },
 	{ NULL, 0 },
 };
 
-static char *vgt_event_decode(unsigned tag)
+static char *vgt_event_decode(unsigned tag, int gfx_maj)
 {
 	unsigned x;
+	char* name = NULL;
+
+	// Check base table.
 	for (x = 0; vgt_event_tags[x].name; x++) {
-		if (vgt_event_tags[x].event_no == tag)
-			return vgt_event_tags[x].name;
+		if (vgt_event_tags[x].event_no == tag) {
+			name = vgt_event_tags[x].name;
+		}
 	}
-	return "<unknown event>";
+
+	// Add overrides for newer GFX versions.
+	if (gfx_maj >= 10) {
+		switch (tag) {
+			case 0x9:
+				if (gfx_maj >= 12) {
+					name = "EVENT_STATE_CHANGE";
+				} else {
+					name = NULL;
+				}
+				break;
+			case 0x15:
+				if (gfx_maj >= 11) {
+					name = "WAIT_SYNC";
+				}
+				break;
+			case 0x1c:
+				name = "FLUSH_ES_OUTPUT";
+				break;
+			case 0x1d:
+				name = "BIN_CONF_OVERRIDE_CHECK";
+				break;
+			case 0x36:
+				name = "THREAD_TRACE_DRAW";
+				break;
+			case 0x3e:
+				if (gfx_maj == 11 || gfx_maj == 12) {
+					name = "ENABLE_PIPELINE_NOT_USED";
+				}
+				break;
+			case 0x3f:
+				name = "DRAW_DONE";
+				break;
+			default:
+				break;
+		}
+	}
+
+	return name ? name : "<unknown event>";
 }
 
 #define BITS(x, a, b) (unsigned long)((x >> (a)) & ((1ULL << ((b)-(a)))-1))
@@ -674,7 +739,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
 			break;
 		case 0x49: // RELEASE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6)), 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 8), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TCL1_VOL_ACTION_ENA", BITS(fetch_word(asic, stream, 0), 12, 13), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TC_VOL_ACTION_ENA", BITS(fetch_word(asic, stream, 0), 13, 14), NULL, 10, 32);
@@ -1092,7 +1157,7 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 			}
 			break;
 		case 0x49: // RELEASE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6)), 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 9), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TCL1_VOL_ACTION_ENA", BITS(fetch_word(asic, stream, 0), 12, 13), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TC_VOL_ACTION_ENA", BITS(fetch_word(asic, stream, 0), 13, 14), NULL, 10, 32);
@@ -1423,7 +1488,7 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
 			break;
 		case 0x49: // RELEASE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6)), 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 10), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TCL1_VOL_ACTION_ENA", BITS(fetch_word(asic, stream, 0), 12, 13), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TC_VOL_ACTION_ENA", BITS(fetch_word(asic, stream, 0), 13, 14), NULL, 10, 32);
@@ -1707,7 +1772,7 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
 			break;
 		case 0x49: // RELEASE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6)), 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 11), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "GCR_CNTL", BITS(fetch_word(asic, stream, 0), 12, 24), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "CACHE_POLICY", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
@@ -2314,7 +2379,7 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DATA_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
 			break;
 		case 0x49: // RELEASE_MEM
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6)), 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 12), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "GCR_CNTL", BITS(fetch_word(asic, stream, 0), 12, 24), NULL, 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "TEMPORAL", BITS(fetch_word(asic, stream, 0), 25, 27), NULL, 10, 32);
