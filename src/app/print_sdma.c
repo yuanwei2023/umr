@@ -20,7 +20,7 @@ void umr_print_sdma(struct umr_asic *asic)
 	int maj, min;
 	char *ipname = "sdma";
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	if (maj >= 10)
 		ipname = "gfx";
 	printf("\n");

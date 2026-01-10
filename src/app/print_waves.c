@@ -53,7 +53,7 @@ void umr_print_waves(struct umr_asic *asic)
 	char linebuf[256];
 	struct umr_shader_reg_pair *regs;
 
-	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
+	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
 
 	if (asic->options.halt_waves) {
 		if (umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100) != 0) {

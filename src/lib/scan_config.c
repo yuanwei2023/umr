@@ -183,7 +183,7 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 	char fname[256];
 	int r, maj, min;
 
-	r = umr_gfx_get_ip_ver(asic, &maj, &min);
+	r = umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	if (asic->options.no_kernel && r) {
 		asic->err_msg("[BUG]: Cannot find a 'gfx' IP block in this ASIC\n");
 		return -1;

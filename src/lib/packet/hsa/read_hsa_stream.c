@@ -85,7 +85,7 @@ static void parse_kernel_object(struct umr_asic *asic, struct umr_hsa_stream *st
 	char gfxname[64], tmp[256];
 	int gfx_maj, gfx_min;
 
-	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
+	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
 
 	// read the kernel_object buffer
 	if (umr_read_vram(asic, asic->options.vm_partition, 0,

@@ -277,7 +277,7 @@ static void process_shaders(struct umr_asic *asic, int vm_partition, uint32_t vm
 		// SHADER_STAGES was programmed so let's setup to process it
 		stage_reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(stages->regname, ".") + 1);
 		// we'll need to track which gfx version we are since bits come and go
-		umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
+		umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
 	}
 #endif
 

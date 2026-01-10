@@ -2272,7 +2272,7 @@ static void waves_to_json(struct umr_asic *asic, JSON_Object *out) {
 	int start = -1, stop = -1;
 	struct umr_wave_data *wd, *owd;
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	/* Scan ring for disassembly. */
 	struct umr_packet_stream *stream = umr_packet_decode_ring(

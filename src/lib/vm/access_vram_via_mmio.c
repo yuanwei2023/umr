@@ -50,7 +50,7 @@ int umr_access_vram_via_mmio(struct umr_asic *asic, uint64_t address, uint32_t s
 	uint32_t *out = dst;
 	int maj, min;
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	/* Determine the appropriate MMIO register set based on GFX IP version */
 	if (maj >= 10) {

@@ -754,7 +754,7 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
             goto error;
         }
 
-		umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min);
+		umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
 
         // disable VM translations using the queue state (in case the caller has called this more than once)
         // at this point all VM page walks/read/writes will use live MMIO registers to access VM context registers.

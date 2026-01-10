@@ -54,7 +54,7 @@ int umr_shader_disasm(struct umr_asic *asic,
 	size_t n;
 	char tmp[256], *cpuname, *features;
 
-	if (umr_gfx_get_ip_ver(asic, &maj, &min) < 0 || maj < 8) {
+	if (umr_gfx_get_ip_ver(asic, &maj, &min, NULL) < 0 || maj < 8) {
 		// LLVM disassembly not supported for older targets.
 		return 0;
 	}

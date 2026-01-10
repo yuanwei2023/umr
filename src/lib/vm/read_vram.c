@@ -58,7 +58,7 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 {
 	int maj, min;
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	// only aligned reads
 	if ((address & 3) || (size & 3)) {

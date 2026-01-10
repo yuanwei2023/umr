@@ -509,7 +509,7 @@ int umr_get_wave_status_via_mmio(struct umr_asic *asic, unsigned se, unsigned sh
 
 	memset(buf, 0, sizeof buf);
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	no_fields = 0;
 
 	umr_grbm_select_index(asic, se, sh, cu);
@@ -544,7 +544,7 @@ int umr_parse_wave_data_gfx(struct umr_asic *asic, struct umr_wave_status *ws, c
 	int maj, min;
 	uint32_t x;
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 8: if (buf[0] != 0) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX8\n"); return -1; }; break;
 		case 9: if (buf[0] != 1) { asic->err_msg("[ERROR]: Incorrect wave_data for GFX9\n"); return -1; }; break;
@@ -685,7 +685,7 @@ int umr_wave_data_init(struct umr_asic *asic, struct umr_wave_data *wd)
 	int maj, min;
 
 	memset(wd, 0, sizeof(*wd));
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 8:
 			wd->reg_names = gfx8_regs;
@@ -865,7 +865,7 @@ int umr_wave_data_get_bit_info(struct umr_asic *asic, struct umr_wave_data *wd, 
 int umr_wave_data_get_flag_valid(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -890,7 +890,7 @@ int umr_wave_data_get_flag_valid(struct umr_asic *asic, struct umr_wave_data *wd
 int umr_wave_data_get_flag_trap_en(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -915,7 +915,7 @@ int umr_wave_data_get_flag_trap_en(struct umr_asic *asic, struct umr_wave_data *
 int umr_wave_data_get_flag_halt(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -941,7 +941,7 @@ int umr_wave_data_get_flag_halt(struct umr_asic *asic, struct umr_wave_data *wd)
 int umr_wave_data_get_flag_fatal_halt(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -966,7 +966,7 @@ int umr_wave_data_get_flag_fatal_halt(struct umr_asic *asic, struct umr_wave_dat
 int umr_wave_data_get_flag_priv(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -991,7 +991,7 @@ int umr_wave_data_get_flag_priv(struct umr_asic *asic, struct umr_wave_data *wd)
 int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -1019,7 +1019,7 @@ int umr_wave_data_get_flag_wave64(struct umr_asic *asic, struct umr_wave_data *w
 int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data *wd, uint32_t *vmid, uint64_t *addr)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -1049,7 +1049,7 @@ int umr_wave_data_get_shader_pc_vmid(struct umr_asic *asic, struct umr_wave_data
 int umr_wave_data_get_flag_simd_id(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -1075,7 +1075,7 @@ int umr_wave_data_get_flag_simd_id(struct umr_asic *asic, struct umr_wave_data *
 int umr_wave_data_get_flag_wave_id(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7:
@@ -1101,7 +1101,7 @@ int umr_wave_data_get_flag_wave_id(struct umr_asic *asic, struct umr_wave_data *
 uint32_t umr_wave_data_num_of_sgprs(struct umr_asic *asic, struct umr_wave_data *wd)
 {
 	int maj, min;
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 6:
 		case 7: return (umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "SGPR_SIZE")) << 3;
@@ -1127,7 +1127,7 @@ char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_da
 {
 	int maj, min;
 	char str[256];
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	memset(str, 0, sizeof str);
 	switch (maj) {
 		case 6:

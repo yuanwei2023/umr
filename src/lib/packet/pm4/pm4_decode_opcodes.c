@@ -2475,7 +2475,7 @@ static void decode_pkt3(struct umr_asic *asic, struct umr_stream_decode_ui *ui, 
 {
 	int maj, min;
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	switch (maj) {
 		case 6:
@@ -2522,7 +2522,7 @@ struct umr_pm4_stream *umr_pm4_decode_stream_opcodes(struct umr_asic *asic, stru
 		s = s->next;
 	}
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	ui->start_ib(ui, ib_addr, ib_vmid, from_addr, from_vmid, nwords, 4);
 	ncodes = opcodes;

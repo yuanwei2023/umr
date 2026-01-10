@@ -31,10 +31,11 @@
  * @asic: The ASIC to query
  * @maj: Where to store the major revision
  * @min: Where to store the minor revision
+ * @rev: If not NULL, where to store the "rev" revision
  *
  * Returns -1 on error.
  */
-int umr_gfx_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
+int umr_gfx_get_ip_ver(struct umr_asic *asic, int *maj, int *min, int *rev)
 {
 	struct umr_ip_block *ip;
 
@@ -46,6 +47,10 @@ int umr_gfx_get_ip_ver(struct umr_asic *asic, int *maj, int *min)
 	if (ip) {
 		*maj = ip->discoverable.maj;
 		*min = ip->discoverable.min;
+
+		if (rev) {
+			*rev = ip->discoverable.rev;
+		}
 		return 0;
 	}
 	return -1;

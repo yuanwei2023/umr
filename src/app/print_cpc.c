@@ -49,7 +49,7 @@ void umr_print_cpc(struct umr_asic *asic)
 
 	asic->options.use_bank = 2;
 
-	umr_gfx_get_ip_ver(asic, &maj, &min);
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 	switch (maj) {
 		case 10:
 			max_me_num = 3;
