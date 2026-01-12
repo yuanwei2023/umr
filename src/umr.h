@@ -43,7 +43,7 @@
 
 #define UMR_MAX_MQD_QUEUES 32
 // max # of dwords in a MQD buffer read
-#define UMR_MAX_MQD_SIZE 2048
+#define UMR_MAX_MQD_SIZE 4096
 
 /* SQ_CMD halt/resume */
 enum umr_sq_cmd_halt_resume {
