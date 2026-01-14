@@ -53,6 +53,18 @@ Notably lacking:
 
 */
 
+/**
+ * init_gfx9_queue - Initialize GFX9 queue parameters from MQD
+ * @asic: ASIC structure containing queue configuration
+ * @x: Queue index to initialize
+ * @init: Output parameter set to 1 if initialization succeeds
+ *
+ * Parses the MQD (Memory Queue Descriptor) for GFX9 ASICs to extract queue
+ * parameters including base addresses, read/write pointers, and buffer sizes.
+ * Supports GFX, COMPUTE, and SDMA queue types.
+ *
+ * Return: 0 on success, -1 on error
+ */
 static int init_gfx9_queue(struct umr_asic *asic, int x, int *init)
 {
     uint32_t *mqdwords = asic->options.user_queue.client_info.queue[x].mqd_words;
@@ -148,6 +160,18 @@ static int init_gfx9_queue(struct umr_asic *asic, int x, int *init)
     return 0;
 }
 
+/**
+ * init_gfx10_queue - Initialize GFX10 queue parameters from MQD
+ * @asic: ASIC structure containing queue configuration
+ * @x: Queue index to initialize
+ * @init: Output parameter set to 1 if initialization succeeds
+ *
+ * Parses the MQD (Memory Queue Descriptor) for GFX10.x ASICs to extract queue
+ * parameters including base addresses, read/write pointers, and buffer sizes.
+ * Supports GFX, COMPUTE, and SDMA queue types.
+ *
+ * Return: 0 on success, -1 on error
+ */
 static int init_gfx10_queue(struct umr_asic *asic, int x, int *init)
 {
     uint32_t *mqdwords = asic->options.user_queue.client_info.queue[x].mqd_words;
@@ -283,6 +307,18 @@ static int init_gfx10_queue(struct umr_asic *asic, int x, int *init)
     return 0;
 }
 
+/**
+ * init_gfx11_queue - Initialize GFX11 queue parameters from MQD
+ * @asic: ASIC structure containing queue configuration
+ * @x: Queue index to initialize
+ * @init: Output parameter set to 1 if initialization succeeds
+ *
+ * Parses the MQD (Memory Queue Descriptor) for GFX11.x ASICs to extract queue
+ * parameters including base addresses, read/write pointers, and buffer sizes.
+ * Supports GFX, COMPUTE, and SDMA queue types.
+ *
+ * Return: 0 on success, -1 on error
+ */
 static int init_gfx11_queue(struct umr_asic *asic, int x, int *init)
 {
     uint32_t *mqdwords = asic->options.user_queue.client_info.queue[x].mqd_words;
@@ -417,6 +453,18 @@ static int init_gfx11_queue(struct umr_asic *asic, int x, int *init)
     return 0;
 }
 
+/**
+ * init_gfx12_queue - Initialize GFX12 queue parameters from MQD
+ * @asic: ASIC structure containing queue configuration
+ * @x: Queue index to initialize
+ * @init: Output parameter set to 1 if initialization succeeds
+ *
+ * Parses the MQD (Memory Queue Descriptor) for GFX12.x ASICs to extract queue
+ * parameters including base addresses, read/write pointers, and buffer sizes.
+ * Supports GFX, COMPUTE, and SDMA queue types.
+ *
+ * Return: 0 on success, -1 on error
+ */
 static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
 {
     uint32_t *mqdwords = asic->options.user_queue.client_info.queue[x].mqd_words;
@@ -552,122 +600,33 @@ static int init_gfx12_queue(struct umr_asic *asic, int x, int *init)
 }
 
 /**
- * umr_parse_clientid -- Parse the user_queue structure fields against debugfs
- * This allows UMR to bind to a specific user queue for debugging command submissions
- * that don't go through the kernel rings.
+ * parse_clients_file - Parse debugfs clients file to find matching client
+ * @asic: ASIC structure containing instance information
+ * @use_name: If non-zero, match client by command name
+ * @use_pid: If non-zero, match client by PID/tgid
+ * @client_named: If non-zero, client type was explicitly specified
+ * @p: Client identifier string (command name, PID, or client ID)
+ * @found: Output parameter set to 1 if matching client is found
  *
- * This begins with the "clientid" field in the structure which specifies what to bind to.
- * It has the rough form of 'client.queue' where both fields have multiple presentations.
+ * Reads and parses /sys/kernel/debug/dri/N/clients to find a client matching
+ * the provided identifier. Automatically detects KFD vs KGD client type if
+ * not explicitly specified by checking for the process in kfd/mqds.
  *
- * client string format (in any order):
- * clienttype,client,queue
- *
- * Where clientype is
- *    - kfd, for KFD queues
- *    - kgd, for KGD queues
- *
- * where client is
- *    - client=number, a client id
- *    - pid=number, a PID
- *    - comm=string, a command name
- *
- * where queue is
- *    - queue=number, a queue id
- *    - type=string, a queue type by string (gfx, compute, sdma)
- *    - active=string, first active by type (see type=)
- *
- * for instance: "kfd,comm=ollama,queue=2"
+ * Return: 0 on success, -1 on error
  */
-struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
+static int parse_clients_file(struct umr_asic *asic, int use_name, int use_pid, int client_named, char *p, int *found)
 {
-    int client_named = 0, use_name = 0, use_pid = 0, use_type = 0, found = 0, x;
-    int gfx_maj, gfx_min;
-    uint64_t queueid = 0, tmp;
-    char p[256], pp[256], str[256], path[512];
-    const char *ps, *pps;
+    char path[512];
     FILE *f;
-    struct umr_user_queue retq = { 0 }, tmpq = { 0 };
 
-    // save the current queue because we'll need to override it
-    retq.state.qidx = -1;
-    tmpq = asic->options.user_queue;
-
-    // default the queue index to -1 to indicate invalid
-    asic->options.user_queue.state.qidx = -1;
-
-    // if this is a rumr client we send the request remotely
-    if (asic->options.rumr_active) {
-        int r = rumr_client_user_queue_parse(asic);
-        if (!r) {
-            retq = asic->options.user_queue;
-            asic->options.user_queue = tmpq;
-            return retq;
-        } else {
-            asic->err_msg("[ERROR]: Could not fetch user queue info over rumr tunnel.\n");
-            return retq;
-        }
-    }
-
-    ps = cid;
-    memset(p, 0, sizeof p);
-    memset(pp, 0, sizeof pp);
-    while (*ps) {
-        // find next comma or end of string
-        pps = strstr(ps,",");
-        if (!pps) {
-            pps = ps + strlen(ps);
-        }
-
-        memset(str, 0, sizeof str);
-        memcpy(str, ps, (int)(pps - ps));
-        ps = pps;
-        if (*ps == ',')
-            ++ps;
-
-        // process token
-        if (!strcmp(str, "kfd")) {
-            asic->options.user_queue.client_type = UMR_CLIENT_KFD;
-            client_named = 1;
-        } else if (!strcmp(str, "kgd")) {
-            asic->options.user_queue.client_type = UMR_CLIENT_KGD;
-            client_named = 1;
-        } else if (!memcmp(str, "client=", 7)) {
-            strcpy(p, strstr(str, "=") + 1);
-        } else if (!memcmp(str, "pid=", 4)) {
-            strcpy(p, strstr(str, "=") + 1);
-            use_pid = 1;
-        } else if (!memcmp(str, "comm=", 5)) {
-            strcpy(p, strstr(str, "=") + 1);
-            use_name = 1;
-        } else if (!memcmp(str, "queue=", 6)) {
-            strcpy(pp, strstr(str, "=") + 1);
-            queueid = atoi(pp);
-        } else if (!memcmp(str, "type=", 5)) {
-            pps = strstr(str, "=") + 1;
-            if (!strcmp(pps, "gfx")) {
-                queueid = UMR_QUEUE_GFX;
-            } else if (!strcmp(pps, "compute")) {
-                queueid = UMR_QUEUE_COMPUTE;
-            } else if (!strcmp(pps, "sdma")) {
-                queueid = UMR_QUEUE_SDMA;
-            }
-            use_type = 1;
-        } else {
-            asic->err_msg("[WARNING]: Unknown client option '%s' in client string\n", str);
-        }
-    }
-
-    // BY THIS POINT
-    // p => client id, command name, or pid
-    // pp => queue id, type
-    // use_type, use_name, use_pid must be initialized.
+    *found = 0;
 
     // now p points to the procname or clientid and pp points to the queueid
     sprintf(path, "/sys/kernel/debug/dri/%d/clients", asic->instance);
     f = fopen(path, "r");
     if (!f) {
         asic->err_msg("[ERROR]: Could not open clients file for device instance %d\n", asic->instance);
-        goto error;
+        return -1;
     }
 
     // scan file for the target client
@@ -683,7 +642,7 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                     (use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.tgid)) ||
                     (!use_name && !use_pid && atoi(p) == atoi(asic->options.user_queue.client_line.id))) {
                     // found the entry
-                    found = 1;
+                    *found = 1;
                     if (!client_named) {
                         // try to auto detect the client type
                         FILE *cf;
@@ -707,11 +666,31 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
             } else {
                 fclose(f);
                 asic->err_msg("[ERROR]: Could not parse 'clients' file from debugfs.  Could be your kernel is too old.\n");
-                goto error;
+                return -1;
             }
         }
     }
     fclose(f);
+    return 0;
+}
+
+/**
+ * parse_queues - Parse client queue information from debugfs
+ * @asic: ASIC structure with client_info to populate
+ * @found: Non-zero if a valid client was found
+ *
+ * Reads queue information for a client from debugfs, including MQDs (Memory
+ * Queue Descriptors) and VM page table configuration. Handles both KGD queues
+ * (from /sys/kernel/debug/dri/client-N/) and KFD queues (from
+ * /sys/kernel/debug/kfd/mqds).
+ *
+ * Return: 0 on success, -1 on error
+ */
+static int parse_queues(struct umr_asic *asic, int found)
+{
+    char path[512];
+    FILE *f;
+    uint64_t tmp;
 
     // we found the client now let's read it into memory
     if (found) {
@@ -726,12 +705,12 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                     asic->options.user_queue.client_info.proc_info.comm) != 2) {
                 asic->err_msg("[ERROR]: Could not parse proc_info file %s\n", path);
                 fclose(f);
-                goto error;
+                return -1;
             }
             fclose(f);
         } else {
             asic->err_msg("[ERROR]: Could not open client's proc_info file from %s\n", path);
-            goto error;
+            return -1;
         }
 
         // parse the vm_pagetable_info file
@@ -746,15 +725,14 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
                     &asic->options.user_queue.client_info.vm_pagetable_info.fragment_size) != 5) {
                 asic->err_msg("[ERROR]: Could not parse vm_pagetable_info file %s\n", path);
                 fclose(f);
-                goto error;
+                return -1;
             }
             fclose(f);
         } else {
             asic->err_msg("[ERROR]: Could not open client's vm_pagetable_info file from %s\n", path);
-            goto error;
+            return -1;
         }
 
-		umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
 
         // disable VM translations using the queue state (in case the caller has called this more than once)
         // at this point all VM page walks/read/writes will use live MMIO registers to access VM context registers.
@@ -883,6 +861,133 @@ struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
     } else {
         asic->err_msg("[ERROR]: The client '%s' was not found for this device.\n", asic->options.user_queue.clientid);
         memset(&asic->options.user_queue, 0, sizeof asic->options.user_queue);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+/**
+ * umr_parse_clientid -- Parse the user_queue structure fields against debugfs
+ * This allows UMR to bind to a specific user queue for debugging command submissions
+ * that don't go through the kernel rings.
+ *
+ * This begins with the "clientid" field in the structure which specifies what to bind to.
+ * It has the rough form of 'client.queue' where both fields have multiple presentations.
+ *
+ * client string format (in any order):
+ * clienttype,client,queue
+ *
+ * Where clientype is
+ *    - kfd, for KFD queues
+ *    - kgd, for KGD queues
+ *
+ * where client is
+ *    - client=number, a client id
+ *    - pid=number, a PID
+ *    - comm=string, a command name
+ *
+ * where queue is
+ *    - queue=number, a queue id
+ *    - type=string, a queue type by string (gfx, compute, sdma)
+ *    - active=string, first active by type (see type=)
+ *
+ * for instance: "kfd,comm=ollama,queue=2"
+ */
+struct umr_user_queue umr_parse_clientid(struct umr_asic *asic, const char *cid)
+{
+    int client_named = 0, use_name = 0, use_pid = 0, use_type = 0, found = 0, x;
+    int gfx_maj, gfx_min;
+    uint64_t queueid = 0;
+    char p[256], pp[256], str[256];
+    const char *ps, *pps;
+    struct umr_user_queue retq = { 0 }, tmpq = { 0 };
+
+    // fetch gfx version info
+    umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
+
+    // save the current queue because we'll need to override it
+    retq.state.qidx = -1;
+    tmpq = asic->options.user_queue;
+
+    // default the queue index to -1 to indicate invalid
+    asic->options.user_queue.state.qidx = -1;
+
+    // if this is a rumr client we send the request remotely
+    if (asic->options.rumr_active) {
+        int r = rumr_client_user_queue_parse(asic);
+        if (!r) {
+            retq = asic->options.user_queue;
+            asic->options.user_queue = tmpq;
+            return retq;
+        } else {
+            asic->err_msg("[ERROR]: Could not fetch user queue info over rumr tunnel.\n");
+            return retq;
+        }
+    }
+
+    ps = cid;
+    memset(p, 0, sizeof p);
+    memset(pp, 0, sizeof pp);
+    while (*ps) {
+        // find next comma or end of string
+        pps = strstr(ps,",");
+        if (!pps) {
+            pps = ps + strlen(ps);
+        }
+
+        memset(str, 0, sizeof str);
+        memcpy(str, ps, (int)(pps - ps));
+        ps = pps;
+        if (*ps == ',')
+            ++ps;
+
+        // process token
+        if (!strcmp(str, "kfd")) {
+            asic->options.user_queue.client_type = UMR_CLIENT_KFD;
+            client_named = 1;
+        } else if (!strcmp(str, "kgd")) {
+            asic->options.user_queue.client_type = UMR_CLIENT_KGD;
+            client_named = 1;
+        } else if (!memcmp(str, "client=", 7)) {
+            strcpy(p, strstr(str, "=") + 1);
+        } else if (!memcmp(str, "pid=", 4)) {
+            strcpy(p, strstr(str, "=") + 1);
+            use_pid = 1;
+        } else if (!memcmp(str, "comm=", 5)) {
+            strcpy(p, strstr(str, "=") + 1);
+            use_name = 1;
+        } else if (!memcmp(str, "queue=", 6)) {
+            strcpy(pp, strstr(str, "=") + 1);
+            queueid = atoi(pp);
+        } else if (!memcmp(str, "type=", 5)) {
+            pps = strstr(str, "=") + 1;
+            if (!strcmp(pps, "gfx")) {
+                queueid = UMR_QUEUE_GFX;
+            } else if (!strcmp(pps, "compute")) {
+                queueid = UMR_QUEUE_COMPUTE;
+            } else if (!strcmp(pps, "sdma")) {
+                queueid = UMR_QUEUE_SDMA;
+            }
+            use_type = 1;
+        } else {
+            asic->err_msg("[WARNING]: Unknown client option '%s' in client string\n", str);
+        }
+    }
+
+    // BY THIS POINT
+    // p => client id, command name, or pid
+    // pp => queue id, type
+    // use_type, use_name, use_pid must be initialized.
+
+    // parse the clients file which nets us the process and VM info we're seeking
+    if (parse_clients_file(asic, use_name, use_pid, client_named, p, &found)) {
+        goto error;
+    }
+
+    // now that we're attached to a client, parse the queues
+    if (parse_queues(asic, found)) {
         goto error;
     }
 
@@ -958,6 +1063,16 @@ int umr_init_clientid(struct umr_asic *asic)
     return asic->options.user_queue.state.qidx == -1 ? -1 : 0;
 }
 
+/**
+ * umr_enumerate_user_queue_clients - Enumerate all clients with user queues
+ * @asic: ASIC structure for the device
+ *
+ * Scans all clients registered in debugfs and returns a linked list of user
+ * queue structures for each client. Automatically detects KFD vs KGD clients
+ * and initializes their queue information.
+ *
+ * Return: Pointer to head of linked list of user_queue structures, or NULL on error
+ */
 struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
 {
     struct umr_user_queue *lq = NULL, *tq;
@@ -1048,6 +1163,12 @@ error:
     return NULL;
 }
 
+/**
+ * umr_user_queue_free - Free a linked list of user queue structures
+ * @uq: User queue structure (can be any node in the list)
+ *
+ * Traverses to the head of the linked list and frees all nodes.
+ */
 void umr_user_queue_free(struct umr_user_queue *uq)
 {
     struct umr_user_queue *tq;
