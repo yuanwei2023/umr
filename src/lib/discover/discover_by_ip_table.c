@@ -324,6 +324,7 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 	asic->no_blocks = numblocks;
 	asic->blocks    = calloc(asic->no_blocks, sizeof(*(asic->blocks)));
 	asic->family    = FAMILY_CONFIGURE;
+	asic->was_ip_discovered = 1;
 
 	asic->parameters.vgpr_granularity = 2; // TODO: discover this at runtime, note this will break aldebaran support...
 	if (!strcmp(asicname, "aldebaran")) // TODO: remove this workaround

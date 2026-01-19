@@ -307,7 +307,6 @@ int umr_scan_config(struct umr_asic *asic, int xgmi_scan)
 
 		umr_scan_config_gca_data(asic);
 		r = 0;
-		asic->was_ip_discovered = 1;
 	}
 
 	if (asic->family == FAMILY_CONFIGURE) {
