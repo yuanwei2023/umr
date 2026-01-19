@@ -121,7 +121,8 @@ static void parse_raw_event_buffer(struct umr_asic *asic,
 
 class RegistersPanel : public Panel {
 public:
-	RegistersPanel(struct umr_asic *asic) : Panel(asic), hightlighted_field(NULL), active_tracking(NULL) {}
+	RegistersPanel(struct umr_asic *asic) : Panel(asic), hightlighted_field(NULL), active_tracking(NULL), drawable_area(10, true) {
+	}
 
 	~RegistersPanel() {}
 
@@ -370,15 +371,21 @@ public:
 			double offset_ts = drawable_area.get_timestamp_offset();
 			const float title_y = top_y - ImGui::GetTextLineHeight();
 
-			const float bar_width = 5 * gui_scale;
 			const float spacing = ImGui::GetStyle().FramePadding.x;
 			float previous_title_ended_at = -1000;
 
 			std::set<umr_reg*> unique_registers;
 
 			bool tooltip = false;
-			for (const auto& evt: events) {
+			for (auto it = events.begin(); it != events.end(); ++it) {
+				const auto& evt = *it;
 				double x = drawable_area.timestamp_to_x(evt.timestamp - min_ts);
+				double x2 = x + 5 * gui_scale;
+				auto jt = it + 1;
+				if (jt != events.end()) {
+					/* Don't overlap the next event. */
+					x2 = std::max(x + 1, std::min(x2, drawable_area.timestamp_to_x(jt->timestamp - min_ts) - 1));
+				}
 
 				assert(evt.reg);
 
@@ -395,7 +402,7 @@ public:
 				}
 
 				ImGui::PushClipRect(ImVec2(x, top_y),
-									ImVec2(x + bar_width, top_y + bar_height), true);
+									ImVec2(x2, top_y + bar_height), true);
 
 				/* Display field value. */
 				int previous = 0;
@@ -405,7 +412,7 @@ public:
 					if (previous < bit->start) {
 						ImGui::GetWindowDrawList()->AddRectFilled(
 							ImVec2(x, top_y + previous * bit_height),
-							ImVec2(x + bar_width, top_y + bit->start * bit_height),
+							ImVec2(x2, top_y + bit->start * bit_height),
 							ImColor(1.f, 1.f, 1.f, 0.2f));
 					}
 
@@ -414,22 +421,22 @@ public:
 						ImColor color((evt.value & mask) ? palette[6] : palette[1]);
 						ImGui::GetWindowDrawList()->AddRectFilled(
 							ImVec2(x, top_y + k * bit_height),
-							ImVec2(x + bar_width, top_y + (k + 1) * bit_height), color);
+							ImVec2(x2, top_y + (k + 1) * bit_height), color);
 					}
-
-					ImGui::GetWindowDrawList()->AddLine(
-						ImVec2(x - 2 * bar_width, top_y + (bit->stop + 1) * bit_height - 1),
-						ImVec2(x + 2 * bar_width, top_y + (bit->stop + 1) * bit_height - 1), IM_COL32_WHITE, 1);
 
 					previous = bit->stop + 1;
 				}
+				for (int k = 0; k < 32; k++)
+					ImGui::GetWindowDrawList()->AddLine(
+						ImVec2(x, top_y + k * bit_height - 1),
+						ImVec2(x2, top_y + k * bit_height - 1), ImColor(1.0, 1.0, 1.0, 0.3f), 1);
 
 				ImGui::GetWindowDrawList()->AddRectFilled(
 					ImVec2(x, top_y + previous * bit_height),
-					ImVec2(x + bar_width, top_y + 32 * bit_height),
+					ImVec2(x2, top_y + 32 * bit_height),
 					ImColor(1.f, 1.f, 1.f, 0.2f));
 
-				if (!tooltip && ImGui::IsMouseHoveringRect(ImVec2(x, top_y), ImVec2(x + bar_width, top_y + bar_height))) {
+				if (!tooltip && ImGui::IsMouseHoveringRect(ImVec2(x, top_y), ImVec2(x2, top_y + bar_height))) {
 					ImGui::BeginTooltip();
 					ImGui::Text("Timestamp: %f", evt.timestamp);
 					ImGui::Text("PID: %d", evt.pid);
