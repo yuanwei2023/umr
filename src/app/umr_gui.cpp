@@ -684,6 +684,11 @@ static int replay_up_to(const char *url, std::vector<AsicData*> &asics,
 		msg_idx++;
 	}
 
+	JSON_Value *eof = json_value_init_object();
+	json_object_dotset_string(json_object(eof), "request.command", "end_of_replay");
+	process_response(&asics, activity_panel, json_object(eof), NULL, 0);
+	json_value_free(eof);
+
 	return msg_idx - 1;
 }
 

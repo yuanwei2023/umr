@@ -975,6 +975,8 @@ public:
 
 	static void *post_process_capture_thread(void *data) {
 		ActivityPanel *panel = static_cast<ActivityPanel*> (data);
+		if (panel->captures.empty())
+			return NULL;
 		panel->post_process_capture(panel->captures.back());
 
 		pthread_mutex_lock(&mtx);
@@ -1127,7 +1129,7 @@ public:
 		JSON_Value *answer = json_object_get_value(response, "answer");
 		const char *command = json_object_get_string(request, "command");
 
-		if (str_is(command, "tracing")) {
+		if (str_is(command, "tracing") || str_is(command, "end_of_replay")) {
 			if (json_object_get_number(request, "mode") == 1) {
 				/* This can happen when replaying a trace with multiple captures. */
 				if (tracing_status == TracingStatus::PostProcessing) {
@@ -1514,6 +1516,9 @@ public:
 						group_with_previous = tl->u.kmd.kmd_id == previous_tl->u.kmd.kmd_id;
 				}
 
+				int n_rows = (tl->minimized || tl->collapsed) ? 1 : tl->lane_count();
+				const size_t n_ctx = tl->context_max_sw_queued.size();
+
 				if (!group_with_previous) {
 					tl->draw_y = pos.y;
 					const float tl_end_y = tl->draw_y + timeline_height;
@@ -1567,7 +1572,10 @@ public:
 
 					previous_tl = tl;
 					first_tl_y[tl->type] = std::min(first_tl_y[tl->type], tl->draw_y);
-					pos.y = tl_end_y;
+
+					/* Move to the next row, unless for userspace timeline with a single context. */
+					if (tl->type != TimelineType::Userspace || n_ctx > 1)
+						pos.y =  tl_end_y;
 				} else {
 					task_idx++;
 					if (tl->type == TimelineType::Userspace)
@@ -1578,8 +1586,6 @@ public:
 				}
 
 				const float tl_ctx_start = pos.y;
-				int n_rows = (tl->minimized || tl->collapsed) ? 1 : tl->lane_count();
-				const size_t n_ctx = tl->context_max_sw_queued.size();
 
 				/* For collapsed kernel timelines, we draw the events on the title line.
 				 * In other situations, the timeline name acts as a title, and the events are
@@ -1599,11 +1605,12 @@ public:
 						sprintf(label, "%s (%d)", tl->u.sw.task_name, tl->pid);
 					else
 						sprintf(label, "%s", (tl->type == TimelineType::Userspace && tl->u.sw.drm_client_name) ? tl->u.sw.drm_client_name : tl->u.sw.task_name);
-					if (drawn)
-						ImGui::GetWindowDrawList()->AddText(ImVec2(pos.x + 10 * gui_scale, pos.y), tl->color, label);
-					title_size = ImGui::CalcTextSize(label);
 
 					if (n_rows > 1 && n_ctx > 1) {
+						if (drawn)
+							ImGui::GetWindowDrawList()->AddText(ImVec2(pos.x + 10 * gui_scale, pos.y), tl->color, label);
+						title_size = ImGui::CalcTextSize(label);
+
 						pos.y += row_size_with_spacing;
 						tl->draw_y += row_size_with_spacing;
 
