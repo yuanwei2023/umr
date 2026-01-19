@@ -31,7 +31,7 @@
 
 class DrawableArea {
 public:
-	DrawableArea(int bottom_row_line = 10) {
+	DrawableArea(int bottom_row_line = 10, bool allow_bot_panel_zoom = false) {
 		mouse_state = MouseState::None;
 		top_row_zoom = 1.0;
 		offset_ts = 0;
@@ -40,6 +40,7 @@ public:
 		bottom_row_line_count_default = bottom_row_line;
 		mouse_interaction = true;
 		_extra_timestamp_offset = 0;
+		allow_bottom_panel_zoom = allow_bot_panel_zoom;
 	}
 
 	void update(const ImVec2 pos, const ImVec2 size, double min_ts,
@@ -78,7 +79,7 @@ public:
 
 					/* Zoom */
 					float w = ImGui::GetIO().MouseWheel;
-					if (w && mouse_is_over_top_panel) {
+					if (w && (mouse_is_over_top_panel || allow_bottom_panel_zoom)) {
 						top_row_zoom += w * 0.1 * top_row_zoom;
 						double new_scale = top_row_zoom * size.x / total_time;
 						offset_ts = (hover_ts - min_ts) - (x - pos.x) / new_scale;
@@ -267,6 +268,8 @@ public:
 	float top_row_y_offset;
 
 	bool mouse_interaction;
+
+	bool allow_bottom_panel_zoom;
 private:
 	/* zoom level of the top row */
 	double top_row_zoom;

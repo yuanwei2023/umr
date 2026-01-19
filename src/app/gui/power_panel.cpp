@@ -34,6 +34,8 @@ extern "C" struct {
 	uint64_t mask;
 } pg_masks[];
 
+static const int old_value_count = 100;
+
 class PowerPanel : public Panel {
 public:
 	PowerPanel(struct umr_asic *asic) : Panel(asic), last_answer(NULL),
@@ -42,7 +44,7 @@ public:
 		pp_last_answer(NULL),
 		hwmon_last_answer(NULL),
 		consumed(true),
-		sensor_previous_values(NULL) {}
+		sensor_previous_values(NULL), temperature_previous_values(NULL) {}
 
 	~PowerPanel() {
 		if (last_answer)
@@ -56,6 +58,7 @@ public:
 		if (hwmon_last_answer)
 			json_value_free(json_object_get_wrapping_value(hwmon_last_answer));
 		free(sensor_previous_values);
+		free(temperature_previous_values);
 	}
 
 	void process_server_message(JSON_Object *response, void *raw_data, unsigned raw_data_size) {
@@ -88,13 +91,26 @@ public:
 			if (hwmon_last_answer)
 				json_value_free(json_object_get_wrapping_value(hwmon_last_answer));
 			hwmon_last_answer = NULL;
-			if (json_object_has_value(json_object(answer), "hwmons"))
+			if (json_object_has_value(json_object(answer), "hwmons")) {
 				hwmon_last_answer = json_object(json_value_deep_copy(answer));
+
+				if (!temperature_previous_values) {
+					n_temperatures = 0;
+					JSON_Array *hwmons = json_object_get_array(hwmon_last_answer, "hwmons");
+					for (int i = 0; i < json_array_get_count(hwmons); i++) {
+						JSON_Object *hwmon = json_object(json_array_get_value(hwmons, i));
+						JSON_Array *temps = json_object_get_array(hwmon, "temp");
+						n_temperatures += json_array_get_count(temps);
+					}
+					temperature_previous_values = (float*)calloc(n_temperatures * old_value_count, sizeof(float));
+				}
+			}
 		}
 	}
 
 	bool display(float dt, const ImVec2& avail, bool can_send_request) {
 		const float gui_scale = get_gui_scale();
+		const ImVec2 graph_size = ImVec2(0, avail.y / 7);
 
 		ImGui::BeginChild("power profiles", ImVec2(avail.x / 5, 0), false, ImGuiWindowFlags_NoTitleBar);
 		static float last_sensor_read = 0;
@@ -210,8 +226,6 @@ public:
 			last_sensor_read += dt;
 		}
 		if (sensors_last_answer && !suspended) {
-			ImGui::Text("Sensors values:");
-			const int old_value_count = 100;
 			JSON_Array *values = json_object_get_array(sensors_last_answer, "values");
 			int sensors_count = json_array_get_count(values);
 
@@ -225,36 +239,48 @@ public:
 				JSON_Object *v = json_object(json_array_get_value(values, i));
 				sensor_previous_values[i * old_value_count + sensor_values_offset] =
 					(int)json_object_get_number(v, "value");
+			}
 
-				int same_graph = 0;
+			if (ImGui::TreeNodeEx("Clocks / Power / Load", ImGuiTreeNodeFlags_DefaultOpen)) {
+				const char *previous_unit = "";
+				for (int i = 0; i < sensors_count; i++) {
+					JSON_Object *v = json_object(json_array_get_value(values, i));
+					const char *unit = json_object_get_string(v, "unit");
 
-				if (i < sensors_count - 1) {
-					previous_cursor = ImGui::GetCursorScreenPos();
-				} else {
-					same_graph = 1;
-					ImGui::SetCursorScreenPos(previous_cursor);
+					int same_graph = strcmp(unit, previous_unit) == 0;
+
+					if (same_graph) {
+						ImGui::SetCursorScreenPos(previous_cursor);
+					} else {
+						previous_unit = unit;
+						previous_cursor = ImGui::GetCursorScreenPos();
+					}
+
+					ImGui::PushStyleColor(ImGuiCol_PlotLines, block_palette[6 * i + 5].Value);
+					ImGui::PushStyleColor(ImGuiCol_Text, block_palette[6 * i + 5].Value);
+					ImGui::PlotLines(json_object_get_string(v, "name"),
+									&sensor_previous_values[i * old_value_count],
+									old_value_count,
+									sensor_values_offset + 1,
+									NULL,
+									json_object_get_number(v, "min"),
+									json_object_get_number(v, "max"),
+									graph_size,
+									sizeof(float),
+									same_graph);
+					ImGui::SameLine();
+					if (same_graph) {
+						ImVec2 c = ImGui::GetCursorScreenPos();
+						c.y += ImGui::GetTextLineHeightWithSpacing();
+						ImGui::SetCursorScreenPos(c);
+					}
+					ImGui::Text("%s: %d %s",
+						json_object_get_string(v, "name"),
+						(int)sensor_previous_values[i * old_value_count + sensor_values_offset],
+						json_object_get_string(v, "unit"));
+					ImGui::PopStyleColor(2);
 				}
-
-				ImGui::PlotLines(json_object_get_string(v, "name"),
-								 &sensor_previous_values[i * old_value_count],
-								  old_value_count,
-								  sensor_values_offset + 1,
-								  NULL,
-								  json_object_get_number(v, "min"),
-								  json_object_get_number(v, "max"),
-								  ImVec2(0, avail.y / (2 + sensors_count)),
-								  sizeof(float),
-								  same_graph);
-				ImGui::SameLine();
-				if (same_graph) {
-					ImVec2 c = ImGui::GetCursorScreenPos();
-					c.y += ImGui::GetTextLineHeightWithSpacing();
-					ImGui::SetCursorScreenPos(c);
-				}
-				ImGui::Text("%s: %d %s",
-					json_object_get_string(v, "name"),
-					(int)sensor_previous_values[i * old_value_count + sensor_values_offset],
-					json_object_get_string(v, "unit"));
+				ImGui::TreePop();
 			}
 			if (!consumed) {
 				sensor_values_offset = (sensor_values_offset + 1) % old_value_count;
@@ -264,61 +290,92 @@ public:
 
 		if (hwmon_last_answer) {
 			JSON_Array *hwmons = json_object_get_array(hwmon_last_answer, "hwmons");
+			if (ImGui::TreeNode("Fan Control")) {
+				for (int i = 0; i < json_array_get_count(hwmons); i++) {
+					JSON_Object *hwmon = json_object(json_array_get_value(hwmons, i));
+					int hwmon_id = json_object_get_number(hwmon, "id");
+					ImGui::Text("hwmon%d:", hwmon_id);
+					ImGui::Text("   Fan:");
+					JSON_Object *fan = json_object(json_object_get_value(hwmon, "fan"));
+					float v = json_object_get_number(fan, "value");
+					float min = json_object_get_number(fan, "min");
+					float max = json_object_get_number(fan, "max");
+					int mode = (int) json_object_get_number(fan, "mode");
+					int new_mode = -1, new_pwm = -1;
+					float percent = 100.0f * v / 255;
 
+					if (ImGui::SliderFloat("", &percent, 0, 100, "%.0f %%"))
+						new_pwm = (int) (255.0 * percent / 100.0) ;
+
+					const char *modes[] = { "none (!)", "manual (!)", "auto" };
+					ImGui::SameLine();
+					ImGui::Text("Control Mode:");
+					ImGui::SameLine();
+					ImGui::BeginGroup();
+					for (int i = 2; i >= 1; i--) {
+						if (ImGui::RadioButton(modes[i], mode == i)) {
+							new_mode = i;
+						}
+						if (i == 1 && ImGui::IsItemHovered()) {
+							ImGui::SetTooltip("#dbde79Warning: monitor the temperatures to avoid damaging the GPU");
+						}
+					}
+					ImGui::EndGroup();
+
+					if (new_mode >= 0 || new_pwm >= 0) {
+						send_fans_command(hwmon_id, new_mode, new_pwm);
+					}
+				}
+				ImGui::TreePop();
+			}
+
+			std::vector<const char *> labels;
+			std::vector<float> criticals;
+			float max_temp = 0;
+			int temperature_index = 0;
 			for (int i = 0; i < json_array_get_count(hwmons); i++) {
 				JSON_Object *hwmon = json_object(json_array_get_value(hwmons, i));
-				int hwmon_id = json_object_get_number(hwmon, "id");
-				ImGui::Text("hwmon%d:", hwmon_id);
-				ImGui::Text("   Fan:");
-				ImGui::Separator();
-				JSON_Object *fan = json_object(json_object_get_value(hwmon, "fan"));
-				float v = json_object_get_number(fan, "value");
-				float min = json_object_get_number(fan, "min");
-				float max = json_object_get_number(fan, "max");
-				int mode = (int) json_object_get_number(fan, "mode");
-				int new_mode = -1, new_pwm = -1;
-				float percent = 100.0f * v / 255;
-
-				if (ImGui::SliderFloat("", &percent, 0, 100, "%.0f %%"))
-					new_pwm = (int) (255.0 * percent / 100.0) ;
-
-				const char *modes[] = { "none (!)", "manual (!)", "auto" };
-				ImGui::SameLine();
-				ImGui::Text("Control Mode:");
-				ImGui::SameLine();
-				ImGui::BeginGroup();
-				for (int i = 2; i >= 1; i--) {
-					if (ImGui::RadioButton(modes[i], mode == i)) {
-						new_mode = i;
-					}
-					if (i == 1 && ImGui::IsItemHovered()) {
-						ImGui::SetTooltip("#dbde79Warning: monitor the temperatures to avoid damaging the GPU");
-					}
-				}
-				ImGui::EndGroup();
-
-				if (new_mode >= 0 || new_pwm >= 0) {
-					send_fans_command(hwmon_id, new_mode, new_pwm);
-				}
-
 				JSON_Array *temps = json_object_get_array(hwmon, "temp");
-				ImGui::Text("   Temperatures:");
-				ImGui::BeginTable("temps", 3, ImGuiTableFlags_Borders);
-				ImGui::TableSetupColumn("Label");
-				ImGui::TableSetupColumn("Value (°C)");
-				ImGui::TableSetupColumn("Critical (°C)");
-				ImGui::TableHeadersRow();
 				for (int j = 0; j < json_array_get_count(temps); j++) {
 					JSON_Object *temp = json_object(json_array_get_value(temps, j));
-					ImGui::TableNextRow();
-					ImGui::TableSetColumnIndex(0);
-					ImGui::Text("%s", json_object_get_string(temp, "label"));
-					ImGui::TableSetColumnIndex(1);
-					ImGui::Text("%d", (int) json_object_get_number(temp, "value") / 1000);
-					ImGui::TableSetColumnIndex(2);
-					ImGui::Text("%d", (int) json_object_get_number(temp, "critical") / 1000);
+					labels.push_back(json_object_get_string(temp, "label"));
+					temperature_previous_values[temperature_index * old_value_count + sensor_values_offset] =
+						json_object_get_number(temp, "value") / 1000;
+					criticals.push_back(json_object_get_number(temp, "critical") / 1000);
+					max_temp = std::max(max_temp, criticals.back());
+					temperature_index++;
 				}
-				ImGui::EndTable();
+			}
+
+			if (ImGui::TreeNodeEx("Temperatures", ImGuiTreeNodeFlags_DefaultOpen)) {
+				max_temp *= 1.1;
+				ImVec2 temp_graph_pos = ImGui::GetCursorScreenPos();
+				for (int i = 0;i < n_temperatures; i++) {
+					ImGui::PushStyleColor(ImGuiCol_PlotLines, block_palette[6 * i + 5].Value);
+					ImGui::PushStyleColor(ImGuiCol_Text, block_palette[6 * i + 5].Value);
+
+					ImGui::SetCursorScreenPos(temp_graph_pos);
+					ImGui::PlotLines("Temperatures",
+						&temperature_previous_values[i * old_value_count],
+						old_value_count,
+						sensor_values_offset + 1,
+						NULL,
+						0, max_temp,
+						graph_size,
+						sizeof(float),
+						i != 0);
+					ImGui::SameLine();
+					ImVec2 c = ImGui::GetCursorScreenPos();
+					c.y += ImGui::GetTextLineHeightWithSpacing() * i;
+					ImGui::SetCursorScreenPos(c);
+
+					ImGui::Text("%s: %.1f °C",
+						labels[i],
+						temperature_previous_values[i * old_value_count + sensor_values_offset]);
+
+					ImGui::PopStyleColor(2);
+				}
+				ImGui::TreePop();
 			}
 		}
 		ImGui::EndChild();
@@ -416,5 +473,7 @@ private:
 	bool consumed;
 	float *sensor_previous_values;
 	int sensor_values_offset;
+	float *temperature_previous_values;
+	int n_temperatures;
 };
 
