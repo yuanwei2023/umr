@@ -733,7 +733,7 @@ static void read_fdinfo(JSON_Value *container, JSON_Object *pid, const char *dev
 		json_object_set_number(json_object(fdinfo), "gpu-fd", gpu_fd);
 		json_object_set_value(json_object(container), lbl, fdinfo);
 	}
-	
+
 	closedir(dir);
 }
 
@@ -2894,11 +2894,13 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				int size = 4;
 				p_info[i].value = 0;
 				gpu_power_data[0] = 0;
-				umr_read_sensor(asic, p_info[i].sensor_id, (uint32_t*)&gpu_power_data[0], &size);
-				if (gpu_power_data[0] != 0){
-					p_info[i].value = gpu_power_data[0];
-					p_info[i].value = parse_sensor_value(p_info[i].map, p_info[i].value);
-				}
+
+				if (umr_read_sensor(asic, p_info[i].sensor_id, (uint32_t*)&gpu_power_data[0], &size) < 0)
+					continue;
+
+				p_info[i].value = gpu_power_data[0];
+				p_info[i].value = parse_sensor_value(p_info[i].map, p_info[i].value);
+
 				JSON_Object *v = json_object(json_value_init_object());
 				json_object_set_string(v, "name", p_info[i].regname);
 				json_object_set_number(v, "value", p_info[i].value);
