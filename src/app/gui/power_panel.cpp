@@ -300,7 +300,7 @@ public:
 					float v = json_object_get_number(fan, "value");
 					float min = json_object_get_number(fan, "min");
 					float max = json_object_get_number(fan, "max");
-					int mode = (int) json_object_get_number(fan, "mode");
+					int mode = json_object_has_value(fan, "mode") ? (int) json_object_get_number(fan, "mode") : -1;
 					int new_mode = -1, new_pwm = -1;
 					float percent = 100.0f * v / 255;
 
@@ -308,19 +308,21 @@ public:
 						new_pwm = (int) (255.0 * percent / 100.0) ;
 
 					const char *modes[] = { "none (!)", "manual (!)", "auto" };
-					ImGui::SameLine();
-					ImGui::Text("Control Mode:");
-					ImGui::SameLine();
-					ImGui::BeginGroup();
-					for (int i = 2; i >= 1; i--) {
-						if (ImGui::RadioButton(modes[i], mode == i)) {
-							new_mode = i;
+					if (mode >= 0) {
+						ImGui::SameLine();
+						ImGui::Text("Control Mode:");
+						ImGui::SameLine();
+						ImGui::BeginGroup();
+						for (int i = 2; i >= 1; i--) {
+							if (ImGui::RadioButton(modes[i], mode == i)) {
+								new_mode = i;
+							}
+							if (i == 1 && ImGui::IsItemHovered()) {
+								ImGui::SetTooltip("#dbde79Warning: monitor the temperatures to avoid damaging the GPU");
+							}
 						}
-						if (i == 1 && ImGui::IsItemHovered()) {
-							ImGui::SetTooltip("#dbde79Warning: monitor the temperatures to avoid damaging the GPU");
-						}
+						ImGui::EndGroup();
 					}
-					ImGui::EndGroup();
 
 					if (new_mode >= 0 || new_pwm >= 0) {
 						send_fans_command(hwmon_id, new_mode, new_pwm);

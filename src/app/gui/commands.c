@@ -2979,7 +2979,6 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		answer = json_value_init_object();
 	} else if (strcmp(command, "hwmon") == 0) {
 		char dname[256], fname[1024];
-		int values[4];
 
 		if (json_object_has_value(request, "set")) {
 			JSON_Object *set = json_object_get_object(request, "set");
@@ -3004,7 +3003,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			}
 		}
 
-		const char * files[] = { "pwm1_enable", "fan1_min", "fan1_max", "pwm1" };
+		const char * fan_labels[] = { "min", "max", "value", "mode" };
+		const char * fan_files[] = { "fan1_min", "fan1_max", "pwm1", "pwm1_enable" };
 		answer = json_value_init_object();
 		JSON_Array *hwmons = json_array(json_value_init_array());
 
@@ -3016,44 +3016,35 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 				if (strncmp(dir->d_name, "hwmon", 5) == 0) {
 					int hwmon_id = 0;
 					if (sscanf(dir->d_name + 5, "%d", &hwmon_id) == 1) {
-						int r = 0;
+						int r, v, w;
 
 						JSON_Object *hwmon = json_object(json_value_init_object());
-						/* Read fan1 data */
-						for (int i = 0; i < 4 && r == i; i++) {
-							r += sscanf(read_file("%s/%s/%s", dname, dir->d_name, files[i]),
-											"%d", &values[i]);
-						}
-						if (r == 4) {
-							JSON_Value *fan = json_value_init_object();
-							json_object_set_number(json_object(fan), "mode", values[0]);
-							json_object_set_number(json_object(fan), "min", values[1]);
-							json_object_set_number(json_object(fan), "max", values[2]);
-							json_object_set_number(json_object(fan), "value", values[3]);
-							json_object_set_number(hwmon, "id", hwmon_id);
-							json_object_set_value(hwmon, "fan", fan);
-						} else {
-							json_value_free(json_object_get_wrapping_value(hwmon));
-							continue;
-						}
-
+						json_object_set_number(hwmon, "id", hwmon_id);
 						json_array_append_value(hwmons, json_object_get_wrapping_value(hwmon));
 
-						JSON_Array *temps = json_array(json_value_init_array());
+						/* Read fan1 data */
+						JSON_Value *fan = json_value_init_object();
+						json_object_set_value(hwmon, "fan", fan);
+						for (int i = 0; i < (int)ARRAY_SIZE(fan_files); i++) {
+							if (sscanf(read_file("%s/%s/%s", dname, dir->d_name, fan_files[i]),
+										  "%d", &v) == 1)
+								json_object_set_number(json_object(fan), fan_labels[i], v);
+						}
+
 						/* Read temp data */
+						JSON_Array *temps = json_array(json_value_init_array());
 						for (int i = 1;; i++) {
-							int r = 0;
-							r += sscanf(read_file("%s/%s/temp%d_input", dname, dir->d_name, i),
-											"%d", &values[0]);
+							r = sscanf(read_file("%s/%s/temp%d_input", dname, dir->d_name, i),
+										  "%d", &v);
 							r += sscanf(read_file("%s/%s/temp%d_crit", dname, dir->d_name, i),
-											"%d", &values[1]);
+											"%d", &w);
 							if (r == 2) {
 								const char *label = read_file("%s/%s/temp%d_label", dname, dir->d_name, i);
 
 								JSON_Object *temp = json_object(json_value_init_object());
 								json_object_set_string_with_len(temp, "label", label, strlen(label) - 1);
-								json_object_set_number(temp, "value", values[0]);
-								json_object_set_number(temp, "critical", values[1]);
+								json_object_set_number(temp, "value", v);
+								json_object_set_number(temp, "critical", w);
 								json_array_append_value(temps, json_object_get_wrapping_value(temp));
 							} else {
 								break;
