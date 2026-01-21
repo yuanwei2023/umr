@@ -838,7 +838,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		vm.registers.mmMC_VM_FB_OFFSET = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
 		vm.vmctrl.vm_fb_offset      = (uint64_t)vm.registers.mmMC_VM_FB_OFFSET << VM_FB_OFFSET_SHIFT;
 
-	if (vm.asic->options.verbose) {
+	if (vm.asic->options.show_regs) {
 		if (vm.asic->options.user_queue.state.active) {
 			vm.asic->mem_funcs.vm_message("\n\n=== VM Decoding of address 0x%" PRIx64 " from user queue '%s' ===\n", address, vm.asic->options.user_queue.clientid);
 		} else {
@@ -930,8 +930,7 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				break;
 			case VM_SAM_INSIDE_UNMAPPED: /* inside system aperture is unmapped, otherwise mapped */
 				if (address >= vm.vmctrl.system_aperture_low && address < vm.vmctrl.system_aperture_high) {
-					if (vm.asic->options.verbose)
-						vm.asic->std_msg("[VERBOSE]: Address is inside SAM\n[VERBOSE]: address: 0x%"PRIx64 ", system_apperture_low: 0x%"PRIx64 ", system_aperture_high: 0x%"PRIx64 ", fb_bottom: 0x%"PRIx64  ", fb_top: 0x%"PRIx64 "\n", address, vm.vmctrl.system_aperture_low, vm.vmctrl.system_aperture_high, vm.vmctrl.fb_bottom, vm.vmctrl.fb_top);
+					vm.asic->std_msg("[VERBOSE]: Address is inside SAM\n[VERBOSE]: address: 0x%"PRIx64 ", system_apperture_low: 0x%"PRIx64 ", system_aperture_high: 0x%"PRIx64 ", fb_bottom: 0x%"PRIx64  ", fb_top: 0x%"PRIx64 "\n", address, vm.vmctrl.system_aperture_low, vm.vmctrl.system_aperture_high, vm.vmctrl.fb_bottom, vm.vmctrl.fb_top);
 					if (address >= vm.vmctrl.fb_bottom && address < vm.vmctrl.fb_top) {
 						return (dst) ? umr_access_vram(vm.asic, partition, UMR_LINEAR_HUB, address - vm.vmctrl.fb_bottom, size, dst, write_en, NULL) : 0;
 					} else {
@@ -1046,9 +1045,11 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pde.pde_entry);			/* if the PDE isn't a PTE then print it out (if needed) */
 			if (!vm.pde.pde_fields.pte) {
 				vm.va_tally |= address & va_mask;
-				if ((vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_fields, &vm.pde.pde_array[vm.pde.pde_cnt], sizeof vm.pde.pde_fields)) && vm.asic->options.verbose) {
+				if (vm.asic->options.no_fold_vm_decode || memcmp(&vm.pde.pde_fields, &vm.pde.pde_array[vm.pde.pde_cnt], sizeof vm.pde.pde_fields)) {
 					vm.pte.pte_is_pde = 0;
-					print_pde(&vm, indentation);
+					if (vm.asic->options.verbose) {
+						print_pde(&vm, indentation);
+					}
 				}
 				memcpy(&vm.pde.pde_array[vm.pde.pde_cnt++], &vm.pde.pde_fields, sizeof vm.pde.pde_fields);
 				/* capture page walk data if requested */
@@ -1308,12 +1309,12 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			chunk_size = size;
 		}
 
-		if (vm.asic->options.verbose) {
-			if (vm.pte.pte_fields.system == 1) {
-				if (vm.vmdata) {
-					vm.vmdata->sys_or_vram = 1;
-					vm.vmdata->phys = start_addr;
-				}
+		if (vm.pte.pte_fields.system == 1) {
+			if (vm.vmdata) {
+				vm.vmdata->sys_or_vram = 1;
+				vm.vmdata->phys = start_addr;
+			}
+			if (vm.asic->options.verbose) {
 				vm.asic->mem_funcs.vm_message(
 					"%s Computed address we will read from: %s:%" PRIx64
 					", (reading: %" PRIu32 " bytes from a %" PRIu32 " byte page)\n",
@@ -1322,14 +1323,17 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 					start_addr,
 					chunk_size,
 					offset_mask + 1);
-			} else {
-				if (vm.vmdata) {
-					vm.vmdata->sys_or_vram = 0;
-					vm.vmdata->phys = start_addr + vm.vmctrl.vm_fb_offset;
-				}
+			}
+		}
+		else {
+			if (vm.vmdata) {
+				vm.vmdata->sys_or_vram = 0;
+				vm.vmdata->phys = start_addr + vm.vmctrl.vm_fb_offset;
+			}
+			if (vm.asic->options.verbose) {
 				vm.asic->mem_funcs.vm_message(
 					"%s Computed address we will read from: %s:%" PRIx64
-					" (MCA:%" PRIx64"), (reading: %" PRIu32 " bytes from a %" PRIu64 " byte page)\n",
+					" (MCA:%" PRIx64 "), (reading: %" PRIu32 " bytes from a %" PRIu64 " byte page)\n",
 					&indentation[VM_INDENTATION_BASE - (vm.pde.pde_cnt * VM_INDENTATION_PER_LEVEL) - VM_INDENTATION_PER_LEVEL],
 					"vram",
 					start_addr,
@@ -1347,7 +1351,7 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 				pdst += chunk_size;
 			}
 		} else {
-			if (vm.asic->options.verbose && vm.pte.pte_fields.prt)
+			if (vm.pte.pte_fields.prt)
 				vm.asic->mem_funcs.vm_message("Page is set as PRT so we cannot read/write it, skipping ahead.\n");
 
 			if (pdst) {

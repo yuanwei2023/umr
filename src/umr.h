@@ -381,6 +381,7 @@ struct umr_options {
 	    no_follow_shader,
 	    no_follow_loadx,
 	    verbose,
+		show_regs,
 	    halt_waves,
 	    no_kernel,
 	    no_disasm,

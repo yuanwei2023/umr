@@ -1403,13 +1403,15 @@ int main(int argc, char **argv)
 					if (i + 1 < argc) {
 						uint64_t address;
 						uint32_t vmid;
-						int overbose;
+						int overbose, oshowregs;
 
 						argflags[i] = 1;
 						argflags[i+1] = 1;
 
 						overbose = asic->options.verbose;
+						oshowregs = asic->options.show_regs;
 						asic->options.verbose = 1;
+						asic->options.show_regs = 1;
 
 						// allow specifying the vmid in hex as well so
 						// people can add the HUB flags more easily
@@ -1432,6 +1434,7 @@ int main(int argc, char **argv)
 						i += 1;
 
 						asic->options.verbose = overbose;
+						asic->options.show_regs = oshowregs;
 					} else {
 						fprintf(stderr, "[ERROR]: --vm-decode requires one parameter\n");
 						return EXIT_FAILURE;
