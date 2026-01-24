@@ -1174,35 +1174,50 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			vm.pte.pte_is_pde = 1;
 		}
 
-		if (vm.asic->options.verbose) {
-			if (vm.pte.pte_is_pde) {
-				vm.pde.addr = vm.pte.addr;
-				vm.pde.pde_idx = vm.pte.pte_idx;
-				vm.pde.pde_entry = vm.pte.pte_entry;
-				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
-				vm.va_tally |= address & va_mask;
-				print_pde(&vm, indentation);
-			} else {
-				vm.va_tally |= address & va_mask;
-				print_pte(&vm, indentation);
-			}
-		}
-
 		if (vm.pte.pte_is_pde) {
+			/*
+			 * When PDE0 has TFS bit set, real address of PTB for PTE-as-PDE
+			 * to point is PTB_ADDRESS + PTE-as-PDE.PBA where PTB_ADDRESS is the
+			 * address of the original PTB (the one pointed to by PDE0).
+			 */
+			int is_relative_tf = (vm.ip->discoverable.maj >= 11 && vm.pde.pde_fields.tfs_addr && current_depth == 0 && !vm.pde.pde_was_pte);
+			uint64_t orig_ptb_address = is_relative_tf ? vm.pde.pde_fields.pte_base_addr : 0;
+
 			/*
 			 * If further bit is set, PTE is a PDE, so set pde_fields to PTE
 			 * decoded as a PDE.
 			 */
-			if (vm.ip->discoverable.maj >= 11 && vm.pde.pde_fields.tfs_addr && current_depth == 0 && !vm.pde.pde_was_pte) {
-				/*
-				 * When PDE0 had TFS bit set, real address of PTB for PTE-as-PDE
-				 * to point is PDE0.PBA + PTE-as-PDE.PBA.
-				 */
-				uint64_t tmp_addr = vm.pde.pde_fields.pte_base_addr;
-				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
-				vm.pde.pde_fields.pte_base_addr += tmp_addr;
+			vm.pde.addr = vm.pte.addr;
+			vm.pde.pde_idx = vm.pte.pte_idx;
+			vm.pde.pde_entry = vm.pte.pte_entry;
+			vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
+
+			/*
+			 * Mask in bits used to index the PDE0 into this PTE-Further to the VA tally.
+			 */
+			int pde0_coverage = VM_2MB_BLOCK_BITS + vm.page_table.page_table_block_size;
+			int pte_further_coverage = VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size;
+			va_mask = (1ULL << pde0_coverage) - 1;
+			va_mask = va_mask & ~((1ULL << pte_further_coverage) - 1);
+			vm.va_tally |= address & va_mask;
+
+			/*
+			 * Capture/print the PTE-as-PDE data.
+			 */
+			if (vm.asic->options.verbose) {
+				print_pde(&vm, indentation);
+			}
+
+			if (vm.vmdata) {
+				vm.vmdata->pde_idx[vm.vmdata->levels] = vm.pde.pde_idx;
+				vm.vmdata->pde_va_mask[vm.vmdata->levels] = vm.va_tally  + vm.page_table.page_table_start_addr;
+				vm.vmdata->pde[vm.vmdata->levels] = vm.pde.pde_entry;
+				vm.vmdata->pde_fields[vm.vmdata->levels++] = vm.pde.pde_fields;
+			}
+
+			if (is_relative_tf) {
+				vm.pde.pde_fields.pte_base_addr += orig_ptb_address;
 			} else {
-				vm.pde.pde_fields = umr_decode_pde_entry(vm.asic, vm.pte.pte_entry);
 				if (!vm.pde.pde_fields.system) {
 					vm.pde.pde_fields.pte_base_addr -= vm.vmctrl.vm_fb_offset;
 				}
@@ -1234,12 +1249,17 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 
 			uint32_t upper_mask = (1ULL << (VM_PAGE_SIZE_BITS + vm.page_table.pde0_block_fragment_size)) - 1;
 			vm.pte.pte_page_mask = (1ULL << last_level_ptb_bits) - 1;
-			va_mask &= (upper_mask & ~vm.pte.pte_page_mask);
+			va_mask = (upper_mask & ~vm.pte.pte_page_mask);
 
 			vm.pde.pde_cnt++;
 			vm.pte.further = 1;
 			/* Jump back to translate from PTB pointed to by this PTE-as-PDE. */
 			goto pte_further;
+		}
+
+		if (vm.asic->options.verbose) {
+			vm.va_tally |= address & va_mask;
+			print_pte(&vm, indentation);
 		}
 
 		// Adjust the page base address if this is not a system page relative to the FB offset
