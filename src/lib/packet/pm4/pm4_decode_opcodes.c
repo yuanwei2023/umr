@@ -720,7 +720,7 @@ static void decode_pkt3_gfx8(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_INTERVAL", BITS(fetch_word(asic, stream, 3), 0, 16), NULL, 10, 32);
 			break;
 		case 0x46: // EVENT_WRITE
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 8), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			if (stream->n_words > 2) {
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
@@ -1132,7 +1132,7 @@ static void decode_pkt3_gfx9(struct umr_asic *asic, struct umr_stream_decode_ui 
 			ui->add_field(ui, ib_addr + 36, ib_vmid, "DRAW_INITIATOR", fetch_word(asic, stream, 8), NULL, 16, 32);
 			break;
 		case 0x46: // EVENT_WRITE
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 9), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			if (stream->n_words > 2) {
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
@@ -1469,7 +1469,7 @@ static void decode_pkt3_gfx10(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 16, ib_vmid, "POLL_INTERVAL", fetch_word(asic, stream, 3), NULL, 10, 32);
 			break;
 		case 0x46: // EVENT_WRITE
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 10), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			if (stream->n_words > 2) {
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
@@ -2360,7 +2360,7 @@ static void decode_pkt3_gfx12(struct umr_asic *asic, struct umr_stream_decode_ui
 			ui->add_field(ui, ib_addr + 20, ib_vmid, "DST_ADDR_HI", fetch_word(asic, stream, 4), NULL, 16, 32);
 			break;
 		case 0x46: // EVENT_WRITE
-			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), NULL, 10, 32);
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_TYPE", BITS(fetch_word(asic, stream, 0), 0, 6), vgt_event_decode(BITS(fetch_word(asic, stream, 0), 0, 6), 12), 10, 32);
 			ui->add_field(ui, ib_addr + 4, ib_vmid, "EVENT_INDEX", BITS(fetch_word(asic, stream, 0), 8, 12), NULL, 10, 32);
 			if (stream->n_words > 2) {
 				ui->add_field(ui, ib_addr + 8, ib_vmid, "ADDRESS_LO", BITS(fetch_word(asic, stream, 1), 3, 32) << 3, NULL, 16, 32);
