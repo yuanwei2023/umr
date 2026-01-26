@@ -887,6 +887,7 @@ int main(int argc, char **argv)
 							strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
 							options.instance = atoi(s + 1);
 							options.forced_instance = 1;
+							options.force_asic_file = 1;
 							asic = get_asic();
 						} else if ((s = strstr(argv[i+1], "="))) {
 							strncpy(options.dev_name, argv[i+1], MIN(sizeof(options.dev_name), (unsigned)(s - argv[i+1])));
