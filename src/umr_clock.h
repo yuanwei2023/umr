@@ -43,5 +43,6 @@ int umr_set_clock(struct umr_asic *asic, const char* clock_name, void* value);
 void umr_set_clock_performance(struct umr_asic *asic, const char* operation);
 int umr_check_clock_performance(struct umr_asic *asic, char* name, uint32_t len);
 void umr_gfxoff_read(struct umr_asic *asic);
+ssize_t umr_gfxoff_write(struct umr_asic *asic, uint32_t value);
 
 #endif

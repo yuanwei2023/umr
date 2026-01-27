@@ -1392,15 +1392,10 @@ int main(int argc, char **argv)
 						return EXIT_FAILURE;
 					}
 				} else if (!strcmp(argv[i], "--top") || !strcmp(argv[i], "-t")) {
-					uint32_t value;
 					argflags[i] = 1;
-					value = 0;
-					if (asic->fd.gfxoff >= 0)
-						value = write(asic->fd.gfxoff, &value, sizeof(value));
+					umr_gfxoff_write(asic, 0);
 					umr_top(asic);
-					value = 1;
-					if (asic->fd.gfxoff >= 0)
-						value = write(asic->fd.gfxoff, &value, sizeof(value));
+					umr_gfxoff_write(asic, 1);
 				} else if (!strcmp(argv[i], "-mm")) {
 					if (i + 1 < argc) {
 						argflags[i] = 1;
@@ -1649,16 +1644,11 @@ int main(int argc, char **argv)
 						argflags[i] = 1;
 						argflags[i+1] = 1;
 						sscanf(argv[i+1], "%"SCNu32, &value);
-						if (asic->fd.gfxoff >= 0)
-							value = write(asic->fd.gfxoff, &value, sizeof(value));
-						else
+						if (umr_gfxoff_write(asic, value) < 0)
 							fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
 						++i;
 					} else {
-						if (asic->fd.gfxoff >= 0)
-							umr_gfxoff_read(asic);
-						else
-							fprintf(stderr, "[ERROR]: amdgpu_gfxoff file not present please update your kernel\n");
+						umr_gfxoff_read(asic);
 					}
 				} else if (!strcmp(argv[i], "--power") || !strcmp(argv[i], "-p")) {
 					argflags[i] = 1;

@@ -36,3 +36,10 @@ void umr_gfxoff_read(struct umr_asic *asic)
 		asic->err_msg("[ERROR]: can't check gfxoff status on this asic\n");
 	}
 }
+
+ssize_t umr_gfxoff_write(struct umr_asic *asic, uint32_t value)
+{
+	if (asic->fd.gfxoff >= 0)
+		return write(asic->fd.gfxoff, &value, sizeof(value));
+	return -1;
+}

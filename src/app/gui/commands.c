@@ -2480,10 +2480,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		unsigned *counters = calloc(32 * num_reg, sizeof(unsigned));
 
 		/* Disable GFXOFF */
-		if (asic->fd.gfxoff >= 0) {
-			uint32_t value = 0;
-			value = write(asic->fd.gfxoff, &value, sizeof(value));
-		}
+		umr_gfxoff_write(asic, 0);
 
 		/* Get our ID. */
 		char *dev_name = get_asic_devname(asic);
@@ -2529,10 +2526,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		free(dev_name);
 
 		/* Re-enable GFXOFF */
-		if (asic->fd.gfxoff >= 0) {
-			uint32_t value = 1;
-			value = write(asic->fd.gfxoff, &value, sizeof(value));
-		}
+		umr_gfxoff_write(asic, 1);
 
 		JSON_Value *fences = compare_fence_infos(
 			content_before,
@@ -2644,10 +2638,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		int capture_gprs = json_object_get_boolean(request, "capture_gprs");
 		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
 
-		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
-			uint32_t value = 0;
-			value = write(asic->fd.gfxoff, &value, sizeof(value));
-		}
+		if (disable_gfxoff)
+			umr_gfxoff_write(asic, 0);
 
 		asic->options.verbose = 0;
 		asic->options.skip_gprs = !capture_gprs;
@@ -2664,10 +2656,8 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		if (resume_waves)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
-		if (disable_gfxoff && asic->fd.gfxoff >= 0) {
-			uint32_t value = 1;
-			value = write(asic->fd.gfxoff, &value, sizeof(value));
-		}
+		if (disable_gfxoff)
+			umr_gfxoff_write(asic, 1);
 
 		if (!ring_is_halted) {
 			last_error = "Failed to halt the ring (or GPU is idle?)";
@@ -2717,16 +2707,14 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		answer = json_value_init_object();
 	} else if (strcmp(command, "ring") == 0) {
 		char *ring_name = (char*)json_object_get_string(request, "ring");
-		uint32_t wptr, rptr, drv_wptr, ringsize, value, *ring_data;
+		uint32_t wptr, rptr, drv_wptr, ringsize, *ring_data;
 		int halt_waves = json_object_get_boolean(request, "halt_waves");
 		enum umr_ring_type rt;
 		asic->options.halt_waves = halt_waves;
 		strcpy(asic->options.ring_name, ring_name);
 
 		/* Disable gfxoff */
-		value = 0;
-		if (asic->fd.gfxoff >= 0)
-			value = write(asic->fd.gfxoff, &value, sizeof(value));
+		umr_gfxoff_write(asic, 0);
 
 		if (halt_waves)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
@@ -2830,10 +2818,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		if (halt_waves)
 			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 		/* Reenable gfxoff */
-		value = 1;
-		if (asic->fd.gfxoff >= 0)
-			value = write(asic->fd.gfxoff, &value, sizeof(value));
-
+		umr_gfxoff_write(asic, 1);
 	} else if (strcmp(command, "power") == 0) {
 		const char *profiles[] = {
 			"auto",
