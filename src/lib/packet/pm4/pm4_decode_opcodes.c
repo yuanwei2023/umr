@@ -254,7 +254,7 @@ static const struct {
 	{ "UNK", 0, 0 }, // cd
 	{ "UNK", 0, 0 }, // ce
 	{ "UNK", 0, 0 }, // cf
-	{ "UNK", 0, 0 }, // d0
+	{ "PROTECTED_FENCE_SIGNAL", 11, 0 }, // d0
 	{ "UNK", 0, 0 }, // d1
 	{ "UNK", 0, 0 }, // d2
 	{ "UNK", 0, 0 }, // d3
@@ -2242,6 +2242,9 @@ static void decode_pkt3_gfx11(struct umr_asic *asic, struct umr_stream_decode_ui
 				}
 			}
 		}
+			break;
+		case 0xD0: // PROTECTED_FENCE_SIGNAL
+			ui->add_field(ui, ib_addr + 4, ib_vmid, "RESERVED", fetch_word(asic, stream, 0), NULL, 16, 32);
 			break;
 		default:
 			decode_pkt3_gfx10(asic, ui, stream, ib_addr, ib_vmid);
