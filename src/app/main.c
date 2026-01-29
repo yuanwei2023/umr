@@ -1618,6 +1618,7 @@ int main(int argc, char **argv)
 					if (i + 1 < argc) {
 						int n;
 						argflags[i] = 1;
+						argflags[i+1] = 1;
 						for (n = 0; n < 8; n++) {
 							uint32_t v = umr_read_reg_by_name(asic, argv[i+1]);
 							printf("\t[0x%08" PRIx32"] %s\n", v, umr_pm4_opcode_to_str(v));
