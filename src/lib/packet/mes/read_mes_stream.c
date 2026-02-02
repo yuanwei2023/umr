@@ -831,6 +831,10 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						case 0: // MESAPI_MISC__WRITE_REG
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_value", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "rrmt_opt", fetch_word(asic, stream, i), NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mode", (fetch_word(asic, stream, i) >> 0) & 0xf, NULL, 10, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mid_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "xcd_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
 							break;
 						case 1: // MESAPI_MISC__INV_GART
 							if (pack8 && !(i&1)) ++i;
@@ -847,6 +851,11 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "read64Bits", (fetch_word(asic, stream, i)) & 1, NULL, 16, 32);
 							++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "all", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
+							if (pack8 && !(i&1)) ++i;
+							 ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "rrmt_opt", fetch_word(asic, stream, i), NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mode", (fetch_word(asic, stream, i) >> 0) & 0xf, NULL, 10, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mid_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "xcd_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
 							break;
 						case 4: // MESAPI_MISC__WAIT_REG_MEM
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "op", fetch_word(asic, stream, i), STR_LOOKUP(mes_v11_wrm_operation, fetch_word(asic, stream, i), "UNKNOWN"), 16, 32); ++i;
@@ -854,6 +863,15 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mask", fetch_word(asic, stream, i), NULL, 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset1", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
 							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "reg_offset2", fetch_word(asic, stream, i), umr_reg_name(asic, fetch_word(asic, stream, i)), 16, 32); ++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "rrmt_opt1", fetch_word(asic, stream, i), NULL, 16, 32);
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mode", (fetch_word(asic, stream, i) >> 0) & 0xf, NULL, 10, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mid_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "xcd_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
+							++i;
+							ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "rrmt_opt2", fetch_word(asic, stream, i), NULL, 16, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mode", (fetch_word(asic, stream, i) >> 0) & 0xf, NULL, 10, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "mid_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
+                                                        ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "xcd_die_id", (fetch_word(asic, stream, i) >> 4) & 0xf, NULL, 10, 32);
 							break;
 						case 5: // MESAPI_MISC__SET_SHADER_DEBUGGER
 							if (pack8 && !(i&1)) ++i;
