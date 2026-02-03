@@ -51,6 +51,7 @@ struct umr_reg *umr_find_reg_data_by_ip(struct umr_asic *asic, const char *ip, c
 struct umr_reg *umr_find_reg_data_by_ip_quiet(struct umr_asic *asic, const char *ip, const char *regname);
 struct umr_reg *umr_find_reg_by_name(struct umr_asic *asic, const char *regname, struct umr_ip_block **ip);
 struct umr_reg *umr_find_reg_by_addr(struct umr_asic *asic, uint64_t addr, struct umr_ip_block **ip);
+struct umr_mmio_accel_data *umr_mmio_accel_lower_bound(struct umr_asic *asic, uint64_t addr);
 
 // read/write a 32-bit register given a BYTE address
 uint32_t umr_read_reg(struct umr_asic *asic, uint64_t addr, enum regclass type);

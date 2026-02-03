@@ -311,6 +311,39 @@ uint32_t umr_find_reg(struct umr_asic* asic, const char* regname)
 }
 
 /**
+ * umr_mmio_accel_lower_bound - Binary search for first entry at address
+ *
+ * Returns pointer to first matching entry in mmio_accel, or NULL if not found
+ * or mmio_accel is not available.
+ */
+struct umr_mmio_accel_data* umr_mmio_accel_lower_bound(struct umr_asic *asic, uint64_t addr)
+{
+	uint32_t bot, mid, top;
+
+	if (!asic->mmio_accel){
+		return NULL;
+	}
+
+	// Binary search to find first entry with addr (lower bound)
+	bot = 0;
+	top = asic->mmio_accel_size;
+	while (bot < top) {
+		mid = (bot + top) >> 1;
+		if (asic->mmio_accel[mid].mmio_addr < addr) {
+			bot = mid + 1;
+		} else {
+			top = mid;
+		}
+	}
+
+	// Check if we found a match
+	if (bot < asic->mmio_accel_size && asic->mmio_accel[bot].mmio_addr == addr){
+		return &asic->mmio_accel[bot];
+	}
+	return NULL;
+}
+
+/**
  * umr_find_reg_by_addr - Find a register by addressable offset
  *
  * Returns the umr_reg structure (if found) for a register at a
@@ -324,34 +357,24 @@ struct umr_reg* umr_find_reg_by_addr(struct umr_asic* asic, uint64_t addr, struc
 	if (ip)
 		*ip = NULL;
 
-	if (asic->mmio_accel) {
-		uint32_t bot, mid, top;
-		bot = 0;
-		top = asic->mmio_accel_size;
-
-		while (bot < top) {
-			mid = (bot + top) >> 1;
-			if (asic->mmio_accel[mid].mmio_addr < addr) {
-				bot = mid + 1;
-			} else {
-				top = mid;
-			}
-		}
-		if (bot < asic->mmio_accel_size && asic->mmio_accel[bot].mmio_addr == addr) {
-			if (ip)
-				*ip = asic->mmio_accel[bot].ip;
-			return asic->mmio_accel[bot].reg;
-		}
-		return NULL;
+	// Use lower-bound function if mmio_accel is available
+	struct umr_mmio_accel_data *entry = umr_mmio_accel_lower_bound(asic, addr);
+	if (entry) {
+		if (ip)
+			*ip = entry->ip;
+		return entry->reg;
 	}
 
-	for (i = 0; i < asic->no_blocks; i++)
-		for (j = 0; j < asic->blocks[i]->no_regs; j++)
-			if (asic->blocks[i]->regs[j].type == REG_MMIO && asic->blocks[i]->regs[j].addr == addr) {
-				if (ip)
-					*ip = asic->blocks[i];
-				return &asic->blocks[i]->regs[j];
-			}
+	// Fallback to linear search if no mmio_accel
+	if (!asic->mmio_accel) {
+		for (i = 0; i < asic->no_blocks; i++)
+			for (j = 0; j < asic->blocks[i]->no_regs; j++)
+				if (asic->blocks[i]->regs[j].type == REG_MMIO && asic->blocks[i]->regs[j].addr == addr) {
+					if (ip)
+						*ip = asic->blocks[i];
+					return &asic->blocks[i]->regs[j];
+				}
+	}
 	return NULL;
 }
 
