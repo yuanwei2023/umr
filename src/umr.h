@@ -376,6 +376,12 @@ struct devcoredump_reg {
 	uint32_t value;
 };
 
+struct umr_devcoredump_ib_data {
+	uint64_t va_start, va_end;
+	int dw;
+	uint32_t *content;
+};
+
 struct umr_options {
 	int forced_instance,
 		instance,
@@ -480,6 +486,9 @@ struct umr_options {
 		int no_registers;
 		struct devcoredump_reg *registers;
 
+		int no_ibs;
+		struct umr_devcoredump_ib_data* ibs;
+
 	} devcoredump;
 
 	// is this a rumr client?
@@ -571,6 +580,8 @@ struct umr_memory_access_funcs {
 	int (*vm_message)(const char *fmt, ...);
 
 	void (*va_addr_decode)(pde_fields_t *pdes, int num_pde, pte_fields_t pte);
+
+	int (*read_vram)(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data);
 
 	/** data -- opaque pointer the callbacks can use for state tracking */
 	void *data;

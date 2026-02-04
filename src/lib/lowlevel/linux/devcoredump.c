@@ -319,6 +319,42 @@ error:
 	return -1;
 }
 
+static int umr_parse_devcoredump_ib(struct umr_asic *asic, size_t n)
+{
+	char **lines = asic->options.devcoredump.data;
+	struct umr_devcoredump_ib_data ib;
+	int i, dw;
+
+	if (sscanf(lines[n], "IB #%d 0x%lx %d dw", &i, &ib.va_start, &ib.dw) != 3)
+		return n + 1;
+
+	ib.content = calloc(sizeof(uint32_t), ib.dw);
+	if (!ib.content)
+		return n + 1;
+
+	for (i = n + 1, dw = 0; i < (int)asic->options.devcoredump.n_lines && dw < ib.dw; i++) {
+		if (sscanf(lines[i], "0x%08x", &ib.content[dw++]) != 1) {
+			free(ib.content);
+			return i;
+		}
+	}
+
+	n = asic->options.devcoredump.no_ibs++;
+	asic->options.devcoredump.ibs = checked_realloc(asic->options.devcoredump.ibs,
+		asic->options.devcoredump.no_ibs * sizeof(*asic->options.devcoredump.ibs),
+		asic->err_msg);
+	if (asic->options.devcoredump.ibs == NULL) {
+		free(ib.content);
+		return i;
+	}
+
+	ib.va_start &= 0xFFFFFFFFFFFFULL;
+	ib.va_end = ib.va_start + dw * 4;
+	asic->options.devcoredump.ibs[n] = ib;
+
+	return i;
+}
+
 static int umr_parse_devcoredump(struct umr_asic *asic, umr_err_output errout)
 {
 	int i;
@@ -344,6 +380,8 @@ static int umr_parse_devcoredump(struct umr_asic *asic, umr_err_output errout)
 			i = umr_parse_devcoredump_ip_dump(asic, i + 1);
 		} else if (strcmp(line, "Ring buffer information") == 0) {
 			i = umr_parse_devcoredump_rings(asic, i + 1);
+		} else if (strncmp(line, "IB #", 4) == 0) {
+			i = umr_parse_devcoredump_ib(asic, i);
 		}
 
 		if (i < 0) {
@@ -353,7 +391,6 @@ static int umr_parse_devcoredump(struct umr_asic *asic, umr_err_output errout)
 	}
 
 	asic->options.is_devcoredump = 1;
-	asic->options.no_follow_ib = 1;
 	asic->instance = 0;
 
 	return 0;
@@ -365,6 +402,24 @@ error:
 	free(asic->blocks);
 	free(asic);
 
+	return -1;
+}
+
+static int umr_devcoredump_read_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_t address, uint32_t size, void *data)
+{
+	(void)partition;
+	(void) vmid;
+
+	/* Return IB content if it falls into a known range. */
+	for (int i = 0; i < asic->options.devcoredump.no_ibs; i++) {
+		struct umr_devcoredump_ib_data *ib = &asic->options.devcoredump.ibs[i];
+
+		if (address < ib->va_start || ib->va_end < address + size)
+			continue;
+
+		memcpy(data, ib->content + address - ib->va_start, size);
+		return 0;
+	}
 	return -1;
 }
 
@@ -558,6 +613,7 @@ static int umr_attach_devcoredump(struct umr_asic *asic)
 
 	asic->ring_func.read_ring_data = umr_devcoredump_read_ring_data;
 	asic->reg_funcs.read_reg = umr_devcoredump_read_reg;
+	asic->mem_funcs.read_vram = umr_devcoredump_read_vram;
 
 	asic->options.shader_enable.enable_vs_shader   = 1;
 	asic->options.shader_enable.enable_ps_shader   = 1;

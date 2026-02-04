@@ -60,6 +60,9 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 
 	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
+	if (write_en == 0 && asic->mem_funcs.read_vram)
+		return asic->mem_funcs.read_vram(asic, partition, vmid, address, size, data);
+
 	// only aligned reads
 	if ((address & 3) || (size & 3)) {
 		asic->err_msg("[ERROR]:  The address and size must be a multiple of 4 to access VRAM\n");
