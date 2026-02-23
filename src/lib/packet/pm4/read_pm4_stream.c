@@ -474,9 +474,11 @@ static void parse_pm4(struct umr_asic *asic, int vm_partition, uint32_t vmid, ui
 					asic->err_msg("[ERROR]: Could not read IB at 0x%"PRIx32":0x%" PRIx64 "\n", tvmid, ib_addr);
 				} else {
 					ps->ib = umr_pm4_decode_stream(asic, vm_partition, tvmid, ib_addr, (void*)buf, size / 4, reg_pairs, ip_version);
-					ps->ib->parent = ps;
-					ps->ib_source.addr = ib_addr;
-					ps->ib_source.vmid = tvmid;
+					if (ps->ib) {
+						ps->ib->parent = ps;
+						ps->ib_source.addr = ib_addr;
+						ps->ib_source.vmid = tvmid;
+					}
 				}
 				free(buf);
 			}
