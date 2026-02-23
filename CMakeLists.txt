@@ -183,8 +183,11 @@ set(REQUIRED_EXTERNAL_LIBS
 # Global setting: build everything position independent
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# CFLAGS += -Wall -W -O2 -g3 -Isrc/ -DPIC -fPIC
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W -O2 -g3 -pedantic -Werror=format-security -Wunused-result")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -W -g3 -pedantic -Werror=format-security -Wunused-result")
 
 add_subdirectory(src)
 add_subdirectory(doc)
