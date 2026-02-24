@@ -54,14 +54,14 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 	if (strcmp(ipname, "*")) {
 		// matching only specific IP blocks
 		if (regcomp(&ip_regex, ipname_esc, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
-			fprintf(stderr, "[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
+			asic->err_msg("[ERROR]: Failed to compile ip name regex for [%s]\n", ipname);
 			return -1;
 		}
 		ipreg = 1;
 	}
 
 	if (regcomp(&reg_regex, regname, REG_ICASE | REG_EXTENDED | REG_NOSUB)) {
-		fprintf(stderr, "[ERROR]: Failed to compile register regex for [%s]\n", regname);
+		asic->err_msg("[ERROR]: Failed to compile register regex for [%s]\n", regname);
 		if (ipreg) {
 			regfree(&ip_regex);
 		}
@@ -105,8 +105,8 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 						}
 
 						if (regname[0]) {
-							printf("%s%s.%s%s => ", CYAN, asic->blocks[i]->ipname,  asic->blocks[i]->regs[j].regname, RST);
-							printf("%s0x%08lx%s\n", YELLOW, (unsigned long)asic->blocks[i]->regs[j].value, RST);
+							asic->std_msg("%s%s.%s%s => ", CYAN, asic->blocks[i]->ipname,  asic->blocks[i]->regs[j].regname, RST);
+							asic->std_msg("%s0x%08lx%s\n", YELLOW, (unsigned long)asic->blocks[i]->regs[j].value, RST);
 							if (asic->options.bitfields)
 								for (k = 0; k < asic->blocks[i]->regs[j].no_bits; k++) {
 									uint32_t v;
@@ -123,7 +123,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 
 	if (count == 0) {
 		if (!memcmp(regname_copy, "reg", 3)) {
-			fprintf(stderr, "[ERROR]: Path <%s.%s.%s> not found on this ASIC\n", asicname, ipname, regname);
+			asic->err_msg("[ERROR]: Path <%s.%s.%s> not found on this ASIC\n", asicname, ipname, regname);
 			r = -1;
 			goto error;
 		} else {
@@ -131,7 +131,7 @@ int umr_scan_asic(struct umr_asic *asic, char *asicname, char *ipname, char *reg
 			// try scanning for reg that starts with reg
 			strcpy(tmpregname, "reg");
 			strcat(tmpregname, regname + 2);
-			fprintf(stderr, "[WARNING]: Retrying operation with new 'reg' name <%s>.\n", tmpregname);
+			asic->err_msg("[WARNING]: Retrying operation with new 'reg' name <%s>.\n", tmpregname);
 			r = umr_scan_asic(asic, asicname, ipname, tmpregname);
 			goto error;
 		}
