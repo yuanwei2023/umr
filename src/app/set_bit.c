@@ -37,7 +37,7 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 	uint64_t scale, copy, mask;
 
 	if (sscanf(regpath, "%[^.].%[^.].%[^.].%[^.]", asicname, ipname, regname, bitname) != 4) {
-		fprintf(stderr, "[ERROR]: Invalid regpath for bit write\n");
+		asic->err_msg("[ERROR]: Invalid regpath for bit write\n");
 		return -1;
 	}
 
@@ -81,7 +81,7 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 									asic->reg_funcs.write_reg(asic, (asic->blocks[i]->regs[j].addr+1)*scale, copy>>32UL, asic->blocks[i]->regs[j].type);
 								}
 
-								if (!asic->options.quiet) printf("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
+								if (!asic->options.quiet) asic->std_msg("%s <= 0x%" PRIx64 "\n", regpath, (unsigned long)copy);
 								return 0;
 							}
 						}
@@ -91,13 +91,13 @@ int umr_set_register_bit(struct umr_asic *asic, char *regpath, char *regvalue)
 		}
 	}
 	if (!memcmp(regname, "reg", 3)) {
-		fprintf(stderr, "[ERROR]: Path <%s> not found on this ASIC\n", regpath);
+		asic->err_msg("[ERROR]: Path <%s> not found on this ASIC\n", regpath);
 		return -1;
 	} else {
 		char newregpath[768];
 		memset(newregpath, 0, sizeof newregpath);
 		snprintf(newregpath, sizeof(newregpath) - 1, "%s.%s.reg%s.%s", asicname, ipname, regname + 2, bitname);
-		fprintf(stderr, "[WARNING]: Retrying operation with new 'reg' prefix path <%s>.\n", newregpath);
+		asic->err_msg("[WARNING]: Retrying operation with new 'reg' prefix path <%s>.\n", newregpath);
 		return umr_set_register_bit(asic, newregpath, regvalue);
 	}
 }

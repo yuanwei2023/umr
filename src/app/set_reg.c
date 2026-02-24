@@ -37,7 +37,7 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 	uint32_t v32;
 
 	if (sscanf(regpath, "%[^.].%[^.].%[^.]", asicname, ipname, regname) != 3) {
-		fprintf(stderr, "[ERROR]: Invalid regpath for write\n");
+		asic->err_msg("[ERROR]: Invalid regpath for write\n");
 		return -1;
 	}
 
@@ -78,12 +78,12 @@ int umr_set_register(struct umr_asic *asic, char *regpath, char *regvalue)
 	}
 
 	if (!memcmp(regname, "reg", 3)) {
-		fprintf(stderr, "[ERROR]: Path <%s> not found on this ASIC\n", regpath);
+		asic->err_msg("[ERROR]: Path <%s> not found on this ASIC\n", regpath);
 		return -1;
 	} else {
 		char newregpath[512];
 		sprintf(newregpath, "%s.%s.reg%s", asicname, ipname, regname + 2);
-		fprintf(stderr, "[WARNING]: Retrying operation with new 'reg' prefix path <%s>.\n", newregpath);
+		asic->err_msg("[WARNING]: Retrying operation with new 'reg' prefix path <%s>.\n", newregpath);
 		return umr_set_register(asic, newregpath, regvalue);
 	}
 }
