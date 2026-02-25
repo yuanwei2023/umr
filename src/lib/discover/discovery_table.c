@@ -221,6 +221,7 @@ static char* hwid_name[] = {
 	HWID_NAME(DAZ),
 	HWID_NAME(SDPMUX),
 	HWID_NAME(NTB),
+	HWID_NAME(VPE),
 	HWID_NAME(IOHC),
 	HWID_NAME(L2IMU),
 	HWID_NAME(VCE),
@@ -264,6 +265,7 @@ static char* hwid_name[] = {
 	HWID_NAME(PCS),
 	HWID_NAME(DDCL),
 	HWID_NAME(SST),
+	HWID_NAME(LSDMA),
 	HWID_NAME(IOAGR),
 	HWID_NAME(NBIF),
 	HWID_NAME(IOAPIC),
@@ -276,6 +278,8 @@ static char* hwid_name[] = {
 	HWID_NAME(XGMI),
 	HWID_NAME(XGBE),
 	HWID_NAME(MP0),
+	HWID_NAME(ATU),
+	HWID_NAME(AIGC),
 };
 
 static const char *hwid2name(uint32_t id)
