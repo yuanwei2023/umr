@@ -200,6 +200,10 @@ struct umr_vm_ai_state {
 			mmMC_VM_FB_LOCATION_TOP,
 			mmMC_VM_AGP_BASE,
 			mmMC_VM_AGP_BOT,
+			mmMC_VM_AGP_BASE_LO32,
+			mmMC_VM_AGP_BOT_LO32,
+			mmMC_VM_AGP_BASE_HI32,
+			mmMC_VM_AGP_BOT_HI32,
 			mmMC_VM_AGP_TOP;
 	} registers;
 };
@@ -662,6 +666,9 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	char *hub, *vm0prefix, *regprefix;
 	unsigned hubid;
 	static const char *indentation = "                  \\->";
+	int maj, min;
+
+	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	memset(&vm, 0, sizeof vm);
 	vm.asic = asic;
@@ -753,12 +760,25 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	}
 
 	if (vm.vmctrl.zfb) {
-		sprintf(buf, "mm%sMC_VM_AGP_BASE", regprefix);
-			vm.registers.mmMC_VM_AGP_BASE = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
-			vm.vmctrl.agp_base = ((uint64_t)vm.registers.mmMC_VM_AGP_BASE) << VM_FB_OFFSET_SHIFT;
-		sprintf(buf, "mm%sMC_VM_AGP_BOT", regprefix);
-			vm.registers.mmMC_VM_AGP_BOT = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
-			vm.vmctrl.agp_bot = ((uint64_t)vm.registers.mmMC_VM_AGP_BOT) << VM_FB_OFFSET_SHIFT;
+		if (maj <= 11) {
+			sprintf(buf, "mm%sMC_VM_AGP_BASE", regprefix);
+				vm.registers.mmMC_VM_AGP_BASE = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+				vm.vmctrl.agp_base = ((uint64_t)vm.registers.mmMC_VM_AGP_BASE) << VM_FB_OFFSET_SHIFT;
+			sprintf(buf, "mm%sMC_VM_AGP_BOT", regprefix);
+				vm.registers.mmMC_VM_AGP_BOT = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+				vm.vmctrl.agp_bot = ((uint64_t)vm.registers.mmMC_VM_AGP_BOT) << VM_FB_OFFSET_SHIFT;
+		} else {
+			sprintf(buf, "mm%sMC_VM_AGP_BASE_LO32", regprefix);
+				vm.registers.mmMC_VM_AGP_BASE_LO32 = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+			sprintf(buf, "mm%sMC_VM_AGP_BASE_HI32", regprefix);
+				vm.registers.mmMC_VM_AGP_BASE_HI32 = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+				vm.vmctrl.agp_base = (uint64_t)vm.registers.mmMC_VM_AGP_BASE_LO32 | ((uint64_t)vm.registers.mmMC_VM_AGP_BASE_LO32 << 32);
+			sprintf(buf, "mm%sMC_VM_AGP_BOT_LO32", regprefix);
+				vm.registers.mmMC_VM_AGP_BOT_LO32 = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+			sprintf(buf, "mm%sMC_VM_AGP_BOT_HI32", regprefix);
+				vm.registers.mmMC_VM_AGP_BOT_HI32 = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+				vm.vmctrl.agp_bot = (uint64_t)vm.registers.mmMC_VM_AGP_BOT_LO32 | ((uint64_t)vm.registers.mmMC_VM_AGP_BOT_HI32 << 32);
+		}
 		sprintf(buf, "mm%sMC_VM_AGP_TOP", regprefix);
 			vm.registers.mmMC_VM_AGP_TOP = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
 			vm.vmctrl.agp_top = (((uint64_t)vm.registers.mmMC_VM_AGP_TOP + 1) << VM_FB_OFFSET_SHIFT) | 0xFFFFFFULL;
