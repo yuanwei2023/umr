@@ -1285,8 +1285,8 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			goto pte_further;
 		}
 
+		vm.va_tally |= address & va_mask;
 		if (vm.asic->options.verbose) {
-			vm.va_tally |= address & va_mask;
 			print_pte(&vm, indentation);
 		}
 
