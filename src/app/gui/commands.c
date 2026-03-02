@@ -2009,6 +2009,10 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 
 	if (data->verbose)
 		printf("'%.*s'\n", len, buffer);
+
+	if (*buffer == '{')
+		return false;
+
 	cursor = buffer;
 	eol = buffer + len;
 
@@ -2116,7 +2120,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 	/* Push this to client. */
 	int s = eol - cursor;
 
-	if (s == 0)
+	if (s <= 0)
 		return false;
 
 	/* Replace task name and process name by an id. */

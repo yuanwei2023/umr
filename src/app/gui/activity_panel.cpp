@@ -1609,7 +1609,7 @@ public:
 					else
 						sprintf(label, "%s", (tl->type == TimelineType::Userspace && tl->u.sw.drm_client_name) ? tl->u.sw.drm_client_name : tl->u.sw.task_name);
 
-					if (n_rows > 1 && n_ctx > 1) {
+					if (group_with_previous || (n_rows > 1 && n_ctx > 1)) {
 						if (drawn)
 							ImGui::GetWindowDrawList()->AddText(ImVec2(pos.x + 10 * gui_scale, pos.y), tl->color, label);
 						title_size = ImGui::CalcTextSize(label);
@@ -1858,7 +1858,7 @@ end:
 					}
 				}
 
-				if (status != HighlightStatus::Greyed && show_connection && submit_visible && !job->submit_timeline->minimized) {
+				if (status >= HighlightStatus::YesIndirect /* && show_connection && submit_visible */ && !job->submit_timeline->minimized) {
 					/* If we didn't draw any hw_wait, copy the hw exec coords to the hw wait coords. */
 					if (!did_hw_wait) {
 						hw_wait.bl = hw_exec.bl;
