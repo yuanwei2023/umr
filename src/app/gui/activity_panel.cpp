@@ -137,6 +137,8 @@ struct DmaFence {
 
 #define COLOR_TO_HEX(c) (((c) & 0xff) << 16) | ((c) & 0xff00) | (((c) >> 16) & 0xff)
 
+DmaFence nop_fence;
+
 /* Struct representing a single trace event. */
 struct DrmEvent : public Event {
 	DrmEvent(EventType::Enum t, double timestamp) : Event(t, timestamp) {
@@ -176,6 +178,7 @@ struct DrmEvent : public Event {
 				return u.drm_sched_job_done.signaled;
 			default: {
 				assert(false);
+				return nop_fence;
 			}
 		}
 	}

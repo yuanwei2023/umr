@@ -71,13 +71,9 @@ public:
 		};
 
 		if (last_sensor_read > top_read_interval) {
-			if (can_send_request) {
+			if (can_send_request && ipname) {
 				const char *regs[] = {"mmGRBM_STATUS", "mmGRBM_STATUS2", NULL};
-				if (ipname == NULL) {
-					printf("Couldn't find ip block with reg=%s\n", ipname);
-				} else {
-					send_accumulate_command(ipname, top_read_interval * 1000, regs);
-				}
+				send_accumulate_command(ipname, top_read_interval * 1000, regs);
 				last_sensor_read = 0;
 			}
 		} else {

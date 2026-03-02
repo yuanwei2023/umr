@@ -666,10 +666,14 @@ static int replay_up_to(const char *url, std::vector<AsicData*> &asics,
 				fd = open(filename, O_RDONLY);
 				if (fd >= 0) {
 					uint32_t s;
-					read(fd, &s, sizeof(raw_data_size));
-					raw_data_size = le32toh(s);
-					raw_data = malloc(raw_data_size);
-					read(fd, raw_data, raw_data_size);
+					if (read(fd, &s, sizeof(raw_data_size)) == 4) {
+						raw_data_size = le32toh(s);
+						raw_data = malloc(raw_data_size);
+						raw_data_size = read(fd, raw_data, raw_data_size);
+					} else {
+						raw_data_size = 0;
+						raw_data = NULL;
+					}
 					close(fd);
 				}
 			}
