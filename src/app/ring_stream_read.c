@@ -382,7 +382,7 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 	}
 
 	if (strstr(filename, ".ring")) {
-		int32_t size;
+		size_t size;
 		fseek(infile, 0, SEEK_END);
 		if (ftell(infile) > 12) {
 			size = ftell(infile) - 12;
@@ -410,7 +410,7 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 	}
 
 	if (strstr(filename, ".bin")) {
-		uint32_t size;
+		size_t size;
 		fseek(infile, 0, SEEK_END);
 		size = ftell(infile);
 		if (size > 0) {

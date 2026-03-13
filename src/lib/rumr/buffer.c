@@ -157,7 +157,7 @@ void rumr_buffer_free(struct rumr_buffer *buf)
 struct rumr_buffer *rumr_buffer_load_file(const char *fname, char *database_path)
 {
 	struct rumr_buffer *buf = NULL;
-	int32_t size;
+	size_t size;
 	FILE *f = NULL;
 
 	f = umr_database_open(database_path, (char *) fname, 1);
