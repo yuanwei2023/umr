@@ -28,7 +28,7 @@ int umr_print_gpu_metrics(struct umr_asic *asic, int delay)
 {
 	FILE *f = NULL;
 	uint8_t *pp_data = NULL;
-	uint32_t size;
+	int32_t size;
 	char pp_name[128];
 	int r;
 

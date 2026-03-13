@@ -382,7 +382,7 @@ static uint32_t *read_ib_file(struct umr_asic *asic, char *filename, uint32_t *n
 	}
 
 	if (strstr(filename, ".ring")) {
-		uint32_t size;
+		int32_t size;
 		fseek(infile, 0, SEEK_END);
 		if (ftell(infile) > 12) {
 			size = ftell(infile) - 12;
