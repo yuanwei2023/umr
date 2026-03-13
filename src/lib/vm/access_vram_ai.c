@@ -889,9 +889,9 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				"mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x%" PRIx32 "\n"
 				"mm%sMC_VM_FB_LOCATION_BASE=0x%" PRIx32 "\n"
 				"mm%sMC_VM_FB_LOCATION_TOP=0x%" PRIx32 "\n"
-				"mm%sMC_VM_AGP_BASE=0x%" PRIx32 "\n"
-				"mm%sMC_VM_AGP_BOT=0x%" PRIx32 "\n"
-				"mm%sMC_VM_AGP_TOP=0x%" PRIx32 "\n",
+				"mm%sMC_VM_AGP_BASE=0x%" PRIx32 " (%08"PRIx32"%08"PRIx32")\n"
+				"mm%sMC_VM_AGP_BOT=0x%" PRIx32 " (%08"PRIx32"%08"PRIx32")\n"
+				"mm%sMC_VM_AGP_TOP=0x%" PRIx32 " (%08"PRIx32"%08"PRIx32")\n",
 			regprefix, vmid, vm.registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_LO32,
 			regprefix, vmid, vm.registers.mmVM_CONTEXTx_PAGE_TABLE_START_ADDR_HI32,
 			regprefix, vmid, vm.registers.mmVM_CONTEXTx_PAGE_TABLE_END_ADDR_LO32,
@@ -909,9 +909,9 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			vm0prefix, vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR,
 			vm0prefix, vm.registers.mmMC_VM_FB_LOCATION_BASE,
 			vm0prefix, vm.registers.mmMC_VM_FB_LOCATION_TOP,
-			regprefix, vm.registers.mmMC_VM_AGP_BASE,
-			regprefix, vm.registers.mmMC_VM_AGP_BOT,
-			regprefix, vm.registers.mmMC_VM_AGP_TOP
+			regprefix, vm.registers.mmMC_VM_AGP_BASE, vm.registers.mmMC_VM_AGP_BASE_HI32, vm.registers.mmMC_VM_AGP_BASE_LO32,
+			regprefix, vm.registers.mmMC_VM_AGP_BOT, vm.registers.mmMC_VM_AGP_BOT_HI32, vm.registers.mmMC_VM_AGP_BOT_LO32,
+			regprefix, vm.registers.mmMC_VM_AGP_TOP, vm.registers.mmMC_VM_AGP_TOP_HI32, vm.registers.mmMC_VM_AGP_TOP_LO32
 			);
 	}
 
