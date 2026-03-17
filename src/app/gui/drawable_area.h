@@ -32,7 +32,7 @@
 class DrawableArea {
 public:
 	DrawableArea(int bottom_row_line = 10, bool allow_bot_panel_zoom = false) {
-		mouse_state = MouseState::None;
+		mouse_state = MouseState::NoState;
 		top_row_zoom = 1.0;
 		offset_ts = 0;
 		top_row_y_offset = 0;
@@ -65,7 +65,7 @@ public:
 
 		/* Mouse handling */
 		switch (mouse_state) {
-			case MouseState::None: {
+			case MouseState::NoState: {
 				float dy = std::abs(ImGui::GetIO().MousePos.y - (pos.y + size.y - row_split_y));
 
 				if (dy <= 2 * gui_scale) {
@@ -103,7 +103,7 @@ public:
 						row_split_y = 0;
 					ImGui::ResetMouseDragDelta();
 				} else if (!ImGui::IsMouseDown(0)) {
-					mouse_state = MouseState::None;
+					mouse_state = MouseState::NoState;
 				}
 				break;
 			}
@@ -115,7 +115,7 @@ public:
 
 					ImGui::ResetMouseDragDelta();
 				} else {
-					mouse_state = MouseState::None;
+					mouse_state = MouseState::NoState;
 				}
 				break;
 			}
@@ -130,7 +130,7 @@ public:
 					ImGui::GetWindowDrawList()->AddText(
 						ImVec2((ruler_start.x + p.x - l) / 2, (ruler_start.y + p.y - ImGui::GetTextLineHeight() * 2) / 2), IM_COL32_WHITE, txt);
 				} else {
-					mouse_state = MouseState::None;
+					mouse_state = MouseState::NoState;
 				}
 				break;
 			}
@@ -188,7 +188,7 @@ public:
 	}
 
 	bool is_input_active() const {
-		return mouse_state != MouseState::None;
+		return mouse_state != MouseState::NoState;
 	}
 
 	double compute_visible_duration(double total_duration) const {
@@ -279,7 +279,7 @@ private:
 	float row_split_y;
 
 	enum MouseState {
-		None,
+		NoState,
 		ResizingGraph,
 		ScrollingGraph,
 		Ruler,
