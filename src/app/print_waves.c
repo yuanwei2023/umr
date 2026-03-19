@@ -32,7 +32,7 @@
 
 #define NUM_OPCODE_WORDS 16
 
-void umr_print_waves(struct umr_asic *asic)
+void umr_print_waves(struct umr_asic *asic, int pass)
 {
 	uint32_t x, y, thread;
 	uint64_t pgm_addr, shader_addr;
@@ -52,6 +52,7 @@ void umr_print_waves(struct umr_asic *asic)
 	struct umr_bitfield *bits;
 	char linebuf[256];
 	struct umr_shader_reg_pair *regs;
+	int waves;
 
 	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
 
@@ -168,8 +169,14 @@ void umr_print_waves(struct umr_asic *asic)
 	}
 
 	owd = wd = umr_scan_wave_data(asic);
-
 	output = tmpfile();
+
+	// output executive summary
+	waves = 0;
+
+	if (pass == 0) {
+		fprintf(output, "Executive Summary for XCD %d:\n", asic->options.vm_partition == -1 ? 0 : asic->options.vm_partition);
+	}
 	while (wd) {
 		uint64_t pc;
 		uint32_t vmid;
@@ -177,198 +184,210 @@ void umr_print_waves(struct umr_asic *asic)
 
 		first = 0;
 		wavefront_desc = umr_wave_data_describe_wavefront(asic, wd);
-		fprintf(output, "\n------------------------------------------------------\n%s\n", wavefront_desc);
+		if (pass == 0) {
+			uint64_t pc;
+			uint32_t vmid;
+			umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
+			fprintf(output, "Wave #%d => %s: vmid: 0x%"PRIx32", pc: 0x%"PRIx64"\n", waves++, wavefront_desc, vmid, pc);
+		} else {
+			fprintf(output, "\n------------------------------------------------------\n%s\n", wavefront_desc);
+		}
 		free(wavefront_desc);
 
 		if (wd->tainted) {
 			fprintf(output, "[WARNING]: THIS WAVE DATA IS POSSIBLY TAINTED BY A RACE CONDITION\n");
 		}
 
-		H("Main Registers");
-		for (x = 0; wd->reg_names[x]; x++) {
-			X(x);
-		}
-		fprintf(output, "\n\n");
-
-		if (asic->options.bitfields) {
-			H("Register Bits");
+		if (pass == 1) {
+			H("Main Registers");
 			for (x = 0; wd->reg_names[x]; x++) {
-				umr_wave_data_get_bit_info(asic, wd, wd->reg_names[x], &no_bits, &bits);
-				Hv(wd->reg_names[x], wd->ws.reg_values[x]);
-				for (y = 0; y < (uint32_t)no_bits; y++) {
-					PX(x, y);
-				}
+				X(x);
 			}
 			fprintf(output, "\n\n");
-		}
 
-		if (umr_wave_data_get_flag_halt(asic, wd) || umr_wave_data_get_flag_fatal_halt(asic, wd)) {
-			for (x = 0; x < umr_wave_data_num_of_sgprs(asic, wd); x += 4)
-				fprintf(output, ">SGPRS[%s%u%s..%s%u%s] = { %s%08lx%s, %s%08lx%s, %s%08lx%s, %s%08lx%s }\n",
-					YELLOW, (unsigned)(x), RST,
-					YELLOW, (unsigned)(x + 3), RST,
-					BLUE, (unsigned long)wd->sgprs[x], RST,
-					BLUE, (unsigned long)wd->sgprs[x+1], RST,
-					BLUE, (unsigned long)wd->sgprs[x+2], RST,
-					BLUE, (unsigned long)wd->sgprs[x+3], RST);
+			if (asic->options.bitfields) {
+				H("Register Bits");
+				for (x = 0; wd->reg_names[x]; x++) {
+					umr_wave_data_get_bit_info(asic, wd, wd->reg_names[x], &no_bits, &bits);
+					Hv(wd->reg_names[x], wd->ws.reg_values[x]);
+					for (y = 0; y < (uint32_t)no_bits; y++) {
+						PX(x, y);
+					}
+				}
+				fprintf(output, "\n\n");
+			}
 
-			if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
-				for (y = 0, x = 0x6C; x < (16 + 0x6C); x += 4) {
-					fprintf(output, ">%s[%s%u%s..%s%u%s] = { %s%08lx%s, %s%08lx%s, %s%08lx%s, %s%08lx%s }\n",
-						(x < (0x6C + 4) && gfx_maj <= 8) ? "TBA/TMA" : "TTMP",
-						YELLOW, (unsigned)(y), RST,
-						YELLOW, (unsigned)(y + 3), RST,
+			if (umr_wave_data_get_flag_halt(asic, wd) || umr_wave_data_get_flag_fatal_halt(asic, wd)) {
+				for (x = 0; x < umr_wave_data_num_of_sgprs(asic, wd); x += 4)
+					fprintf(output, ">SGPRS[%s%u%s..%s%u%s] = { %s%08lx%s, %s%08lx%s, %s%08lx%s, %s%08lx%s }\n",
+						YELLOW, (unsigned)(x), RST,
+						YELLOW, (unsigned)(x + 3), RST,
 						BLUE, (unsigned long)wd->sgprs[x], RST,
 						BLUE, (unsigned long)wd->sgprs[x+1], RST,
 						BLUE, (unsigned long)wd->sgprs[x+2], RST,
 						BLUE, (unsigned long)wd->sgprs[x+3], RST);
 
-					// restart numbering on SI..VI with TTMP0
-					y += 4;
-					if (x == 0x6C && gfx_maj <= 8)
-						y = 0;
-				}
-			}
+				if (umr_wave_data_get_flag_trap_en(asic, wd) || umr_wave_data_get_flag_priv(asic, wd)) {
+					for (y = 0, x = 0x6C; x < (16 + 0x6C); x += 4) {
+						fprintf(output, ">%s[%s%u%s..%s%u%s] = { %s%08lx%s, %s%08lx%s, %s%08lx%s, %s%08lx%s }\n",
+							(x < (0x6C + 4) && gfx_maj <= 8) ? "TBA/TMA" : "TTMP",
+							YELLOW, (unsigned)(y), RST,
+							YELLOW, (unsigned)(y + 3), RST,
+							BLUE, (unsigned long)wd->sgprs[x], RST,
+							BLUE, (unsigned long)wd->sgprs[x+1], RST,
+							BLUE, (unsigned long)wd->sgprs[x+2], RST,
+							BLUE, (unsigned long)wd->sgprs[x+3], RST);
 
-			if (wd->have_vgprs) {
-				unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 VGPRs
-				uint32_t vgpr_size, exec_lo, exec_hi;
-				vgpr_size = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE");
-				exec_lo = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_EXEC_LO");
-				exec_hi = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_EXEC_HI");
-				fprintf(output, "\n");
-				for (x = 0; x < ((vgpr_size + 1) << granularity); ++x) {
-					if (x % 16 == 0) {
-						if (x == 0)
-							fprintf(output, "VGPRS:       ");
-						else
-							fprintf(output, "             ");
+						// restart numbering on SI..VI with TTMP0
+						y += 4;
+						if (x == 0x6C && gfx_maj <= 8)
+							y = 0;
+					}
+				}
+
+				if (wd->have_vgprs) {
+					unsigned granularity = asic->parameters.vgpr_granularity; // default is blocks of 4 VGPRs
+					uint32_t vgpr_size, exec_lo, exec_hi;
+					vgpr_size = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_GPR_ALLOC", "VGPR_SIZE");
+					exec_lo = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_EXEC_LO");
+					exec_hi = umr_wave_data_get_value(asic, wd, "ixSQ_WAVE_EXEC_HI");
+					fprintf(output, "\n");
+					for (x = 0; x < ((vgpr_size + 1) << granularity); ++x) {
+						if (x % 16 == 0) {
+							if (x == 0)
+								fprintf(output, "VGPRS:       ");
+							else
+								fprintf(output, "             ");
+							for (thread = 0; thread < 64; ++thread) {
+								unsigned live = thread < 32 ? (exec_lo & (1u << thread))
+												: (exec_hi & (1u << (thread - 32)));
+								fprintf(output, live ? " t%02u     " : " (t%02u)   ", thread);
+							}
+							fprintf(output, "\n");
+						}
+
+						fprintf(output, "    [%s%3u%s] = {", YELLOW, x, RST);
 						for (thread = 0; thread < 64; ++thread) {
 							unsigned live = thread < 32 ? (exec_lo & (1u << thread))
 											: (exec_hi & (1u << (thread - 32)));
-							fprintf(output, live ? " t%02u     " : " (t%02u)   ", thread);
+							fprintf(output, " %s%08x%s", live ? BLUE : RST, wd->vgprs[thread * 256 + x], RST);
 						}
-						fprintf(output, "\n");
+						fprintf(output, " }\n");
 					}
-
-					fprintf(output, "    [%s%3u%s] = {", YELLOW, x, RST);
-					for (thread = 0; thread < 64; ++thread) {
-						unsigned live = thread < 32 ? (exec_lo & (1u << thread))
-										: (exec_hi & (1u << (thread - 32)));
-						fprintf(output, " %s%08x%s", live ? BLUE : RST, wd->vgprs[thread * 256 + x], RST);
-					}
-					fprintf(output, " }\n");
 				}
-			}
+			} 
+		} /* if (pass == 1) */
 
-			/* always dump shaders */
-			umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
-			pgm_addr = pc;
+		/* always dump shaders */
+		umr_wave_data_get_shader_pc_vmid(asic, wd, &vmid, &pc);
+		pgm_addr = pc;
 
-			fprintf(output, ring_halted ? "\n\nPGM_MEM:" : "\n\nPGM_MEM (guess based on PC):");
-			regs = NULL;
-			shader = NULL;
-			if (ring_halted && stream)
-				shader = umr_packet_find_shader(asic, stream, vmid, pgm_addr);
+		fprintf(output, ring_halted ? "\n\nPGM_MEM:" : "\n\nPGM_MEM (guess based on PC):");
+		regs = NULL;
+		shader = NULL;
+		if (ring_halted && stream)
+			shader = umr_packet_find_shader(asic, stream, vmid, pgm_addr);
 
-			if (shader) {
-				regs = shader->regs;
+		if (shader) {
+			regs = shader->regs;
 
-				// we found a shader so we can actually use real start addresses
-				fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)",
-					BLUE, shader->vmid, RST,
-					YELLOW, (unsigned long long)shader->addr, RST,
-					BLUE, shader->size, RST);
-			} else if (stream &&
-						asic->options.user_queue.state.active &&
-						asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
-				// if !shader and compute_AQL mode, then try using queue_packet_id) to look up the AQL packet and find the RSRC regs from there
-				uint32_t queue_packet_id, x;
-				struct umr_hsa_stream *hsa = stream->stream.hsa;
+			// we found a shader so we can actually use real start addresses
+			fprintf(output, " (found shader at: %s%u%s@0x%s%llx%s of %s%u%s bytes)",
+				BLUE, shader->vmid, RST,
+				YELLOW, (unsigned long long)shader->addr, RST,
+				BLUE, shader->size, RST);
+		} else if (stream &&
+					asic->options.user_queue.state.active &&
+					asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].queue_type == UMR_QUEUE_COMPUTE) {
+			// if !shader and compute_AQL mode, then try using queue_packet_id) to look up the AQL packet and find the RSRC regs from there
+			uint32_t queue_packet_id, x;
+			struct umr_hsa_stream *hsa = stream->stream.hsa;
 
-				// TODO: right now umr only binds to one queue, the wave here might not be from the current queue attached
+			// TODO: right now umr only binds to one queue, the wave here might not be from the current queue attached
 
-				// figure out the queue_packet_id based on gfx version
-				switch (gfx_maj) {
-					case 9:
-						if (gfx_min < 4) {
-							// < gfx940
-							queue_packet_id = wd->sgprs[0x6C + 6] & ((1UL << 24) - 1);
-						} else {
-							// gfx940
-							queue_packet_id = (wd->sgprs[0x6C + 11] >> 6) & ((1UL << 24) - 1);
-						}
-						break;
-					case 10:
-					case 11:
+			// figure out the queue_packet_id based on gfx version
+			switch (gfx_maj) {
+				case 9:
+					if (gfx_min < 4) {
+						// < gfx940
 						queue_packet_id = wd->sgprs[0x6C + 6] & ((1UL << 24) - 1);
-						break;
-					case 12:
-						queue_packet_id = wd->sgprs[0x6C + 8] & ((1UL << 24) - 1);
-						break;
-					default:
-						asic->err_msg("[BUG]: Unsupported GFX major %d in printing waves when finding queue_packet_id\n", gfx_maj);
-						goto cleanup;
-				}
-
-				// look for an AQL that matches stream[idx] == rptr - queue_packet_id
-				x = queue_packet_id - asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value; // TODO: use_full_queue will break this
-				while (hsa && x--) {
-					hsa = hsa->next;
-				}
-				if (hsa && hsa->shader) {
-					regs = hsa->shader->regs;
-				}
+					} else {
+						// gfx940
+						queue_packet_id = (wd->sgprs[0x6C + 11] >> 6) & ((1UL << 24) - 1);
+					}
+					break;
+				case 10:
+				case 11:
+					queue_packet_id = wd->sgprs[0x6C + 6] & ((1UL << 24) - 1);
+					break;
+				case 12:
+					queue_packet_id = wd->sgprs[0x6C + 8] & ((1UL << 24) - 1);
+					break;
+				default:
+					asic->err_msg("[BUG]: Unsupported GFX major %d in printing waves when finding queue_packet_id\n", gfx_maj);
+					goto cleanup;
 			}
 
-			// print regs
-			if (regs) {
-				fprintf(output, "\n   %sShader registers:\n", shader ? "" : "Found DISPATCH_KERNEL, ");
-				while (regs) {
-					fprintf(output, "      %s(%"PRIu32"@0x%"PRIx64") == 0x%"PRIx32"\n", regs->regname, regs->vmid, regs->addr, regs->value);
-					if (asic->options.bitfields) {
-						struct umr_reg *reg = NULL;
-						if (strstr(regs->regname, "."))
-							reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(regs->regname, ".") + 1);
-						if (reg && reg->no_bits > 1) {
-							int k;
-							for (k = 0; k < reg->no_bits; k++) {
-								uint32_t v;
-								v = (1UL << (reg->bits[k].stop + 1 - reg->bits[k].start)) - 1;
-								v &= (regs->value >> reg->bits[k].start);
-								fprintf(output, "         %s[%u:%u] == 0x%"PRIx32"\n",
-									reg->bits[k].regname, reg->bits[k].start, reg->bits[k].stop, v);
-							}
+			// look for an AQL that matches stream[idx] == rptr - queue_packet_id
+			x = queue_packet_id - asic->options.user_queue.client_info.queue[asic->options.user_queue.state.qidx].hqd_rptr_value; // TODO: use_full_queue will break this
+			while (hsa && x--) {
+				hsa = hsa->next;
+			}
+			if (hsa && hsa->shader) {
+				regs = hsa->shader->regs;
+			}
+		}
+
+		// print regs
+		if (regs) {
+			fprintf(output, "\n   %sShader registers:\n", shader ? "" : "Found DISPATCH_KERNEL, ");
+			while (regs) {
+				fprintf(output, "      %s(%"PRIu32"@0x%"PRIx64") == 0x%"PRIx32"\n", regs->regname, regs->vmid, regs->addr, regs->value);
+				if (asic->options.bitfields) {
+					struct umr_reg *reg = NULL;
+					if (strstr(regs->regname, "."))
+						reg = umr_find_reg_data_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, strstr(regs->regname, ".") + 1);
+					if (reg && reg->no_bits > 1) {
+						int k;
+						for (k = 0; k < reg->no_bits; k++) {
+							uint32_t v;
+							v = (1UL << (reg->bits[k].stop + 1 - reg->bits[k].start)) - 1;
+							v &= (regs->value >> reg->bits[k].start);
+							fprintf(output, "         %s[%u:%u] == 0x%"PRIx32"\n",
+								reg->bits[k].regname, reg->bits[k].start, reg->bits[k].stop, v);
 						}
 					}
-					regs = regs->next;
 				}
-				fprintf(output, "\n");
+				regs = regs->next;
 			}
-
-			if (shader) {
-				// start decoding a bit before PC if possible
-				if (!(asic->options.full_shader) && (shader->addr + ((NUM_OPCODE_WORDS*4)/2) < pgm_addr))
-					pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
-				else
-					pgm_addr = shader->addr;
-				if (asic->options.full_shader)
-					shader_size = shader->size;
-				if ((pgm_addr + shader_size) > (shader->addr + shader->size))
-					shader_size = (shader->addr + shader->size) - pgm_addr;
-				shader_addr = shader->addr;
-				free(shader);
-				shader = NULL;
-			} else {
-				// shader wasn't found (or we have no stream attached) so we just back up a few words as a guess.
-				pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
-				shader_addr = pgm_addr;
-				fprintf(output, "\n");
-			}
-			umr_vm_disasm(asic, output, asic->options.vm_partition, vmid, shader_addr, pc, shader_size,
-					  pgm_addr - shader_addr, NULL);
+			fprintf(output, "\n");
 		}
+
+		if (shader) {
+			// start decoding a bit before PC if possible
+			if (!(asic->options.full_shader) && (shader->addr + ((NUM_OPCODE_WORDS*4)/2) < pgm_addr))
+				pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
+			else
+				pgm_addr = shader->addr;
+			if (asic->options.full_shader)
+				shader_size = shader->size;
+			if ((pgm_addr + shader_size) > (shader->addr + shader->size))
+				shader_size = (shader->addr + shader->size) - pgm_addr;
+			shader_addr = shader->addr;
+			free(shader);
+			shader = NULL;
+		} else {
+			// shader wasn't found (or we have no stream attached) so we just back up a few words as a guess.
+			pgm_addr -= (NUM_OPCODE_WORDS*4)/2;
+			shader_addr = pgm_addr;
+			fprintf(output, "\n");
+		}
+		umr_vm_disasm(asic, output, asic->options.vm_partition, vmid, shader_addr, pc, shader_size,
+				pgm_addr - shader_addr, NULL);
 		wd = wd->next;
+	} /* while (wd) */
+	if (pass == 0) {
+		fprintf(output, "------------------------------------------------------\nTotal waves: %d\n\n\n", waves);
 	}
 
 	if (first)

@@ -512,13 +512,13 @@ static void do_help(void)
 	"\n*** Device Utilization ***\n"
 	"\n\t--top, -t\n\t\tSummarize GPU utilization.  Can select a SE block with --bank.  Can use"
 		"\n\t\toptions 'use_colour' to colourize output and 'use_pci' to improve efficiency.\n"
-	"\n\t--waves, -wa [<none> | <uq> | <ring_name> | <vmid>@<addr>.<size>]\n\t\tPrint out information about any active CU waves.  Can use '-O bits'"
+	"\n\t--waves, -wa [all=][<none> | <uq> | <ring_name> | <vmid>@<addr>.<size>]\n\t\tPrint out information about any active CU waves.  Can use '-O bits'"
 		"\n\t\tto see decoding of various wave fields.  Can use the '-O halt_waves' option"
 		"\n\t\tto halt the SQ while reading registers.  An optional ring name can be specified"
 		"\n\t\twhich will then search a given ring for pointers to active shaders.  It will"
 		"\n\t\tdefault to the 'gfx' ring if nothing is specified.  An IB can be specified"
 		"\n\t\tby a vmid, address, and size (in hex bytes) triplet.  Using user queues can"
-		"\n\t\tbe specified by passing 'uq'.\n"
+		"\n\t\tbe specified by passing 'uq'.  Specifying 'all=' will scan all of the GFX (XCD) blocks in the ASIC.\n"
 	"\n\t--singlestep, -ss <se>,<sh>,<wgp>,<simd>,<wave>\n\t\tSingle-step one wave."
 	"\n\t\tTries advancing execution on the specified wave by one instruction."
 	"\n\t--profiler, -prof [pixel= | vertex= | compute=]<nsamples> [ring]"
@@ -1113,7 +1113,17 @@ int main(int argc, char **argv)
 							++i;
 						}
 					}
-					umr_print_waves(asic);
+					if (!memcmp(asic->options.ring_name, "all", 3)) {
+						char *p = strstr(asic->options.ring_name, "=");
+						if (p) {
+							strcpy(asic->options.ring_name, p + 1);
+						} else {
+							strcpy(asic->options.ring_name, "none");
+						}
+						umr_print_all_waves(asic);
+					} else {
+						umr_print_waves(asic, 1);
+					}
 				} else if (!strcmp(argv[i], "--singlestep") || !strcmp(argv[i], "-ss")) {
 					if (asic->family < FAMILY_NV) {
 						fprintf(stderr, "[ERROR]: --singlestep is only supported on gfx10+!\n");

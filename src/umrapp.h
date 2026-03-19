@@ -47,7 +47,8 @@ void umr_scan_log(struct umr_asic *asic, int use_new);
 void umr_top(struct umr_asic *asic);
 
 void umr_print_config(struct umr_asic *asic);
-void umr_print_waves(struct umr_asic *asic);
+void umr_print_waves(struct umr_asic *asic, int pass);
+void umr_print_all_waves(struct umr_asic *asic);
 void umr_profiler(struct umr_asic *asic, int samples, int shader_target);
 void umr_profiler(struct umr_asic *asic, int samples, int delay);
 void umr_print_cpg(struct umr_asic *asic);

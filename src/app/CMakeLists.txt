@@ -40,6 +40,7 @@ add_library(umrapp
   set_bit.c
   set_reg.c
   print_waves.c
+  print_all_waves.c
   enum.c
   power.c
   clock.c
