@@ -56,7 +56,6 @@ iter_over_gpu_xcc dump_waves
 #These aren't needed for most debug cases
 if [ "$1" == "all" ]; then
 	iter_over_gpu_xcc dump_cpc_scratch_mems
-	iter_over_gpu_xcc dump_cp_regs
 	iter_over_gpu_xcc dump_headers
 elif [ "$1" == "mec" ]; then
 	iter_over_gpu_xcc dump_headers

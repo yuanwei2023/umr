@@ -65,61 +65,6 @@ dump_cpc() {
 	umr -i "${g}" -vmp "${xcc}" -cpc >"${filename}" 2>&1
 }
 
-#dump_cp_regs [did]
-#did must start with 0x
-dump_cp_regs() {
-	local g="$1"
-	local xcc="$2"
-	local gpu="$3"
-	local gfxname=`umr --script gfxname ${g}`
-
-	filename="${prefix}_umr_cp_regs_gpu${gpu}_xcc${xcc}.txt"
-	if [ "$xcc" = -1 ]; then
-		filename="${prefix}_umr_cp_regs_gpu${gpu}.txt"
-	fi
-	echo "Generating $filename"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPC_UTCL1_STATUS" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPF_UTCL1_STATUS" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCPG_UTCL1_STATUS" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_INT_STAT_DEBUG" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_ME1_INT_STAT_DEBUG" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_ME2_INT_STAT_DEBUG" 2>&1 >>"${filename}"
-
-	echo "PQ fetcher" 1>>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -w "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_CNTL" 0 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR_ADDR" 2>&1 >>"${filename}"
-
-	echo "IB fetcher" 1>>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -w "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_CNTL" 1 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR_ADDR" 2>&1 >>"${filename}"
-
-	echo "EOP fetcher" 1>>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -w "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_CNTL" 2 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR_ADDR" 2>&1 >>"${filename}"
-
-	echo "EQ fetcher" 1>>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -w "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_CNTL" 3 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR_ADDR" 2>&1 >>"${filename}"
-
-	echo "PQ RPTR report fetcher utcl1" 1>>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -w "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_CNTL" 4 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR_ADDR" 2>&1 >>"${filename}"
-
-	echo "PQ WPTR poll fetcher utcl1" 1>>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -w "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_CNTL" 5 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR" 2>&1 >>"${filename}"
-	umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regCP_HPD_UTCL1_ERROR_ADDR" 2>&1 >>"${filename}"
-
-	for count in {0..7}; do
-		umr -i "${g}" -vmp "${xcc}" -r "*.${gfxname}{${xcc}}.regSPI_CSQ_WF_ACTIVE_COUNT_${count}" 2>&1 >>"${filename}"
-	done
-}
-
 #dump_headers [did]
 #did must start with 0x
 dump_headers() {
@@ -147,7 +92,7 @@ dump_headers() {
 	done
 }
 
-#dump_cp_regs [did]
+#dump_cpc_scratch_mems [did]
 #did must start with 0x
 dump_cpc_scratch_mems() {
 	local g="$1"
