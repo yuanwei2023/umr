@@ -753,7 +753,7 @@ static int parse_queues(struct umr_asic *asic, int found)
             for (queueno = 1; queueno < 256; queueno++) {
                 if (total_queues == UMR_MAX_MQD_QUEUES)
                     break;
-                sprintf(path, "/sys/kernel/debug/dri/client-%s/queue-%d/mqd_info", asic->options.user_queue.client_line.id, queueno);
+                sprintf(path, "/sys/kernel/debug/dri/client-%s/queue_%d/mqd_info", asic->options.user_queue.client_line.id, queueno);
                 f = fopen(path, "r");
                 if (f) {
                     uint32_t queue_type;
