@@ -132,18 +132,29 @@ void umr_print_cpc(struct umr_asic *asic)
 			break;
 		case 12:
 			me_present_mask = ME1_MASK | MES_MASK;
-			pipes_per_me[ME1] = 2;
 			pipes_per_me[MES] = 2;
-			queues_per_pipe_per_me[ME1] = 4;
 			queues_per_pipe_per_me[MES] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx1100_pipe_regs;
-			utcl1_err_names = gfx900_utcl1_err_names;
-			utcl1_err_names_num = gfx900_utcl1_err_names_num;
-			queue_mem_regs = gfx900_queue_mem_regs;
-			queue_mem_regs_num = gfx900_queue_mem_regs_num;
-			queue_regs = gfx1200_queue_regs;
-			mqd_size_dw = 0x200;
+			if (min == 1) {
+				pipes_per_me[ME1] = 4;
+				queues_per_pipe_per_me[ME1] = 8;
+				utcl1_err_names = gfx1210_utcl1_err_names;
+				utcl1_err_names_num = gfx1210_utcl1_err_names_num;
+				queue_mem_regs = gfx1210_queue_mem_regs;
+				queue_mem_regs_num = gfx1210_queue_mem_regs_num;
+				queue_regs = gfx1210_queue_regs;
+				mqd_size_dw = 0x400;
+			} else {
+				pipes_per_me[ME1] = 2;
+				queues_per_pipe_per_me[ME1] = 4;
+				utcl1_err_names = gfx900_utcl1_err_names;
+				utcl1_err_names_num = gfx900_utcl1_err_names_num;
+				queue_mem_regs = gfx900_queue_mem_regs;
+				queue_mem_regs_num = gfx900_queue_mem_regs_num;
+				queue_regs = gfx1200_queue_regs;
+				mqd_size_dw = 0x200;
+			}
 			break;
 		default:
 			asic->err_msg("[ERROR]: Unsupported ASIC call in umr_print_cpc().\n");
