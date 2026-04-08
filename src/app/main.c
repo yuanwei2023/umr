@@ -173,6 +173,8 @@ static int std_printf(const char *fmt, ...)
 	va_list ap;
 	int r;
 
+	if (!options.verbose && strstr(fmt, "[VERBOSE]"))
+		return 0;
 	va_start(ap, fmt);
 	r = vfprintf(stdout, fmt, ap);
 	fflush(stdout);

@@ -65,7 +65,7 @@ static const char *reg_name_without_prefix(const char *name) {
 
 void umr_print_cpc(struct umr_asic *asic)
 {
-	uint32_t rs64_en, me_present_mask;
+	uint32_t rs64_en, me_present_mask, mqd_size_dw;
 	uint32_t pipes_per_me[MAX_NUM_ME] = {0};
 	uint32_t queues_per_pipe_per_me[MAX_NUM_ME] = {0};
 	queue_mem_reg *queue_mem_regs = NULL;
@@ -93,6 +93,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
+			mqd_size_dw = 0x200;
 			if (min == 4 && rev == 3) {
 				queue_regs = gfx943_queue_regs;
 			} else {
@@ -112,6 +113,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1010_queue_regs;
+			mqd_size_dw = 0x200;
 			break;
 		case 11:
 			me_present_mask = ME1_MASK | MES_MASK;
@@ -126,6 +128,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1100_queue_regs;
+			mqd_size_dw = 0x200;
 			break;
 		case 12:
 			me_present_mask = ME1_MASK | MES_MASK;
@@ -140,6 +143,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1200_queue_regs;
+			mqd_size_dw = 0x200;
 			break;
 		default:
 			asic->err_msg("[ERROR]: Unsupported ASIC call in umr_print_cpc().\n");
@@ -232,6 +236,18 @@ void umr_print_cpc(struct umr_asic *asic)
 
 					for (int x = 0; queue_regs[x]; x++) {
 						X_REG32_4COL("%25s", queue_regs[x]);
+					}
+
+					H("MQD");
+
+					uint32_t mqd_mem[mqd_size_dw];
+					uint64_t mqd_addr =	read_banked_reg(asic, "mmCP_MQD_BASE_ADDR")
+						| ((uint64_t)read_banked_reg(asic, "mmCP_MQD_BASE_ADDR_HI") << 32);
+
+					if (umr_read_vram(asic, asic->options.vm_partition, 0, mqd_addr, mqd_size_dw * sizeof(uint32_t), mqd_mem) == 0) {
+						for (uint32_t x = 0; x < mqd_size_dw; x++) {
+							X_LIT32_8COL("0x%03x", x, mqd_mem[x]);
+						}
 					}
 
 					printf("\n\n");

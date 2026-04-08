@@ -46,7 +46,6 @@ cd ${dir}
 prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
 kfddbg="/sys/kernel/debug/kfd"
 cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
-cat "${kfddbg}/mqds" 2>&1 >"${prefix}_mqds.txt"
 
 # start dumping data
 source ${dir}/diag_functions.sh
