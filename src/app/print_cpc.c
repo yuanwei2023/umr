@@ -24,7 +24,6 @@
  */
 #include "umrapp.h"
 #include "print_cpc.h"
-#include <inttypes.h>
 
 #define ME1 1
 #define ME2 2
@@ -34,10 +33,11 @@
 #define ME2_MASK (1 << ME2)
 #define MES_MASK (1 << MES)
 
-#define H(x) if (col) { printf("\n"); }; col = 0; printf("\n\n%s:\n\n\t", x);
-#define X_REG32_4COL(fmt, reg_name) if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s" fmt "%s: %s%08x%s | ", GREEN, reg_name_without_prefix(reg_name), RST, BLUE, read_banked_reg(asic, reg_name), RST);
-#define X_LIT32_8COL(fmt, fmt_arg, value) if (col++ == 8) { col = 1; printf("\n\t%s" fmt "%s: ", GREEN, fmt_arg, RST); } printf("%s%08x%s | ", BLUE, value, RST);
-#define X_LIT64_4COL(fmt, fmt_arg, value) if (col++ == 4) { col = 1; printf("\n\t"); } printf("%s" fmt "%s: %s%016lx%s | ", GREEN, fmt_arg, RST, BLUE, value, RST);
+#define H(x) if (col) { printf("\n"); }; col = 0; printf("\n\n%s:\n", x);
+#define X_REG32_4COL(fmt, reg_name) if (col == 0 || col++ == 4) { col = 1; printf("\n\t"); } printf("%s" fmt "%s: %s%08x%s | ", GREEN, reg_name_without_prefix(reg_name), RST, BLUE, read_banked_reg(asic, reg_name), RST);
+#define X_LIT32_4COL(fmt, fmt_arg, value) if (col == 0 || col++ == 4) { col = 1; printf("\n\t"); } printf("%s" fmt "%s: %s%08x%s | ", GREEN, fmt_arg, RST, BLUE, value, RST);
+#define X_LIT32_8COL(fmt, fmt_arg, value) if (col == 0 || col++ == 8) { col = 1; printf("\n\t%s" fmt "%s: ", GREEN, fmt_arg, RST); } printf("%s%08x%s | ", BLUE, value, RST);
+#define X_LIT64_4COL(fmt, fmt_arg, value) if (col == 0 || col++ == 4) { col = 1; printf("\n\t"); } printf("%s" fmt "%s: %s%016lx%s | ", GREEN, fmt_arg, RST, BLUE, value, RST);
 
 static uint32_t read_banked_reg(struct umr_asic *asic, const char *name)
 {
@@ -69,8 +69,8 @@ void umr_print_cpc(struct umr_asic *asic)
 	uint32_t pipes_per_me[MAX_NUM_ME] = {0};
 	uint32_t queues_per_pipe_per_me[MAX_NUM_ME] = {0};
 	queue_mem_reg *queue_mem_regs = NULL;
-	const char **global_regs = NULL, **pipe_regs = NULL, **queue_regs = NULL;
-	int maj, min, rev, queue_mem_regs_num, col = 0;
+	const char **global_regs = NULL, **pipe_regs = NULL, **queue_regs = NULL, **utcl1_err_names = NULL;
+	int maj, min, rev, queue_mem_regs_num, utcl1_err_names_num, col = 0;
 	struct umr_options opts;
 
 	rs64_en = asic->family >= FAMILY_GFX11;
@@ -89,6 +89,8 @@ void umr_print_cpc(struct umr_asic *asic)
 			queues_per_pipe_per_me[ME2] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx900_pipe_regs;
+			utcl1_err_names = gfx900_utcl1_err_names;
+			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			if (min == 4 && rev == 3) {
@@ -105,6 +107,8 @@ void umr_print_cpc(struct umr_asic *asic)
 			queues_per_pipe_per_me[ME2] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx900_pipe_regs;
+			utcl1_err_names = gfx900_utcl1_err_names;
+			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1010_queue_regs;
@@ -117,6 +121,8 @@ void umr_print_cpc(struct umr_asic *asic)
 			queues_per_pipe_per_me[MES] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx1100_pipe_regs;
+			utcl1_err_names = gfx900_utcl1_err_names;
+			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1100_queue_regs;
@@ -129,6 +135,8 @@ void umr_print_cpc(struct umr_asic *asic)
 			queues_per_pipe_per_me[MES] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx1100_pipe_regs;
+			utcl1_err_names = gfx900_utcl1_err_names;
+			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1200_queue_regs;
@@ -162,10 +170,10 @@ void umr_print_cpc(struct umr_asic *asic)
 			H("Pipe Registers");
 
 			for (int x = 0; pipe_regs[x]; x++) {
-				if (((strstr(pipe_regs[x], "MEC1") || strstr(pipe_regs[x], "ME1")) && me != 1) ||
-					((strstr(pipe_regs[x], "MEC2") || strstr(pipe_regs[x], "ME2")) && me != 2) ||
-					((strstr(pipe_regs[x], "ME3") || strstr(pipe_regs[x], "MES")) && me != 3) ||
-					(strstr(pipe_regs[x], "MEC_RS64") && me == 3))
+				if (((strstr(pipe_regs[x], "MEC1") || strstr(pipe_regs[x], "ME1")) && me != ME1) ||
+					((strstr(pipe_regs[x], "MEC2") || strstr(pipe_regs[x], "ME2")) && me != ME2) ||
+					((strstr(pipe_regs[x], "ME3") || strstr(pipe_regs[x], "MES")) && me != MES) ||
+					(strstr(pipe_regs[x], "MEC_RS64") && me == MES))
 				{
 					continue;
 				}
@@ -175,24 +183,19 @@ void umr_print_cpc(struct umr_asic *asic)
 
 			H("Pipe UTCL1 Error Registers");
 
-			const char *utcl1_err_names[] = {
-				"PQ_UTCL1_ERROR", "IB_UTCL1_ERROR", "EOP_UTCL1_ERROR",
-				"IQ_UTCL1_ERROR", "PQ_RPTR_UTCL1_ERROR", "PQ_WPTR_UTCL1_ERROR"};
-
-			for (size_t x = 0; x < ARRAY_SIZE(utcl1_err_names); x++) {
+			for (int x = 0; x < utcl1_err_names_num; x++) {
 				write_banked_reg(asic, "mmCP_HPD_UTCL1_CNTL", x);
 
-				X_REG32_4COL("%20s", "mmCP_HPD_UTCL1_ERROR");
+				col = 0;
+				X_LIT32_4COL("%20s", utcl1_err_names[x], read_banked_reg(asic, "mmCP_HPD_UTCL1_ERROR"));
 				X_REG32_4COL("%20s", "mmCP_HPD_UTCL1_ERROR_ADDR");
-				col = 4;
 			}
 
 			const char *header_reg_names[] = {NULL, "mmCP_MEC_ME1_HEADER_DUMP", "mmCP_MEC_ME2_HEADER_DUMP", "mmCP_MES_HEADER_DUMP"};
 
 			H("Pipe Headers");
-			col = 8;
 
-			for (int i = 0; i < 8; i++) {
+			for (int x = 0; x < 8; x++) {
 				X_LIT32_8COL("%s", "HEADER", read_banked_reg(asic, header_reg_names[me]));
 			}
 
@@ -217,13 +220,12 @@ void umr_print_cpc(struct umr_asic *asic)
 						uint32_t addr_hi = read_banked_reg(asic, qmr->addr_hi_name);
 						uint64_t addr = (((uint64_t)addr_hi << 0x20) | addr_lo) << qmr->addr_shift;
 
+						col = 0;
 						X_LIT64_4COL("%20s", qmr->addr_display_name, addr);
 
 						for (int x = 0; qmr->other_regs[x]; x++) {
 							X_REG32_4COL("%20s", qmr->other_regs[x]);
 						}
-
-						col = 4;
 					}
 
 					H("Queue Other Registers");
@@ -243,12 +245,11 @@ void umr_print_cpc(struct umr_asic *asic)
 
 		col = 0;
 		H("Scratch Memory");
-		col = 8;
 
 		umr_write_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmCP_CPC_SCRATCH_INDEX", 0);
 
-		for (uint32_t i = 0; i < 1024; i++) {
-			X_LIT32_8COL("0x%03x", i, read_banked_reg(asic, "mmCP_CPC_SCRATCH_DATA"));
+		for (int x = 0; x < 1024; x++) {
+			X_LIT32_8COL("0x%03x", x, read_banked_reg(asic, "mmCP_CPC_SCRATCH_DATA"));
 		}
 
 		printf("\n");

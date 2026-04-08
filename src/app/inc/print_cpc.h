@@ -81,6 +81,17 @@ static const char *gfx900_queue_regs[] = {
 	NULL
 };
 
+static const char *gfx900_utcl1_err_names[] = {
+	"PQ_UTCL1_ERROR",
+	"IB_UTCL1_ERROR",
+	"EOP_UTCL1_ERROR",
+	"IQ_UTCL1_ERROR",
+	"PQ_RPTR_UTCL1_ERROR",
+	"PQ_WPTR_UTCL1_ERROR"
+};
+
+static int gfx900_utcl1_err_names_num = sizeof(gfx900_utcl1_err_names) / sizeof(const char *);
+
 static const char *gfx943_queue_regs[] = {
 	"regCP_HQD_AQL_CONTROL",
 	"regCP_HQD_AQL_CONTROL_1",
