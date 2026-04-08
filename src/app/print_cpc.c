@@ -134,7 +134,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			queue_regs = gfx1200_queue_regs;
 			break;
 		default:
-			asic->err_msg("Unsupported ASIC\n");
+			asic->err_msg("[ERROR]: Unsupported ASIC call in umr_print_cpc().\n");
 			return;
 	}
 
