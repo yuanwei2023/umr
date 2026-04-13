@@ -107,3 +107,12 @@ dump_cpc_scratch_mems() {
 	echo "Generating $filename"
 	"${dir}"/cpc_scratch -p "${gpu}" -x "${xcc}" -o "${filename}" 2>>"${filename}"
 }
+
+# Dump FW versions
+dump_fw_info() {
+	filename="${prefix}_fw_info.txt"
+
+	fw_path=$(find /sys/kernel/debug/dri -type f -name amdgpu_firmware_info 2>/dev/null | head -n 1)
+	echo "Generating $filename"
+	cat $fw_path > $filename
+}

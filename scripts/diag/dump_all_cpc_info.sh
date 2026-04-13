@@ -51,6 +51,7 @@ cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
 source ${dir}/diag_functions.sh
 iter_over_gpu_xcc dump_cpc
 iter_over_gpu_xcc dump_waves
+dump_fw_info
 
 #These aren't needed for most debug cases
 if [ "$1" == "all" ]; then
