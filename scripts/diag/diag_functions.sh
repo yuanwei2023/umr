@@ -116,3 +116,13 @@ dump_fw_info() {
 	echo "Generating $filename"
 	cat $fw_path > $filename
 }
+
+# Dump amdgpu parameter values
+dump_amdgpu_params() {
+	filename="${prefix}_params.txt"
+
+	echo "Generating $filename"
+	for f in /sys/module/amdgpu/parameters/*; do
+                printf "%s = %s\n" "$(basename "$f")" "$(cat "$f")" >> $filename
+	done
+}

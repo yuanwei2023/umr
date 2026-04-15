@@ -52,6 +52,7 @@ source ${dir}/diag_functions.sh
 iter_over_gpu_xcc dump_cpc
 iter_over_gpu_xcc dump_waves
 dump_fw_info
+dump_amdgpu_params
 
 #These aren't needed for most debug cases
 if [ "$1" == "all" ]; then
