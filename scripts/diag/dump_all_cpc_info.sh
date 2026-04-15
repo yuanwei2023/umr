@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
+DUMPSCRATCH=""
+DUMPMEC=""
+REBUILD=""
+
 #figure out where scripts are installed and source functions
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+appdir="${dir}/../../src/app"
 
 #We need halt_if_hws_hang=1 for the logs to be valid
 if [ "$(cat /sys/module/amdgpu/parameters/halt_if_hws_hang)" -ne 1 ]; then
@@ -15,6 +20,20 @@ if [ `whoami` != root ]; then
 	sudo ${dir}/dump_all_cpc_info.sh "$@"
 	exit 0
 fi
+
+while [ "$1" != "" ]; do
+	case "$1" in
+		all )
+			DUMPSCRATCH="true"; DUMPMEC="true" ;;
+		mec )
+			DUMPMEC="true" ;;
+		rebuild )
+			REBUILD="true" ;;
+		* )
+			echo "Unknown parameter $1. Ignoring" ;;
+	esac
+	shift 1
+done
 
 #save current dir
 where=`pwd`
@@ -34,13 +53,15 @@ install_deps() {
         fi
 }
 
-# Install build dependencies
-install_deps
-cd ${dir}/../../
-git clean -dxf
-cmake -DUMR_NO_GUI=on -DUMR_NO_DRM=ON -DUMR_NO_LLVM=ON -DUMR_NO_SERVER=ON .
-make -j umr
-export PATH=`pwd`/src/app:${PATH}
+# Install build dependencies and build, only if we haven't built it already
+if [[ ! -f "${appdir}/umr" || "$REBUILD" == "true" ]]; then
+	install_deps
+	cd ${dir}/../../
+	git clean -dxf
+	cmake -DUMR_NO_GUI=on -DUMR_NO_DRM=ON -DUMR_NO_LLVM=ON -DUMR_NO_SERVER=ON .
+	make -j umr
+fi
+export PATH="${appdir}:${PATH}"
 cd ${dir}
 
 prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
@@ -55,10 +76,10 @@ dump_fw_info
 dump_amdgpu_params
 
 #These aren't needed for most debug cases
-if [ "$1" == "all" ]; then
+if [ "$DUMPSCRATCH" == "true" ]; then
 	iter_over_gpu_xcc dump_cpc_scratch_mems
-	iter_over_gpu_xcc dump_headers
-elif [ "$1" == "mec" ]; then
+fi
+if [ "$DUMPMEC" == "true" ]; then
 	iter_over_gpu_xcc dump_headers
 fi
 
