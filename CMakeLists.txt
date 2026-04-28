@@ -31,7 +31,7 @@ set(CPACK_GENERATOR "RPM;DEB" CACHE STRING "Package binary using these generator
 set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}" CACHE STRING "Default packaging prefix." )
 mark_as_advanced(CPACK_GENERATOR)
 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm14, zlib1g-dev, libsdl2-dev, libgbm-dev, libglx-dev, libglew-dev")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libncurses6, libpciaccess-dev, libllvm21, zlib1g-dev, libsdl2-dev, libgbm-dev, libglx-dev, libglew-dev")
 
 set(CPACK_RPM_PACKAGE_AUTOREQ 0)
 set(CPACK_RPM_PACKAGE_AUTOPROV 0)
