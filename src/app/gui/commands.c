@@ -872,7 +872,7 @@ JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info)
 		/* Do we already know about this pid? */
 		JSON_Object *p = NULL;
 		for (size_t j = 0; j < json_array_get_count(apps); j++) {
-			JSON_Object *q = json_object(json_array_get_value(apps, i));
+			JSON_Object *q = json_object(json_array_get_value(apps, j));
 			if (json_object_get_number(q, "pid") == pid) {
 				p = q;
 				break;
@@ -1018,18 +1018,22 @@ static bool assign_gpu_fd_to_clients(struct umr_asic *asic, int pid, JSON_Array 
 	}
 
 #if CAN_IMPORT_BO
-	return use_dmabuf_to_identify_owner_fd(clients, pid_fd, gpu_fds, gpu_fds_count, client_ids, has_extra_md);
+	use_dmabuf_to_identify_owner_fd(clients, pid_fd, gpu_fds, gpu_fds_count, client_ids, has_extra_md);
 #endif
+	return true;
 }
 
 static void postprocess_gem_info(struct umr_asic *asic, JSON_Array *apps, JSON_Array *apps_from_vm)
 {
+	JSON_Array* drm_clients = json_array(json_value_init_array());
 	size_t i, j, k;
-
 	size_t max_drm_client_id_to_vm_apps = 8;
 	int64_t *drm_client_id_to_vm_apps =
-		malloc(sizeof(int64_t) * 2 * max_drm_client_id_to_vm_apps);
+		malloc(sizeof(int64_t) * 3 * max_drm_client_id_to_vm_apps);
 	size_t n_drm_client_id_to_vm_apps = 0;
+
+	parse_drm_clients(asic, drm_clients);
+
 	for (i = 0; i < json_array_get_count(apps_from_vm); i++) {
 		JSON_Object *vm_app = json_array_get_object(apps_from_vm, i);
 
@@ -1041,18 +1045,28 @@ static void postprocess_gem_info(struct umr_asic *asic, JSON_Array *apps, JSON_A
 		for (int j = 0; j < gpu_fds_count; j++) {
 			bool found = false;
 			for (k = 0; k < n_drm_client_id_to_vm_apps && !found; k++) {
-				if (drm_client_id_to_vm_apps[2 * k] == drm_clients_id[j])
+				if (drm_client_id_to_vm_apps[3 * k] == drm_clients_id[j])
 					found = true;
 			}
 			if (!found) {
-				drm_client_id_to_vm_apps[2 * n_drm_client_id_to_vm_apps] = drm_clients_id[j];
-				drm_client_id_to_vm_apps[2 * n_drm_client_id_to_vm_apps + 1] = i;
+				drm_client_id_to_vm_apps[3 * n_drm_client_id_to_vm_apps] = drm_clients_id[j];
+				drm_client_id_to_vm_apps[3 * n_drm_client_id_to_vm_apps + 1] = i;
+				drm_client_id_to_vm_apps[3 * n_drm_client_id_to_vm_apps + 2] = -1;
+				/* Find the index in the drm_clients array. */
+				for (size_t k = 0; k < json_array_get_count(drm_clients); k++) {
+					JSON_Object *o = json_array_get_object(drm_clients, k);
+					if (json_object_get_number(o, "id") == drm_clients_id[j]) {
+						drm_client_id_to_vm_apps[3 * n_drm_client_id_to_vm_apps + 2] = k;
+						break;
+					}
+				}
+
 				n_drm_client_id_to_vm_apps++;
 
 				if (n_drm_client_id_to_vm_apps == max_drm_client_id_to_vm_apps) {
 					max_drm_client_id_to_vm_apps *= 2;
 					drm_client_id_to_vm_apps = realloc(drm_client_id_to_vm_apps,
-													   sizeof(int64_t) * 2 * max_drm_client_id_to_vm_apps);
+													   sizeof(int64_t) * 3 * max_drm_client_id_to_vm_apps);
 				}
 			}
 		}
@@ -1086,10 +1100,16 @@ static void postprocess_gem_info(struct umr_asic *asic, JSON_Array *apps, JSON_A
 			 * of the drm-client-id for this fd.
 			 */
 			int64_t drm_client_id = json_object_get_number(client, "drm-client-id");
+
 			for (j = 0; drm_client_id && j < n_drm_client_id_to_vm_apps; j++) {
-				if (drm_client_id_to_vm_apps[2 * j] == drm_client_id) {
-					JSON_Object *vm_app = json_array_get_object(apps_from_vm, drm_client_id_to_vm_apps[2 * j + 1]);
+				if (drm_client_id_to_vm_apps[3 * j] == drm_client_id) {
+					JSON_Object *vm_app = json_array_get_object(apps_from_vm, drm_client_id_to_vm_apps[3 * j + 1]);
 					int p = json_object_get_number(vm_app, "pid");
+					if (drm_client_id_to_vm_apps[3 * j + 2] >= 0) {
+						const char *name = json_object_get_string(json_array_get_object(drm_clients, drm_client_id_to_vm_apps[3 * j + 2]), "name");
+						if (name && strcmp(name, "<unset>"))
+							json_object_set_string(client, "drm-client-name", name);
+					}
 					if (p != pid) {
 						json_object_set_number(app, "pid", json_object_get_number(vm_app, "pid"));
 						json_object_set_string(app, "command", json_object_get_string(vm_app, "command"));
@@ -1101,6 +1121,7 @@ static void postprocess_gem_info(struct umr_asic *asic, JSON_Array *apps, JSON_A
 		}
 	}
 
+	json_value_free(json_array_get_wrapping_value(drm_clients));
 	free(drm_client_id_to_vm_apps);
 }
 
