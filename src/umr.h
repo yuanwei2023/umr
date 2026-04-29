@@ -839,8 +839,8 @@ void umr_bitfield_default(struct umr_asic *asic, char *asicname, char *ipname, c
 
 #if UMR_SERVER
 #include "parson.h"
-JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size);
-void umr_run_gui(const char *url);
+JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size, umr_err_output stdmsg, umr_err_output errout);
+void umr_run_gui(const char *url, umr_err_output stdmsg, umr_err_output errout);
 #endif
 
 int umr_enumerate_device_list(umr_err_output errout, const char *database_path, struct umr_options *global_options, struct umr_asic ***asics, int *no_asics, int xgmi_scan);

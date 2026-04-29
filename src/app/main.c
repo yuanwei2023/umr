@@ -696,7 +696,7 @@ int main(int argc, char **argv)
 		}
 
 		if (running_as_gui) {
-			umr_run_gui(guiurl);
+			umr_run_gui(guiurl, std_printf, err_printf);
 			exit(EXIT_SUCCESS);
 		}
 	}
@@ -1807,7 +1807,7 @@ int main(int argc, char **argv)
 		#if UMR_SERVER
 				} else if (!strcmp(argv[i], "--server")) {
 					char *url = (i < argc - 1) ? argv[i + 1] : "tcp://0.0.0.0:1234";
-					run_server_loop(url, NULL);
+					run_server_loop(url, NULL, std_printf, err_printf);
 		#endif
 				}
 			}

@@ -58,7 +58,7 @@ extern GLuint texture_from_qoi_buffer(int width, int height, void *buffer, int b
 extern void goto_tab(int keycode);
 extern float get_gui_scale();
 extern "C" {
-	JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned int *raw_data_size);
+	JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned int *raw_data_size, umr_err_output stdmsg, umr_err_output errout);
 }
 
 
@@ -248,7 +248,8 @@ static void save_to_disk(const char *session_folder, int msg_idx,
 
 JSON_Value *query(struct Link& lnk, JSON_Value *request,
 				  void **raw_data, unsigned *raw_data_size,
-				  const char *session_folder, int msg_idx) {
+				  const char *session_folder, int msg_idx,
+				  umr_err_output stdmsg, umr_err_output errout) {
 	#if UMR_SERVER
 	if (lnk.cf) {
 		char* s = json_serialize_to_string(request);
@@ -306,7 +307,7 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request,
 	} else
 	#endif
 	{
-		JSON_Value *in = umr_process_json_request(json_object(request), raw_data, raw_data_size);
+		JSON_Value *in = umr_process_json_request(json_object(request), raw_data, raw_data_size, stdmsg, errout);
 
 		if (session_folder) {
 			char *s = json_serialize_to_string(in);
@@ -518,6 +519,7 @@ static void process_response(std::vector<AsicData*> *asics, ActivityPanel *activ
 struct communication_th_args {
 	std::vector<AsicData*> *asics;
 	ActivityPanel *activity_panel;
+	umr_err_output stdmsg, errout;
 };
 
 static void *communication_thread(void *_job) {
@@ -576,7 +578,8 @@ static void *communication_thread(void *_job) {
 			pthread_mutex_unlock(&mtx);
 			bool is_ping = strcmp(json_object_get_string(json_object(req), "command"), "ping") == 0;
 			JSON_Value *in = query(lnk, req, &raw_data, &raw_data_size,
-										  (save_to_disk && !is_ping) ? session_folder : NULL, msg_count);
+										  (save_to_disk && !is_ping) ? session_folder : NULL, msg_count,
+										  args->stdmsg, args->errout);
 			if (!is_ping)
 				msg_count++;
 
@@ -726,7 +729,7 @@ static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
 	return NULL;
 }
 
-static int run_gui(char *url)
+static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 {
 	pthread_mutexattr_t mat;
 	pthread_mutexattr_init(&mat);
@@ -747,7 +750,7 @@ static int run_gui(char *url)
 		} else {
 			lnk.cf = rumr_get_cf(url, &lnk.addr);
 			if (lnk.cf == NULL) {
-				printf("Invalid server address '%s'\n", url);
+				stdmsg("Invalid server address '%s'\n", url);
 				return -1;
 			}
 		}
@@ -756,7 +759,7 @@ static int run_gui(char *url)
 	}
 
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-		printf("Error: %s\n", SDL_GetError());
+		errout("[ERROR] SDL init failed: %s\n", SDL_GetError());
 		return -1;
 	}
 
@@ -772,6 +775,8 @@ static int run_gui(char *url)
 		communication_th_args *args = new communication_th_args();
 		args->asics = &asics;
 		args->activity_panel = activity_panel;
+		args->stdmsg = stdmsg;
+		args->errout = errout;
 		pthread_create(&t_id, NULL, communication_thread, args);
 	}
 
@@ -804,7 +809,7 @@ static int run_gui(char *url)
 
 	// Initialize OpenGL loader
 	if (gladLoadGL() == 0) {
-		fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+		errout("[ERROR] Failed to initialize OpenGL loader!\n");
 		return 1;
 	}
 
@@ -1278,7 +1283,7 @@ char * SyntaxHighlighter::transform(const char *in) {
 }
 
 extern "C" {
-	void umr_run_gui(const char *url) {
-		run_gui((char*)url);
+	void umr_run_gui(const char *url, umr_err_output stdmsg, umr_err_output errout) {
+		run_gui((char*)url, stdmsg, errout);
 	}
 }

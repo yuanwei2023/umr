@@ -62,7 +62,7 @@ int umr_print_pp_table(struct umr_asic *asic, const char* param);
 int umr_print_gpu_metrics(struct umr_asic *asic, int delay);
 int umr_print_vbios_info(struct umr_asic *asic);
 
-void run_server_loop(const char *url, struct umr_asic * asic);
+void run_server_loop(const char *url, struct umr_asic * asic, umr_err_output stdmsg, umr_err_output errout);
 
 void umr_enumerate_devices(umr_err_output errout, const char *database_path);
 

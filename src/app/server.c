@@ -26,8 +26,8 @@
 #include "parson.h"
 #include "umr_rumr.h"
 
-extern JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size);
-extern void init_asics(void);
+extern JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size, umr_err_output stdmsg, umr_err_output errout);
+extern void init_asics(umr_err_output stdmsg, umr_err_output errout);
 extern struct umr_asic *asics[16];
 
 static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
@@ -45,7 +45,7 @@ static struct rumr_comm_funcs *rumr_get_cf(char *arg, char **addr)
 	return NULL;
 }
 
-void run_server_loop(const char *url, struct umr_asic * asic)
+void run_server_loop(const char *url, struct umr_asic * asic, umr_err_output stdmsg, umr_err_output errout)
 {
 	char *cfp;
 	struct rumr_comm_funcs *cf = rumr_get_cf((char *)url, &cfp);
@@ -54,24 +54,24 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 		return;
 
 	if (cf->bind(cf, cfp) < 0) {
-		printf("Binding %s failed\n", cfp);
+		errout("[ERROR] Binding %s failed\n", cfp);
 		return;
 	}
 
 	if (asic) {
 		asics[0] = asic;
 	} else {
-		init_asics();
+		init_asics(stdmsg, errout);
 	}
 
 	for (;;) {
 		if (cf->accept(cf) < 0) {
-			printf("TCP accept failed\n");
+			errout("[ERROR] TCP accept failed\n");
 			return;
 		}
 
 		/* Everything is ready. Wait for commands */
-		printf("Waiting for commands.\n");
+		stdmsg("Waiting for commands.\n");
 
 		struct rumr_buffer *buffer;
 		for (;;) {
@@ -90,7 +90,7 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 			JSON_Value *request = json_parse_string(buf);
 
 			if (request == NULL) {
-				printf("ERROR parsing %d bytes\n", buffer->woffset);
+				errout("[ERROR] parsing %d bytes\n", buffer->woffset);
 				rumr_buffer_free(buffer);
 				continue;
 			}
@@ -100,7 +100,7 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 			void *raw_data = NULL;
 			unsigned raw_data_size = 0;
 			JSON_Value *answer = umr_process_json_request(
-				json_object(request), &raw_data, &raw_data_size);
+				json_object(request), &raw_data, &raw_data_size, stdmsg, errout);
 
 			char* s = json_serialize_to_string(answer);
 			size_t len = strlen(s) + 1;
@@ -112,7 +112,7 @@ void run_server_loop(const char *url, struct umr_asic * asic)
 				rumr_buffer_add_data(buffer, raw_data, raw_data_size);
 
 			if (cf->tx(cf, buffer) < 0)
-				printf("tx failed\n");
+				stdmsg("tx failed\n");
 
 			json_free_serialized_string(s);
 			json_value_free(answer);

@@ -1522,7 +1522,7 @@ char *ip_discovery_dumps[16] = {0};
 int *ring_kernel_pid[16] = {0};
 const char *devcoredump_file = NULL;
 
-void init_asics(void) {
+void init_asics(umr_err_output stdmsg, umr_err_output errout) {
 	struct umr_options opt;
 	char database_path[256] = { 0 };
 	int asic_count = 0;
@@ -1585,12 +1585,12 @@ void init_asics(void) {
 			asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
 		} else {
 			if (umr_prepare_devcoredump(&opt, devcoredump_file, printf)) {
-				printf("[ERROR] Empty devcoredump file (%s)\n", devcoredump_file);
+				errout("[ERROR] Empty devcoredump file (%s)\n", devcoredump_file);
 				exit(0);
 			}
 			asics[i] = umr_discover_asic_by_devcoredump(&opt, printf);
 			if (!asics[i]) {
-				printf("[ERROR] Unable to load asic from devcoredump file: %s", devcoredump_file);
+				errout("[ERROR] Unable to load asic from devcoredump file: %s", devcoredump_file);
 				exit(0);
 			}
 		}
@@ -1606,7 +1606,8 @@ void init_asics(void) {
 		asics[i]->options.shader_enable.enable_ls_shader   = 1;
 		asics[i]->options.shader_enable.enable_comp_shader = 1;
 
-		asics[i]->err_msg = printf;
+		asics[i]->std_msg = stdmsg;
+		asics[i]->err_msg = errout;
 
 		if (asics[i]->family > FAMILY_VI)
 			asics[i]->options.shader_enable.enable_es_ls_swap = 1;
@@ -1623,7 +1624,7 @@ void init_asics(void) {
 			if (opt.test_log_fd) {
 				const char *separator = "-----\n";
 				if (asic_discovery_data == NULL) {
-					printf("Unexpected discovery buffer:\n'%s'\n", ip_discovery_dump);
+					errout("[ERROR] Unexpected discovery buffer:\n'%s'\n", ip_discovery_dump);
 					exit(0);
 				}
 				char *next_asic = strstr(asic_discovery_data, separator);
@@ -2368,7 +2369,7 @@ error:
 	return name;
 }
 
-JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size)
+JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsigned *raw_data_size, umr_err_output stdmsg, umr_err_output errout)
 {
 	JSON_Value *answer = NULL;
 	const char *last_error = NULL;
@@ -2380,7 +2381,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 	}
 
 	if (asics[0] == NULL) {
-		init_asics();
+		init_asics(stdmsg, errout);
 	}
 
 	struct umr_asic *asic = NULL;
