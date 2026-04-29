@@ -122,6 +122,7 @@ static void parse_raw_event_buffer(struct umr_asic *asic,
 class RegistersPanel : public Panel {
 public:
 	RegistersPanel(struct umr_asic *asic) : Panel(asic), hightlighted_field(NULL), active_tracking(NULL), drawable_area(10, true) {
+		memset(&bank_sel, 0, sizeof(bank_sel));
 	}
 
 	~RegistersPanel() {}
