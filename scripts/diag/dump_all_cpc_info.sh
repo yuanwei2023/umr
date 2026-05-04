@@ -75,14 +75,6 @@ iter_over_gpu_xcc dump_waves
 dump_fw_info
 dump_amdgpu_params
 
-#These aren't needed for most debug cases
-if [ "$DUMPSCRATCH" == "true" ]; then
-	iter_over_gpu_xcc dump_cpc_scratch_mems
-fi
-if [ "$DUMPMEC" == "true" ]; then
-	iter_over_gpu_xcc dump_headers
-fi
-
 echo "Generating ${prefix}_dmesg.txt"
 journalctl -b -k > "${prefix}_dmesg.txt"
 
