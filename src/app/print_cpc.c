@@ -50,7 +50,7 @@ static uint32_t write_banked_reg(struct umr_asic *asic, const char *name, uint32
 }
 
 static const char *reg_name_without_prefix(const char *name) {
-	const char *prefixes[] = {"mmCP_HQD_", "regCP_HQD_", "mmCP_", "regCP_", "mm", "reg"};
+	const char *prefixes[] = {"mmCP_HQD_", "regCP_HQD_", "mmCP_", "regCP_", "mmCOMPUTE_", "regCOMPUTE_", "mm", "reg"};
 
 	for (size_t i = 0; i < ARRAY_SIZE(prefixes); i++) {
 		size_t prefix_len = strlen(prefixes[i]);
@@ -65,11 +65,11 @@ static const char *reg_name_without_prefix(const char *name) {
 
 void umr_print_cpc(struct umr_asic *asic)
 {
-	uint32_t rs64_en, me_present_mask, mqd_size_dw;
+	uint32_t rs64_en, me_present_mask, me_dc_mask, mqd_size_dw;
 	uint32_t pipes_per_me[MAX_NUM_ME] = {0};
 	uint32_t queues_per_pipe_per_me[MAX_NUM_ME] = {0};
 	queue_mem_reg *queue_mem_regs = NULL;
-	const char **global_regs = NULL, **pipe_regs = NULL, **queue_regs = NULL, **utcl1_err_names = NULL;
+	const char **global_regs = NULL, **pipe_regs = NULL, **dc_regs = NULL, **queue_regs = NULL, **utcl1_err_names = NULL;
 	int maj, min, rev, queue_mem_regs_num, utcl1_err_names_num, col = 0;
 	struct umr_options opts;
 
@@ -83,25 +83,42 @@ void umr_print_cpc(struct umr_asic *asic)
 	switch (maj) {
 		case 9:
 			me_present_mask = ME1_MASK | ME2_MASK;
+			me_dc_mask = ME1_MASK;
 			pipes_per_me[ME1] = 4;
 			pipes_per_me[ME2] = 2;
 			queues_per_pipe_per_me[ME1] = 8;
 			queues_per_pipe_per_me[ME2] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx900_pipe_regs;
+			queue_regs = gfx900_queue_regs;
 			utcl1_err_names = gfx900_utcl1_err_names;
 			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			mqd_size_dw = 0x200;
-			if (min == 4 && rev == 3) {
-				queue_regs = gfx943_queue_regs;
-			} else {
-				queue_regs = gfx900_queue_regs;
+			switch (min) {
+			case 0:
+				dc_regs = gfx900_dc_regs;
+				break;
+			case 1:
+				dc_regs = gfx910_dc_regs;
+				break;
+			case 2:
+				dc_regs = gfx921_dc_regs;
+				break;
+			case 4:
+				if (rev == 2) {
+					dc_regs = gfx942_dc_regs;
+				} else {
+					dc_regs = gfx943_dc_regs;
+					queue_regs = gfx943_queue_regs;
+				}
+				break;
 			}
 			break;
 		case 10:
 			me_present_mask = ME1_MASK | ME2_MASK;
+			me_dc_mask = ME1_MASK;
 			pipes_per_me[ME1] = 4;
 			pipes_per_me[ME2] = 2;
 			queues_per_pipe_per_me[ME1] = 4;
@@ -114,15 +131,22 @@ void umr_print_cpc(struct umr_asic *asic)
 			queue_mem_regs_num = gfx900_queue_mem_regs_num;
 			queue_regs = gfx1010_queue_regs;
 			mqd_size_dw = 0x200;
+			if (min == 1) {
+				dc_regs = gfx1010_dc_regs;
+			} else {
+				dc_regs = gfx1030_dc_regs;
+			}
 			break;
 		case 11:
 			me_present_mask = ME1_MASK | MES_MASK;
+			me_dc_mask = ME1_MASK;
 			pipes_per_me[ME1] = 4;
 			pipes_per_me[MES] = 2;
 			queues_per_pipe_per_me[ME1] = 4;
 			queues_per_pipe_per_me[MES] = 1;
 			global_regs = gfx900_global_regs;
 			pipe_regs = gfx1100_pipe_regs;
+			dc_regs = gfx1100_dc_regs;
 			utcl1_err_names = gfx900_utcl1_err_names;
 			utcl1_err_names_num = gfx900_utcl1_err_names_num;
 			queue_mem_regs = gfx900_queue_mem_regs;
@@ -132,6 +156,7 @@ void umr_print_cpc(struct umr_asic *asic)
 			break;
 		case 12:
 			me_present_mask = ME1_MASK | MES_MASK;
+			me_dc_mask = ME1_MASK;
 			pipes_per_me[MES] = 2;
 			queues_per_pipe_per_me[MES] = 1;
 			global_regs = gfx900_global_regs;
@@ -141,6 +166,7 @@ void umr_print_cpc(struct umr_asic *asic)
 				queues_per_pipe_per_me[ME1] = 8;
 				utcl1_err_names = gfx1210_utcl1_err_names;
 				utcl1_err_names_num = gfx1210_utcl1_err_names_num;
+				dc_regs = gfx1210_dc_regs;
 				queue_mem_regs = gfx1210_queue_mem_regs;
 				queue_mem_regs_num = gfx1210_queue_mem_regs_num;
 				queue_regs = gfx1210_queue_regs;
@@ -150,6 +176,7 @@ void umr_print_cpc(struct umr_asic *asic)
 				queues_per_pipe_per_me[ME1] = 4;
 				utcl1_err_names = gfx900_utcl1_err_names;
 				utcl1_err_names_num = gfx900_utcl1_err_names_num;
+				dc_regs = gfx1200_dc_regs;
 				queue_mem_regs = gfx900_queue_mem_regs;
 				queue_mem_regs_num = gfx900_queue_mem_regs_num;
 				queue_regs = gfx1200_queue_regs;
@@ -212,6 +239,14 @@ void umr_print_cpc(struct umr_asic *asic)
 
 			for (int x = 0; x < 8; x++) {
 				X_LIT32_8COL("%s", "HEADER", read_banked_reg(asic, header_reg_names[me]));
+			}
+
+			if (me_dc_mask & (1 << me)) {
+				H("Pipe DC registers");
+
+				for (int x = 0; dc_regs[x]; x++) {
+					X_REG32_4COL("%25s", dc_regs[x]);
+				}
 			}
 
 			printf("\n\n");
