@@ -44,7 +44,7 @@ dump_waves() {
 		filename="${prefix}_umr_waves_gpu${gpu}.txt"
 	fi
 	echo "Generating $filename"
-	umr -i "${g}" -vmp "${xcc}" -O bits,halt_waves -wa ${ring} 2>&1 >"${filename}"
+	umr -i "${g}" -vmp "${xcc}" -O bits,halt_waves -wa ${ring} 2>>"$errorlog" >"${filename}"
 }
 
 #dump_cpc [did]
@@ -62,14 +62,14 @@ dump_cpc() {
 	echo "Generating $filename"
 
 	# Execute command and redirect output
-	umr -i "${g}" -vmp "${xcc}" -cpc >"${filename}" 2>&1
+	umr -i "${g}" -vmp "${xcc}" -cpc >"${filename}" 2>>"$errorlog"
 }
 
 # Dump FW versions
 dump_fw_info() {
 	filename="${prefix}_fw_info.txt"
 
-	fw_path=$(find /sys/kernel/debug/dri -type f -name amdgpu_firmware_info 2>/dev/null | head -n 1)
+	fw_path=$(find /sys/kernel/debug/dri -type f -name amdgpu_firmware_info 2>>"$errorlog" | head -n 1)
 	echo "Generating $filename"
 	cat $fw_path > $filename
 }

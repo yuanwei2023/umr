@@ -65,8 +65,10 @@ export PATH="${appdir}:${PATH}"
 cd ${dir}
 
 prefix="$(hostname)_$(date +"%Y-%m-%d_%H_%M")"
+errorlog="${prefix}_error.txt"
+
 kfddbg="/sys/kernel/debug/kfd"
-cat "${kfddbg}/rls" 2>&1 >"${prefix}_rls.txt"
+cat "${kfddbg}/rls" 2>"$errorlog" >"${prefix}_rls.txt"
 
 # start dumping data
 source ${dir}/diag_functions.sh
