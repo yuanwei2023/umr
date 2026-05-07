@@ -34,7 +34,7 @@ stdbuf -oL -eL journalctl -b -f | while IFS= read -r line; do
           "$line" == *"preemption failed"* || \
           "$line" == *"failed to respond"* ]]; then
         if [[ $in_reset -eq 0 ]]; then
-            ./dump_all_cpc_info.sh $REBUILD
+            ${dir}/dump_all_cpc_info.sh $REBUILD
         fi
         break
     fi
