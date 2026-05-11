@@ -35,6 +35,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <assert.h>
+#include <sys/syscall.h>
 
 #include "parson.h"
 

@@ -46,10 +46,13 @@ void umr_apply_callbacks(struct umr_asic *asic,
 
 	n = 0;
 	while (asic->config.xgmi.nodes[n].asic) {
-		reg = umr_find_reg_by_name(asic->config.xgmi.nodes[n].asic, "mmMC_VM_XGMI_LFB_CNTL", NULL);
+		reg = umr_find_reg_data_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "gfx", asic->options.vm_partition, "@mmMC_VM_XGMI_LFB_CNTL");
 		if (!reg) {
-			asic->err_msg("[BUG]: Cannot find register mmMC_VM_XGMI_LFB_CNTL on ASIC\n");
-			return;
+			reg = umr_find_reg_data_by_ip_by_instance(asic->config.xgmi.nodes[n].asic, "gfx", asic->options.vm_partition, "regGCMC_VM_XGMI_LFB_CNTL");
+			if (!reg) {
+				asic->err_msg("[BUG]: Cannot find register mmMC_VM_XGMI_LFB_CNTL on ASIC\n");
+				return;
+			}
 		}
 
 		asic->config.xgmi.nodes[n].asic->mem_funcs = *mems;

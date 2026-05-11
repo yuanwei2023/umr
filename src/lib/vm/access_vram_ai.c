@@ -737,22 +737,47 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	/* read vm registers */
 	if (vm.asic->options.user_queue.state.active == 0 && vmid == 0) {
 		/* only need system aperture registers (SAM) if we're using VMID 0 */
-		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", vm0prefix);
-			vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
-		sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", vm0prefix);
-			vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+		if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", partition, "@regGCMC_VM_SYSTEM_APERTURE_LOW_ADDR_HI32")) {
+			// use HI32/LO32 pairs
+			vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR =
+				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_HIGH_ADDR_HI32") << 32) |
+				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_HIGH_ADDR_LO32"));
+			vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR =
+				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_LOW_ADDR_HI32") << 32) |
+				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_LOW_ADDR_LO32"));
+		} else {
+			// use traditional pairs
+			sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", vm0prefix);
+				vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+			sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", vm0prefix);
+				vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+		}
 		vm.vmctrl.system_aperture_low = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << VM_SYSTEM_APERTURE_SHIFT;
 		vm.vmctrl.system_aperture_high = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR + 1) << VM_SYSTEM_APERTURE_SHIFT;
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
 			vm.registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
 	}
 
-	sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", vm0prefix);
-		vm.registers.mmMC_VM_FB_LOCATION_BASE = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
-		vm.vmctrl.fb_bottom = ((uint64_t)vm.registers.mmMC_VM_FB_LOCATION_BASE) << VM_FB_OFFSET_SHIFT;
-	sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", vm0prefix);
-		vm.registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
-		vm.vmctrl.fb_top = ((uint64_t)vm.registers.mmMC_VM_FB_LOCATION_TOP + 1) << VM_FB_OFFSET_SHIFT;
+	if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", partition, "@regGCMC_VM_FB_LOCATION_TOP_LO32")) {
+		// use HI32/LO32 pairs
+		uint64_t tmp;
+		tmp =
+			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_BASE_HI32") << 32) |
+			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_BASE_LO32"));
+		vm.vmctrl.fb_bottom = tmp << VM_FB_OFFSET_SHIFT;
+		tmp =
+			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_TOP_HI32") << 32) |
+			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_TOP_LO32"));
+		vm.vmctrl.fb_top = tmp << VM_FB_OFFSET_SHIFT;
+	} else {
+		// traditional pairs
+		sprintf(buf, "mm%sMC_VM_FB_LOCATION_BASE", vm0prefix);
+			vm.registers.mmMC_VM_FB_LOCATION_BASE = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+			vm.vmctrl.fb_bottom = ((uint64_t)vm.registers.mmMC_VM_FB_LOCATION_BASE) << VM_FB_OFFSET_SHIFT;
+		sprintf(buf, "mm%sMC_VM_FB_LOCATION_TOP", vm0prefix);
+			vm.registers.mmMC_VM_FB_LOCATION_TOP = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+			vm.vmctrl.fb_top = ((uint64_t)vm.registers.mmMC_VM_FB_LOCATION_TOP + 1) << VM_FB_OFFSET_SHIFT;
+	}
 
 	/* check if we are in ZFB mode */
 	if (vm.vmctrl.fb_top < vm.vmctrl.fb_bottom) {
