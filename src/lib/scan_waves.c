@@ -746,13 +746,32 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 				}
 			}
 		} else {
-			for (uint32_t wgp = 0; wgp < asic->config.gfx.max_cu_per_sh / 2; wgp++)
-			for (simd = 0; simd < 4; simd++) {
-				asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(wgp, simd), &(*ptail)->ws);
-				if ((*ptail)->ws.sq_info.busy) {
-					r = umr_scan_wave_simd(asic, se, sh, wgp, simd, &ptail);
-					if (r < 0)
-						goto error;
+			uint32_t wgp_mask = 0xFFFFFFFF;
+			struct umr_options options = asic->options;
+
+			asic->options.use_bank = 1;				// index by GRBM
+			asic->options.bank.grbm.se = se;
+			asic->options.bank.grbm.sh = sh;
+			asic->options.bank.grbm.instance = 0;		// instance 0
+						// read CC_GC_SHADER_ARRAY_CONFIG and GC_USER_SHADER_ARRAY_CONFIG, OR together, and skip wgp's with a corresponding 1 bit
+			wgp_mask =
+				umr_bitslice_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "CC_GC_SHADER_ARRAY_CONFIG", "INACTIVE_WGPS", 
+					umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "CC_GC_SHADER_ARRAY_CONFIG")) |
+				umr_bitslice_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "GC_USER_SHADER_ARRAY_CONFIG", "INACTIVE_WGPS", 
+					umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "GC_USER_SHADER_ARRAY_CONFIG"));
+
+			asic->options = options;
+
+			for (uint32_t wgp = 0; wgp < 32; wgp++) {
+				if (!(wgp_mask & (1UL << wgp))) {
+					for (simd = 0; simd < 4; simd++) {
+						asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(wgp, simd), &(*ptail)->ws);
+						if ((*ptail)->ws.sq_info.busy) {
+							r = umr_scan_wave_simd(asic, se, sh, wgp, simd, &ptail);
+							if (r < 0)
+								goto error;
+						}
+					}
 				}
 			}
 		}
