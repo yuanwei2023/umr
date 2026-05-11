@@ -83,6 +83,9 @@ uint64_t umr_bitslice_compose_value_by_name(struct umr_asic *asic, char *reg, ch
 uint64_t umr_bitslice_compose_value_by_name_by_ip(struct umr_asic *asic, char *ip, char *regname, char *bitname, uint64_t regvalue);
 uint64_t umr_bitslice_compose_value_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname, uint64_t regvalue);
 
+// width of a bitfield
+int umr_bitwidth_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname);
+
 // bank switching
 uint64_t umr_apply_bank_selection_address(struct umr_asic *asic);
 

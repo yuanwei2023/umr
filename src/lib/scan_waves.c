@@ -747,6 +747,7 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 			}
 		} else {
 			uint32_t wgp_mask = 0xFFFFFFFF;
+			uint32_t wgp_width = umr_bitwidth_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "CC_GC_SHADER_ARRAY_CONFIG", "INACTIVE_WGPS");
 			struct umr_options options = asic->options;
 
 			asic->options.use_bank = 1;				// index by GRBM
@@ -762,7 +763,7 @@ struct umr_wave_data *umr_scan_wave_data(struct umr_asic *asic)
 
 			asic->options = options;
 
-			for (uint32_t wgp = 0; wgp < 32; wgp++) {
+			for (uint32_t wgp = 0; wgp < wgp_width; wgp++) {
 				if (!(wgp_mask & (1UL << wgp))) {
 					for (simd = 0; simd < 4; simd++) {
 						asic->wave_funcs.get_wave_sq_info(asic, se, sh, MANY_TO_INSTANCE(wgp, simd), &(*ptail)->ws);

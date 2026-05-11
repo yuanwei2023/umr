@@ -300,6 +300,37 @@ uint64_t umr_bitslice_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char 
 }
 
 /**
+ * umr_bitwidth_reg_by_name_by_ip_by_instance - Bit width of a named bitfield
+ *
+ * Looks up @regname in instance @instance of IP block @ip, finds the bitfield
+ * named @bitname in that register's metadata, and returns how many bits it spans
+ * (inclusive range: @c stop - @c start + 1).
+ *
+ * @param asic Pointer to the ASIC structure.
+ * @param ip Name of the IP block or NULL for any IP block.
+ * @param instance Instance number of the IP block.
+ * @param regname Name of the register containing the bitfield.
+ * @param bitname Name of the bitfield.
+ * @return Width of the bitfield in bits, or 0 if the register or bitfield was not found.
+ */
+int umr_bitwidth_reg_by_name_by_ip_by_instance(struct umr_asic *asic, char *ip, int instance, char *regname, char *bitname)
+{
+	struct umr_reg *reg;
+	int i;
+	reg = umr_find_reg_data_by_ip_by_instance(asic, ip, instance, regname);
+	if (reg) {
+		for (i = 0; i < reg->no_bits; i++) {
+			if (!strcmp(bitname, reg->bits[i].regname)) {
+				return reg->bits[i].stop - reg->bits[i].start + 1;
+			}
+		}
+		return 0;
+	} else {
+		return 0;
+	}
+}
+
+/**
  * @brief Slice out a bitfield by register name.
  *
  * Finds the register specified by @regname and slices the bitfield specified by @bitname from the provided @regvalue.
