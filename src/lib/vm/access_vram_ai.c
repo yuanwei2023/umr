@@ -207,7 +207,12 @@ struct umr_vm_ai_state {
 			mmMC_VM_AGP_TOP,
 			mmMC_VM_AGP_TOP_LO32,
 			mmMC_VM_AGP_TOP_HI32;
-	} registers;
+		uint64_t
+			mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR64,
+			mmMC_VM_SYSTEM_APERTURE_LOW_ADDR64,
+			mmMC_VM_FB_LOCATION_BASE64,
+			mmMC_VM_FB_LOCATION_TOP64;
+		} registers;
 };
 
 /**
@@ -739,21 +744,23 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 		/* only need system aperture registers (SAM) if we're using VMID 0 */
 		if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", partition, "@regGCMC_VM_SYSTEM_APERTURE_LOW_ADDR_HI32")) {
 			// use HI32/LO32 pairs
-			vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR =
+			vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR64 =
 				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_HIGH_ADDR_HI32") << 32) |
 				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_HIGH_ADDR_LO32"));
-			vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR =
+			vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR64 =
 				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_LOW_ADDR_HI32") << 32) |
 				((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, "gfx", partition, "regGCMC_VM_SYSTEM_APERTURE_LOW_ADDR_LO32"));
+			vm.vmctrl.system_aperture_low = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR64) << VM_SYSTEM_APERTURE_SHIFT;
+			vm.vmctrl.system_aperture_high = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR64 + 1) << VM_SYSTEM_APERTURE_SHIFT;
 		} else {
 			// use traditional pairs
 			sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR", vm0prefix);
 				vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
 			sprintf(buf, "mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR", vm0prefix);
 				vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
+			vm.vmctrl.system_aperture_low = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << VM_SYSTEM_APERTURE_SHIFT;
+			vm.vmctrl.system_aperture_high = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR + 1) << VM_SYSTEM_APERTURE_SHIFT;
 		}
-		vm.vmctrl.system_aperture_low = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR) << VM_SYSTEM_APERTURE_SHIFT;
-		vm.vmctrl.system_aperture_high = ((uint64_t)vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR + 1) << VM_SYSTEM_APERTURE_SHIFT;
 		sprintf(buf, "mm%sMC_VM_MX_L1_TLB_CNTL", vm0prefix);
 			vm.registers.mmMC_VM_MX_L1_TLB_CNTL = umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, buf);
 	}
@@ -761,11 +768,11 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	if (umr_find_reg_data_by_ip_by_instance(asic, "gfx", partition, "@regGCMC_VM_FB_LOCATION_TOP_LO32")) {
 		// use HI32/LO32 pairs
 		uint64_t tmp;
-		tmp =
+		vm.registers.mmMC_VM_FB_LOCATION_BASE64 = tmp =
 			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_BASE_HI32") << 32) |
 			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_BASE_LO32"));
 		vm.vmctrl.fb_bottom = tmp << VM_FB_OFFSET_SHIFT;
-		tmp =
+		vm.registers.mmMC_VM_FB_LOCATION_TOP64 = tmp =
 			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_TOP_HI32") << 32) |
 			((uint64_t)umr_read_reg_by_name_by_ip_by_instance(vm.asic, hub, partition, "regGCMC_VM_FB_LOCATION_TOP_LO32"));
 		vm.vmctrl.fb_top = tmp << VM_FB_OFFSET_SHIFT;
@@ -912,8 +919,12 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 				"mm%sMC_VM_MX_L1_TLB_CNTL=0x%" PRIx32 "\n"
 				"mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR=0x%" PRIx32 "\n"
 				"mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR=0x%" PRIx32 "\n"
+				"mm%sMC_VM_SYSTEM_APERTURE_LOW_ADDR64=0x%" PRIx64 "\n"
+				"mm%sMC_VM_SYSTEM_APERTURE_HIGH_ADDR64=0x%" PRIx64 "\n"
 				"mm%sMC_VM_FB_LOCATION_BASE=0x%" PRIx32 "\n"
 				"mm%sMC_VM_FB_LOCATION_TOP=0x%" PRIx32 "\n"
+				"mm%sMC_VM_FB_LOCATION_BASE64=0x%" PRIx64 "\n"
+				"mm%sMC_VM_FB_LOCATION_TOP64=0x%" PRIx64 "\n"
 				"mm%sMC_VM_AGP_BASE=0x%" PRIx32 " (%08"PRIx32"%08"PRIx32")\n"
 				"mm%sMC_VM_AGP_BOT=0x%" PRIx32 " (%08"PRIx32"%08"PRIx32")\n"
 				"mm%sMC_VM_AGP_TOP=0x%" PRIx32 " (%08"PRIx32"%08"PRIx32")\n",
@@ -932,8 +943,12 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 			vm0prefix, vm.registers.mmMC_VM_MX_L1_TLB_CNTL,
 			vm0prefix, vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR,
 			vm0prefix, vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR,
+			vm0prefix, vm.registers.mmMC_VM_SYSTEM_APERTURE_LOW_ADDR64,
+			vm0prefix, vm.registers.mmMC_VM_SYSTEM_APERTURE_HIGH_ADDR64,
 			vm0prefix, vm.registers.mmMC_VM_FB_LOCATION_BASE,
 			vm0prefix, vm.registers.mmMC_VM_FB_LOCATION_TOP,
+			vm0prefix, vm.registers.mmMC_VM_FB_LOCATION_BASE64,
+			vm0prefix, vm.registers.mmMC_VM_FB_LOCATION_TOP64,
 			regprefix, vm.registers.mmMC_VM_AGP_BASE, vm.registers.mmMC_VM_AGP_BASE_HI32, vm.registers.mmMC_VM_AGP_BASE_LO32,
 			regprefix, vm.registers.mmMC_VM_AGP_BOT, vm.registers.mmMC_VM_AGP_BOT_HI32, vm.registers.mmMC_VM_AGP_BOT_LO32,
 			regprefix, vm.registers.mmMC_VM_AGP_TOP, vm.registers.mmMC_VM_AGP_TOP_HI32, vm.registers.mmMC_VM_AGP_TOP_LO32
