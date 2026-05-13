@@ -328,7 +328,7 @@ static int umr_parse_devcoredump_ib(struct umr_asic *asic, size_t n)
 	if (sscanf(lines[n], "IB #%d 0x%lx %d dw", &i, &ib.va_start, &ib.dw) != 3)
 		return n + 1;
 
-	ib.content = calloc(sizeof(uint32_t), ib.dw);
+	ib.content = calloc(ib.dw, sizeof(uint32_t));
 	if (!ib.content)
 		return n + 1;
 
