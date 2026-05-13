@@ -83,6 +83,8 @@ int umr_discovery_table_is_supported(struct umr_asic *asic)
 int umr_discovery_read_table(struct umr_asic *asic, uint8_t *table, uint32_t *size)
 {
 	uint64_t vram_size, offset;
+	int gfx_maj, gfx_min;
+	struct binary_header *header = (struct binary_header *)table;
 	int ret;
 
 	if (!table && size) {
@@ -90,23 +92,47 @@ int umr_discovery_read_table(struct umr_asic *asic, uint8_t *table, uint32_t *si
 		return 0;
 	}
 
-	vram_size = get_full_vram_size(asic);
-	if (!vram_size)
-		return -1;
+	umr_gfx_get_ip_ver(asic, &gfx_maj, &gfx_min, NULL);
+	if (gfx_maj == 12 && gfx_min == 1) {
+//		offset = umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmDRIVER_SCRATCH_0");
+//		offset = offset | (umr_read_reg_by_name_by_ip_by_instance(asic, "gfx", asic->options.vm_partition, "mmDRIVER_SCRATCH_1") << 32ULL);
+		offset = asic->reg_funcs.read_reg(asic, 0x94 * 4, REG_MMIO);
+		offset = offset | ((uint64_t)asic->reg_funcs.read_reg(asic, 0x95 * 4, REG_MMIO) << 32);
 
-	offset = vram_size - UMR_DISCOVERY_TABLE_OFFSET;
+		if (table) {
+			ret = umr_read_vram(asic, asic->options.vm_partition, 0, offset, UMR_DISCOVERY_TABLE_SIZE, table);
+			if (ret) {
+				asic->err_msg("[ERROR]: Could not read IP discovery data from VMID 0 at 0x%"PRIx64"\n", offset);
+				return ret;
+			}
+		}
+	} else {
+		vram_size = get_full_vram_size(asic);
+		if (!vram_size) {
+			return 0;
+		}
 
-	if (table) {
-		ret = umr_access_linear_vram(asic, offset, UMR_DISCOVERY_TABLE_SIZE,
-					     table, 0);
-		if (ret)
-			return ret;
+		offset = vram_size - UMR_DISCOVERY_TABLE_OFFSET;
+
+		if (table) {
+			ret = umr_access_linear_vram(asic, offset, UMR_DISCOVERY_TABLE_SIZE,
+							table, 0);
+			if (ret) {
+				return ret;
+			}
+		}
 	}
 
-	if (size)
+	if (size) {
 		*size = UMR_DISCOVERY_TABLE_SIZE;
+	}
 
-	return 0;
+	if (le32toh(header->binary_signature) == BINARY_SIGNATURE) {
+		return 0;
+	} else {
+		asic->err_msg("[ERROR]: IP Discovery header signature not found.\n");
+		return 1;
+	}
 }
 
 static uint16_t umr_calculate_discovery_checksum(uint8_t *data, uint16_t size)
