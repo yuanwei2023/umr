@@ -521,6 +521,7 @@ typedef struct {
 typedef struct {
 	uint64_t
 		valid,
+		is_valid,
 		system,
 		coherent,
 		tmz,

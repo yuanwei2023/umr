@@ -109,12 +109,14 @@ pde_fields_t umr_decode_pde_entry(const struct umr_asic *asic, uint64_t pde_entr
 			/* Extract LLC no-allocate flag (bit 58) */
 			pde_fields.llc_noalloc   = (pde_entry >> 58) & 1;
 			break;
-		case 12: /* GFX12: RDNA4 series */
-			/* GFX12 has reorganized bit layout */
-			/* Fragment size moved to bits 58:62 */
+		case 12:
 			pde_fields.frag_size     = (pde_entry >> 58) & 0x1F;
-			/* Physical base address remains at bits 47:6 */
-			pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;
+			/* Physical base address 47:6 (+4 bits for 12.1) */
+			if (ip->discoverable.maj == 12 && ip->discoverable.min == 1) {
+				pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFFC0ULL; // 52-bit PBA on 12.1
+			} else {
+				pde_fields.pte_base_addr = pde_entry & 0xFFFFFFFFFFC0ULL;  // 48-bit PBA otherwise
+			}
 			pde_fields.valid         = pde_entry & 1;
 			pde_fields.system        = (pde_entry >> 1) & 1;
 			pde_fields.coherent      = (pde_entry >> 2) & 1;

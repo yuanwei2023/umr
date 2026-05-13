@@ -505,20 +505,26 @@ static void print_pte(struct umr_vm_ai_state *vm, const char *indentation)
 	}
 
 	switch (vm->pte.pte_fields.mtype) {
-		case VM_MTYPE_NC:
+		case 0:
 			vm->asic->mem_funcs.vm_message("NC\n");
 			break;
-		case VM_MTYPE_RW:
-			vm->asic->mem_funcs.vm_message("RW\n");
+		case 1:
+			if(vm->ip->discoverable.maj == 12 && vm->ip->discoverable.min == 1)
+				vm->asic->mem_funcs.vm_message("Reserved\n");
+			else
+				vm->asic->mem_funcs.vm_message("RW\n");
 			break;
-		case VM_MTYPE_CC:
-			vm->asic->mem_funcs.vm_message("CC\n");
+		case 2:
+			if(vm->ip->discoverable.maj == 12 && vm->ip->discoverable.min == 1)
+				vm->asic->mem_funcs.vm_message("RW\n");
+			else
+				vm->asic->mem_funcs.vm_message("CC\n");
 			break;
-		case VM_MTYPE_UC:
+		case 3:
 			vm->asic->mem_funcs.vm_message("UC\n");
 			break;
 		default:
-			vm->asic->mem_funcs.vm_message("[ERROR]: Error decoding PTE mtype: Unknown (%" PRIu64")\n",
+			vm->asic->mem_funcs.vm_message("Unknown (%" PRIu64")\n",
 					vm->pte.pte_fields.mtype);
 			break;
 	}
@@ -1234,11 +1240,11 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			va_mask = va_mask & ~((1ULL << lower_bits_to_ignore) - 1);
 		}
 
-		vm.pte.pte_is_pde = vm.pte.pte_fields.further && vm.pte.pte_fields.valid;
+		vm.pte.pte_is_pde = vm.pte.pte_fields.further && vm.pte.pte_fields.is_valid;
 		vm.pte.pte_block_fragment_size = 0;
 		vm.pte.pte_fields.pte_mask = va_mask;
 
-		if (vm.ip->discoverable.maj >= 12 && !vm.pte.pte_fields.pte && vm.pte.pte_fields.valid) {
+		if (vm.ip->discoverable.maj >= 12 && !vm.pte.pte_fields.pte && vm.pte.pte_fields.is_valid) {
 			vm.pte.pte_is_pde = 1;
 		}
 
@@ -1337,7 +1343,7 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 
 		// if the page is not marked valid and not a partially resident texture page then treat it
 		// as invalid
-		if (pdst && !vm.pte.pte_fields.prt && !vm.pte.pte_fields.valid) {
+		if (pdst && !vm.pte.pte_fields.prt && !vm.pte.pte_fields.is_valid) {
 			goto invalid_page;
 		}
 
@@ -1410,7 +1416,7 @@ pde_is_pte:  // we jump here if a PDE was marked as a PTE
 			}
 		}
 		/* allow destination to be NULL to simply use decoder */
-		if (vm.pte.pte_fields.valid) {
+		if (vm.pte.pte_fields.is_valid) {
 			if (pdst) {
 				if (access_translated_address(&vm, start_addr, vm.pte.pte_fields.system, "user page", pdst, chunk_size, write_en) < 0) {
 					return -1;

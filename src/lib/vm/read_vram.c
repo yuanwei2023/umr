@@ -85,8 +85,15 @@ int umr_access_vram(struct umr_asic *asic, int partition, uint32_t vmid, uint64_
 	}
 
 	// mask VM addresses
-	if ((vmid & 0xFF00) != UMR_LINEAR_HUB && asic->family > FAMILY_VI)
-		address &= 0xFFFFFFFFFFFFULL;
+	if ((vmid & 0xFF00) != UMR_LINEAR_HUB && asic->family > FAMILY_VI) {
+		//
+		// gfx v12.1 supports up to 57-bit valid user address for 57-bit VA space
+		//
+		if (maj == 12 && min == 1)
+			address &= 0x01FFFFFFFFFFFFFFULL;
+		else
+			address &= 0x0000FFFFFFFFFFFFULL;
+	}
 
 	if ((vmid & 0xFF00) == UMR_LINEAR_HUB) {
 		// if we are using xgmi let's find the device for this address

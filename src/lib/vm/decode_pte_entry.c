@@ -75,6 +75,7 @@ pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entr
 	switch (ip->discoverable.maj) {
 		case 9: /* GFX9: Vega, AI, Raven */
 			pte_fields.valid          = pte_entry & 1;
+			pte_fields.is_valid       = pte_fields.valid;
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.coherent       = (pte_entry >> 2) & 1;
 			pte_fields.tmz            = (pte_entry >> 3) & 1;
@@ -90,6 +91,7 @@ pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entr
 			break;
 		case 10: /* GFX10: Navi1x, Navi2x */
 			pte_fields.valid          = pte_entry & 1;
+			pte_fields.is_valid       = pte_fields.valid;
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.coherent       = (pte_entry >> 2) & 1;
 			pte_fields.tmz            = (pte_entry >> 3) & 1;
@@ -110,6 +112,7 @@ pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entr
 			break;
 		case 11: /* GFX11: RDNA3 */
 			pte_fields.valid          = pte_entry & 1;
+			pte_fields.is_valid       = pte_fields.valid;
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.coherent       = (pte_entry >> 2) & 1;
 			pte_fields.tmz            = (pte_entry >> 3) & 1;
@@ -126,7 +129,7 @@ pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entr
 			pte_fields.llc_noalloc    = (pte_entry >> 58) & 1; /* LLC no-allocate */
 			is_pde                    = pte_fields.further;
 			break;
-		case 12: /* GFX12: RDNA4 */
+		case 12:
 			pte_fields.valid          = pte_entry & 1;
 			pte_fields.system         = (pte_entry >> 1) & 1;
 			pte_fields.coherent       = (pte_entry >> 2) & 1;
@@ -142,6 +145,10 @@ pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entr
 			pte_fields.gcr            = (pte_entry >> 57) & 1;
 			pte_fields.dcc            = (pte_entry >> 58) & 1; /* Delta Color Compression */
 			pte_fields.pte            = (pte_entry >> 63) & 1; /* PTE flag: 1=PTE, 0=PDE */
+			// NPA addressses use VSCT == 4'b0011 only on MI4xx which is GFX 12.1, note T == PRT bit 56 not TMZ...
+			pte_fields.is_valid       = (pte_entry & 1) |
+				((ip->discoverable.maj == 12 && ip->discoverable.min == 1) ?
+					(!pte_fields.valid && !pte_fields.system && pte_fields.coherent && pte_fields.prt) : 0);
 			is_pde                    = !pte_fields.pte; /* Inverted logic for GFX12 */
 			break;
 	}
@@ -155,9 +162,22 @@ pte_fields_t umr_decode_pte_entry(const struct umr_asic *asic, uint64_t pte_entr
 	 * the entry is a PDE and needs the coarser alignment mask.
 	 */
 	if (is_pde) {
-		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFFC0ULL; /* 64B aligned for PDEs */
+		// this 64-bit 'PTE' is to be read as a PDE
+		/* Physical base address 47:6 (+4 bits for 12.1) */
+		if (ip->discoverable.maj == 12 && ip->discoverable.min == 1) {
+			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFFFC0ULL; // 52-bit PBA on 12.1
+		} else {
+			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFFC0ULL;  // 48-bit PBA otherwise
+		}
+
 	} else {
-		pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL; /* 4KB aligned for PTEs */
+		// this 64-bit 'PTE' is to be read as a PTE
+		/* Physical base address 47:12 (+4 bits for 12.1) */
+		if (ip->discoverable.maj == 12 && ip->discoverable.min == 1) {
+			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFFF000ULL; // 52-bit PBA on 12.1
+		} else {
+			pte_fields.page_base_addr = pte_entry & 0xFFFFFFFFF000ULL;  // 48-bit PBA otherwise
+		}
 	}
 
 	return pte_fields;
