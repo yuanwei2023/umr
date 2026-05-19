@@ -284,6 +284,18 @@ void umr_print_cpc(struct umr_asic *asic)
 						X_REG32_4COL("%25s", queue_regs[x]);
 					}
 
+					H("Queue Wave/Event Registers");
+
+					char wf_active_reg[] = "mmSPI_CSQ_WF_ACTIVE_COUNT_N";
+					wf_active_reg[sizeof(wf_active_reg) - 2] = '0' + queue;
+
+					for (uint32_t se = 0; se < asic->config.gfx.max_shader_engines; ++se) {
+						write_banked_reg(asic, "mmGRBM_GFX_INDEX", (se << 0x10));
+						X_LIT32_8COL("%s", "SPI_CSQ_WF_ACTIVE_COUNT", read_banked_reg(asic, wf_active_reg));
+					}
+
+					write_banked_reg(asic, "mmGRBM_GFX_INDEX", 0xE0000000);
+
 					H("MQD");
 
 					uint32_t mqd_mem[mqd_size_dw];
