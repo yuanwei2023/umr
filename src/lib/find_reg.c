@@ -167,7 +167,7 @@ struct umr_reg* umr_find_reg_data_by_ip(struct umr_asic* asic, const char* ip, c
 	char *p;
 
 	if (ip) {
-		p = strstr(ip, "{");
+		p = strstr((char*)ip, "{");
 		if (!p || sscanf(p, "{%d}", &instance) != 1)
 			instance = -1;
 	}

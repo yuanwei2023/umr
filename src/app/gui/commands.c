@@ -575,7 +575,7 @@ JSON_Array *get_rings_last_signaled_fences(const char *fence_info, const char *r
 	JSON_Array *fences = json_array(json_value_init_array());
 	int cursor = 0;
 	while (1) {
-		char *next_ring = strstr(&fence_info[cursor], "--- ring");
+		char *next_ring = strstr((char*)&fence_info[cursor], "--- ring");
 		if (!next_ring)
 			break;
 		char *next_ring_start = strchr(next_ring, '(');
@@ -663,7 +663,7 @@ static bool parse_fdinfo_entry(const char *content, const char *dev_id, bool lim
 
 	/* Lookup all drm-* entries */
 	while (ptr && (ptr = strstr(ptr, "drm-"))) {
-		char *cm = strchr(ptr, ':');
+		char *cm = strchr((char*)ptr, ':');
 		if (!cm)
 			continue;
 		char *key_name = strndup(ptr, cm - ptr);
@@ -798,7 +798,7 @@ JSON_Array *get_active_amdgpu_clients(struct umr_asic *asic)
 	const char *ptr = read_file("/sys/kernel/debug/dri/%d/amdgpu_vm_info", asic->instance);
 	while (ptr) {
 		unsigned pid;
-		char *next_pid = strstr(ptr, "pid:");
+		char *next_pid = strstr((char*)ptr, "pid:");
 		if (!next_pid)
 			break;
 		char *next_space = strchr(next_pid, '\t');
@@ -899,7 +899,7 @@ JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info)
 					return NULL;
 				}
 				cursor += strlen(cmd_prefix);
-				char *end = strstr(cursor, cmd_end);
+				char *end = strstr((char*)cursor, cmd_end);
 				json_object_set_string_with_len(p, "command", cursor, end - cursor);
 			}
 			json_object_set_value(p, "clients", json_value_init_array());
@@ -944,7 +944,7 @@ JSON_Array *parse_buffer_object_info(char *content, bool is_vm_info)
 			JSON_Object *attr = json_object(json_value_init_object());
 			for (size_t j = 0; j < ARRAY_SIZE(attributes); j++) {
 				const int attr_len = strlen(attributes[j]);
-				char *pct = strchr(attributes[j], '%');
+				char *pct = strchr((char*)attributes[j], '%');
 
 				char *found = memmem(lines[i], len, attributes[j],
 									 pct ? (pct - attributes[j]) : attr_len);
