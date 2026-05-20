@@ -1932,6 +1932,7 @@ static bool events_tracing_helper(int mode, bool verbose, struct umr_asic *asic,
 		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_queue/enable", "1");
 		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_run/enable", "1");
 		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/gpu_scheduler/drm_sched_job_done/enable", "1");
+		error |= !write_str_to_file(SYSFS_PATH_TRACING "events/amdgpu/amdgpu_vm_update_ptes/enable", "1");
 		enable_tracing = true;
 	} else if (mode == 2) {
 		char filter[512];
@@ -2240,7 +2241,7 @@ static void* read_trace_buffer_thread(void *in) {
 	struct {
 		int start, count;
 	} remaining = { 0, 0 };
-	bool in_stacktrace = false;
+	bool in_stacktrace = false, in_vm_update_ptes = false;
 
 	while (data->run) {
 		if (remaining.count)
@@ -2303,17 +2304,39 @@ static void* read_trace_buffer_thread(void *in) {
 						store_used += len;
 						out[store_used++] = '\0';
 					}
+				} else if (in_vm_update_ptes) {
+					/* Append the first entry of dst array instead of having a separate line with N entries */
+					if (buffer[line_start] == '{') {
+						int j, k;
+						for (j = line_start + 1; j < i; j++) {
+							if (buffer[j] == ',' || buffer[j] == '}')
+								break;
+						}
+						if (j != i) {
+							k = j - line_start - 1;
+							out = ensure_capacity(out, &store_capacity, store_used, k + 1);
+							assert(out[store_used - 1] == '\0');
+							store_used -= 1;
+							memcpy(&out[store_used], &buffer[line_start + 1], k);
+							store_used += k;
+							out[store_used++] = '\0';
+						}
+					}
+					in_vm_update_ptes = false;
 				} else {
 					bool ignore = memmem(&buffer[line_start], len, "<stack trace>", strlen("<stack trace>"));
-					if (!ignore)
-						parse_one_event(data, &buffer[line_start], len, &out, &store_used, &store_capacity);
+					if (!ignore) {
+						int event_type = parse_one_event(data, &buffer[line_start], len, &out, &store_used, &store_capacity);
+
+						in_vm_update_ptes = event_type == 8 /* AmdgpuVmUpdatePtes */;
+					}
 				}
 
 				line_start = i + 1;
 			}
 		}
 
-		if (in_stacktrace)
+		if (in_stacktrace || in_vm_update_ptes)
 			continue;
 
 		pthread_mutex_lock(&data->mtx);

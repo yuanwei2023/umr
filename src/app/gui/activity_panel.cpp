@@ -92,6 +92,20 @@ namespace TimelineType {
 	};
 }
 
+struct umr_bitfield pte_udpate_flags_bitfields[] = {
+	{ .regname = (char*)"PTE_VALID", .start = 0, .stop = 0 },
+	{ .regname = (char*)"PTE_SYSTEM", .start = 1, .stop = 1 },
+	{ .regname = (char*)"PTE_SNOOPED",  .start = 2, .stop = 2 },
+	{ .regname = (char*)"PTE_TMZ",  .start = 3, .stop = 3 },
+	{ .regname = (char*)"PTE_EXEC",  .start = 4, .stop = 4 },
+	{ .regname = (char*)"PTE_READ",  .start = 5, .stop = 5 },
+	{ .regname = (char*)"PTE_WRITE",  .start = 6, .stop = 6 },
+	{ .regname = (char*)"PTE_DCC",  .start = 58, .stop = 58 },
+	{ .regname = (char*)"PTE_BUS_ATOMICS",  .start = 59, .stop = 59 },
+	{ .regname = (char*)"PTE_IS_PTE",  .start = 63, .stop = 63 },
+};
+
+
 /* Forward decl */
 struct DrmSchedJob;
 struct Timeline;
@@ -119,6 +133,8 @@ static const char *kernel_id_job_names[] = {
 	"kfd_gart_map",
 	"vcn_ring_test",
 };
+
+#define VM_UPDATE_RANGE_ID (UINT64_MAX - 2)
 
 /* Struct representing a DmaFence. */
 struct DmaFence {
@@ -222,6 +238,17 @@ struct DrmEvent : public Event {
 					u.drm_sched_job_unschedulable.fence.from_str(value);
 				break;
 			}
+			case EventType::AmdgpuVmUpdatePtes: {
+				if (str_is(name, "start", name_len)) {
+					u.amdgpu_vm_update_ptes.start_va = strtoull(value, NULL, 16) << 12;
+				} else if (str_is(name, "end", name_len)) {
+					u.amdgpu_vm_update_ptes.end_va = strtoull(value, NULL, 16) << 12;
+				}
+				PARSE_INT(u.amdgpu_vm_update_ptes.flags, "flags", 16);
+				PARSE_INT(u.amdgpu_vm_update_ptes.dst_base, "dst", 16);
+				PARSE_INT(u.amdgpu_vm_update_ptes.dst_incr, "incr", 10);
+				break;
+			}
 			default:
 				/* Ignore other events. */
 				break;
@@ -252,6 +279,13 @@ struct DrmEvent : public Event {
 			DmaFence fence;
 			DmaFence dep_fence;
 		} drm_sched_job_add_dep;
+		struct {
+			uint64_t start_va;
+			uint64_t end_va;
+			uint64_t flags;
+			uint64_t dst_base;
+			uint32_t dst_incr;
+		} amdgpu_vm_update_ptes;
 	} u;
 
 private:
@@ -340,6 +374,9 @@ struct Timeline {
 
 		return 0;
 	}
+
+	bool matches(const TimelineType::Enum type, uint64_t context, uint64_t client_id,
+					 int tgid, int pid, const char *task_or_device, const char *process_or_ring) const;
 
 	static Timeline *find_timeline_for_event(Timelines& timelines, const EventBase& bp, const DrmEvent& event, JSON_Array *drm_clients);
 	static void sort_timelines(Timelines& timelines, const std::set<DrmSchedJob*> * selected_jobs);
@@ -565,6 +602,36 @@ compare_timelines(const std::set<DrmSchedJob*> * selected_jobs, Timeline* q, Tim
 	return q->pid < p->pid;
 }
 
+bool Timeline::matches(const TimelineType::Enum type, uint64_t context, uint64_t client_id,
+							  int tgid, int pid, const char *task_or_device, const char *process_or_ring) const
+{
+	if (this->type != type)
+		return false;
+
+	if (type == TimelineType::Hardware) {
+		/* For hardware timeline, we want to match the GPU and the ring. */
+		if (str_is(process_or_ring, this->u.hw.ring)) {
+			if (!task_or_device || str_is(task_or_device, this->u.hw.device))
+				return true;
+		}
+	} else if (type == TimelineType::Kernel) {
+		/* For kernel timeline, we want to match the context, the source (kmd_id) and the thread id.
+			* During display, the timelines will be aggregated by kmd_id, but we still want to be able
+			* to show the details properly.
+			*/
+		if ((!context || this->u.kmd.context == context) && this->u.kmd.kmd_id == client_id && this->tgid == tgid)
+			return true;
+	} else {
+		/* For userspace, we match by client_id since it's unique per-process. */
+		if (this->u.sw.drm_client_id != client_id)
+			return false;
+
+		if (this->pid == pid)
+			return true;
+	}
+	return false;
+}
+
 Timeline *Timeline::find_timeline_for_event(Timelines& timelines, const EventBase& bp, const DrmEvent& event, JSON_Array *drm_clients) {
 	TimelineType::Enum type;
 	const char *task_or_device, *process_or_ring;
@@ -589,28 +656,8 @@ Timeline *Timeline::find_timeline_for_event(Timelines& timelines, const EventBas
 
 	/* Try to find an existing timeline... */
 	for (auto *t: timelines) {
-		if (t->type != type)
-			continue;
-
-		if (t->type == TimelineType::Hardware) {
-			/* For hardware timeline, we want to match the GPU and the ring. */
-			if (str_is(task_or_device, t->u.hw.device) && str_is(process_or_ring, t->u.hw.ring))
-				return t;
-		} else if (t->type == TimelineType::Kernel) {
-			/* For kernel timeline, we want to match the context, the source (kmd_id) and the thread id.
-			 * During display, the timelines will be aggregated by kmd_id, but we still want to be able
-			 * to show the details properly.
-			 */
-			if (t->u.kmd.context == context && t->u.kmd.kmd_id == client_id && t->tgid == bp.tgid)
-				return t;
-		} else {
-			/* For userspace, we match by client_id since it's unique per-process. */
-			if (t->u.sw.drm_client_id != client_id)
-				continue;
-
-			if (t->pid == bp.pid)
-				return t;
-		}
+		if (t->matches(type, context, client_id, bp.tgid, bp.pid, task_or_device, process_or_ring))
+			return t;
 	}
 
 	/* Allocate a new timeline. */
@@ -673,6 +720,7 @@ struct Capture {
 	}
 
 	std::vector<DrmSchedJob*> sched_jobs;
+	std::vector<DrmEvent> orphaned_vm_bo_events;
 
 	float ts_shift;
 };
@@ -863,10 +911,11 @@ find_matching_sched_job(const DrmEvent& event, std::vector<DrmSchedJob*>& sched_
 }
 
 static double parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
-								     std::vector<DrmSchedJob*>& sched_jobs,
+								     Capture *capture,
 								     Timelines& timelines,
 								     JSON_Array *names, JSON_Array *drm_clients) {
 	double timestamp;
+	std::vector<DrmSchedJob*>& sched_jobs = capture->sched_jobs;
 
 	EventBase bp = { };
 	unsigned consumed = 0;
@@ -888,6 +937,7 @@ static double parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
 		case EventType::DrmSchedJobDone:
 		case EventType::DrmSchedJobUnschedulable:
 		case EventType::DrmSchedJobAddDep:
+		case EventType::AmdgpuVmUpdatePtes:
 			break;
 		default:
 			continue;
@@ -915,6 +965,21 @@ static double parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
 
 				job->submit_timeline->context_max_sw_queued[event.u.drm_sched_job_queue.fence.context] = std::max(
 					job->submit_timeline->context_max_sw_queued[event.u.drm_sched_job_queue.fence.context], event.u.drm_sched_job_queue.sw_job_count);
+
+				if (type == TimelineType::Kernel && event.u.drm_sched_job_queue.client_id == VM_UPDATE_RANGE_ID &&
+					 !capture->orphaned_vm_bo_events.empty()) {
+					for (int i = 0 ; i < capture->orphaned_vm_bo_events.size(); ) {
+						auto &evt = capture->orphaned_vm_bo_events[i];
+
+						if (job->submit_timeline->matches(type, 0, VM_UPDATE_RANGE_ID, bp.tgid, bp.pid, NULL, NULL)) {
+							job->add_event(evt);
+							capture->orphaned_vm_bo_events.erase(
+								capture->orphaned_vm_bo_events.begin() + i);
+						} else {
+							i++;
+						}
+					}
+				}
 			} else {
 				/* Other events are follow up events (except drm_sched_job_done) */
 				DrmSchedJob *matching = find_matching_sched_job(event, sched_jobs);
@@ -940,6 +1005,11 @@ static double parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
 				matching->add_event(event);
 				max_fence_duration = std::max(max_fence_duration, event.timestamp - matching->hw_submit_ts());
 			}
+		} else if (event.is(EventType::AmdgpuVmUpdatePtes)) {
+			/* amdgpu_vm_bo_update is received just before the job is queued, so store it here, and
+			 * attach it to the job when it's received.
+			 */
+			capture->orphaned_vm_bo_events.push_back(event);
 		}
 	}
 
@@ -1150,7 +1220,7 @@ public:
 				auto *active_capture = captures.back();
 
 				double max_fence_duration = parse_raw_event_buffer(
-					raw_data, raw_data_size, active_capture->sched_jobs, timelines,
+					raw_data, raw_data_size, active_capture, timelines,
 					json_object_get_array(json_object(answer), "names"),
 					json_object_get_array(json_object(answer), "drm_clients"));
 
@@ -2305,8 +2375,37 @@ private:
 				break;
 			case TimelineType::Kernel:
 				id = UINT64_MAX - id;
-				if (id < ARRAY_SIZE(kernel_id_job_names))
+				if (id < ARRAY_SIZE(kernel_id_job_names)) {
 					ImGui::Text("#888888Source: #%x%s", COLOR_TO_HEX(job->submit_timeline->color), kernel_id_job_names[id]);
+
+					if (id == 2) {
+						for (const auto &evt: job->events) {
+							if (evt.is(EventType::AmdgpuVmUpdatePtes)) {
+								bool is_valid = evt.u.amdgpu_vm_update_ptes.flags & 1;
+								ImGui::Text("%s%c [0x%lx, 0x%lx[",
+									is_valid ? "#15dd34" : "#dd1534", is_valid ? '+' : '-',
+									evt.u.amdgpu_vm_update_ptes.start_va,
+									evt.u.amdgpu_vm_update_ptes.end_va);
+								ImGui::SameLine();
+								if (is_valid) {
+									int n_pages = std::max(1lu, ((evt.u.amdgpu_vm_update_ptes.end_va - evt.u.amdgpu_vm_update_ptes.start_va) / evt.u.amdgpu_vm_update_ptes.dst_incr));
+									ImGui::Text("mapped to [0x%lx, 0x%lx[",
+										evt.u.amdgpu_vm_update_ptes.dst_base,
+										evt.u.amdgpu_vm_update_ptes.dst_base + evt.u.amdgpu_vm_update_ptes.dst_incr * n_pages);
+								} else {
+									ImGui::Text("unmapped");
+								}
+								if (ImGui::IsItemHovered()) {
+									ImGui::Text("VM flags: 0x%lx", evt.u.amdgpu_vm_update_ptes.flags);
+									draw_value_as_bitfield(pte_udpate_flags_bitfields, ARRAY_SIZE(pte_udpate_flags_bitfields),
+																  evt.u.amdgpu_vm_update_ptes.flags,
+																  pte_udpate_flags_bitfields[ARRAY_SIZE(pte_udpate_flags_bitfields) - 1].stop + 1,
+																  NULL, NULL);
+								}
+							}
+						}
+					}
+				}
 				break;
 			default:
 				break;

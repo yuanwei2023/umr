@@ -43,6 +43,7 @@ namespace EventType
 		DrmSchedJobAddDep,
 		AmdgpuSchedRunJob,
 		AmdgpuDeviceWreg,
+		AmdgpuVmUpdatePtes,
 		Count,
 	};
 
@@ -55,6 +56,7 @@ namespace EventType
 			case Enum::DrmSchedJobAddDep: return "drm_sched_job_add_dep";
 			case Enum::AmdgpuSchedRunJob: return "amdgpu_sched_run_job";
 			case Enum::AmdgpuDeviceWreg: return "amdgpu_device_wreg";
+			case Enum::AmdgpuVmUpdatePtes: return "amdgpu_vm_update_ptes";
 			default: return "unknown";
 		}
 	}
