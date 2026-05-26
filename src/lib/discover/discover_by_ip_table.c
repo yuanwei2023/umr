@@ -377,27 +377,35 @@ struct umr_asic *umr_discover_asic_by_discovery_table(char *aname, struct umr_op
 		nit = umr_database_find_ip(it, cmnname,
 			det->maj, det->min, det->rev, options->desired_path[0] ? options->desired_path : NULL);
 		if (nit) {
-			if (options->export_model) {
-				if (pexp_data == NULL) {
-					pexp_data = &exp_data;
-				} else {
-					pexp_data->next = calloc(1, sizeof(exp_data));
-					pexp_data = pexp_data->next;
-				}
-				pexp_data->nit = nit;
-				pexp_data->det = det;
-			}
-			if (options->verbose)
+			if (options->verbose) {
 				errout("[VERBOSE]: Using %s/%s (%d.%d.%d) for %s (%d.%d.%d)\n",
 					nit->path, nit->fname, nit->maj, nit->min, nit->rev,
 					det->ipname, det->maj, det->min, det->rev);
-			if (!det->harvest)
-					asic->blocks[used_blocks++] =
-						read_ip_block(asic, det, nit);
+			}
+
+			// if not harvested read the IP block
+			if (!det->harvest) {
+					asic->blocks[used_blocks] =	read_ip_block(asic, det, nit);
+					// some IP blocks fail to initialize so only increment count on success
+					if (asic->blocks[used_blocks]) {
+						// if the block loaded correctly add it to the export list if -O export_model is used
+						if (options->export_model) {
+							if (pexp_data == NULL) {
+								pexp_data = &exp_data;
+							} else {
+								pexp_data->next = calloc(1, sizeof(exp_data));
+								pexp_data = pexp_data->next;
+							}
+							pexp_data->nit = nit;
+							pexp_data->det = det;
+						}
+						++used_blocks;
+					}
+			}
 		}
 		det = det->next;
 	}
-	asic->no_blocks = used_blocks - 1;
+	asic->no_blocks = used_blocks;
 
 	// scan blocks for missing {0}
 	// to be consistent if there is more than one instance of
