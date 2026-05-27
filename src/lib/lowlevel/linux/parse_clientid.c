@@ -630,8 +630,14 @@ static int parse_clients_file(struct umr_asic *asic, int use_name, int use_pid, 
     }
 
     // scan file for the target client
-    if (fgets(path, sizeof path, f)) {
-        while (fgets(path, sizeof path, f)) {
+   /* example contents: 
+root@amd-devel:/sys/kernel/debug/dri/1# cat clients 
+             command  tgid dev master a   uid      magic                                                             name                   id
+      systemd-logind   968   1   y    y     0          0                                                          <unset>                    5
+                test  3398 128   n    n  1000          0                                                          <unset>                   16
+    */
+    if (fgets(path, sizeof path, f)) {                                                                      // skip header line
+        while (fgets(path, sizeof path, f)) {                                                               // read a client line
             if (sscanf(path, "%s %s %s %s %s %s %s %s %s",
                 asic->options.user_queue.client_line.command, asic->options.user_queue.client_line.tgid,
                 asic->options.user_queue.client_line.dev, asic->options.user_queue.client_line.master,
@@ -714,6 +720,16 @@ static int parse_queues(struct umr_asic *asic, int found)
         }
 
         // parse the vm_pagetable_info file
+/*
+        Example contents:
+root@amd-devel:/sys/kernel/debug/dri/client-16# cat vm_pagetable_info 
+pd_address: 0x3f7dff001
+max_pfn: 0x1000000000
+num_level: 0x3
+block_size: 0x9
+fragment_size: 0x9
+
+*/        
         sprintf(path, "/sys/kernel/debug/dri/client-%s/vm_pagetable_info", asic->options.user_queue.client_line.id);
         f = fopen(path, "r");
         if (f) {
@@ -1084,6 +1100,12 @@ struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
         goto error;
 
     // now p points to the procname or clientid and pp points to the queueid
+    /* example contents: 
+root@amd-devel:/sys/kernel/debug/dri/1# cat clients 
+             command  tgid dev master a   uid      magic                                                             name                   id
+      systemd-logind   968   1   y    y     0          0                                                          <unset>                    5
+                test  3398 128   n    n  1000          0                                                          <unset>                   16
+    */
     sprintf(path, "/sys/kernel/debug/dri/%d/clients", asic->instance);
     f = fopen(path, "r");
     if (!f) {
@@ -1092,8 +1114,8 @@ struct umr_user_queue *umr_enumerate_user_queue_clients(struct umr_asic *asic)
     }
 
     // scan file for the target client
-    if (fgets(path, sizeof path, f)) {
-        while (fgets(path, sizeof path, f)) {
+    if (fgets(path, sizeof path, f)) {                                                                          // skip header line
+        while (fgets(path, sizeof path, f)) {                                                                   // read clients
             int kgd_mode = 1;
             struct {
                 char command[256], tgid[32], dev[32], master[32], a[32], uid[32], magic[32], name[256], id[32];
