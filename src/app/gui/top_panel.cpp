@@ -95,58 +95,59 @@ public:
 
 		const float box_size = (ImGui::CalcTextSize("UTCL2").x + padding * 2);
 
+		if (!last_accumulate_answer)
+			return false;
+
 		ImGui::BeginChild("top");
 
 		if (ImGui::TreeNodeEx("Hardware blocks busyness", ImGuiTreeNodeFlags_DefaultOpen)) {
 			ImGui::BeginChild("grbm bits", ImVec2(0, box_size * 2), false, ImGuiWindowFlags_NoTitleBar);
-			if (last_accumulate_answer) {
-				JSON_Array *values = json_object_get_array(last_accumulate_answer, "values");
-				int max_counter_value = (top_read_interval * 1000) / 10;
-				ImVec2 text_base = ImGui::GetCursorScreenPos();
-				ImGui::NewLine();
-				ImVec2 base = ImGui::GetCursorScreenPos();
-				for (int h = 0; h < ARRAY_SIZE(titles); h++) {
-					ImGui::SetCursorScreenPos(ImVec2(base.x, text_base.y));
-					ImGui::TextUnformatted(titles[h]);
-					for (int i = 0; i < json_array_get_count(values); i++) {
-						JSON_Array *val = json_array_get_array(values, i);
-						for (int j = 0; j < json_array_get_count(val); j++) {
-							JSON_Object *value = json_object(json_array_get_value(val, j));
-							const char *name = json_object_get_string(value, "name");
-							const size_t l = strlen(name);
-							const char *pos = strstr(name, "_BUSY");
-							if (!pos)
-								continue;
-							if (pos != (name + l - 5))
-								continue;
-							bool match = false;
-							for (int f = 0; f < 6 && !match; f++) {
-								if (filters[h][f] == NULL)
-									break;
-								match = strncmp(name, filters[h][f], l - 5) == 0;
-							}
-							if (!match)
-								continue;
-
-							double v = (json_object_get_number(value, "counter") / max_counter_value);
-
-
-							ImVec2 base_filled(base.x, base.y + (1 - v) * box_size);
-							ImVec2 end(base.x + box_size, base.y + box_size);
-
-							ImGui::GetWindowDrawList()->AddRectFilled(base_filled, end, (ImU32)ImColor(52, 222, 81));
-
-							ImGui::GetWindowDrawList()->AddRect(base, end, IM_COL32_WHITE);
-							float bx = CenterText(name, pos, base.x, box_size);
-							ImGui::GetWindowDrawList()->AddText(
-								ImVec2(bx, base.y + (box_size - text_h) * 0.5),
-								IM_COL32_WHITE, name, pos);
-
-							base.x = end.x + padding;
+			JSON_Array *values = json_object_get_array(last_accumulate_answer, "values");
+			int max_counter_value = (top_read_interval * 1000) / 10;
+			ImVec2 text_base = ImGui::GetCursorScreenPos();
+			ImGui::NewLine();
+			ImVec2 base = ImGui::GetCursorScreenPos();
+			for (int h = 0; h < ARRAY_SIZE(titles); h++) {
+				ImGui::SetCursorScreenPos(ImVec2(base.x, text_base.y));
+				ImGui::TextUnformatted(titles[h]);
+				for (int i = 0; i < json_array_get_count(values); i++) {
+					JSON_Array *val = json_array_get_array(values, i);
+					for (int j = 0; j < json_array_get_count(val); j++) {
+						JSON_Object *value = json_object(json_array_get_value(val, j));
+						const char *name = json_object_get_string(value, "name");
+						const size_t l = strlen(name);
+						const char *pos = strstr(name, "_BUSY");
+						if (!pos)
+							continue;
+						if (pos != (name + l - 5))
+							continue;
+						bool match = false;
+						for (int f = 0; f < 6 && !match; f++) {
+							if (filters[h][f] == NULL)
+								break;
+							match = strncmp(name, filters[h][f], l - 5) == 0;
 						}
+						if (!match)
+							continue;
+
+						double v = (json_object_get_number(value, "counter") / max_counter_value);
+
+
+						ImVec2 base_filled(base.x, base.y + (1 - v) * box_size);
+						ImVec2 end(base.x + box_size, base.y + box_size);
+
+						ImGui::GetWindowDrawList()->AddRectFilled(base_filled, end, (ImU32)ImColor(52, 222, 81));
+
+						ImGui::GetWindowDrawList()->AddRect(base, end, IM_COL32_WHITE);
+						float bx = CenterText(name, pos, base.x, box_size);
+						ImGui::GetWindowDrawList()->AddText(
+							ImVec2(bx, base.y + (box_size - text_h) * 0.5),
+							IM_COL32_WHITE, name, pos);
+
+						base.x = end.x + padding;
 					}
-					base.x += box_size * 0.25;
 				}
+				base.x += box_size * 0.25;
 			}
 			ImGui::EndChild();
 			ImGui::TreePop();
