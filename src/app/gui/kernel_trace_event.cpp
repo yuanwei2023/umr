@@ -123,11 +123,11 @@ int Event::parse_event_fields(char *cursor, Event *event) {
 				while (isspace(*cursor) && *cursor != '\0') cursor++;
 				value_start = cursor;
 				if (*cursor == '(') {
-					while (*cursor != ')') cursor++;
-					cursor++;
+					while (*cursor != ')' && *cursor != '\0') cursor++;
+					if (*cursor) cursor++;
 				} else if (*cursor == '{') {
-					while (*cursor != '}') cursor++;
-					cursor++;
+					while (*cursor != '}' && *cursor != '\0') cursor++;
+					if (*cursor) cursor++;
 				} else {
 					while (*cursor != ',' && *cursor != ' ' && *cursor != '\0') cursor++;
 				}
