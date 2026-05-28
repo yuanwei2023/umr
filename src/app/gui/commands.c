@@ -623,7 +623,11 @@ JSON_Value *compare_fence_infos(const char *fence_info_before, const char *fence
 	JSON_Value *fences = json_value_init_array();
 	JSON_Array *before = get_rings_last_signaled_fences(fence_info_before, NULL);
 	JSON_Array *after = get_rings_last_signaled_fences(fence_info_after, NULL);
-	for (size_t i = 0; i < json_array_get_count(before); i++) {
+	size_t n_before = json_array_get_count(before);
+	size_t n_after = json_array_get_count(after);
+	if (n_before != n_after)
+		goto end;
+	for (size_t i = 0; i < n_before; i++) {
 		JSON_Value *fence = json_value_init_object();
 		JSON_Object *b = json_object(json_array_get_value(before, i));
 		JSON_Object *a = json_object(json_array_get_value(after, i));
@@ -635,6 +639,7 @@ JSON_Value *compare_fence_infos(const char *fence_info_before, const char *fence
 		json_object_set_number(json_object(fence), "delta", v2 - v1);
 		json_array_append_value(json_array(fences), fence);
 	}
+end:
 	json_value_free(json_array_get_wrapping_value(before));
 	json_value_free(json_array_get_wrapping_value(after));
 
