@@ -263,8 +263,8 @@ private:
 		u = evt.u;
 
 		if (type == EventType::DrmSchedJobRun) {
-			u.drm_sched_job_run.ring = strdup(evt.u.drm_sched_job_run.ring);
-			u.drm_sched_job_run.device = strdup(evt.u.drm_sched_job_run.device);
+			u.drm_sched_job_run.ring = evt.u.drm_sched_job_run.ring ? strdup(evt.u.drm_sched_job_run.ring) : NULL;
+			u.drm_sched_job_run.device = evt.u.drm_sched_job_run.device ? strdup(evt.u.drm_sched_job_run.device) : NULL;
 		}
 	}
 };
