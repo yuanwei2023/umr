@@ -787,7 +787,7 @@ private:
 		static char txt[256];
 		if (bo_size < 1024)
 			sprintf(txt, "%lu bytes", bo_size);
-		if (bo_size < 1024 * 1024)
+		else if (bo_size < 1024 * 1024)
 			sprintf(txt, "%lu kB", bo_size / 1024);
 		else if (bo_size < 1024 * 1024 * 1024)
 			sprintf(txt, "%lu MB", bo_size / (1024 * 1024));
