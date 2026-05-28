@@ -63,15 +63,11 @@ static char * _read_file(const char *path, char **buffer, unsigned *buffer_size)
 				(*buffer) = realloc((*buffer), *buffer_size);
 			}
 
-			int n = fread(&(*buffer)[total], 1, *buffer_size - total, fd);
+			size_t n = fread(&(*buffer)[total], 1, *buffer_size - total, fd);
 
 			if (n == 0) {
 				(*buffer)[total] = '\0';
 				break;
-			} else if (n < 0) {
-				printf("Error %s\n", strerror(errno));
-				continue;
-
 			}
 			total += n;
 		}
@@ -1775,10 +1771,10 @@ write_str_to_file(const char *path, const char *str) {
 		fprintf(stderr, "Failed to open '%s'\n", path);
 		return false;
 	}
-	int b = strlen(str);
+	size_t b = strlen(str);
 	while (b) {
-		int written = fwrite(str, 1, b, f);
-		if (written < 0) {
+		size_t written = fwrite(str, 1, b, f);
+		if (ferror(f)) {
 			fprintf(stderr, "Failed to write '%s' to '%s'\n", str, path);
 			fclose(f);
 			return false;
