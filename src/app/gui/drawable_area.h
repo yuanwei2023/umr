@@ -184,7 +184,7 @@ public:
 	}
 
 	double get_mouse_over_ts(bool absolute_timestamps) const {
-		return x_to_timestamp(ImGui::GetMousePos().x) - (absolute_timestamps ? 0 : -_min_ts);
+		return x_to_timestamp(ImGui::GetMousePos().x) - (absolute_timestamps ? 0 : _min_ts);
 	}
 
 	bool is_input_active() const {
