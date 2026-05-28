@@ -2621,7 +2621,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			for (int k = 0; k < reg[j]->no_bits; k++) {
 				JSON_Value *v = json_value_init_object();
 				json_object_set_string(json_object(v), "name", reg[j]->bits[k].regname);
-				json_object_set_number(json_object(v), "counter", counters[num_reg * j + k]);
+				json_object_set_number(json_object(v), "counter", counters[32 * j + k]);
 				json_array_append_value(json_array(regvalue), v);
 			}
 			json_array_append_value(json_array(values), regvalue);
