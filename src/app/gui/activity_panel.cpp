@@ -467,7 +467,7 @@ struct DrmSchedJob {
 			if (!found) {
 				for (int i = job_index - 1; i >= 0; i--) {
 					const DrmSchedJob *job = jobs[i];
-					if (job->fence == *fence_to_add) {
+					if (job->fence == *fence_to_add && job->execute_timeline) {
 						dependencies.push_back(job);
 						break;
 					}
