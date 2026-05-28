@@ -249,7 +249,7 @@ public:
 			if (memory_usage_snapshots.empty())
 				return false;
 
-			if (current_snapshot_index < 0 || current_snapshot_index >= memory_usage_snapshots.size())
+			if (current_snapshot_index < 0 || (size_t)current_snapshot_index >= memory_usage_snapshots.size())
 				current_snapshot_index = memory_usage_snapshots.size() - 1;
 
 			mem_app_snapshot *current_snapshot =
