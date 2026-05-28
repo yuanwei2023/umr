@@ -98,15 +98,25 @@ static uint64_t str_to_uint64(const char *s)
 		return (uint64_t)-1;
 }
 
+static bool format_path(char *path, size_t path_size, const char *format, va_list args)
+{
+	int r = vsnprintf(path, path_size, format, args);
+	if (r < 0 || (size_t)r >= path_size)
+		return false;
+	return true;
+}
+
 static char *read_file(const char *format, ...) {
 	static char *buffer = NULL;
 	static unsigned buffer_size = 0;
 	char path[PATH_MAX];
 	va_list args;
 	va_start (args, format);
-	if (vsprintf(path, format, args) < 0)
+	if (!format_path(path, sizeof(path), format, args)) {
+		va_end(args);
 		return NULL;
-	va_end (args);
+	}
+	va_end(args);
 	return _read_file(path, &buffer, &buffer_size);
 }
 
@@ -115,9 +125,11 @@ static char *read_file_n(const char *format, unsigned *buffer_size, ...) {
 	char path[PATH_MAX];
 	va_list args;
 	va_start (args, buffer_size);
-	if (vsprintf(path, format, args) < 0)
+	if (!format_path(path, sizeof(path), format, args)) {
+		va_end(args);
 		return NULL;
-	va_end (args);
+	}
+	va_end(args);
 	return _read_file(path, &buffer, buffer_size);
 }
 
@@ -127,9 +139,11 @@ static char * read_file_a(const char *format, ...) {
 	char path[PATH_MAX];
 	va_list args;
 	va_start (args, format);
-	if (vsprintf(path, format, args) < 0)
+	if (!format_path(path, sizeof(path), format, args)) {
+		va_end(args);
 		return NULL;
-	va_end (args);
+	}
+	va_end(args);
 	return _read_file(path, &buffer, &buffer_size);
 }
 
@@ -254,9 +268,11 @@ static uint64_t read_sysfs_uint64(const char *path, ...) {
 	char _path[PATH_MAX];
 	va_list args;
 	va_start (args, path);
-	if (vsprintf(_path, path, args) < 0)
+	if (!format_path(_path, sizeof(_path), path, args)) {
+		va_end(args);
 		return 0;
-	va_end (args);
+	}
+	va_end(args);
 
 	char *content = read_file(_path);
 	uint64_t v;
