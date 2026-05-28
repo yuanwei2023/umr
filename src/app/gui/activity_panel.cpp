@@ -187,11 +187,9 @@ struct DrmEvent : public Event {
 		switch (type) {
 			case EventType::DrmSchedJobQueue: {
 				if (str_is(name, "fence", name_len))
-					u.drm_sched_job_run.fence.from_str(value);
+					u.drm_sched_job_queue.fence.from_str(value);
 				PARSE_INT(u.drm_sched_job_queue.sw_job_count, "job count", 10);
 				PARSE_INT(u.drm_sched_job_queue.client_id, "client_id", 10);
-				else if (str_is(name, "fence", name_len))
-					u.drm_sched_job_queue.fence.from_str(value);
 				break;
 			}
 			case EventType::DrmSchedJobRun: {
