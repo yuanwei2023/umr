@@ -1320,7 +1320,7 @@ JSON_Object *parse_pp_features_sysfs_file(const char *content)
 	return out;
 }
 
-struct {
+struct page_table_entry {
 	uint64_t pba;
 	uint64_t va_mask;
 
@@ -1329,23 +1329,31 @@ struct {
 	int system, tmz, mtype;
 	int pte;
 } page_table[64];
-int num_page_table_entries;
+size_t num_page_table_entries;
+
+static struct page_table_entry *alloc_page_table_entry(void) {
+	if (num_page_table_entries >= ARRAY_SIZE(page_table))
+		return NULL;
+	return &page_table[num_page_table_entries++];
+}
 
 static void my_va_decode(pde_fields_t *pdes, int num_pde, pte_fields_t pte) {
 	for (int i = 0; i < num_pde; i++) {
-		page_table[num_page_table_entries].pba = pdes[i].pte_base_addr;
-		page_table[num_page_table_entries].type = i == 0 ? 0 : 1;
-		page_table[num_page_table_entries].system = pdes[i].pte;
-		num_page_table_entries++;
+		struct page_table_entry *e = alloc_page_table_entry();
+		if (!e) return;
+		e->pba = pdes[i].pte_base_addr;
+		e->type = i == 0 ? 0 : 1;
+		e->system = pdes[i].pte;
 	}
 	if (pte.valid || 1) {
-		page_table[num_page_table_entries].type = 2;
-		page_table[num_page_table_entries].pba = pte.page_base_addr;
-		page_table[num_page_table_entries].system = pte.system;
-		page_table[num_page_table_entries].va_mask = pte.pte_mask;
-		page_table[num_page_table_entries].tmz = pte.tmz;
-		page_table[num_page_table_entries].mtype = pte.mtype;
-		num_page_table_entries++;
+		struct page_table_entry *e = alloc_page_table_entry();
+		if (!e) return;
+		e->type = 2;
+		e->pba = pte.page_base_addr;
+		e->system = pte.system;
+		e->va_mask = pte.pte_mask;
+		e->tmz = pte.tmz;
+		e->mtype = pte.mtype;
 	}
 }
 
@@ -2687,7 +2695,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			json_object_set_number(json_object(answer), "values", 0 /* raw_data index */);
 		}
 		JSON_Value *pt = json_value_init_array();
-		for (int i = 0; i < num_page_table_entries; i++) {
+		for (size_t i = 0; i < num_page_table_entries; i++) {
 			JSON_Value *level = json_value_init_object();
 			json_object_set_number(json_object(level), "pba", page_table[i].pba);
 			if (page_table[i].type == 2)
