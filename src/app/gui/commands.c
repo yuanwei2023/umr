@@ -2402,7 +2402,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 	if (asc) {
 		unsigned did = json_object_get_number(asc, "did");
 		int instance = json_object_get_number(asc, "instance");
-		for (int i = 0; !asic; i++) {
+		for (size_t i = 0; !asic && i < ARRAY_SIZE(asics); i++) {
 			if (asics[i] && asics[i]->did == did && asics[i]->instance == instance)
 				asic = asics[i];
 		}
