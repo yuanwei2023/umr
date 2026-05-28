@@ -95,6 +95,7 @@ struct Event {
 	}
 
 	virtual void _copy(const Event& evt) {
+		free(stacktrace);
 		type = evt.type;
 		timestamp = evt.timestamp;
 		pid = evt.pid;
