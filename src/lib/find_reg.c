@@ -211,10 +211,15 @@ struct umr_reg* umr_find_reg_data_by_ip_by_instance_with_ip(struct umr_asic* asi
 	char origname[96], tmpregname[100], instname[16];
 	const char *oregname = regname;
 
-	strcpy(origname, regname);
-
-	if (ipp)
+	if (ipp) {
 		*ipp = NULL;
+	}
+
+	if (!regname) {
+		return NULL;
+	}
+
+	strcpy(origname, regname);
 
 	// compute INST name for IP block
 	if (inst >= 0) {
