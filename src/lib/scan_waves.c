@@ -1163,14 +1163,20 @@ char *umr_wave_data_describe_wavefront(struct umr_asic *asic, struct umr_wave_da
 		case 11:
 		case 12:
 		{
-			int reg_wave, reg_simd, reg_wgp, reg_sa, reg_se, match;
+			int reg_wave, reg_simd, reg_wgp, reg_sa, reg_se, match, se_match;
 			reg_wave = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WAVE_ID");
 			reg_simd = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SIMD_ID");
 			reg_wgp = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "WGP_ID");
 			reg_sa = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SA_ID");
-			reg_se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
+			if (!(maj == 12 && min == 1)) {
+				// SE_ID is not present on gfx12.1
+				reg_se = umr_wave_data_get_bits(asic, wd, "ixSQ_WAVE_HW_ID1", "SE_ID");
+				se_match = reg_se == wd->se;
+			} else {
+				se_match = 1;
+			}
 			if (reg_wave == wd->wave && reg_simd == wd->simd &&
-				reg_wgp == wd->cu && reg_sa == wd->sh && reg_se == wd->se) {
+				reg_wgp == wd->cu && reg_sa == wd->sh && se_match) {
 				match = 1;
 				wd->tainted = 0;
 			} else {
