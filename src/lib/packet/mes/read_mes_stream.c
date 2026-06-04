@@ -368,7 +368,8 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_sch_stb_log", (fetch_word(asic, stream, i) >> 16) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "limit_single_process", (fetch_word(asic, stream, i) >> 17) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "is_strix_tmz_wa_enabled", (fetch_word(asic, stream, i) >> 18) & 1, NULL, 10, 32);
-						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_lr_compute_wa", (fetch_word(asic, stream, i) >> 19) & 1, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_lr_compute_wa", (fetch_word(asic, stream, i) >> 19) & 3, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_compute_pipe_reset", (fetch_word(asic, stream, i) >> 21) & 1, NULL, 10, 32);
 					} else 	if (mes_ver_maj == 12) {
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "use_disable_queue_in_legacy_uq_preemption", (fetch_word(asic, stream, i) >> 11) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "send_write_data", (fetch_word(asic, stream, i) >> 12) & 1, NULL, 10, 32);
@@ -380,8 +381,8 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "limit_single_process", (fetch_word(asic, stream, i) >> 18) & 1, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "unmapped_doorbell_handling", (fetch_word(asic, stream, i) >> 19) & 3, NULL, 10, 32);
 						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_mes_fence_int", (fetch_word(asic, stream, i) >> 21) & 1, NULL, 10, 32);
-						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_lr_compute_wa", (fetch_word(asic, stream, i) >> 22) & 1, NULL, 10, 32);
-
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_lr_compute_wa", (fetch_word(asic, stream, i) >> 22) & 3, NULL, 10, 32);
+						ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "enable_compute_pipe_reset", (fetch_word(asic, stream, i) >> 24) & 1, NULL, 10, 32);
 					}
 				}
 				++i;
@@ -541,7 +542,12 @@ struct umr_mes_stream *umr_mes_decode_stream_opcodes(struct umr_asic *asic, stru
 				break;
 
 			case 6: // MESAPI__SUSPEND
-				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_all_gangs", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32); ++i;
+				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_all_gangs", (fetch_word(asic, stream, i) >> 0) & 1, NULL, 10, 32);
+				if (mes_ver_maj == 12) {
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "query_status", (fetch_word(asic, stream, i) >> 1) & 1, NULL, 10, 32);
+					ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_all_sdma_gangs", (fetch_word(asic, stream, i) >> 2) & 1, NULL, 10, 32);
+				}
+				++i;
 				if (pack8 && !(i&1)) ++i;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "gang_context_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
 				ui->add_field(ui, ib_addr + 4 * i, ib_vmid, "suspend_fence_addr", (uint64_t)fetch_word(asic, stream, i) | ((uint64_t)fetch_word(asic, stream, i+1) << 32), NULL, 16, 64); i += 2;
