@@ -1150,9 +1150,14 @@ int main(int argc, char **argv)
 						umr_print_waves(asic, 1);
 					}
 				} else if (!strcmp(argv[i], "--singlestep") || !strcmp(argv[i], "-ss")) {
-					if (asic->family < FAMILY_NV) {
-						fprintf(stderr, "[ERROR]: --singlestep is only supported on gfx10+!\n");
+					int maj, min;
+					umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
+					if (maj < 10) {
+						asic->err_msg("[ERROR]: --singlestep is only supported on gfx10+!\n");
 						return EXIT_FAILURE;
+					}
+					if (maj == 12 && min == 1) {
+						asic->err_msg("[WARNING]: --singlestep is ill advised for gfx12.1\n");
 					}
 					if (i + 1 < argc) {
 						argflags[i] = 1;
