@@ -149,3 +149,13 @@ int Event::parse_event_fields(char *cursor, Event *event) {
 
 	return 1 + line_len;
 }
+
+int event_name_to_type(const char *name)
+{
+	for (int i = 0; i < (int)EventType::Count; i++) {
+		const char *si = EventType::to_str((EventType::Enum)i);
+		if (strncmp(name, si, strlen(si)) == 0)
+			return i;
+	}
+	return (int)EventType::Unknown;
+}

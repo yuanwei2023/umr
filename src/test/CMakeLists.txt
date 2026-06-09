@@ -11,7 +11,7 @@ set(TEST_SRC test_framework.c
 
 if(UMR_GUI OR UMR_SERVER)
   add_compile_definitions(COMMANDS_TEST=1)
-  set(TEST_SRC ${TEST_SRC} test_server.c ../app/gui/commands.c)
+  set(TEST_SRC ${TEST_SRC} test_server.c ../app/gui/commands.c ../app/gui/kernel_trace_event.cpp)
 endif()
 
 add_executable(umrtest ${TEST_SRC})

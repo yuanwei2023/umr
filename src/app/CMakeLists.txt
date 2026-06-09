@@ -5,7 +5,7 @@ include_directories(inc)
 
 if(UMR_GUI OR UMR_SERVER)
   include_directories("gui/parson")
-  set (GUI_SOURCE gui/commands.c)
+  set (GUI_SOURCE gui/commands.c gui/kernel_trace_event.cpp)
 endif()
 
 if(UMR_GUI)
@@ -13,7 +13,6 @@ if(UMR_GUI)
   include_directories("gui/imgui")
   set (GUI_SOURCE ${GUI_SOURCE}
                   umr_gui.cpp
-                  gui/kernel_trace_event.cpp
                   gui/imgui/imgui.cpp gui/imgui/imgui_draw.cpp gui/imgui/imgui_impl_opengl3.cpp
                   gui/imgui/imgui_tables.cpp
                   gui/imgui/imgui_impl_sdl.cpp gui/imgui/imgui_widgets.cpp

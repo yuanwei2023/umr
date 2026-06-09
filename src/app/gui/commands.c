@@ -39,6 +39,8 @@
 
 #include "parson.h"
 
+#include "kernel_trace_event.h"
+
 #define SYSFS_PATH_DRM       "/sys/class/drm/"
 #define SYSFS_PATH_DEBUG_DRI "/sys/kernel/debug/dri/"
 #define SYSFS_PATH_TRACING   "/sys/kernel/tracing/"
@@ -2072,7 +2074,7 @@ static int8_t *ensure_capacity(int8_t *buffer, int *capacity, int used, int extr
 	return buffer;
 }
 
-static bool parse_one_event(struct activity_capture_data *data, char *buffer,
+static int parse_one_event(struct activity_capture_data *data, char *buffer,
 									 int len, int8_t **out,
 									 int *raw_data_used, int *raw_data_capacity) {
 	char *task_name_start, *task_name_end;
@@ -2084,7 +2086,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 		printf("'%.*s'\n", len, buffer);
 
 	if (*buffer == '{')
-		return false;
+		return 0;
 
 	cursor = buffer;
 	eol = buffer + len;
@@ -2096,14 +2098,14 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 	/* Jump after taskname-pid */
 	pid_end = strchr(cursor, '[');
 	if (pid_end == NULL)
-		return false;
+		return 0;
 
 	if (memcmp(pid_end, "[LOST", 5) == 0) {
 		int n = strtol(pid_end + strlen("[LOST"), NULL, 10);
 		data->lost_events += n;
 		char *end = strchr(pid_end, ']');
 		printf("warn: %.*s\n", (int)(end - pid_end), pid_end);
-		return false;
+		return 0;
 	}
 
 	/* Track back to the pid */
@@ -2159,34 +2161,18 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 	/* Parse timestamp. */
 	double ts;
 	if (sscanf(cursor, "%lf:", &ts) != 1)
-		return false;
+		return 0;
 
 	cursor = strchr(cursor, ':');
 	if (cursor == NULL)
-		return false;
+		return 0;
 	cursor += 2;
 
 	/* Map event name to enum */
-	int event_type = 0; /* Unknown. */
-	if (strncmp(cursor, "drm_sched_job_", strlen("drm_sched_job_")) == 0) {
-		cursor += strlen("drm_sched_job_");
-		if (strncmp(cursor, "queue", strlen("queue")) == 0)
-			event_type = 1; /* DrmSchedJobQueue */
-		else if (strncmp(cursor, "run", strlen("run")) == 0)
-			event_type = 2; /* DrmSchedJobRun */
-		else if (strncmp(cursor, "done", strlen("done")) == 0)
-			event_type = 3; /* DrmSchedJobDone */
-		else if (strncmp(cursor, "unschedulable", strlen("unschedulable")) == 0)
-			event_type = 4; /* DrmSchedJobUnschedulable */
-		else if (strncmp(cursor, "add_dep", strlen("add_dep")) == 0)
-			event_type = 5; /* DrmSchedJobAddDep */
-		else
-			assert(false);
-	} else if (strncmp(cursor, "amdgpu_device_wreg", strlen("amdgpu_device_wreg")) == 0) {
-		event_type = 7; /* AmdgpuDeviceWreg */
-	} else {
-		return false;
-	}
+	const int event_type = event_name_to_type(cursor);
+	if (event_type <= 0)
+		return 0;
+
 	cursor = strchr(cursor, ':') + 1;
 	while (cursor && *cursor == ' ') cursor++;
 
@@ -2194,7 +2180,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 	int s = eol - cursor;
 
 	if (s <= 0)
-		return false;
+		return 0;
 
 	/* Replace task name and process name by an id. */
 	assert(task_name_end > task_name_start);
@@ -2237,7 +2223,7 @@ static bool parse_one_event(struct activity_capture_data *data, char *buffer,
 
 	*raw_data_used = used;
 
-	return true;
+	return event_type;
 }
 
 

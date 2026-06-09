@@ -24,6 +24,8 @@
  */
 #pragma once
 
+#ifdef __cplusplus
+
 #include <cstddef>
 #include <cstring>
 #include <cstdlib>
@@ -41,6 +43,7 @@ namespace EventType
 		DrmSchedJobAddDep,
 		AmdgpuSchedRunJob,
 		AmdgpuDeviceWreg,
+		Count,
 	};
 
 	inline const char *to_str(enum Enum t) {
@@ -125,3 +128,13 @@ struct Event {
 
 	static int parse_event_fields(char *cursor, Event *event);
 };
+
+extern "C"
+{
+#endif
+
+int event_name_to_type(const char *name);
+
+#ifdef __cplusplus
+}
+#endif
