@@ -2079,7 +2079,6 @@ static int parse_one_event(struct activity_capture_data *data, char *buffer,
 									 int len, int8_t **out,
 									 int *raw_data_used, int *raw_data_capacity) {
 	char *task_name_start, *task_name_end;
-	char *pid_end;
 	char *cursor, *eol;
 	char *process_name;
 
@@ -2092,31 +2091,18 @@ static int parse_one_event(struct activity_capture_data *data, char *buffer,
 	cursor = buffer;
 	eol = buffer + len;
 
-	while (isspace(*cursor)) cursor++;
-
 	task_name_start = cursor;
+	while (isspace(*task_name_start)) task_name_start++;
+	task_name_end = cursor + 16;
 
-	/* Jump after taskname-pid */
-	pid_end = strchr(cursor, '[');
-	if (pid_end == NULL)
+	if (len < 17 || *task_name_end != '-')
 		return 0;
 
-	if (memcmp(pid_end, "[LOST", 5) == 0) {
-		int n = strtol(pid_end + strlen("[LOST"), NULL, 10);
-		data->lost_events += n;
-		char *end = strchr(pid_end, ']');
-		printf("warn: %.*s\n", (int)(end - pid_end), pid_end);
-		return 0;
-	}
-
-	/* Track back to the pid */
-	cursor = pid_end;
-	while (*cursor != '-') cursor--;
-	task_name_end = cursor;
-	cursor++;
+	cursor = task_name_end + 1;
 
 	/* Parse the pid */
 	int pid = strtol(cursor, NULL, 10);
+	while (!isspace(*cursor)) cursor++;
 
 	/* Figure out the tgid */
 	int tgid = -1;
@@ -2150,7 +2136,6 @@ static int parse_one_event(struct activity_capture_data *data, char *buffer,
 	}
 
 	/* Skip the CPU section */
-	cursor = pid_end;
 	while (*cursor != ']') cursor++;
 	cursor++;
 
