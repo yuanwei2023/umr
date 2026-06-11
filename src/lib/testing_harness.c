@@ -412,7 +412,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			config->next = calloc(1, sizeof *config);
 			config = config->next;
 		}
-		if (consume_word(&script, "USERQUEUE")) {
+		else if (consume_word(&script, "USERQUEUE")) {
 			if (!expect_word(&script, "="))
 				goto error;
 			userqueue->contents = consume_bytes(&script, &userqueue->size);
@@ -421,7 +421,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			userqueue->next = calloc(1, sizeof *userqueue);
 			userqueue = userqueue->next;
 		}
-		if (consume_word(&script, "DISCOVERY")) {
+		else if (consume_word(&script, "DISCOVERY")) {
 			if (!expect_word(&script, "="))
 				goto error;
 			discovery->contents = consume_bytes(&script, &discovery->size);
@@ -430,7 +430,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			discovery->next = calloc(1, sizeof *discovery);
 			discovery = discovery->next;
 		}
-		if (consume_word(&script, "SYSRAM@")) {
+		else if (consume_word(&script, "SYSRAM@")) {
 			sram->base_address = consume_xint64(&script, &r);
 			if (!r)
 				goto error;
@@ -442,7 +442,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			sram->next = calloc(1, sizeof *sram);
 			sram = sram->next;
 		}
-		if (consume_word(&script, "VRAM@")) {
+		else if (consume_word(&script, "VRAM@")) {
 			vram->base_address = consume_xint64(&script, &r);
 			if (!r)
 				goto error;
@@ -454,7 +454,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			vram->next = calloc(1, sizeof *vram);
 			vram = vram->next;
 		}
-		if (consume_word(&script, "MMIO@")) {
+		else if (consume_word(&script, "MMIO@")) {
 			mmio->mmio_address = consume_xint32(&script, &r);
 			if (!r)
 				goto error;
@@ -466,7 +466,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			mmio->next = calloc(1, sizeof *mmio);
 			mmio = mmio->next;
 		}
-		if (consume_word(&script, "VGPR@")) {
+		else if (consume_word(&script, "VGPR@")) {
 			vgpr->mmio_address = consume_xint64(&script, &r);
 			if (!r)
 				goto error;
@@ -478,7 +478,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			vgpr->next = calloc(1, sizeof *vgpr);
 			vgpr = vgpr->next;
 		}
-		if (consume_word(&script, "SGPR@")) {
+		else if (consume_word(&script, "SGPR@")) {
 			sgpr->mmio_address = consume_xint64(&script, &r);
 			if (!r)
 				goto error;
@@ -490,7 +490,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			sgpr->next = calloc(1, sizeof *sgpr);
 			sgpr = sgpr->next;
 		}
-		if (consume_word(&script, "WAVESTATUS@")) {
+		else if (consume_word(&script, "WAVESTATUS@")) {
 			wave->mmio_address = consume_xint64(&script, &r);
 			if (!r)
 				goto error;
@@ -502,7 +502,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			wave->next = calloc(1, sizeof *wave);
 			wave = wave->next;
 		}
-		if (consume_word(&script, "RINGDATA")) {
+		else if (consume_word(&script, "RINGDATA")) {
 			if (!expect_word(&script, "="))
 				goto error;
 			ring->values = consume_words(&script, &ring->no_values);
@@ -511,7 +511,7 @@ struct umr_test_harness *umr_create_test_harness(const char *script)
 			ring->next = calloc(1, sizeof *ring);
 			ring = ring->next;
 		}
-		if (consume_word(&script, "SQ@")) {
+		else if (consume_word(&script, "SQ@")) {
 			sq->sq_address = consume_xint32(&script, &r);
 			if (!r)
 				goto error;
