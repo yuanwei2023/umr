@@ -1021,7 +1021,7 @@ static double parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
 
 class ActivityPanel : public Panel {
 public:
-	ActivityPanel(struct umr_asic *asic) : Panel(asic), drawable_area(1) {
+	ActivityPanel(struct umr_asic *asic) : Panel(asic), drawable_area(3) {
 		last_reply_parsed = false;
 		tracing_status = TracingStatus::Off;
 		active_graphics_job = NULL;
@@ -2025,7 +2025,12 @@ end:
 		ImGui::SetCursorScreenPos(ImVec2(legend_pos.x, drawable_area.get_row_split_y()));
 		ImGui::BeginChild("Dtails");
 		ImGui::BeginTabBar("Details");
-		if (ImGui::BeginTabItem("Jobs")) {
+		char job_label[64] = { 0 };
+		if (selected_jobs.empty())
+			strcpy(job_label, "Jobs");
+		else
+			snprintf(job_label, sizeof(job_label) - 1, "Jobs (%lu)", selected_jobs.size());
+		if (ImGui::BeginTabItem(job_label)) {
 			for (auto it = selected_jobs.begin(); it != selected_jobs.end();) {
 				auto *job = *it++;
 				if (display_event_details_window(job, min_ts, false, avail, gpu_timelines_area, total)) {
