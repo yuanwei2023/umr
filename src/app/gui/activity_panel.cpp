@@ -965,6 +965,7 @@ static double parse_raw_event_buffer(void *raw_data, unsigned raw_data_size,
 
 				sched_jobs.push_back(job);
 
+				/* Store the kernel value as an upper bound. It will be refined during postprocessing. */
 				job->submit_timeline->context_max_sw_queued[event.u.drm_sched_job_queue.fence.context] = std::max(
 					job->submit_timeline->context_max_sw_queued[event.u.drm_sched_job_queue.fence.context], event.u.drm_sched_job_queue.sw_job_count);
 
@@ -1148,7 +1149,20 @@ public:
 			}
 		}
 
+		/* Compact jobs submit lanes from:
+		 *  [xxx]
+		 *     [yyyy]
+		 *        [zzzzz]
+		 * To:
+		 *  [xxx] [zzzzz]
+		 *     [yyyy]
+		 *
+		 * Also for kernel timelines context_max_sw_queued contains the entity
+		 * pending jobs but we're going to display per-app so the number of needed
+		 * rows is lower.
+		 */
 		std::map<Timeline*, double*> tl_lane_free_ts;
+		std::map<Timeline*, int> kernel_tl_max_job_lane;
 		for (auto *t: timelines) {
 			double *d = new double[t->lane_count()];
 			memset(d, 0, t->lane_count() * sizeof(double));
@@ -1175,12 +1189,19 @@ public:
 					break;
 				}
 			}
-
-			job->submit_timeline->context_max_sw_queued[job->fence.context] =
-				std::max(job->submit_timeline->context_max_sw_queued[job->fence.context], job->lane_offset);
+			/* Compact kernel submit timelines: they have a single context but share the same entity. */
+			if (tl->type == TimelineType::Kernel) {
+				auto it = kernel_tl_max_job_lane.find(tl);
+				kernel_tl_max_job_lane[tl] = std::max(job->lane_offset, (it == kernel_tl_max_job_lane.end()) ? 0 : (*it).second);
+			}
 		}
-		for (auto it: tl_lane_free_ts)
+		for (auto it: tl_lane_free_ts) {
+			auto *tl = it.first;
+			if (tl->type == TimelineType::Kernel)
+				(tl->context_max_sw_queued.begin())->second = kernel_tl_max_job_lane[tl];
+
 			delete[] it.second;
+		}
 	}
 
 	void stop_capture() {
@@ -1633,9 +1654,10 @@ public:
 					draw_triangle(foldable_triangle_center, triangle_size,
 								tl->color,
 								tl->collapsed ? (-3.141592 / 2) : 0);
+
 					if (!drawable_area.is_input_active() &&
 							ImGui::IsMouseHoveringRect(pos, ImVec2(pos.x + title_size.x, pos.y + title_size.y))) {
-						if (tl->collapsed || tl->lane_count() > 1) {
+						if (tl->collapsed || tl->lane_count() > 1 || tl->type == TimelineType::Kernel) {
 							ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
 							if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
 									tl->collapsed = !tl->collapsed;
