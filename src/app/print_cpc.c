@@ -107,6 +107,7 @@ void umr_print_cpc(struct umr_asic *asic)
 				dc_regs = gfx921_dc_regs;
 				break;
 			case 4:
+			case 5:
 				if (rev == 2) {
 					dc_regs = gfx942_dc_regs;
 				} else {
