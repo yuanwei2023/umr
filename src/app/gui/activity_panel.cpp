@@ -812,7 +812,7 @@ static void draw_triangle(ImVec2 pos, float radius, ImColor color, float rotatio
 }
 
 static bool draw_job(const char *name, const ImVec2& timeline_graph_pos, ImVec2 bl, ImVec2 tr, double dt, ImColor color,
-					 ImColor color2, HighlightStatus::Enum status, DrawStyle::Enum style) {
+					 ImColor color2, HighlightStatus::Enum status, DrawStyle::Enum style, bool details = true) {
 	if (style == DrawStyle::None || tr.x < timeline_graph_pos.x)
 		return false;
 
@@ -842,14 +842,16 @@ static bool draw_job(const char *name, const ImVec2& timeline_graph_pos, ImVec2 
 		return false;
 	}
 
-	char duration[64];
-	sprintf(duration, "%7s: %.3f ms ", name, dt * 1000.0);
-	float w = ImGui::CalcTextSize(duration).x;
-	if (w < (tr.x - bl.x) && status != HighlightStatus::Greyed) {
-		ImGui::GetWindowDrawList()->AddText(
-			ImVec2(bl.x + (tr.x - bl.x) * 0.5 - w * 0.5, bl.y),
-			(style == DrawStyle::Fill) ? IM_COL32_BLACK : IM_COL32_WHITE,
-			duration);
+	if (details) {
+		char duration[64];
+		sprintf(duration, "%7s: %.3f ms ", name, dt * 1000.0);
+		float w = ImGui::CalcTextSize(duration).x;
+		if (w < (tr.x - bl.x) && status != HighlightStatus::Greyed) {
+			ImGui::GetWindowDrawList()->AddText(
+				ImVec2(bl.x + (tr.x - bl.x) * 0.5 - w * 0.5, bl.y),
+				(style == DrawStyle::Fill) ? IM_COL32_BLACK : IM_COL32_WHITE,
+				duration);
+		}
 	}
 
 	return (tr.x - bl.x > 3) && ImGui::IsMouseHoveringRect(bl, tr);
@@ -1861,7 +1863,7 @@ end:
 				/* Draw the submission / scheduler wait part. */
 				if (submit_visible &&
 						draw_job("sched wait", timeline_graph_pos, submit.bl, submit.tr, hw_submit_ts - job->start_ts(), color,
-								 color2, status, DrawStyle::Hatched))
+								 color2, status, DrawStyle::Hatched, !job->submit_timeline->collapsed))
 					new_active_job = job;
 
 				/* Determine if we need to draw a "hardware wait" box. */
