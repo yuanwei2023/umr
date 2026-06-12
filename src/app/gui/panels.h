@@ -74,5 +74,14 @@ static inline const char *color_to_hex_str(const ImColor& color) {
 	return tmp;
 }
 
+static inline SDL_Scancode GetScancodeFromKey(SDL_Keycode key)
+{
+	#if USE_SDL2
+	return SDL_GetScancodeFromKey(key);
+	#else
+	return SDL_GetScancodeFromKey(key, NULL);
+	#endif
+}
+
 extern const ImColor palette[11];
 extern const ImColor block_palette[36];

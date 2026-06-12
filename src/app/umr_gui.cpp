@@ -37,7 +37,22 @@
 #include "imgui_impl_sdl.h"
 #include "glad/glad.h"
 
+#if USE_SDL2
 #include <SDL.h>
+#define SDLK_I SDLK_i
+#define SDLK_R SDLK_r
+#define SDLK_W SDLK_w
+#define SDLK_G SDLK_g
+#define SDLK_P SDLK_p
+#define SDLK_T SDLK_t
+#define SDLK_K SDLK_k
+#define SDLK_N SDLK_n
+#define SDLK_O SDLK_o
+#define SDL_WINDOW_HIGH_PIXEL_DENSITY SDL_WINDOW_ALLOW_HIGHDPI
+#else
+#include <SDL3/SDL_main.h>
+#endif
+
 #include "gui/panels.h"
 #define EGL_EGLEXT_PROTOTYPES
 #include <EGL/egl.h>
@@ -380,7 +395,11 @@ JSON_Value *query(struct Link& lnk, JSON_Value *request,
 
 void force_redraw() {
 	SDL_Event evt;
+#if USE_SDL2
 	evt.type = SDL_USEREVENT;
+#else
+	evt.type = SDL_EVENT_USER;
+#endif
 	SDL_PushEvent(&evt);
 }
 
@@ -657,7 +676,7 @@ static void *communication_thread(void *_job) {
 
 static int goto_tab_on_next_redraw = -1;
 bool kb_shortcut(int keycode) {
-	return (ImGui::GetIO().KeyCtrl && ImGui::IsKeyReleased(SDL_GetScancodeFromKey(keycode))) ||
+	return (ImGui::GetIO().KeyCtrl && ImGui::IsKeyReleased(GetScancodeFromKey(keycode))) ||
 			goto_tab_on_next_redraw == keycode;
 }
 
@@ -815,7 +834,11 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 		lnk.cf = NULL;
 	}
 
+#if USE_SDL2
 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+#else
+	if (!SDL_Init(SDL_INIT_VIDEO)) {
+#endif
 		errout("[ERROR] SDL init failed: %s\n", SDL_GetError());
 		return -1;
 	}
@@ -851,15 +874,21 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_WindowFlags window_flags =
-		(SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+		(SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
 
 	char title[512];
 	if (lnk.cf)
 		sprintf(title, "umr (%s) EXPERIMENTAL ", url);
 	else
 		strcpy(title, "umr EXPERIMENTAL");
-	SDL_Window *window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED,
-													  SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+
+	SDL_Window *window;
+#if USE_SDL2
+	window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED,
+										SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+#else
+	window = SDL_CreateWindow(title, 1280, 720, window_flags);
+#endif
 	SDL_GLContext gl_context = SDL_GL_CreateContext(window);
 	SDL_GL_MakeCurrent(window, gl_context);
 	SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -982,7 +1011,11 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 
 		SDL_Event event;
 		/* Process all events, so the app get stuck SDL_WaitEvent() when there's nothing to do */
+#if USE_SDL2
 		if (need_auto_refresh && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 0) {
+#else
+		if (need_auto_refresh && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_EVENT_FIRST, SDL_EVENT_LAST) == 0) {
+#endif
 			need_auto_refresh--;
 			/* Skip event processing */
 			goto after_event_processing;
@@ -992,14 +1025,26 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 		if (SDL_WaitEventTimeout(&event, 500)) {
 			need_auto_refresh = 3;
 			ImGui_ImplSDL2_ProcessEvent(&event);
+#if USE_SDL2
 			if (event.type == SDL_QUIT)
+#else
+			if (event.type == SDL_EVENT_QUIT)
+#endif
 				done = true;
+#if USE_SDL2
 			if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
+#else
+			if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+#endif
 				 event.window.windowID == SDL_GetWindowID(window))
 				done = true;
 		}
 
+#if USE_SDL2
 		if (SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0)
+#else
+		if (SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_EVENT_FIRST, SDL_EVENT_LAST) > 0)
+#endif
 			goto event_handling;
 
 		after_event_processing:
@@ -1106,12 +1151,12 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 
 			ImGui::BeginTabBar("tabs", ImGuiTabBarFlags_None);
 
-			if (ImGui::BeginTabItem("#b58900I#ffffffnfo", NULL, kb_shortcut(SDLK_i) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900I#ffffffnfo", NULL, kb_shortcut(SDLK_I) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				data.panels[0]->display(dt, avail, can_send_request);
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("#b58900R#ffffffegisters", NULL, kb_shortcut(SDLK_r) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900R#ffffffegisters", NULL, kb_shortcut(SDLK_R) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[1]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
@@ -1119,50 +1164,50 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 
 			struct umr_wave_data wd;
 			ImGui::BeginDisabled(umr_wave_data_init(data.asic, &wd) < 0 || devcoredump_file);
-			if (ImGui::BeginTabItem("#b58900W#ffffffaves", NULL, kb_shortcut(SDLK_w) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900W#ffffffaves", NULL, kb_shortcut(SDLK_W) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[7]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
 			ImGui::EndDisabled();
 
-			if (ImGui::BeginTabItem("Rin#b58900g#ffffffs", NULL, kb_shortcut(SDLK_g) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("Rin#b58900g#ffffffs", NULL, kb_shortcut(SDLK_G) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				data.panels[3]->display(dt, avail, can_send_request || devcoredump_file);
 				ImGui::EndTabItem();
 			}
 
 			ImGui::BeginDisabled(devcoredump_file);
-			if (ImGui::BeginTabItem("#b58900P#ffffffower", NULL, kb_shortcut(SDLK_p) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900P#ffffffower", NULL, kb_shortcut(SDLK_P) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[2]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("#b58900M#ffffffemory Usage", NULL, kb_shortcut(SDLK_m) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900M#ffffffemory Usage", NULL, kb_shortcut(SDLK_M) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[5]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("#b58900T#ffffffop", NULL, kb_shortcut(SDLK_t) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900T#ffffffop", NULL, kb_shortcut(SDLK_T) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[4]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("#b58900K#ffffffMS", NULL, kb_shortcut(SDLK_k) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("#b58900K#ffffffMS", NULL, kb_shortcut(SDLK_K) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[8]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("Memory I#b58900n#ffffffspector", NULL, kb_shortcut(SDLK_n) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("Memory I#b58900n#ffffffspector", NULL, kb_shortcut(SDLK_N) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[6]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
 			}
 
-			if (ImGui::BeginTabItem("Buffer #b58900O#ffffffjects", NULL, kb_shortcut(SDLK_o) ? ImGuiTabItemFlags_SetSelected : 0)) {
+			if (ImGui::BeginTabItem("Buffer #b58900O#ffffffjects", NULL, kb_shortcut(SDLK_O) ? ImGuiTabItemFlags_SetSelected : 0)) {
 				if (data.panels[9]->display(dt, avail, can_send_request))
 					need_auto_refresh = -1;
 				ImGui::EndTabItem();
@@ -1244,7 +1289,11 @@ static int run_gui(char *url, umr_err_output stdmsg, umr_err_output errout)
 	ImGui_ImplSDL2_Shutdown();
 	ImGui::DestroyContext();
 
+#if USE_SDL2
 	SDL_GL_DeleteContext(gl_context);
+#else
+	SDL_GL_DestroyContext(gl_context);
+#endif
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 

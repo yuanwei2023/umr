@@ -33,6 +33,11 @@
 #include <string>
 #include <memory>
 
+#ifndef USE_SDL2
+#undef SDLK_o
+#define SDLK_o SDLK_O
+#endif
+
 #define NUM_DRM_COUNTERS            3
 #define NUM_DRM_COUNTERS_VALUES   100
 

@@ -40,6 +40,12 @@
 
 #define IM_PI 3.14159265358979323846f
 
+#ifdef USE_SDL2
+#define SDLK_H SDLK_h
+#define SDLK_M SDLK_m
+#endif
+
+
 namespace HighlightStatus {
 	enum Enum {
 		Greyed = 0,
@@ -1767,9 +1773,9 @@ public:
 end:
 			if (ImGui::IsMouseHoveringRect(ImVec2(gpu_timelines_area.x, tl->draw_y),
 										   ImVec2(gpu_timelines_area.z, pos.y))) {
-				if (ImGui::IsKeyReleased(SDL_GetScancodeFromKey(SDLK_h)))
+				if (ImGui::IsKeyReleased(GetScancodeFromKey(SDLK_H)))
 					tl->visible = false;
-				if (ImGui::IsKeyReleased(SDL_GetScancodeFromKey(SDLK_m)) ||
+				if (ImGui::IsKeyReleased(GetScancodeFromKey(SDLK_M)) ||
 			        ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
 					tl->minimized = !tl->minimized;
 					if (!tl->minimized)

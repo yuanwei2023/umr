@@ -23,6 +23,7 @@
  * of the Software.
  */
 #include "panels.h"
+#include <cmath>
 
 class TopPanel : public Panel {
 public:

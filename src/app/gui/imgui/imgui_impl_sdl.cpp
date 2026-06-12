@@ -47,8 +47,32 @@
 #include "imgui_impl_sdl.h"
 
 // SDL
+#if USE_SDL2
 #include <SDL.h>
 #include <SDL_syswm.h>
+#define SDL_EVENT_MOUSE_WHEEL SDL_MOUSEWHEEL
+#define SDL_EVENT_MOUSE_BUTTON_DOWN SDL_MOUSEBUTTONDOWN
+#define SDL_EVENT_TEXT_INPUT SDL_TEXTINPUT
+#define SDL_EVENT_KEY_DOWN SDL_KEYDOWN
+#define SDL_EVENT_KEY_UP SDL_KEYUP
+#define SDL_KMOD_SHIFT KMOD_SHIFT
+#define SDL_KMOD_CTRL KMOD_CTRL
+#define SDL_KMOD_ALT KMOD_ALT
+#define SDL_KMOD_GUI KMOD_GUI
+
+#define SDL_SYSTEM_CURSOR_DEFAULT SDL_SYSTEM_CURSOR_ARROW
+#define SDL_SYSTEM_CURSOR_TEXT SDL_SYSTEM_CURSOR_IBEAM
+#define SDL_SYSTEM_CURSOR_MOVE SDL_SYSTEM_CURSOR_SIZEALL
+#define SDL_SYSTEM_CURSOR_NS_RESIZE SDL_SYSTEM_CURSOR_SIZENS
+#define SDL_SYSTEM_CURSOR_EW_RESIZE SDL_SYSTEM_CURSOR_SIZEWE
+#define SDL_SYSTEM_CURSOR_NESW_RESIZE SDL_SYSTEM_CURSOR_SIZENESW
+#define SDL_SYSTEM_CURSOR_NWSE_RESIZE SDL_SYSTEM_CURSOR_SIZENWSE
+#define SDL_SYSTEM_CURSOR_POINTER SDL_SYSTEM_CURSOR_HAND
+#define SDL_SYSTEM_CURSOR_NOT_ALLOWED SDL_SYSTEM_CURSOR_NO
+#define SDL_BUTTON_MASK SDL_BUTTON
+#else
+#include <SDL3/SDL.h>
+#endif
 #if defined(__APPLE__)
 #include "TargetConditionals.h"
 #endif
@@ -87,7 +111,7 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
     ImGuiIO& io = ImGui::GetIO();
     switch (event->type)
     {
-    case SDL_MOUSEWHEEL:
+    case SDL_EVENT_MOUSE_WHEEL:
         {
             if (event->wheel.x > 0) io.MouseWheelH += 1;
             if (event->wheel.x < 0) io.MouseWheelH -= 1;
@@ -95,31 +119,35 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
             if (event->wheel.y < 0) io.MouseWheel -= 1;
             return true;
         }
-    case SDL_MOUSEBUTTONDOWN:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
         {
             if (event->button.button == SDL_BUTTON_LEFT) g_MousePressed[0] = true;
             if (event->button.button == SDL_BUTTON_RIGHT) g_MousePressed[1] = true;
             if (event->button.button == SDL_BUTTON_MIDDLE) g_MousePressed[2] = true;
             return true;
         }
-    case SDL_TEXTINPUT:
+    case SDL_EVENT_TEXT_INPUT:
         {
             io.AddInputCharactersUTF8(event->text.text);
             return true;
         }
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
         {
+#if USE_SDL2
             int key = event->key.keysym.scancode;
+#else
+            int key = event->key.scancode;
+#endif
             IM_ASSERT(key >= 0 && key < IM_ARRAYSIZE(io.KeysDown));
-            io.KeysDown[key] = (event->type == SDL_KEYDOWN);
-            io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
-            io.KeyCtrl = ((SDL_GetModState() & KMOD_CTRL) != 0);
-            io.KeyAlt = ((SDL_GetModState() & KMOD_ALT) != 0);
+            io.KeysDown[key] = (event->type == SDL_EVENT_KEY_DOWN);
+            io.KeyShift = ((SDL_GetModState() & SDL_KMOD_SHIFT) != 0);
+            io.KeyCtrl = ((SDL_GetModState() & SDL_KMOD_CTRL) != 0);
+            io.KeyAlt = ((SDL_GetModState() & SDL_KMOD_ALT) != 0);
 #ifdef _WIN32
             io.KeySuper = false;
 #else
-            io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+            io.KeySuper = ((SDL_GetModState() & SDL_KMOD_GUI) != 0);
 #endif
             return true;
         }
@@ -166,15 +194,15 @@ static bool ImGui_ImplSDL2_Init(SDL_Window* window)
     io.ClipboardUserData = NULL;
 
     // Load mouse cursors
-    g_MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-    g_MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-    g_MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-    g_MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-    g_MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-    g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
-    g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
-    g_MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-    g_MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+    g_MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+    g_MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+    g_MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
+    g_MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+    g_MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED);
 
     // Check and store if we are on Wayland
     g_MouseCanUseGlobalState = strncmp(SDL_GetCurrentVideoDriver(), "wayland", 7) != 0;
@@ -229,7 +257,11 @@ void ImGui_ImplSDL2_Shutdown()
 
     // Destroy SDL mouse cursors
     for (ImGuiMouseCursor cursor_n = 0; cursor_n < ImGuiMouseCursor_COUNT; cursor_n++)
+#if USE_SDL2
         SDL_FreeCursor(g_MouseCursors[cursor_n]);
+#else
+        SDL_DestroyCursor(g_MouseCursors[cursor_n]);
+#endif
     memset(g_MouseCursors, 0, sizeof(g_MouseCursors));
 }
 
@@ -243,11 +275,15 @@ static void ImGui_ImplSDL2_UpdateMousePosAndButtons()
     else
         io.MousePos = ImVec2(-FLT_MAX, -FLT_MAX);
 
+#if USE_SDL2
     int mx, my;
+#else
+    float mx, my;
+#endif
     Uint32 mouse_buttons = SDL_GetMouseState(&mx, &my);
-    io.MouseDown[0] = g_MousePressed[0] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;  // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
-    io.MouseDown[1] = g_MousePressed[1] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
-    io.MouseDown[2] = g_MousePressed[2] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
+    io.MouseDown[0] = g_MousePressed[0] || (mouse_buttons & SDL_BUTTON_MASK(SDL_BUTTON_LEFT)) != 0;  // If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
+    io.MouseDown[1] = g_MousePressed[1] || (mouse_buttons & SDL_BUTTON_MASK(SDL_BUTTON_RIGHT)) != 0;
+    io.MouseDown[2] = g_MousePressed[2] || (mouse_buttons & SDL_BUTTON_MASK(SDL_BUTTON_MIDDLE)) != 0;
     g_MousePressed[0] = g_MousePressed[1] = g_MousePressed[2] = false;
 
 #if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE && !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS)
@@ -271,7 +307,11 @@ static void ImGui_ImplSDL2_UpdateMousePosAndButtons()
     // SDL_CaptureMouse() let the OS know e.g. that our imgui drag outside the SDL window boundaries shouldn't e.g. trigger the OS window resize cursor.
     // The function is only supported from SDL 2.0.4 (released Jan 2016)
     bool any_mouse_button_down = ImGui::IsAnyMouseDown();
+#if USE_SDL2
     SDL_CaptureMouse(any_mouse_button_down ? SDL_TRUE : SDL_FALSE);
+#else
+    SDL_CaptureMouse(any_mouse_button_down);
+#endif
 #else
     if (SDL_GetWindowFlags(g_Window) & SDL_WINDOW_INPUT_FOCUS)
         io.MousePos = ImVec2((float)mx, (float)my);
@@ -288,13 +328,21 @@ static void ImGui_ImplSDL2_UpdateMouseCursor()
     if (io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None)
     {
         // Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
+#if USE_SDL2
         SDL_ShowCursor(SDL_FALSE);
+#else
+        SDL_HideCursor();
+#endif
     }
     else
     {
         // Show OS mouse cursor
         SDL_SetCursor(g_MouseCursors[imgui_cursor] ? g_MouseCursors[imgui_cursor] : g_MouseCursors[ImGuiMouseCursor_Arrow]);
+#if USE_SDL2
         SDL_ShowCursor(SDL_TRUE);
+#else
+        SDL_ShowCursor();
+#endif
     }
 }
 
@@ -307,7 +355,12 @@ void ImGui_ImplSDL2_NewFrame(SDL_Window* window)
     int w, h;
     int display_w, display_h;
     SDL_GetWindowSize(window, &w, &h);
+#if USE_SDL2
     SDL_GL_GetDrawableSize(window, &display_w, &display_h);
+#else
+    SDL_GetWindowSizeInPixels(window, &display_w, &display_h);
+    SDL_StartTextInput(window);
+#endif
     io.DisplaySize = ImVec2((float)w, (float)h);
     if (w > 0 && h > 0)
         io.DisplayFramebufferScale = ImVec2((float)display_w / w, (float)display_h / h);

@@ -25,7 +25,13 @@
 #include "panels.h"
 
 #include <ctype.h>
+#if USE_SDL2
 #include <SDL.h>
+#define SDLK_F SDLK_f
+#else
+#include <SDL3/SDL.h>
+#endif
+
 #include <set>
 
 #include "kernel_trace_event.h"
@@ -296,7 +302,7 @@ public:
 		ImGui::PushStyleColor(ImGuiCol_Text, ImU32(palette[4]));
 		ImGui::Text("Search register by:");
 		ImGui::PopStyleColor();
-		if (kb_shortcut(SDLK_f))
+		if (kb_shortcut(SDLK_F))
 			ImGui::SetKeyboardFocusHere();
 		ImGui::BulletText("Name:      ");
 		ImGui::SameLine();
