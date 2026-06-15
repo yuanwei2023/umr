@@ -242,3 +242,10 @@ An example usage is:
 	options.forcedid = 0x9874;  // find the first device which is a Carrizo
 	asic = umr_discover_asic(&options, err_printf);
 
+---------------
+Further reading
+---------------
+
+To plug in your own register, memory, wave, or ring accessors instead of
+the default Linux implementations, see :doc:`developer_callbacks`.
+

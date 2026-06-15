@@ -26,6 +26,9 @@ UMR: User Mode Register Debugger
    
    libumr_api
 
+Library integrations that replace the default Linux accessors should read
+:doc:`developer_callbacks` for the ``struct umr_asic`` callback tables.
+
 Indices and tables
 ==================
 
