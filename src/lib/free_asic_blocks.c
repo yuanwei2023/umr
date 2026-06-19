@@ -30,21 +30,24 @@
 void umr_free_asic_blocks(struct umr_asic *asic)
 {
 	int x, y, z;
-	for (x = 0; x < asic->no_blocks; x++) {
-		if (asic->blocks[x]) {
-			for (y = 0; y < asic->blocks[x]->no_regs; y++) {
-				free(asic->blocks[x]->regs[y].regname);
-				for (z = 0; z < asic->blocks[x]->regs[y].no_bits; z++) {
-					free(asic->blocks[x]->regs[y].bits[z].regname);
+
+	if (asic->blocks) {
+		for (x = 0; x < asic->no_blocks; x++) {
+			if (asic->blocks[x]) {
+				for (y = 0; y < asic->blocks[x]->no_regs; y++) {
+					free(asic->blocks[x]->regs[y].regname);
+					for (z = 0; z < asic->blocks[x]->regs[y].no_bits; z++) {
+						free(asic->blocks[x]->regs[y].bits[z].regname);
+					}
+					free(asic->blocks[x]->regs[y].bits);
 				}
-				free(asic->blocks[x]->regs[y].bits);
+				free(asic->blocks[x]->ipname);
+				free(asic->blocks[x]->regs);
 			}
-			free(asic->blocks[x]->ipname);
-			free(asic->blocks[x]->regs);
+			free(asic->blocks[x]);
 		}
-		free(asic->blocks[x]);
+		free(asic->blocks);
 	}
-	free(asic->blocks);
 	free(asic->mmio_accel);
 	free(asic->asicname);
 	free(asic);

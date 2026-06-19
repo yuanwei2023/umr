@@ -98,7 +98,11 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 	asic->family    = asic_fields.family;
 	asic->is_apu    = asic_fields.is_apu;
 	asic->parameters.vgpr_granularity = asic_fields.vgpr_granularity;
-	asic->blocks    = calloc(asic->no_blocks, sizeof(*(asic->blocks)));
+	asic->blocks = calloc((size_t)asic->no_blocks, sizeof(*(asic->blocks)));
+	if (asic->no_blocks && !asic->blocks) {
+		errout("[ERROR]: Out of memory allocating ASIC IP block table\n");
+		goto error;
+	}
 
 	for (x = 0; x < asic->no_blocks; x++) {
 		int instance;
@@ -107,8 +111,9 @@ struct umr_asic *umr_database_read_asic(struct umr_options *options, char *filen
 			goto error;
 		}
 		asic->blocks[x] = umr_database_read_ipblock(soc15, options->database_path, regfile, ipcmnname, ipsocname, instance, errout);
-		if (!asic->blocks[x])
+		if (!asic->blocks[x]) {
 			goto error;
+		}
 	}
 
 	umr_database_free_soc15(soc15);
