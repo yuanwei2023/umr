@@ -56,6 +56,28 @@ static void fill_ipver_from_path(char* ip_path, struct umr_ip_block* ip_block) {
 	}
 }
 
+/* ip->regs is calloc'd; unset regname / bits pointers are NULL. free(NULL) is a no-op. */
+static void free_read_ipblock_abort(struct umr_ip_block *ip)
+{
+	int i, z;
+
+	if (!ip)
+		return;
+	if (ip->regs) {
+		for (i = 0; i < (int)ip->no_regs; i++) {
+			free(ip->regs[i].regname);
+			if (ip->regs[i].bits) {
+				for (z = 0; z < ip->regs[i].no_bits; z++)
+					free(ip->regs[i].bits[z].regname);
+				free(ip->regs[i].bits);
+			}
+		}
+		free(ip->regs);
+	}
+	free(ip->ipname);
+	free(ip);
+}
+
 /**
  * @brief Reads an IP block from the database.
  *
@@ -116,9 +138,27 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 		fclose(f);
 		return NULL;
 	}
+	if (!no_regs) {
+		errout("[ERROR]: IP database file [%s] reports zero registers\n", filename);
+		free(ip);
+		fclose(f);
+		return NULL;
+	}
 	ip->no_regs = no_regs;
 	ip->regs = calloc(no_regs, sizeof(*(ip->regs)));
+	if (!ip->regs) {
+		errout("[ERROR]: Could not allocate memory for IP registers\n");
+		free(ip);
+		fclose(f);
+		return NULL;
+	}
 	ip->ipname = strdup(cmnname);
+	if (!ip->ipname) {
+		errout("[ERROR]: Could not allocate memory for IP block name\n");
+		free_read_ipblock_abort(ip);
+		fclose(f);
+		return NULL;
+	}
 
 	// try to parse version out of filename (assume path has no spaces)
 	if (sscanf(filename, "%s", linebuf)) {
@@ -148,6 +188,12 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 		}
 
 		ip->regs[x].regname = strdup(reg_fields.name);
+		if (!ip->regs[x].regname) {
+			errout("[ERROR]: Could not allocate memory for register name\n");
+			free_read_ipblock_abort(ip);
+			fclose(f);
+			return NULL;
+		}
 		ip->regs[x].type    = reg_fields.type;
 		ip->regs[x].addr    = reg_fields.addr;
 		if (soc15 && ip->regs[x].type == REG_MMIO)
@@ -157,13 +203,26 @@ struct umr_ip_block *umr_database_read_ipblock(struct umr_soc15_database *soc15,
 
 		if (reg_fields.nobits) {
 			ip->regs[x].bits = calloc(reg_fields.nobits, sizeof(*(ip->regs[x].bits)));
+			if (!ip->regs[x].bits) {
+				errout("[ERROR]: Could not allocate memory for bitfields\n");
+				free_read_ipblock_abort(ip);
+				fclose(f);
+				return NULL;
+			}
 			for (y = 0; y < reg_fields.nobits; y++) {
 				if (!fgets(linebuf, sizeof linebuf, f) || sscanf(linebuf, "\t%s %d %d", bit_fields.name, &bit_fields.start, &bit_fields.stop) != 3){
 					errout("[ERROR]: Could not read bitfield definition\n");
+					free_read_ipblock_abort(ip);
 					fclose(f);
-					return ip;
+					return NULL;
 				}
 				ip->regs[x].bits[y].regname = strdup(bit_fields.name);
+				if (!ip->regs[x].bits[y].regname) {
+					errout("[ERROR]: Could not allocate memory for bitfield name\n");
+					free_read_ipblock_abort(ip);
+					fclose(f);
+					return NULL;
+				}
 				ip->regs[x].bits[y].start = bit_fields.start;
 				ip->regs[x].bits[y].stop = bit_fields.stop;
 				ip->regs[x].bits[y].bitfield_print = &umr_bitfield_default;
