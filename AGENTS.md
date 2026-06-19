@@ -169,6 +169,9 @@ Single **`umrtest`** executable (`src/test/CMakeLists.txt`) built from `test_fra
 - **`test/kat/`** — Known-answer tests: `.cmd`, `.txt`, `.answer*` fixtures (e.g. ring stream / VCN cases).
 - **`test/vm/`** — VM-related **`.envdef`** fixtures for direct-VM and ASIC-specific scenarios.
 
+**Quick sanity check from the repo root:** run `bash test/runtest.sh`. The script performs a `git clean`, configures with CMake, builds (`make`), then runs the tests. Log output can be long and may include noisy messages even on success; a successful run ends with a line that contains `PASSED` (search the tail of the log for that substring to confirm).  Running
+**runtest.sh** is required before pushing any new commits.
+
 See `README.TESTVECTOR` and `src/lib/testing_harness.c` for how harnesses relate to these files.
 
 ---
