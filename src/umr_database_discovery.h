@@ -25,13 +25,18 @@
 #ifndef UMR_DATABASE_DISCOVERY_H_
 #define UMR_DATABASE_DISCOVERY_H_
 
+/** Bytes reserved for the IP name in discovery records (test harness log / binary layout). */
+#define UMR_DISCOVERY_IPNAME_BYTES 128
+/** Number of SOC15 segment base addresses per IP discovery entry. */
+#define UMR_DISCOVERY_NUM_SEGMENTS 32
+
 // size of serialized umr_discovery_table_entry
-#define DET_REC_SIZE (128 + 6 * 2 + 8 * 32)
+#define DET_REC_SIZE (UMR_DISCOVERY_IPNAME_BYTES + 6 * 2 + 8 * UMR_DISCOVERY_NUM_SEGMENTS)
 
 struct umr_discovery_table_entry {
-	char ipname[128];
+	char ipname[UMR_DISCOVERY_IPNAME_BYTES];
 	int die, instance, maj, min, rev, logical_inst;
-	uint64_t segments[32];
+	uint64_t segments[UMR_DISCOVERY_NUM_SEGMENTS];
 	uint8_t harvest;
 	struct umr_discovery_table_entry *next;
 };

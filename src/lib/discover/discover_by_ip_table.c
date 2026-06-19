@@ -190,14 +190,14 @@ static void dump_discovery_to_log(struct umr_discovery_table_entry *det, struct 
 	fprintf(options->test_log_fd, "DISCOVERY = { ");
 	while (det) {
 		int x;
-		for (x = 0; x < 128; x++) fprintf(options->test_log_fd, "%02" PRIx8, (unsigned)(det->ipname[x] & 0xFF));
+		for (x = 0; x < UMR_DISCOVERY_IPNAME_BYTES; x++) fprintf(options->test_log_fd, "%02" PRIx8, (unsigned)(det->ipname[x] & 0xFF));
 		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->die >> 8), (unsigned)(det->die & 0xFF));
 		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->instance >> 8), (unsigned)(det->instance & 0xFF));
 		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->maj >> 8), (unsigned)(det->maj & 0xFF));
 		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->min >> 8), (unsigned)(det->min & 0xFF));
 		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->rev >> 8), (unsigned)(det->rev & 0xFF));
 		fprintf(options->test_log_fd, "%02" PRIx8 "%02" PRIx8, (unsigned)(det->logical_inst >> 8) & 0xFF, (unsigned)(det->logical_inst & 0xFF));
-		for (x = 0; x < 32; x++) {
+		for (x = 0; x < UMR_DISCOVERY_NUM_SEGMENTS; x++) {
 			fprintf(options->test_log_fd, "%016" PRIx64, det->segments[x]);
 		}
 		det = det->next;
@@ -228,7 +228,7 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 		return NULL;
 	}
 	for (x = 0; x < *nblocks; x++) {
-		memcpy(det->ipname, data, 128); data += 128;
+		memcpy(det->ipname, data, UMR_DISCOVERY_IPNAME_BYTES); data += UMR_DISCOVERY_IPNAME_BYTES;
 		det->die = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
 		det->instance = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
 		det->maj = ((unsigned)data[0] << 8) | ((unsigned)data[1]);	data += 2;
@@ -238,7 +238,7 @@ static struct umr_discovery_table_entry *import_det_from_log(struct umr_options 
 		if (det->logical_inst & 0x8000) {
 			det->logical_inst -= 65536;
 		}
-		for (y = 0; y < 32; y++) {
+		for (y = 0; y < UMR_DISCOVERY_NUM_SEGMENTS; y++) {
 			for (z = 0; z < 8; z++)
 				det->segments[y] = (det->segments[y] << 8) | ((uint64_t)*data++);
 		}
