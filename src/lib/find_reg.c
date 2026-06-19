@@ -22,6 +22,34 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+
+/*
+ * find_reg.c — register lookup against a loaded ASIC database scan
+ *
+ * All lookups walk umr_asic IP blocks and their register tables (sorted by
+ * name for the binary-search path). Internal helpers: case-insensitive string
+ * compare for ordering, and simple glob matching (* and ?) for wildcards.
+ *
+ * By register name (exact match within a block, except wildcards):
+ *   umr_find_reg_data_by_ip_by_instance_with_ip() — core search: optional IP
+ *     name prefix, instance {-1 = any non-instanced, >=0 = {n} in ipname,
+ *     -2 = allow instanced blocks}, optional @ prefix on regname; tries
+ *     "reg…" if "mm…" not found; errors on unsorted DB hits.
+ *   umr_find_reg_data_by_ip_by_instance() — same without returning IP block.
+ *   umr_find_reg_data_by_ip() — parses {instance} from ip string if present.
+ *   umr_find_reg_by_name() — first matching register; optional ipp out.
+ *   umr_find_reg() — returns MMIO offset or 0xFFFFFFFF.
+ *
+ * Wildcard iteration (glob on register names, optional IP glob filter):
+ *   umr_find_reg_wild_first() / umr_find_reg_wild_next() — allocate iterator,
+ *     then step; next frees iterator when exhausted.
+ *
+ * By MMIO address:
+ *   umr_mmio_accel_lower_bound() — first mmio_accel entry for addr (if table).
+ *   umr_find_reg_by_addr() — accel lookup, else linear scan MMIO regs.
+ *   umr_reg_name() — printable "ip.reg" (with terminal color markers) for addr.
+ */
+
 #include "umr.h"
 #include <ctype.h>
 

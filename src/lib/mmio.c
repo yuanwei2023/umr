@@ -22,6 +22,52 @@
  * Authors: Tom St Denis <tom.stdenis@amd.com>
  *
  */
+
+/*
+ * mmio.c — named register read/write and bitfield helpers
+ *
+ * This file sits above the hardware-specific reg_funcs layer: it looks up
+ * registers in the scanned database (find_reg.c), then calls
+ * asic->reg_funcs.read_reg / write_reg with the correct byte/word offset and
+ * reg->type. It does not open devices or map BARs; that lives in lowlevel.
+ *
+ * Addressing: for REG_MMIO, database addresses are dword indices, so the
+ * access offset is reg->addr * 4. Other types use reg->addr as-is. When
+ * reg->bit64 is set, low and high halves are two adjacent accesses in register
+ * address order.
+ *
+ * Read / write by name:
+ *   umr_read_reg_by_name() chains to by_ip, which may parse a trailing "{n}"
+ *     instance out of the ip string (same convention as find_reg).
+ *   umr_write_reg_by_name() → by_ip passes instance -1 (use by_instance when
+ *     you need a specific IP instance explicitly).
+ *   Lookup failure: reads return 0 (indistinguishable from a real zero without
+ *     extra checks); writes return -1.
+ *
+ * Bitfields operate on a full register value you already read, or combine DB
+ * lookup with slice/compose:
+ *   umr_bitslice_range() — low-level inclusive [start, stop] extract.
+ *   umr_bitslice_reg() — match bitname in reg->bits[], log on miss, return 0.
+ *   umr_bitslice_reg_quiet() — same lookup, returns 0xFFFFFFFFULL if the
+ *     bitfield name is missing; callers must avoid using that sentinel for a
+ *     field that can legitimately be all ones (e.g. full 32-bit wide).
+ *   umr_bitslice_compose_value() — mask, shift left to field position; OR
+ *     several composed pieces before writing the word.
+ *   The by_name / by_ip / by_ip_by_instance wrappers resolve the register
+ *     first, then call the non-_by_name variant.
+ *   umr_bitwidth_reg_by_name_by_ip_by_instance() — returns stop - start + 1
+ *     for a named field, or 0 if register or bitfield is missing.
+ *
+ * GRBM / SRBM routing helpers program the kernel's indexing control registers
+ * so subsequent MMIO reads/writes target the intended SE/SH/instance or
+ * ME/pipe/queue/VMID context. umr_grbm_select_index() builds mmGRBM_GFX_INDEX; broadcast
+ * is expressed with 0xFFFFFFFFUL for the corresponding dimension. Pre-NV uses
+ * SH_* bitfields; NV and later use SA_* naming for the same logical slot.
+ * umr_srbm_select_index() picks mmGRBM_GFX_CNTL on FAMILY_AI and newer,
+ * otherwise mmSRBM_GFX_CNTL. Both force use_bank off for the duration of the
+ * umr_write_reg() so the index write is not bank-remapped.
+ */
+
 #include "umr.h"
 
 /**
