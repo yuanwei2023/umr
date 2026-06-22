@@ -354,7 +354,11 @@ Dump any runlists for a given KFD node specified.
 
 .IP "--dump-mqd vmid@virtualaddr engsel"
 Dump an MQD from a given VMID and virtual address for a given engine and asic family.
-Engines are 0=compute, 2=sdma0, 3=sdma1, 4=gfx, 5=mes.
+
+.IP "--dump-mqd-file filename engsel"
+Dump an MQD from a binary file.
+
+MQD Engines are one of engsel == 0=compute, 2=sdma0, 3=sdma1, 4=gfx, 5=mes.
 
 .SH Scriptware Support
 .IP "--script [commands]"
