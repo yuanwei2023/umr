@@ -31,6 +31,8 @@
 #include <stdint.h>
 #if defined(_MSC_VER)
 #include <inttypes.h>
+#include "BaseTsd.h"
+typedef SSIZE_T ssize_t;
 #endif
 #if defined(__unix__)
 	#include <unistd.h>
