@@ -57,10 +57,10 @@ struct umr_database_scan_item *umr_database_find_ip(
 						if (si->min < min || (si->min == min && si->rev <= rev))
 							best = si;
 					} else if (min >= si->min) {
-						if ((min - si->min) < (min - best->min)) {
+						if (abs(min - si->min) < abs(min - best->min)) {
 							best = si;
-						} else if (min - si->min == min - best->min) {
-							if ((rev >= si->rev) && ((rev - si->rev) < (rev - best->rev)))
+						} else if ((min - si->min) == (min - best->min)) {
+							if ((rev >= si->rev) && (abs(rev - si->rev) < abs(rev - best->rev)))
 								best = si;
 						}
 					}
