@@ -425,7 +425,8 @@ struct umr_options {
 		filter_shader_registers,
 		use_full_user_queue,
 		aql_heuristic,
-		is_devcoredump;
+		is_devcoredump,
+		no_backtrace;
 
 	// hs/gs shaders can be opaque depending on circumstances on gfx9+ platforms
 	struct {

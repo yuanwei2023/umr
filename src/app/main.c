@@ -179,7 +179,7 @@ static int std_printf(const char *fmt, ...)
 	r = vfprintf(stdout, fmt, ap);
 	fflush(stdout);
 	va_end(ap);
-	if (strstr(fmt, "[BUG]") || strstr(fmt, "[ERROR]")) {
+	if (!options.no_backtrace && (strstr(fmt, "[BUG]") || strstr(fmt, "[ERROR]"))) {
 		print_backtrace(stderr);
 	}
 	return r;
@@ -196,7 +196,7 @@ static int err_printf(const char *fmt, ...)
 	r = vfprintf(stderr, fmt, ap);
 	fflush(stderr);
 	va_end(ap);
-	if (strstr(fmt, "[BUG]") || strstr(fmt, "[ERROR]")) {
+	if (!options.no_backtrace && (strstr(fmt, "[BUG]") || strstr(fmt, "[ERROR]"))) {
 		print_backtrace(stderr);
 	}
 	return r;
@@ -424,6 +424,8 @@ static void parse_options(char *str)
 			options.use_full_user_queue = 1;
 		} else if (!strcmp(option, "aql_heuristic")) {
 			options.aql_heuristic = 1;
+		} else if (!strcmp(option, "no_backtrace")) {
+			options.no_backtrace = 1;
 		} else {
 			printf("error: Unknown option [%s]\n", option);
 			exit(EXIT_FAILURE);
@@ -452,7 +454,7 @@ static void do_help(void)
 		"\n\t\t\tbits, bitsfull, empty_log, follow, no_follow_ib, no_follow_chained_ib, "
 		"\n\t\t\tuse_pci, use_colour, read_smc, quiet, no_kernel, verbose, halt_waves,"
 		"\n\t\t\tdisasm_early_term, no_disasm, disasm_anyways, wave64, filter_shader_registers,"
-		"\n\t\t\tfull_shader, skip_gprs, no_fold_vm_decode, force_asic_file, use_full_user_queue, aql_heuristic\n"
+		"\n\t\t\tfull_shader, skip_gprs, no_fold_vm_decode, force_asic_file, use_full_user_queue, aql_heuristic, no_backtrace\n"
 	"\n\t--gpu, -g <asicname>(@<instance> | =<pcidevice>)"
 		"\n\t\tSelect a gpu by ASIC name and either the instance number or the PCI bus identifier.\n"
 	"\n\t--instance, -i <number>\n\t\tSelect a device instance to investigate. (default: 0)"

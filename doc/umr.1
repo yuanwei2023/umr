@@ -133,6 +133,9 @@ separated strings.  Options should be specified before --update or --force comma
    Read the entire user queue buffer from start to the WPTR.  May result in undefined behaviour with some VM
    accessess.  Useful though if the SQ is blocked on something the CP has advanced past.
 
+.B no_backtrace
+   Disables the backtrace whenever a BUG or ERROR message is printed.
+
 .SH Bank Selection
 .IP "--bank, -b <se> <sh> <instance>"
 Select a GRBM se/sh/instance bank in decimal.  Can use 'x' to denote a broadcast selection.
