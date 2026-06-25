@@ -44,7 +44,7 @@ dump_waves() {
 		filename="${prefix}_umr_waves_gpu${gpu}.txt"
 	fi
 	echo "Generating $filename"
-	umr -i "${g}" -vmp "${xcc}" -O bits,halt_waves -wa ${ring} 2>>"$errorlog" >"${filename}"
+	umr -i "${g}" -vmp "${xcc}" -O bits,halt_waves,no_backtrace -wa ${ring} 2>>"$errorlog" >"${filename}"
 }
 
 #dump_cpc [did]
@@ -62,7 +62,7 @@ dump_cpc() {
 	echo "Generating $filename"
 
 	# Execute command and redirect output
-	umr -i "${g}" -vmp "${xcc}" -cpc >"${filename}" 2>>"$errorlog"
+	umr -i "${g}" -vmp "${xcc}" -cpc -O no_backtrace >"${filename}" 2>>"$errorlog"
 }
 
 # Dump FW versions
