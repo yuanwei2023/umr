@@ -43,6 +43,8 @@ set(CMAKE_CXX_STANDARD 11 CACHE STRING "The C++ standard to use")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(RELEASE_VERSION \"${VERSION_STRING}\")
+set(UMR_DB_TEMP_DIR "/var/tmp/umr" CACHE STRING "Temp path where database should be extracted to. Default is /var/tmp/umr")
+add_compile_definitions(UMR_DB_TEMP_DIR="${UMR_DB_TEMP_DIR}")
 add_definitions(-DUMR_BUILD_VER=${RELEASE_VERSION})
 add_definitions(-DUMR_BUILD_REV=\"${VERSION_REV}\")
 add_definitions(-DUMR_BUILD_BRANCH=\"${VERSION_BRANCH}\")
@@ -58,6 +60,8 @@ include_directories(${CURSES_INCLUDE_DIRS})
 find_package(PCIAccess REQUIRED)
 include_directories(${PCIACCESS_INCLUDE_DIR})
 
+find_library(LIBARCHIVE_LIB archive)
+
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(UMR_NO_DRM "Disable libdrm functions to read memory stats (disables server and GUI)" OFF)
 option(UMR_NO_LLVM "Disable LLVM shader disasm functions, suggested for LLVM < 7" OFF)
@@ -67,6 +71,7 @@ option(UMR_NO_GUI "Disable umr --gui option" OFF)
 option(UMR_NO_SERVER "Disable umr --server option" ${UMR_NO_GUI})
 option(UMR_INSTALL_DEV "Install the development headers and static library" OFF)
 option(UMR_INSTALL_TEST "Install the umr test application" OFF)
+option(COMPRESS_DATABASE_FILES "Compress the database files to save disk space" OFF)
 # TODO: can server exist without GUI? assume not
 
 # NOT UMR_NO_GUI is confusing. create a hidden option instead. ON by default
@@ -190,6 +195,7 @@ set(REQUIRED_EXTERNAL_LIBS
   ${LLVM_LIBS}
   ${RT_LIBS}
   ${REQUIRED_EXTERNAL_LIBS_GUI}
+  ${LIBARCHIVE_LIB}
 )
 
 # Global setting: build everything position independent
