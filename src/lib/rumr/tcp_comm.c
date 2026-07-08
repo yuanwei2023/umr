@@ -98,6 +98,7 @@ static int tcp_bind(struct rumr_comm_funcs *cf, char *host)
 {
 	struct sockaddr_in sin;
 	struct tcp_state *ts;
+	int optval = 1;
 
 	cf->data = calloc(1, sizeof *ts);
 	ts = cf->data;
@@ -115,6 +116,8 @@ static int tcp_bind(struct rumr_comm_funcs *cf, char *host)
 		cf->data = NULL;
 		return -1;
 	}
+
+	setsockopt(ts->sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
 
 	// bind to host
 	if (bind(ts->sock, (const struct sockaddr *)&sin, sizeof sin) < 0) {
