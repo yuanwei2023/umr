@@ -289,6 +289,8 @@ retry:
 		asic->gpr_read_funcs.read_vgprs = umr_read_vgprs;
 		asic->wave_funcs.get_wave_status = umr_get_wave_status;
 	}
+	asic->wave_funcs.sq_cmd_halt_waves = umr_sq_cmd_halt_waves;
+	asic->wave_funcs.sq_cmd_singlestep = umr_sq_cmd_singlestep;
 
 	asic->shader_disasm_funcs.disasm = umr_shader_disasm;
 
@@ -743,7 +745,7 @@ int main(int argc, char **argv)
 				// optionally halt waves now
 				if (asic->options.halt_waves) {
 					strcpy(asic->options.ring_name, "uq");
-					if (umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 1000)) {
+					if (asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 1000)) {
 						asic->err_msg("[WARNING]: User queue did not halt (or is complete since RPTR == WPTR)\n");
 					}
 				}
@@ -1355,7 +1357,7 @@ int main(int argc, char **argv)
 
 						// resume waves after dumping the queue
 						if (asic->options.halt_waves) {
-							umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+							asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 						}
 				} else if (!strcmp(argv[i], "--dump-ib") || !strcmp(argv[i], "-di")) {
 					if (i + 2 < argc) {

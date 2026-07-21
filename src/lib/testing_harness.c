@@ -992,6 +992,8 @@ void umr_attach_test_harness(struct umr_test_harness *th, struct umr_asic *asic)
 
 	asic->wave_funcs.get_wave_status = wave_status;
 	asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
+	asic->wave_funcs.sq_cmd_halt_waves = umr_sq_cmd_halt_waves;
+	asic->wave_funcs.sq_cmd_singlestep = umr_sq_cmd_singlestep;
 	asic->ring_func.read_ring_data = umr_read_ring_data;
 
 	asic->shader_disasm_funcs.disasm = umr_shader_disasm;

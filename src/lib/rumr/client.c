@@ -589,7 +589,9 @@ int rumr_client_connect(struct rumr_client_state *state, struct rumr_comm_funcs 
 		state->asic->wave_funcs.data = state;
 		state->asic->wave_funcs.get_wave_status = get_wave_status;
 		state->asic->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
-	// ring funcs
+		state->asic->wave_funcs.sq_cmd_halt_waves = umr_sq_cmd_halt_waves;
+		state->asic->wave_funcs.sq_cmd_singlestep = umr_sq_cmd_singlestep;
+		// ring funcs
 		state->asic->ring_func.data = state;
 		state->asic->ring_func.read_ring_data = read_ring_data;
 	// shader

@@ -1608,6 +1608,8 @@ void init_asics(umr_err_output stdmsg, umr_err_output errout) {
 
 			asics[i]->wave_funcs.get_wave_sq_info = umr_get_wave_sq_info;
 			asics[i]->wave_funcs.get_wave_status = umr_get_wave_status;
+			asics[i]->wave_funcs.sq_cmd_halt_waves = umr_sq_cmd_halt_waves;
+			asics[i]->wave_funcs.sq_cmd_singlestep = umr_sq_cmd_singlestep;
 
 			asics[i]->gpr_read_funcs.read_sgprs = umr_read_sgprs;
 			asics[i]->gpr_read_funcs.read_vgprs = umr_read_vgprs;
@@ -2719,7 +2721,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		asic->options.verbose = 0;
 		asic->options.skip_gprs = !capture_gprs;
 
-		int ring_is_halted = umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100) == 0;
+		int ring_is_halted = asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100) == 0;
 
 		if (ring_is_halted) {
 			answer = json_value_init_object();
@@ -2729,7 +2731,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 
 		if (resume_waves)
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+			asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 
 		if (disable_gfxoff)
 			umr_gfxoff_write(asic, 1);
@@ -2778,7 +2780,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 		}
 	} else if (strcmp(command, "resume-waves") == 0) {
 		strcpy(asic->options.ring_name, json_object_get_string(request, "ring"));
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+		asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 		answer = json_value_init_object();
 	} else if (strcmp(command, "ring") == 0) {
 		char *ring_name = (char*)json_object_get_string(request, "ring");
@@ -2793,7 +2795,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 			umr_gfxoff_write(asic, 0);
 
 			if (halt_waves)
-				umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
+				asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
 		}
 
 		struct ring_decoding_data data;
@@ -2897,7 +2899,7 @@ JSON_Value *umr_process_json_request(JSON_Object *request, void **raw_data, unsi
 
 		if (!asic->options.is_devcoredump) {
 			if (halt_waves)
-				umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+				asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 			/* Reenable gfxoff */
 			umr_gfxoff_write(asic, 1);
 		}

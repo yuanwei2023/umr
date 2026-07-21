@@ -76,7 +76,7 @@ static void sigint_handler(int n)
 {
 	(void)n;
 	printf("Profiler killed\n");
-	umr_sq_cmd_halt_waves(kill_asic, UMR_SQ_CMD_RESUME, 0);
+	kill_asic->wave_funcs.sq_cmd_halt_waves(kill_asic, UMR_SQ_CMD_RESUME, 0);
 	exit(EXIT_FAILURE);
 }
 
@@ -121,8 +121,8 @@ void umr_profiler(struct umr_asic *asic, int samples, int shader_target)
 		fflush(stderr);
 		wd = NULL;
 		do {
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
-			umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 0);
+			asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+			asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 0);
 
 			// release waves (if any) if the ring isn't halted
 			if (umr_ring_is_halted(asic, ringname) == 0)
@@ -244,7 +244,7 @@ throw_back:
 	// at this point the jobs could in theory be terminated
 	// and the shaders unmapped which is why we captured
 	// them in the 'texts' list
-	umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+	asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
 	signal(SIGINT, NULL);
 
 	// sort all hits by address/size/etc so we can

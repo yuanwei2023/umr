@@ -613,6 +613,30 @@ struct umr_register_access_funcs {
 
 struct umr_wave_status;
 struct umr_wave_access_funcs {
+	/**
+	* umr_sq_cmd_halt_waves - Attempt to halt or resume waves
+	*
+	* @asic: The device to halt waves on
+	* @mode: Use UMR_SQ_CMD_HALT to halt waves and
+	*        UMR_SQ_CMD_RESUME to resume waves.
+	* @max_retries:	If > 0 halting the waves will be retried if it failed
+	*/
+	int (*sq_cmd_halt_waves)(struct umr_asic *asic, enum umr_sq_cmd_halt_resume mode, int max_retries);
+
+	/**
+	* umr_sq_cmd_singlestep - Attempt to single-step a single wave
+	*
+	* @asic: The ASIC to issue the single-step to
+	* @se: The SE selection
+	* @sh: The SH selection
+	* @wgp: The WGP selection
+	* @simd: The SIMD selection
+	* @wave: The WAVE selection
+	*
+	* The wave is assumed to be halted.  Returns -1 on error.
+	*/
+	int (*sq_cmd_singlestep)(struct umr_asic *asic, uint32_t se, uint32_t sh, uint32_t wgp, uint32_t simd, uint32_t wave);
+
 	/** get_wave_status -- Populate the umr_wave_status structure
 	 * @asic: The device the SQ_WAVE data should come from
 	 * @se, @sh, @cu, @simd, @wave: The specific wave to read data from

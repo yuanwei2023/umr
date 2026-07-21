@@ -167,7 +167,7 @@ struct umr_packet_stream *umr_packet_decode_ring_ex(struct umr_asic *asic, struc
 
 	if (halt_waves && asic->options.halt_waves) {
 		strcpy(asic->options.ring_name, ringname);
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
+		asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_HALT, 100);
 	}
 
 	if (rt == UMR_RING_GUESS) {
@@ -304,8 +304,9 @@ struct umr_packet_stream *umr_packet_decode_ring_ex(struct umr_asic *asic, struc
 	free(ringdata);
 
 cleanup:
-	if (halt_waves && asic->options.halt_waves)
-		umr_sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+	if (halt_waves && asic->options.halt_waves) {
+		asic->wave_funcs.sq_cmd_halt_waves(asic, UMR_SQ_CMD_RESUME, 0);
+	}
 
 	return ps;
 }

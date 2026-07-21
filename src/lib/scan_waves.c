@@ -1221,7 +1221,7 @@ int umr_singlestep_wave(struct umr_asic *asic, struct umr_wave_data *wd)
 	// a branch.
 	int retry = 0;
 	for (; r == 1 && retry < 5; ++retry) {
-		umr_sq_cmd_singlestep(asic, wd->se, wd->sh, wd->cu, wd->simd, wd->wave);
+		asic->wave_funcs.sq_cmd_singlestep(asic, wd->se, wd->sh, wd->cu, wd->simd, wd->wave);
 
 		struct umr_wave_data new_wd;
 		umr_wave_data_init(asic, &new_wd);
