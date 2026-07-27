@@ -91,7 +91,7 @@ static int umr_access_sram_via_iomem(struct umr_asic *asic, uint64_t address, ui
 	return 0;
 }
 
-static int umr_access_sram_via_hmm(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
+int umr_access_process_memory(struct umr_asic *asic, uint64_t address, uint32_t size, void *dst, int write_en)
 {
 	ssize_t s;
 	char name[128];
@@ -131,7 +131,7 @@ int umr_access_sram(struct umr_asic *asic, uint64_t address, uint32_t size, void
 {
 	if (umr_access_sram_via_iomem(asic, address, size, dst, write_en)) {
 		if (asic->options.user_queue.state.active) {
-			if (umr_access_sram_via_hmm(asic, asic->options.user_queue.state.va, size, dst, write_en)) {
+			if (umr_access_process_memory(asic, asic->options.user_queue.state.va, size, dst, write_en)) {
 				goto error;
 			}
 		} else {

@@ -681,6 +681,17 @@ int umr_access_vram_ai(struct umr_asic *asic, int partition,
 	static const char *indentation = "                  \\->";
 	int maj, min;
 
+	/*
+	 * Legacy KFD debugfs does not expose the per-client page-table metadata
+	 * needed for a GPU VM walk. KFD queue addresses are process virtual
+	 * addresses, so access them through the owning process instead.
+	 */
+	if (asic->options.user_queue.state.active &&
+	    asic->options.user_queue.client_type == UMR_CLIENT_KFD &&
+	    !asic->options.user_queue.client_line.id[0]) {
+		return umr_access_process_memory(asic, address, size, dst, write_en);
+	}
+
 	umr_gfx_get_ip_ver(asic, &maj, &min, NULL);
 
 	memset(&vm, 0, sizeof vm);
