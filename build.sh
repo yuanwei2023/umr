@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+
+# sudo yum install libpciaccess-devel
 set -euo pipefail
 
 ROOT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
