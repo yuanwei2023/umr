@@ -16,6 +16,7 @@ done
 cmake -S "${ROOT_DIR}" -B "${BUILD_DIR}" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DUMR_NO_LLVM=ON \
+  -DUMR_NO_DRM=ON \
   -DUMR_NO_GUI=ON \
   -DUMR_NO_SERVER=ON
 
