@@ -75,7 +75,7 @@ void umr_print_uq_info(struct umr_asic *asic)
 		asic->options.user_queue.state.registers.PAGE_TABLE_BASE_ADDR_HI32);
 
     for (x = 0; x < UMR_MAX_MQD_QUEUES; x++) {
-        if (asic->options.user_queue.client_info.queue[x].mqd_gpu_address) {
+        if (asic->options.user_queue.client_info.queue[x].mqd_size) {
             char **mqd_txt;
             uint32_t qt;
 
@@ -83,7 +83,12 @@ void umr_print_uq_info(struct umr_asic *asic)
             asic->std_msg("\tqueue_type: %"PRIu32" (%s)\n",
                 asic->options.user_queue.client_info.queue[x].queue_type,
                 asic->options.user_queue.client_info.queue[x].queue_type > 3 ? "UNK" : queue_names[asic->options.user_queue.client_info.queue[x].queue_type]);
-            asic->std_msg("\tmqd_gpu_address: 0x%"PRIx64"\n", asic->options.user_queue.client_info.queue[x].mqd_gpu_address);
+            if (asic->options.user_queue.client_info.queue[x].mqd_gpu_address) {
+                asic->std_msg("\tmqd_gpu_address: 0x%"PRIx64"\n",
+                    asic->options.user_queue.client_info.queue[x].mqd_gpu_address);
+            } else {
+                asic->std_msg("\tmqd_gpu_address: <unavailable>\n");
+            }
 
             asic->std_msg(
                 "\tHQD state:\n\t\thqd_base_addr: 0x%"PRIx64"\n\t\thqd_rptr_addr: 0x%"PRIx64" (0x%"PRIx64")\n\t\t"
